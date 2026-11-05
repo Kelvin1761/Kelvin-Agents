@@ -12,15 +12,14 @@ replay (`docs/experiments/patches/tennis_rebuild/`).
 
 | Package | Does |
 |---|---|
-| `ingestion/`, `providers/`, `identity/` | Sportsbet / ESPN / TennisMyLife / TennisExplorer / rankings → SQLite, with event-id, pre-match and identity guards |
-| `features/`, `modelling/` | per-player feature snapshots and the match-win model (Elo backbone + nudges) |
-| `model/` | serve/hold, simulator, set table, market blend, as-of history reads |
+| `sources/` | Sportsbet / ESPN / TennisMyLife / TennisExplorer / rankings → SQLite (`providers/` = the fetchers), with event-id, pre-match, identity and fixture-integrity guards |
+| `store/` | schema and migrations, the ledger, pricing evidence, market captures, result consensus, predictions, manual live bets |
+| `model/` | match model (`match.py`, Elo, `features/`), serve/hold, simulator, set table, market blend, as-of history reads |
 | `pricing/` | prop quotes → ledger rows (`props.price_date`) |
 | `select/featured.py` | 精選: one per match, edge → EV → odds, ≤10 a day, frozen at first price |
-| `store/` | ledger writes, pricing evidence, result consensus, predictions, manual live bets |
 | `settle/` | results fetch and prop settlement |
 | `publish/` | report file, Telegram, weekly timing check, dashboard deploy |
-| `run.py` | the daily pipeline: `price_day`, `review_day`, `settle_backlog`, `readiness` |
+| `run.py`, `monitor.py` | the daily pipeline (`price_day`, `review_day`, `settle_backlog`, `readiness`) and silent-failure alarms |
 
 ## Commands
 

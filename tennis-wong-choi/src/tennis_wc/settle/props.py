@@ -7,7 +7,7 @@ from __future__ import annotations
 import json
 import re
 
-from tennis_wc.features.common import utc_now
+from tennis_wc.model.features.common import utc_now
 from tennis_wc.model.history import active_clause, measurement
 from tennis_wc.store.results import conflicting_result_matches
 

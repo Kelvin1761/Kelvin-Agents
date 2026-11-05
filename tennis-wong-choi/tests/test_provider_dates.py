@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from tennis_wc.providers.sportsbet_provider import (
+from tennis_wc.sources.providers.sportsbet_provider import (
     SportsbetOddsProvider, _parse_datetime,
 )
 

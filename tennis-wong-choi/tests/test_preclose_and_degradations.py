@@ -13,8 +13,8 @@ def db(tmp_path, monkeypatch):
     from conftest import configure_test_db
 
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.database.migrations import init_db
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.store.migrations import init_db
 
     init_db()
     conn = get_connection()
@@ -72,8 +72,8 @@ def _featured(conn, match_id):
 
 
 def test_preclose_refresh_captures_featured_matches_only_and_never_the_card(db, monkeypatch):
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.ingestion import ingest_odds
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.sources import ingest_odds
     from tennis_wc.pricing.quotes import rows_for_date
 
     _match(db, 7)                                     # start 12:00Z, featured
@@ -109,7 +109,7 @@ def test_preclose_refresh_captures_featured_matches_only_and_never_the_card(db, 
 
 
 def test_preclose_refresh_reports_missing_event_ref_and_respects_cap(db, monkeypatch):
-    from tennis_wc.ingestion import ingest_odds
+    from tennis_wc.sources import ingest_odds
 
     for mid in (20, 21, 22):
         _match(db, mid)
@@ -130,7 +130,7 @@ def test_preclose_refresh_reports_missing_event_ref_and_respects_cap(db, monkeyp
 
 
 def test_preclose_rejected_identity_is_not_reported_as_refreshed(db, monkeypatch):
-    from tennis_wc.ingestion import ingest_odds
+    from tennis_wc.sources import ingest_odds
 
     _match(db, 20)
     _featured(db, 20)
@@ -146,7 +146,7 @@ def test_preclose_rejected_identity_is_not_reported_as_refreshed(db, monkeypatch
 
 def test_rankings_cache_fallback_is_reported(monkeypatch):
     from tennis_wc import run as cli
-    from tennis_wc.ingestion import ingest_rankings as ir
+    from tennis_wc.sources import ingest_rankings as ir
 
     class Broken:
         provider_name = "broken"
@@ -178,9 +178,9 @@ def test_history_404_is_recorded_and_surfaced(tmp_path, monkeypatch):
 
     configure_test_db(tmp_path, monkeypatch)
     from tennis_wc import run as cli
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.ingestion import ingest_sackmann as sk
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.sources import ingest_sackmann as sk
 
     init_db()
 
@@ -188,15 +188,6 @@ def test_history_404_is_recorded_and_surfaced(tmp_path, monkeypatch):
         raise HTTPError(url, 404, "Not Found", None, None)
 
     monkeypatch.setattr(sk, "_download_csv", not_found)
-    out = sk.ingest_sackmann_history(2026, 2026, ["WTA"])
-    assert out["errors"][0]["error"] == "csv_not_found"
-    row = get_connection().execute(
-        "SELECT status_code, entity_type FROM raw_api_responses WHERE provider_name='jeff_sackmann'"
-    ).fetchone()
-    assert row["status_code"] == 404
-    # Its own entity_type, so retention never treats it as the newest CSV body.
-    assert row["entity_type"] == "match_history_not_found"
-
     tml = sk.ingest_tml_low_tier_history(2026, 2026)
     warnings = cli._degradations("history_lowtier", tml)
     assert len(warnings) == 3

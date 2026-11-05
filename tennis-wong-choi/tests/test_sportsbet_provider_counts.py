@@ -12,7 +12,7 @@ import logging
 
 import pytest
 
-from tennis_wc.providers.sportsbet_provider import (
+from tennis_wc.sources.providers.sportsbet_provider import (
     MATCH_WINNER_TOKENS,
     SportsbetOddsProvider,
 )
@@ -139,7 +139,7 @@ def test_api_rows_carry_the_verified_pair_names():
 
 
 def test_api_event_refresh_uses_fixture_odds_data_id_and_names(monkeypatch):
-    import tennis_wc.providers.sportsbet_provider as module
+    import tennis_wc.sources.providers.sportsbet_provider as module
     provider=_provider();provider.base_url='https://example.invalid';provider.headers={}
     fixture={**_fixture(),'bookmaker_data':{'Sportsbet':'odds-99'}}
     monkeypatch.setattr(module,'get_json',lambda *args:{'ATP':{'g1':fixture}})
@@ -154,7 +154,7 @@ def test_api_event_refresh_uses_fixture_odds_data_id_and_names(monkeypatch):
 
 
 def test_api_event_without_unique_fixture_identity_is_explicit_failure(monkeypatch):
-    import tennis_wc.providers.sportsbet_provider as module
+    import tennis_wc.sources.providers.sportsbet_provider as module
     provider=_provider();provider.base_url='https://example.invalid';provider.headers={}
     monkeypatch.setattr(module,'get_json',lambda *args:{})
     monkeypatch.setattr(module,'post_json',lambda *args:pytest.fail('do not query a guessed odds id'))

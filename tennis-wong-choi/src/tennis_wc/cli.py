@@ -45,7 +45,7 @@ def main(argv: list[str] | None = None) -> None:
         p.set_defaults(func=func)
 
     def init_db(_args):
-        from tennis_wc.database.migrations import init_db as run
+        from tennis_wc.store.migrations import init_db as run
         run()
         print("ok")
 
@@ -62,7 +62,7 @@ def main(argv: list[str] | None = None) -> None:
         _print(review_day(args.date))
 
     def featured(args):
-        from tennis_wc.database.db import get_connection
+        from tennis_wc.store.db import get_connection
         from tennis_wc.select.featured import record
         with get_connection() as conn:
             _print(record(conn, args.date, args.label))

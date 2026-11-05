@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from tennis_wc.ingestion.ingest_odds import _parse_datetime, _row_start_time_utc
+from tennis_wc.sources.ingest_odds import _parse_datetime, _row_start_time_utc
 
 
 EXPECTED = datetime(2026, 8, 16, 15, 0, tzinfo=timezone.utc)

@@ -6,11 +6,11 @@ import sqlite3
 import pytest
 
 from conftest import configure_test_db
-from tennis_wc.database.db import get_connection
-from tennis_wc.database.migrations import init_db
-from tennis_wc.identity.player_identity import ensure_identity_schema
-from tennis_wc.ingestion import entity_mapping as mapping
-from tennis_wc.ingestion.name_matching import normalise_player_name
+from tennis_wc.store.db import get_connection
+from tennis_wc.store.migrations import init_db
+from tennis_wc.sources.identity import ensure_identity_schema
+from tennis_wc.sources import entity_mapping as mapping
+from tennis_wc.sources.name_matching import normalise_player_name
 
 
 def _seed(tmp_path, monkeypatch, *, name='Example Player', chained=False):
@@ -144,7 +144,7 @@ def test_concurrent_identity_receipt_change_prevents_rebind(tmp_path, monkeypatc
 @pytest.mark.parametrize('has_receipt', [True, False])
 def test_real_history_ingress_uses_canonical_pair_or_holds_it(tmp_path, monkeypatch, has_receipt):
     from types import SimpleNamespace
-    from tennis_wc.ingestion import ingest_matches
+    from tennis_wc.sources import ingest_matches
 
     _seed(tmp_path, monkeypatch)
     with get_connection() as c:

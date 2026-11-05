@@ -7,8 +7,8 @@ from __future__ import annotations
 
 import sqlite3
 
-from tennis_wc.database.db import get_connection
-from tennis_wc.features.common import utc_now
+from tennis_wc.store.db import get_connection
+from tennis_wc.model.features.common import utc_now
 from tennis_wc.pricing.families import family_for_market
 
 LIVE_UNIT_VALUE_AUD = 1.0

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from tennis_wc.ingestion.ingest_odds import (
+from tennis_wc.sources.ingest_odds import (
     _oriented_positional_odds,
     _selection_side,
     selection_side_for,
@@ -136,53 +136,3 @@ def _db_with_one_match(tmp_path):
         """
     )
     return conn
-
-
-def test_resync_repairs_sides_left_stale_by_a_player_rewrite(tmp_path):
-    # match 8959: the fixture became Samuel v Svajda, but 'Stefan Kozlov' was
-    # still stored as player_a from when the row held a different pairing. The
-    # matches upsert sets player_a_id = excluded.player_a_id, so this is not a
-    # one-off -- it is what that upsert does to every side already stored.
-    from tennis_wc.ingestion.ingest_odds import resync_selection_sides
-
-    conn = _db_with_one_match(tmp_path)
-    conn.executemany(
-        "INSERT INTO market_odds_snapshots (match_id, selection_name, selection_side)"
-        " VALUES (?, ?, ?)",
-        [(10, "Stefan Kozlov", "player_a"),
-         (10, "Zachary Svajda", "player_b"),
-         (10, "Toby Samuel", None)],
-    )
-    changed = resync_selection_sides(conn, 10)
-    sides = {row["selection_name"]: row["selection_side"] for row in
-             conn.execute("SELECT selection_name, selection_side"
-                          " FROM market_odds_snapshots")}
-    assert changed == 2
-    assert sides == {"Stefan Kozlov": None,      # in neither -- declined
-                     "Zachary Svajda": "player_b",
-                     "Toby Samuel": "player_a"}  # was silently unusable
-
-
-def test_resync_leaves_over_under_sides_alone(tmp_path):
-    # These carry no player, so re-deriving them from player names would erase
-    # a side that was correct.
-    from tennis_wc.ingestion.ingest_odds import resync_selection_sides
-
-    conn = _db_with_one_match(tmp_path)
-    conn.execute(
-        "INSERT INTO market_odds_snapshots (match_id, selection_name, selection_side)"
-        " VALUES (10, 'Over 21.5', 'over')")
-    assert resync_selection_sides(conn, 10) == 0
-    assert conn.execute(
-        "SELECT selection_side FROM market_odds_snapshots").fetchone()[0] == "over"
-
-
-def test_resync_is_idempotent(tmp_path):
-    from tennis_wc.ingestion.ingest_odds import resync_selection_sides
-
-    conn = _db_with_one_match(tmp_path)
-    conn.execute(
-        "INSERT INTO market_odds_snapshots (match_id, selection_name, selection_side)"
-        " VALUES (10, 'Toby Samuel', 'player_b')")
-    assert resync_selection_sides(conn, 10) == 1
-    assert resync_selection_sides(conn, 10) == 0

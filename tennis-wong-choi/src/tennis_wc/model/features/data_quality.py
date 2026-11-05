@@ -1,0 +1,184 @@
+from __future__ import annotations
+
+from datetime import datetime, timedelta, timezone
+from typing import Any
+
+from tennis_wc.config import get_settings
+from tennis_wc.model.features.rank_reference import ranking_effective_date
+
+
+def _parse_time(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+def _walk_datapoints(payload: Any, path: str = "") -> list[tuple[str, dict]]:
+    found: list[tuple[str, dict]] = []
+    if isinstance(payload, dict):
+        if "value" in payload and "provenance" in payload:
+            found.append((path, payload))
+        for key, value in payload.items():
+            found.extend(_walk_datapoints(value, f"{path}.{key}" if path else key))
+    elif isinstance(payload, list):
+        for idx, value in enumerate(payload):
+            found.extend(_walk_datapoints(value, f"{path}[{idx}]"))
+    return found
+
+
+def assert_no_llm_generated_stats(feature_snapshot: dict) -> None:
+    """
+    Raise error if any feature has source_provider == 'llm'
+    or if provenance is missing for numeric features.
+    """
+    for path, point in _walk_datapoints(feature_snapshot):
+        value = point.get("value")
+        if isinstance(value, bool) or value is None:
+            continue
+        if isinstance(value, (int, float)):
+            prov = point.get("provenance")
+            if not prov:
+                raise ValueError(f"Numeric feature missing provenance at {path}")
+            if prov.get("source_provider") == "llm":
+                raise ValueError(f"LLM-generated stat detected at {path}")
+
+
+def _match_day(feature_snapshot: dict):
+    context = feature_snapshot.get("match_context") or {}
+    value = context.get("match_date")
+    if isinstance(value, dict):
+        value = value.get("value")
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value)[:10]).replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
+
+
+def validate_data_freshness(feature_snapshot: dict) -> dict:
+    """
+    Returns:
+    {
+      "is_valid": bool,
+      "score": int,
+      "errors": list[str],
+      "warnings": list[str]
+    }
+    """
+    settings = get_settings()
+    errors: list[str] = []
+    warnings: list[str] = []
+    score = 100
+    warning_penalty = 0
+
+    try:
+        assert_no_llm_generated_stats(feature_snapshot)
+    except ValueError as exc:
+        errors.append(str(exc))
+        score -= 50
+
+    context = feature_snapshot.get("match_context", {})
+    if not context.get("match_date"):
+        errors.append("missing match date")
+    surface = context.get("surface", {})
+    if isinstance(surface, dict):
+        surface = surface.get("value")
+    if not surface:
+        # Warning, not error: low-tier events (ITF/Challenger) often have no
+        # reliable surface source. The model degrades gracefully (surface Elo
+        # falls back to overall Elo) and segment risk already discounts these
+        # tiers — a hard error made every such match invalid, which is why
+        # ~85% of a typical slate died at "quality below 65" (2026-07-12 audit;
+        # Kelvin wants ITF/Challenger measurable, not auto-killed).
+        warnings.append("missing tournament surface")
+        warning_penalty += 10
+    level = context.get("level", {})
+    if isinstance(level, dict):
+        level = level.get("value")
+    if not level:
+        errors.append("missing tournament level")
+    if level == "UNKNOWN":
+        warnings.append("unknown tournament level")
+        warning_penalty += 10
+    round_name = context.get("round", {})
+    if isinstance(round_name, dict):
+        round_name = round_name.get("value")
+    if not round_name or round_name == "UNKNOWN":
+        warnings.append("unknown match round")
+        warning_penalty += 8
+
+    market = feature_snapshot.get("market", {})
+    required_odds = ["player_a_odds", "player_b_odds"]
+    for key in required_odds:
+        if key not in market:
+            errors.append("missing market odds")
+            continue
+        point = market[key]
+        if not point.get("provenance"):
+            errors.append("missing odds provenance")
+
+    # Staleness is a live-pricing concern, not a property of history.
+    # Rebuilding a snapshot for a May fixture today made every odds datapoint
+    # "stale" against the wall clock, each one an error, and four errors floor
+    # the score at 0: all 3,622 snapshots rebuilt on 2026-08-09 scored zero,
+    # which gated the derived props off 90% of fixtures and cut the replay from
+    # 1,133 settled bets to 108. The data had not changed; only the clock had.
+    now = datetime.now(timezone.utc)
+    match_day = _match_day(feature_snapshot)
+    # "Has this match already been played?", not "is it old?". The first
+    # version of this used a two-day threshold, which still failed every
+    # snapshot rebuilt the morning after its match -- and those are exactly the
+    # fixtures the daily card is built from. On 2026-08-08, 47 of 47 priced
+    # matches scored 0 and every derived family lost its value flag, so the
+    # gate could be open and the card still print nothing.
+    is_backfill = match_day is not None and match_day.date() < now.date()
+    for path, point in _walk_datapoints(feature_snapshot):
+        prov = point.get("provenance") or {}
+        provider = prov.get("source_provider")
+        if provider == "llm":
+            errors.append(f"LLM source provider at {path}")
+        source_time = _parse_time(prov.get("source_timestamp"))
+        if source_time is None:
+            errors.append(f"missing source timestamp at {path}")
+            continue
+        age_hours = (now - source_time).total_seconds() / 3600
+        if ".market." in f".{path}.":
+            if is_backfill:
+                # For a finished match the question is not "how many minutes
+                # ago" -- it is "were these pre-match odds". That is enforced
+                # where it can actually corrupt a number, in the replay's
+                # earliest-snapshot-per-selection rule; repeating it as an
+                # error here would only stop a legitimate rebuild.
+                if source_time.date() > match_day.date():
+                    warnings.append(f"odds captured after match day at {path}")
+                    warning_penalty += 5
+            elif age_hours * 60 > settings.data_max_staleness_minutes_odds:
+                errors.append(f"stale odds at {path}")
+        ranking_age_hours = age_hours
+        effective_date = ranking_effective_date(feature_snapshot,path,prov)
+        if path.endswith("current_rank") and effective_date:
+            try:
+                effective = datetime.fromisoformat(effective_date).replace(tzinfo=timezone.utc)
+                ranking_age_hours = ((match_day if is_backfill else now)-effective).total_seconds()/3600
+            except (TypeError, ValueError):
+                warnings.append(f"invalid ranking date at {path}")
+                warning_penalty += 5
+        if ("ranking" in path or path.endswith("current_rank")) and ranking_age_hours > settings.data_max_staleness_hours_rankings:
+            warnings.append(f"stale ranking data at {path}")
+            warning_penalty += 5
+        for warning in prov.get("warnings", []):
+            warnings.append(f"{path}: {warning}")
+            if "missing_historical_rank" in warning:
+                warning_penalty += 10
+            elif "low_sample" in warning:
+                warning_penalty += 5
+            else:
+                warning_penalty += 2
+
+    if not feature_snapshot.get("entity_mapping_complete", True):
+        errors.append("missing player identity mapping")
+
+    warnings = sorted(set(warnings))
+    score = max(0, min(100, score - 20 * len(errors) - min(35, warning_penalty)))
+    return {"is_valid": not errors, "score": score, "errors": errors, "warnings": warnings}

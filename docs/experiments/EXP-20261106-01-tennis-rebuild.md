@@ -33,9 +33,10 @@
 | 帳本 | `prop_tracker`、`clv_tracker`、`combo_tracker`、`market_predictions`、`predictions` BET | `prop_tracker` ＋ `featured_picks` ＋ `prop_live_bets` |
 | 測試 | 104 檔 | 60 檔、551 個測試，全過 |
 
-- 新結構：`model/`（serve／hold、模擬器、盤數表、市場權重、as-of 歷史）、`pricing/`、`select/`、`store/`、
-  `settle/`、`publish/`、`run.py`、`monitor.py`。`ingestion/`、`providers/`、`identity/`、`features/`、`modelling/`
-  只剷死 code、統一 as-of helper（`features/history_asof`、`history_values` 併入 `model/history`）。
+- 新結構（第二輪 2026-11-06 完成）：`sources/`（原 `ingestion/`、`providers/`、`identity/`、`validation/`）、
+  `store/`（原 `database/`，併埋重複嘅市場捕捉同賽果一致性 module）、`model/`（原 `features/`、`modelling/`、
+  `history/`、`segment_risk`）、`pricing/`、`select/`、`settle/`、`publish/`、`run.py`、`monitor.py`。
+  再剷 23 個冇人引用嘅函數／常數（453 行）同死咗嘅 `app/dashboard.py`。搬完後定價重播仍然 0 差異。
 - 剷走：81 個冇入口可達嘅 module（21,879 行：agents、bet_filter、ledger、combos、devig、5,208 行 daily_report、
   research_*、ace／雙誤模型等）、33 個一次性研究腳本（git 歷史保留）。
 - 計劃列明要修嘅 bug：
@@ -52,7 +53,7 @@
 
 ## 未做／限制
 
-- 抓數層（`ingestion/`、`providers/`）只剷死 code，冇逐行重寫：原始 HTML 冇存，冇辦法做重播對比；
+- 抓數層（而家喺 `sources/`）已搬位同清死函數，但冇逐行重寫：原始 HTML 冇存，冇辦法做重播對比；
   live 結構未變，改寫要等有回應存檔先做（計劃「兩層重播」嘅抓數層未能做到，照實記低）。
 - 舊 match／market 紙上注同 CLV 唔再計。
 

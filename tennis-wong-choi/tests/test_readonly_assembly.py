@@ -9,14 +9,14 @@ from conftest import configure_test_db
 
 def test_readonly_assembly_has_identical_features_and_no_side_effects(tmp_path,monkeypatch):
     path=configure_test_db(tmp_path,monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.ingestion.ingest_matches import ingest_upcoming_matches,ingest_default_history
-    from tennis_wc.ingestion.ingest_tournaments import ingest_tournaments
-    import tennis_wc.features.feature_builder as builder
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.sources.ingest_matches import ingest_upcoming_matches,ingest_default_history
+    from tennis_wc.sources.ingest_tournaments import ingest_tournaments
+    import tennis_wc.model.features.feature_builder as builder
     init_db();ingest_tournaments('2026-05-08','2026-05-08')
     ingest_upcoming_matches('2026-05-08');ingest_default_history('2026-05-08')
     for name,module in list(sys.modules.items()):
-        if name.startswith('tennis_wc.features.') and hasattr(module,'utc_now'):
+        if name.startswith('tennis_wc.model.features.') and hasattr(module,'utc_now'):
             monkeypatch.setattr(module,'utc_now',lambda:'2026-05-08T00:00:00Z')
     writable,_=builder.assemble_match_feature_snapshot(1,persist_derived=True)
     tables=('player_opponent_rank_bucket_stats','player_big_match_stats','player_round_stats',
@@ -28,7 +28,7 @@ def test_readonly_assembly_has_identical_features_and_no_side_effects(tmp_path,m
         c.row_factory=sqlite3.Row
         return c
     for name,module in list(sys.modules.items()):
-        if name.startswith('tennis_wc.features.') and hasattr(module,'get_connection'):
+        if name.startswith('tennis_wc.model.features.') and hasattr(module,'get_connection'):
             monkeypatch.setattr(module,'get_connection',readonly)
     assembled,_=builder.assemble_match_feature_snapshot(1)
     assert assembled==writable

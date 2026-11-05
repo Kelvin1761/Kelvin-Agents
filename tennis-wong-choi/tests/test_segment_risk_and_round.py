@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from tennis_wc.betting.segment_risk import apply_segment_risk, segment_risk
-from tennis_wc.modelling.pricing import price_match_snapshot
-from tennis_wc.modelling.probability_model import predict_match_probability
+from tennis_wc.model.segment_risk import apply_segment_risk, segment_risk
+from tennis_wc.model.match_pricing import price_match_snapshot
+from tennis_wc.model.match import predict_match_probability
 
 
 def _player(surface_elo, overall_elo, rank, round_rate):

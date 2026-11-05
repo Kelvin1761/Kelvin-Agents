@@ -2,10 +2,10 @@
 from dataclasses import replace
 import pytest
 from test_tennisexplorer_history import _Stub, _result, _setup
-from tennis_wc.database.db import get_connection
-from tennis_wc.database.history_observations import upsert_history_observation
-from tennis_wc.ingestion import ingest_tennisexplorer_history as corpus
-from tennis_wc.providers.tennisexplorer_provider import parse_results_page
+from tennis_wc.store.db import get_connection
+from tennis_wc.store.history_observations import upsert_history_observation
+from tennis_wc.sources import ingest_tennisexplorer_history as corpus
+from tennis_wc.sources.providers.tennisexplorer_provider import parse_results_page
 
 
 def _page(*, header='/templeton-itf/2026/wta-women/', a='/player/one/',

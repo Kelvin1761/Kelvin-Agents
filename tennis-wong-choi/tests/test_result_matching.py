@@ -2,7 +2,7 @@ from __future__ import annotations
 
 
 def test_name_matching_handles_accents_initials_and_last_first():
-    from tennis_wc.ingestion.name_matching import match_pair_score, same_player_name
+    from tennis_wc.sources.name_matching import match_pair_score, same_player_name
 
     assert same_player_name("M. Arnaldi", "Matteo Arnaldi")
     assert same_player_name("Jodar, Rafael", "Rafael Jodar")
@@ -15,7 +15,7 @@ def test_name_matching_handles_accents_initials_and_last_first():
 
 
 def test_tennismylife_candidate_files_include_quali_and_future_wta_itf():
-    from tennis_wc.ingestion.ingest_tennismylife import _candidate_files
+    from tennis_wc.sources.ingest_tennismylife import _candidate_files
 
     files = [
         {"name": "2026.csv", "url": "main"},
@@ -75,7 +75,7 @@ def test_tennismylife_rows_are_matched_on_the_tournament_week():
     """
     from datetime import date, timedelta
 
-    from tennis_wc.ingestion.ingest_tennismylife import (
+    from tennis_wc.sources.ingest_tennismylife import (
         TOURNAMENT_WINDOW_DAYS,
         _in_tournament_window,
     )

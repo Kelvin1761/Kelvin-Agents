@@ -6,9 +6,9 @@ import json
 import pytest
 
 from conftest import configure_test_db
-from tennis_wc.database.db import get_connection
-from tennis_wc.database.migrations import init_db
-from tennis_wc.database.odds_source_reads import OddsSourceReader
+from tennis_wc.store.db import get_connection
+from tennis_wc.store.migrations import init_db
+from tennis_wc.store.odds_source_reads import OddsSourceReader
 from tennis_wc.pricing.quotes import rows_for_date as _rows_for_date
 
 

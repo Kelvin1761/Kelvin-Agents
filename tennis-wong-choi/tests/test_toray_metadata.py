@@ -5,13 +5,13 @@ import json
 import pytest
 
 from conftest import configure_test_db
-from tennis_wc.ingestion.confirmed_metadata import (
+from tennis_wc.sources.confirmed_metadata import (
     CONFIRMED_METADATA_PROVIDER,
     backfill_confirmed_metadata_for_date,
     confirmed_competition_meta,
     metadata_audit_for_date,
 )
-from tennis_wc.ingestion.sportsbet_fixture_mapping import sportsbet_competition_meta
+from tennis_wc.sources.sportsbet_fixture_mapping import sportsbet_competition_meta
 
 
 NAME = "Toray Pan Pacific Open Tennis"
@@ -45,9 +45,9 @@ def test_toray_does_not_match_other_events(name, tour):
 
 def test_toray_backfill_keeps_source_and_bounds_persisted_context(tmp_path, monkeypatch):
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.features.feature_builder import _match_context
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.model.features.feature_builder import _match_context
 
     init_db()
     with get_connection() as conn:

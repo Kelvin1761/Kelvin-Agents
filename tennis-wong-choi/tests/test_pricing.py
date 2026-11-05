@@ -2,7 +2,7 @@ from __future__ import annotations
 
 
 def test_pricing_stage_not_implemented():
-    from tennis_wc.modelling.probability_model import predict_match_probability
+    from tennis_wc.model.match import predict_match_probability
 
     snapshot = {
         "player_a": {
@@ -29,7 +29,7 @@ def test_pricing_stage_not_implemented():
 
 
 def test_price_match_snapshot_stops_on_odds_selection_mapping_error():
-    from tennis_wc.modelling.pricing import price_match_snapshot
+    from tennis_wc.model.match_pricing import price_match_snapshot
 
     snapshot = {
         "player_a": {

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from tennis_wc.ingestion.confirmed_metadata import (
+from tennis_wc.sources.confirmed_metadata import (
     confirmed_competition_meta,
     tennisdata_competition_meta,
 )
@@ -73,7 +73,7 @@ def test_itf_and_utf_junk_excluded():
 
 
 def test_name_heuristic_resolves_low_tier_levels():
-    from tennis_wc.ingestion.confirmed_metadata import sportsbet_name_competition_meta
+    from tennis_wc.sources.confirmed_metadata import sportsbet_name_competition_meta
 
     assert sportsbet_name_competition_meta("ATP Iasi Challenger", "ATP") == {
         "tour": "ATP", "level": "CHALLENGER", "surface": None,
@@ -88,14 +88,14 @@ def test_name_heuristic_resolves_low_tier_levels():
 
 
 def test_name_heuristic_infers_tour_from_gender_words():
-    from tennis_wc.ingestion.confirmed_metadata import sportsbet_name_competition_meta
+    from tennis_wc.sources.confirmed_metadata import sportsbet_name_competition_meta
 
     assert sportsbet_name_competition_meta("Mens UTR Pro Series, Australia", None)["tour"] == "ATP"
     assert sportsbet_name_competition_meta("Ladies UTR Pro Series, Australia", None)["tour"] == "WTA"
 
 
 def test_name_heuristic_never_resolves_doubles_or_tour_events():
-    from tennis_wc.ingestion.confirmed_metadata import (
+    from tennis_wc.sources.confirmed_metadata import (
         is_doubles_competition,
         sportsbet_name_competition_meta,
     )

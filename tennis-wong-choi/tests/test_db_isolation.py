@@ -30,8 +30,8 @@ def test_the_configured_database_is_writable_and_empty():
     """The guard has to leave a USABLE database behind. Pointing the default at
     an unwritable path would turn one silent-corruption bug into a hundred
     confusing failures."""
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.database.db import get_connection
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.store.db import get_connection
 
     init_db()
     with get_connection() as conn:

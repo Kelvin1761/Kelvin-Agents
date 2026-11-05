@@ -2,7 +2,7 @@
 from copy import deepcopy
 import pytest
 
-from tennis_wc.providers.official_ranking_provider import (
+from tennis_wc.sources.providers.official_ranking_provider import (
     OfficialRankingFetchError, OfficialRankingProvider, _parse_atp_numeric_pdf_pages,
 )
 
@@ -88,8 +88,8 @@ def test_missing_dependency_is_an_explicit_source_failure(monkeypatch):
 def test_native_schema_can_lookup_new_source_names_without_a_player_table_scan(tmp_path, monkeypatch):
     from conftest import configure_test_db
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.database.migrations import init_db
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.store.migrations import init_db
     init_db()
     with get_connection() as conn:
         plan = conn.execute("EXPLAIN QUERY PLAN SELECT id FROM players WHERE lower(trim(name))=lower(trim(?)) AND tour=?",

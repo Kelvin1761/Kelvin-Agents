@@ -9,7 +9,7 @@ from conftest import configure_test_db
 
 def test_feature_without_provenance_fails(tmp_path, monkeypatch):
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.features.data_quality import assert_no_llm_generated_stats
+    from tennis_wc.model.features.data_quality import assert_no_llm_generated_stats
 
     snapshot = {"feature": {"value": 0.55, "provenance": None}}
     with pytest.raises(ValueError, match="missing provenance"):
@@ -18,7 +18,7 @@ def test_feature_without_provenance_fails(tmp_path, monkeypatch):
 
 def test_llm_source_provider_fails(tmp_path, monkeypatch):
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.features.data_quality import assert_no_llm_generated_stats
+    from tennis_wc.model.features.data_quality import assert_no_llm_generated_stats
 
     snapshot = {"feature": {"value": 0.55, "provenance": {"source_provider": "llm"}}}
     with pytest.raises(ValueError, match="LLM-generated"):
@@ -27,7 +27,7 @@ def test_llm_source_provider_fails(tmp_path, monkeypatch):
 
 def test_missing_odds_source_fails(tmp_path, monkeypatch):
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.features.data_quality import validate_data_freshness
+    from tennis_wc.model.features.data_quality import validate_data_freshness
 
     snapshot = {
         "match_context": {"match_date": "2026-05-08", "surface": {"value": "Clay"}, "level": {"value": "ATP_1000"}},
@@ -40,8 +40,8 @@ def test_missing_odds_source_fails(tmp_path, monkeypatch):
 
 def test_stale_odds_fails(tmp_path, monkeypatch):
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.features.common import datapoint, provenance
-    from tennis_wc.features.data_quality import validate_data_freshness
+    from tennis_wc.model.features.common import datapoint, provenance
+    from tennis_wc.model.features.data_quality import validate_data_freshness
 
     # Today's fixture, priced two hours ago: genuinely stale.
     today = datetime.now(timezone.utc)
@@ -66,8 +66,8 @@ def test_backfilled_snapshot_is_judged_against_its_match_not_the_clock(tmp_path,
     fell from 1,133 settled bets to 108 on data that had not changed.
     """
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.features.common import datapoint, provenance
-    from tennis_wc.features.data_quality import validate_data_freshness
+    from tennis_wc.model.features.common import datapoint, provenance
+    from tennis_wc.model.features.data_quality import validate_data_freshness
 
     # Odds captured the morning of a match three months ago.
     prov = provenance("mock", "/mock/odds", "2026-05-08T09:00:00Z", 1)
@@ -84,8 +84,8 @@ def test_backfilled_snapshot_is_judged_against_its_match_not_the_clock(tmp_path,
 
 def test_missing_historical_ranking_downgrades_confidence(tmp_path, monkeypatch):
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.features.common import datapoint, provenance
-    from tennis_wc.features.data_quality import validate_data_freshness
+    from tennis_wc.model.features.common import datapoint, provenance
+    from tennis_wc.model.features.data_quality import validate_data_freshness
 
     prov = provenance("mock", "/mock/historical-matches", datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"), 1)
     prov["warnings"] = ["missing_historical_rank"]
@@ -101,7 +101,7 @@ def test_missing_historical_ranking_downgrades_confidence(tmp_path, monkeypatch)
 
 def test_final_decision_no_bet_when_provenance_invalid(tmp_path, monkeypatch):
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.features.data_quality import validate_data_freshness
+    from tennis_wc.model.features.data_quality import validate_data_freshness
 
     snapshot = {
         "match_context": {"match_date": "2026-05-08", "surface": {"value": "Clay"}, "level": {"value": "ATP_1000"}},
@@ -120,8 +120,8 @@ def test_a_snapshot_rebuilt_the_morning_after_its_match_is_not_stale(tmp_path, m
     and the gate could be open while the card still printed nothing.
     """
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.features.common import datapoint, provenance
-    from tennis_wc.features.data_quality import validate_data_freshness
+    from tennis_wc.model.features.common import datapoint, provenance
+    from tennis_wc.model.features.data_quality import validate_data_freshness
 
     yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).date()
     prov = provenance("mock", "/mock/odds", f"{yesterday}T09:00:00Z", 1)

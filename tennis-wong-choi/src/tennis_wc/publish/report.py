@@ -9,7 +9,7 @@ import os
 from collections import defaultdict
 from pathlib import Path
 
-from tennis_wc.database.db import get_connection
+from tennis_wc.store.db import get_connection
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 REPORT_NAME = "Tennis_Daily_Report.txt"

@@ -9,12 +9,12 @@ from urllib.parse import parse_qs, urlparse
 
 import pytest
 
-from tennis_wc.database.ranking_reads import RankingReader, cached_rankings
-from tennis_wc.providers.official_ranking_provider import (
+from tennis_wc.store.ranking_reads import RankingReader, cached_rankings
+from tennis_wc.sources.providers.official_ranking_provider import (
     OfficialRankingFetchError, OfficialRankingProvider, _parse_atp_uts_rankings,
     _parse_wta_api_rankings, _parse_wta_rankings_html,
 )
-from tennis_wc.ranking_dates import RankingDateError, normalise_ranking_date, validate_ranking_rows
+from tennis_wc.sources.ranking_dates import RankingDateError, normalise_ranking_date, validate_ranking_rows
 
 
 @pytest.mark.parametrize("value,expected", [
@@ -72,7 +72,7 @@ def test_wta_html_missing_date_cannot_use_card_date():
 
 
 def test_composite_falls_back_from_stale_source_and_keeps_failure_evidence(monkeypatch):
-    from tennis_wc.providers import CompositeTennisProvider
+    from tennis_wc.sources.providers import CompositeTennisProvider
     provider = CompositeTennisProvider()
     stale = [{"ranking_date": "2024-12-30"}]
     fresh = [{"ranking_date": "2026-10-26"}]
@@ -98,7 +98,7 @@ def connection():
                         "raw": {"source": "ultimate_tennis_statistics"}}])
     conn.execute("INSERT INTO raw_api_responses VALUES (1,'composite',?)", (body,))
     conn.execute("INSERT INTO raw_api_responses VALUES (2,'tennismylife_history','{}')")
-    from tennis_wc.ingestion.ingest_rankings import _rank_seed_elo
+    from tennis_wc.sources.ingest_rankings import _rank_seed_elo
     conn.execute("INSERT INTO players VALUES (1,'Alpha Player','ATP',9,?,NULL,'jeff_sackmann',1)", (_rank_seed_elo(9),))
     conn.execute("INSERT INTO rankings_history VALUES (1,1,'2026-10-28','ATP',9,NULL,'composite',1)")
     conn.execute("INSERT INTO rankings_history VALUES (2,1,'2026-10-26','ATP',333,NULL,'tennismylife_history',2)")
@@ -186,7 +186,7 @@ def test_unknown_opponent_never_reads_another_players_ranking():
 
 
 def test_opponent_lookup_preserves_on_or_before_cutoff_and_source_guard(monkeypatch):
-    from tennis_wc.features import opponent_rank_buckets as module
+    from tennis_wc.model.features import opponent_rank_buckets as module
     conn = connection()
     assert RankingReader(conn).select(1, "2026-10-26")["rank"] is None
     assert RankingReader(conn).select(1, "2026-10-26", inclusive=True)["rank"] == 333
@@ -195,7 +195,7 @@ def test_opponent_lookup_preserves_on_or_before_cutoff_and_source_guard(monkeypa
 
 
 def test_native_rank_refresh_preserves_genuine_elo_and_replaces_only_known_bad_prior(monkeypatch):
-    from tennis_wc.ingestion import ingest_rankings as module
+    from tennis_wc.sources import ingest_rankings as module
     conn = connection()
     reader = RankingReader(conn)
     monkeypatch.setattr(module, "existing_player_id", lambda *a: 1)
@@ -213,11 +213,11 @@ def test_native_rank_refresh_preserves_genuine_elo_and_replaces_only_known_bad_p
 def test_ingestion_preserves_rejected_rows_and_only_refreshes_safe_cache(tmp_path, monkeypatch):
     from conftest import configure_test_db
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.ingestion import ingest_rankings as module
-    from tennis_wc.ingestion.entity_mapping import get_or_create_player
-    from tennis_wc.ingestion.raw_response_store import store_raw_response
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.sources import ingest_rankings as module
+    from tennis_wc.sources.entity_mapping import get_or_create_player
+    from tennis_wc.sources.raw_response_store import store_raw_response
     init_db()
     old = [{"player_id": "uts:1", "player_name": "Alpha Player", "tour": "ATP", "rank": 9,
             "ranking_date": "2026-10-28", "raw": {"source": "ultimate_tennis_statistics"}}]
@@ -249,11 +249,11 @@ def test_ingestion_preserves_rejected_rows_and_only_refreshes_safe_cache(tmp_pat
 def test_official_pdf_ingest_links_capture_and_preserves_old_same_day_history(tmp_path, monkeypatch):
     from conftest import configure_test_db
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.ingestion import ingest_rankings as module
-    from tennis_wc.ingestion.entity_mapping import get_or_create_player
-    from tennis_wc.ingestion.raw_response_store import store_raw_response
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.sources import ingest_rankings as module
+    from tennis_wc.sources.entity_mapping import get_or_create_player
+    from tennis_wc.sources.raw_response_store import store_raw_response
     init_db()
     legacy = [{"player_id": "uts:1", "player_name": "Alpha Player", "tour": "ATP", "rank": 9,
                "ranking_date": "2026-10-26", "raw": {"source": "ultimate_tennis_statistics"}}]
@@ -288,10 +288,10 @@ def test_official_pdf_ingest_links_capture_and_preserves_old_same_day_history(tm
 def test_rank_insert_failure_rolls_back_player_and_identity_update(tmp_path, monkeypatch):
     from conftest import configure_test_db
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.ingestion import ingest_rankings as module
-    from tennis_wc.ingestion.entity_mapping import get_or_create_player
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.sources import ingest_rankings as module
+    from tennis_wc.sources.entity_mapping import get_or_create_player
     init_db()
     player_id = get_or_create_player("feed", "alpha", "Alpha Player", "ATP", 1,
                                      current_rank=88, overall_elo=1900.0)
@@ -314,7 +314,7 @@ def test_rank_insert_failure_rolls_back_player_and_identity_update(tmp_path, mon
 
 
 def test_sackmann_cutoff_does_not_pick_a_future_week_or_drop_rank_501_onward(monkeypatch):
-    from tennis_wc.providers.sackmann_ranking_provider import SackmannRankingProvider
+    from tennis_wc.sources.providers.sackmann_ranking_provider import SackmannRankingProvider
     provider = SackmannRankingProvider()
     assert provider._latest_ranking_date([{"ranking_date": "20261026"}], "2026-10-01") is None
     provider._player_cache["ATP"] = {str(i): f"Player Number {i}" for i in range(1, 602)}
@@ -325,7 +325,7 @@ def test_sackmann_cutoff_does_not_pick_a_future_week_or_drop_rank_501_onward(mon
 
 
 def test_mutable_seed_with_rejected_receipt_cannot_bypass_rank_guard_after_cache_update():
-    from tennis_wc.features.feature_builder import _unverified_rank_seed
+    from tennis_wc.model.features.feature_builder import _unverified_rank_seed
     conn = connection()
     conn.execute("UPDATE players SET current_rank=333")
     player = conn.execute("SELECT * FROM players WHERE id=1").fetchone()
@@ -336,7 +336,7 @@ def test_mutable_seed_with_rejected_receipt_cannot_bypass_rank_guard_after_cache
 
 @pytest.mark.parametrize("as_of_elo,expected", [(None, None), (1900.0, 1900.0)])
 def test_feature_wiring_uses_rank_source_and_preserves_real_asof_elo(monkeypatch, as_of_elo, expected):
-    from tennis_wc.features import feature_builder as fb
+    from tennis_wc.model.features import feature_builder as fb
     conn = connection()
     for name in ("calculate_player_rank_bucket_stats", "calculate_player_elo_bucket_stats",
                  "calculate_tournament_level_stats", "calculate_round_stats", "calculate_big_match_stats",
@@ -356,7 +356,7 @@ def test_feature_wiring_uses_rank_source_and_preserves_real_asof_elo(monkeypatch
 
 
 def test_current_rank_staleness_uses_effective_date_not_recent_fetch_clock(monkeypatch):
-    from tennis_wc.features import data_quality as dq
+    from tennis_wc.model.features import data_quality as dq
     monkeypatch.setattr(dq, "assert_no_llm_generated_stats", lambda *a: None)
     effective = "2020-01-06"
     now = datetime.now(timezone.utc)

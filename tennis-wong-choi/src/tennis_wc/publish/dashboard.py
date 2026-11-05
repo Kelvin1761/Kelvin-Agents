@@ -25,7 +25,7 @@ def record_evidence(match_date: str, report_path: Path) -> dict:
     from shared_wong_choi.evidence import DecisionState
     from shared_wong_choi.immutable_snapshot import create_immutable_snapshot
 
-    from tennis_wc.database.db import get_connection
+    from tennis_wc.store.db import get_connection
 
     with get_connection() as conn:
         picks = [dict(r) for r in conn.execute(

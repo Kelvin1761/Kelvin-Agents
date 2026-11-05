@@ -15,9 +15,9 @@ def _seed_player(conn, player_id: int, name: str, tour: str = "ATP") -> None:
 
 def test_placeholder_player_identity_is_rejected(tmp_path, monkeypatch):
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.ingestion.entity_mapping import get_or_create_player
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.sources.entity_mapping import get_or_create_player
 
     init_db()
     with pytest.raises(ValueError, match="placeholder player identity"):
@@ -28,9 +28,9 @@ def test_placeholder_player_identity_is_rejected(tmp_path, monkeypatch):
 
 def test_existing_provider_alias_rebinds_to_history_rich_canonical_player(tmp_path, monkeypatch):
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.ingestion.entity_mapping import get_or_create_player
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.sources.entity_mapping import get_or_create_player
 
     init_db()
     with get_connection() as conn:
@@ -68,9 +68,9 @@ def test_existing_provider_alias_rebinds_to_history_rich_canonical_player(tmp_pa
 
 def test_reused_player_alias_cannot_rename_existing_history(tmp_path, monkeypatch):
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.ingestion.entity_mapping import get_or_create_player
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.sources.entity_mapping import get_or_create_player
     init_db()
     first=get_or_create_player('feed','same-key','Taylor Fritz','ATP',0)
     with pytest.raises(ValueError,match='identity changed'):
@@ -82,8 +82,8 @@ def test_reused_player_alias_cannot_rename_existing_history(tmp_path, monkeypatc
 
 def test_same_initial_full_names_are_not_one_player(tmp_path, monkeypatch):
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.ingestion.entity_mapping import get_or_create_player
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.sources.entity_mapping import get_or_create_player
     init_db()
     get_or_create_player('feed','key','Tim Smith','ATP',0)
     with pytest.raises(ValueError,match='identity changed'):
@@ -94,10 +94,10 @@ def test_same_initial_full_names_are_not_one_player(tmp_path, monkeypatch):
 @pytest.mark.parametrize("known_key", [True, False])
 def test_merged_target_must_agree_and_rejected_write_rolls_back(tmp_path, monkeypatch, target_name, target_tour, known_key):
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.identity.player_identity import ensure_identity_schema
-    from tennis_wc.ingestion.entity_mapping import PlayerIdentityConflict, get_or_create_player
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.sources.identity import ensure_identity_schema
+    from tennis_wc.sources.entity_mapping import PlayerIdentityConflict, get_or_create_player
 
     init_db()
     with get_connection() as conn:
@@ -119,10 +119,10 @@ def test_merged_target_must_agree_and_rejected_write_rolls_back(tmp_path, monkey
 @pytest.mark.parametrize("target", [999, 2])
 def test_missing_or_cyclic_merge_target_is_not_returned(tmp_path, monkeypatch, target):
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.identity.player_identity import ensure_identity_schema
-    from tennis_wc.ingestion.entity_mapping import PlayerIdentityConflict, get_or_create_player
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.sources.identity import ensure_identity_schema
+    from tennis_wc.sources.entity_mapping import PlayerIdentityConflict, get_or_create_player
 
     init_db()
     with get_connection() as conn:
@@ -135,10 +135,10 @@ def test_missing_or_cyclic_merge_target_is_not_returned(tmp_path, monkeypatch, t
 
 def test_valid_merge_chain_still_resolves(tmp_path, monkeypatch):
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.identity.player_identity import ensure_identity_schema
-    from tennis_wc.ingestion.entity_mapping import get_or_create_player
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.sources.identity import ensure_identity_schema
+    from tennis_wc.sources.entity_mapping import get_or_create_player
 
     init_db()
     with get_connection() as conn:
@@ -161,10 +161,10 @@ def test_valid_merge_chain_still_resolves(tmp_path, monkeypatch):
 ])
 def test_merge_target_middle_names_are_constrained(tmp_path, monkeypatch, incoming, canonical, accept):
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.identity.player_identity import ensure_identity_schema
-    from tennis_wc.ingestion.entity_mapping import PlayerIdentityConflict, get_or_create_player
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.sources.identity import ensure_identity_schema
+    from tennis_wc.sources.entity_mapping import PlayerIdentityConflict, get_or_create_player
 
     init_db()
     with get_connection() as conn:

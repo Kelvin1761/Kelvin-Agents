@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 
-from tennis_wc.database.maintenance import prune_raw_response_bodies
+from tennis_wc.store.maintenance import prune_raw_response_bodies
 
 
 SCHEMA = """
@@ -60,7 +60,7 @@ def test_the_newest_body_of_a_series_survives_any_retention_window():
 
 def test_rows_are_kept_so_provenance_still_resolves():
     """Source metadata AND original body survive, including older references."""
-    from tennis_wc.database.payload_archive import read_payload
+    from tennis_wc.store.payload_archive import read_payload
     conn = _connect()
     _insert(conn, 1, "composite", "/hist", "match_history", 400, "oldest")
     _insert(conn, 2, "composite", "/hist", "match_history", 100, "newest")
@@ -181,7 +181,7 @@ def _snapshot(conn, snapshot_id, match_id, player_id, created_at,
 
 def test_the_newest_snapshot_per_pair_survives_any_retention_window():
     """4.7 copies exist per (match, player); every reader takes MAX(id)."""
-    from tennis_wc.database.maintenance import prune_superseded_feature_snapshots
+    from tennis_wc.store.maintenance import prune_superseded_feature_snapshots
 
     conn = _feature_conn()
     _snapshot(conn, 1, 10, 100, "2020-01-01")
@@ -201,7 +201,7 @@ def test_the_newest_snapshot_per_pair_survives_any_retention_window():
 def test_snapshot_rows_and_quality_scores_are_kept():
     """`player_identity` remaps player_id on these rows and the quality gates
     read the column, so deleting would quietly shrink both."""
-    from tennis_wc.database.maintenance import prune_superseded_feature_snapshots
+    from tennis_wc.store.maintenance import prune_superseded_feature_snapshots
 
     conn = _feature_conn()
     _snapshot(conn, 1, 10, 100, "2020-01-01")
@@ -216,7 +216,7 @@ def test_snapshot_rows_and_quality_scores_are_kept():
 
 def test_a_different_feature_version_is_its_own_series():
     """A version bump is not a supersession -- both are current."""
-    from tennis_wc.database.maintenance import prune_superseded_feature_snapshots
+    from tennis_wc.store.maintenance import prune_superseded_feature_snapshots
 
     conn = _feature_conn()
     _snapshot(conn, 1, 10, 100, "2020-01-01", version="v1")
@@ -226,7 +226,7 @@ def test_a_different_feature_version_is_its_own_series():
 
 
 def test_recent_snapshots_are_kept_even_when_superseded():
-    from tennis_wc.database.maintenance import prune_superseded_feature_snapshots
+    from tennis_wc.store.maintenance import prune_superseded_feature_snapshots
 
     conn = _feature_conn()
     _snapshot(conn, 1, 10, 100, "2999-01-01")
@@ -236,7 +236,7 @@ def test_recent_snapshots_are_kept_even_when_superseded():
 
 
 def test_feature_prune_dry_run_and_second_run_change_nothing():
-    from tennis_wc.database.maintenance import prune_superseded_feature_snapshots
+    from tennis_wc.store.maintenance import prune_superseded_feature_snapshots
 
     conn = _feature_conn()
     _snapshot(conn, 1, 10, 100, "2020-01-01")

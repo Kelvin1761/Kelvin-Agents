@@ -93,7 +93,7 @@ def notify(text: str, *, audience: str = "primary", path: Path | None = None) ->
 
 def publish_featured(match_date: str, run_label: str, *, main: bool) -> list[dict]:
     """Record 精選 for the date, then send the main card or a top-up of new picks."""
-    from tennis_wc.database.db import get_connection
+    from tennis_wc.store.db import get_connection
     from tennis_wc.select import featured
 
     with get_connection() as conn:
@@ -129,7 +129,7 @@ def _roi_row(profile: dict) -> dict:
 
 
 def featured_performance(match_date: str) -> dict:
-    from tennis_wc.database.db import get_connection
+    from tennis_wc.store.db import get_connection
     from tennis_wc.select import featured
 
     with get_connection() as conn:
@@ -151,7 +151,7 @@ def send_roi_board(match_date: str, today: str) -> bool:
 
 def forward_milestone(log_dir: Path) -> str | None:
     """Telegram once when the 精選 forward test first reaches 250, and again at 600."""
-    from tennis_wc.database.db import get_connection
+    from tennis_wc.store.db import get_connection
     from tennis_wc.select import featured
 
     with get_connection() as conn:

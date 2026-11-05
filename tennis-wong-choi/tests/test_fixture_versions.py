@@ -4,9 +4,9 @@ from __future__ import annotations
 import pytest
 
 from conftest import configure_test_db
-from tennis_wc.database.db import get_connection
-from tennis_wc.database.migrations import init_db
-from tennis_wc.ingestion import ingest_matches, ingest_odds
+from tennis_wc.store.db import get_connection
+from tennis_wc.store.migrations import init_db
+from tennis_wc.sources import ingest_matches, ingest_odds
 
 
 @pytest.fixture
@@ -98,7 +98,7 @@ def test_event_odds_mismatched_pair_is_quarantined(fixture_feed,monkeypatch,prec
         assert c.execute('SELECT COUNT(*) FROM odds_snapshots').fetchone()[0]==0
         assert c.execute('SELECT COUNT(*) FROM market_odds_snapshots').fetchone()[0]==0
         assert c.execute("SELECT COUNT(*) FROM fixture_observations WHERE observation_kind='EVENT_PAIR_CONFLICT'").fetchone()[0]==1
-    from tennis_wc.features.feature_builder import assemble_match_feature_snapshot
+    from tennis_wc.model.features.feature_builder import assemble_match_feature_snapshot
     with pytest.raises(ValueError,match='identity disputed'):
         assemble_match_feature_snapshot(mid)
 
@@ -108,8 +108,8 @@ def test_new_generation_does_not_enter_old_daily_feature_population(fixture_feed
     ingest_matches.ingest_upcoming_matches('2026-10-26')
     fixture_feed.rows=[fixture_row('35','1','2026-10-27')]
     ingest_matches.ingest_upcoming_matches('2026-10-27')
-    from tennis_wc.features.feature_builder import build_feature_snapshots_for_date
-    assert build_feature_snapshots_for_date('2026-10-26')==[]
+    from tennis_wc.model.features.feature_builder import build_sportsbet_feature_snapshots_for_date
+    assert build_sportsbet_feature_snapshots_for_date('2026-10-26')==[]
 
 
 def test_delisting_keeps_price_history_and_returning_pair_can_reactivate(fixture_feed):
@@ -124,7 +124,7 @@ def test_delisting_keeps_price_history_and_returning_pair_can_reactivate(fixture
         assert c.execute('SELECT COUNT(*) FROM odds_snapshots').fetchone()[0]==1
         m=dict(c.execute('SELECT * FROM matches').fetchone())
         assert m['fixture_status']=='NOT_LISTED'
-        from tennis_wc.ingestion.fixture_versions import upsert_fixture
+        from tennis_wc.sources.fixture_versions import upsert_fixture
         upsert_fixture(c,m,'later')
         assert c.execute('SELECT fixture_status FROM matches').fetchone()[0]=='ACTIVE'
 
@@ -148,7 +148,7 @@ def test_ambiguous_name_only_odds_do_not_choose_first_fixture(fixture_feed):
     ingest_matches.ingest_upcoming_matches('2026-10-26')
     with get_connection() as c:
         m=dict(c.execute('SELECT * FROM matches').fetchone())
-        from tennis_wc.ingestion.fixture_versions import upsert_fixture
+        from tennis_wc.sources.fixture_versions import upsert_fixture
         upsert_fixture(c,{**m,'source_provider':'another','provider_match_id':'another','market_event_id':'another'},'now')
         row=dict(event_id='unmapped',player_a_name='Stefanos Tsitsipas',player_b_name='Taylor Fritz')
         assert ingest_odds._resolve_odds_fixture(c,row,'2026-10-26',provider_name='sportsbet')==(None,True)
@@ -236,7 +236,7 @@ def test_unverifiable_reference_does_not_invent_an_event_id():
 
 
 def test_rejected_enrichment_is_not_counted_as_a_success(fixture_feed, monkeypatch):
-    from tennis_wc.ingestion.raw_response_store import store_raw_response
+    from tennis_wc.sources.raw_response_store import store_raw_response
     fixture_feed.rows=[fixture_row()]
     ingest_matches.ingest_upcoming_matches('2026-10-26')
     event={'event_id':'185138','event_url':'https://www.sportsbet.com.au/betting/tennis/event-185138'}

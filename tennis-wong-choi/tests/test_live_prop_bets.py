@@ -7,8 +7,8 @@ def _seed_prop(tmp_path, monkeypatch, *, market_key="player_win_a_set_1", featur
     from conftest import configure_test_db
 
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.database.migrations import init_db
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.store.migrations import init_db
 
     init_db()
     now = "2026-08-13T00:00:00Z"
@@ -48,7 +48,7 @@ def test_live_prop_ledger_records_only_an_already_placed_manual_bet(
     tmp_path, monkeypatch
 ):
     prop_id = _seed_prop(tmp_path, monkeypatch)
-    from tennis_wc.database.db import get_connection
+    from tennis_wc.store.db import get_connection
     from tennis_wc.store.live_bets import record_live_prop_bet
 
     payload = record_live_prop_bet(

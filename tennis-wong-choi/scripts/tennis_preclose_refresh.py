@@ -49,7 +49,7 @@ def run_tick(today: str, *, refresh=None) -> dict:
     """Refresh today's and tomorrow's dates (Sydney `match_date`): a match
     shortly after midnight is dated tomorrow but starts within the window."""
     if refresh is None:
-        from tennis_wc.ingestion.ingest_odds import refresh_pre_start_markets
+        from tennis_wc.sources.ingest_odds import refresh_pre_start_markets
 
         refresh = refresh_pre_start_markets
     day = datetime.fromisoformat(today).date()

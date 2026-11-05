@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import tennis_wc.providers.espn_provider as espn_mod
-from tennis_wc.providers.espn_provider import EspnTennisProvider
+import tennis_wc.sources.providers.espn_provider as espn_mod
+from tennis_wc.sources.providers.espn_provider import EspnTennisProvider
 
 
 def test_historical_backfill_aborts_when_espn_is_down(monkeypatch):

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from tennis_wc.providers.official_ranking_provider import (
+from tennis_wc.sources.providers.official_ranking_provider import (
     OfficialRankingFetchError,
     _normalise_wta_name,
     _parse_atp_uts_rankings,

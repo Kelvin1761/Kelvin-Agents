@@ -99,7 +99,7 @@ def disk_headroom(db_path: Path | None = None) -> dict:
 
 def preflight() -> None:
     from tennis_wc.config import get_settings
-    from tennis_wc.database.migrations import init_db
+    from tennis_wc.store.migrations import init_db
     from tennis_wc.diagnostics import run_network_check
 
     diagnosis = run_network_check().get("diagnosis")
@@ -119,8 +119,8 @@ def preflight() -> None:
 def analyse(match_date: str, *, today: str) -> dict:
     """Price one date; raise when readiness says the board is broken or incomplete."""
     from tennis_wc import run
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.database.maintenance import prune_raw_response_bodies, prune_superseded_feature_snapshots
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.store.maintenance import prune_raw_response_bodies, prune_superseded_feature_snapshots
 
     log(f"Running analysis for {match_date} (horizon={run.horizon(match_date, today)})")
     payload = run.price_day(match_date, today=today)
@@ -234,7 +234,7 @@ def daily(today: date) -> None:
 
 def _lowtier_corpus(match_date: str) -> None:
     """TennisExplorer scoreboard -> history (the only ITF source)."""
-    from tennis_wc.ingestion.ingest_tennisexplorer_history import ingest_tennisexplorer_history
+    from tennis_wc.sources.ingest_tennisexplorer_history import ingest_tennisexplorer_history
 
     try:
         summary = ingest_tennisexplorer_history(match_date, None)

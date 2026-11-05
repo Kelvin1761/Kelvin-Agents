@@ -27,7 +27,7 @@ def norm(name: str) -> str:
 def rows_for_date(conn, match_date: str) -> list:
     """Current quotes for the priced families, minus any whose event page failed
     its source check (wrong event id, unreadable body)."""
-    from tennis_wc.database.odds_source_reads import OddsSourceReader
+    from tennis_wc.store.odds_source_reads import OddsSourceReader
 
     selected = conn.execute(f"""
         SELECT mo.match_id, mo.market_key, mo.market_name, mo.selection_name,

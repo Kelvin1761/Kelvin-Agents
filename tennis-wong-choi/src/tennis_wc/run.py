@@ -15,8 +15,8 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from tennis_wc.database.db import get_connection
-from tennis_wc.features.common import utc_now
+from tennis_wc.store.db import get_connection
+from tennis_wc.model.features.common import utc_now
 
 CRITICAL_SOURCES = {"prop_pricing", "odds", "event_markets", "event_markets_check", "upcoming_matches"}
 
@@ -51,7 +51,7 @@ def _degradations(label: str, result) -> list[dict]:
     """A stage that returned on cached or partial data still says so."""
     warnings: list[dict] = []
     if label in ("rankings_atp", "rankings_wta"):
-        from tennis_wc.ingestion.ingest_rankings import rankings_cache_fallback
+        from tennis_wc.sources.ingest_rankings import rankings_cache_fallback
 
         fallback = rankings_cache_fallback(label.split("_", 1)[1].upper())
         if fallback:
@@ -69,13 +69,13 @@ def _degradations(label: str, result) -> list[dict]:
 # --------------------------------------------------------------------------- price
 
 def refresh_sources(match_date: str, stages: Stages) -> None:
-    from tennis_wc.ingestion.confirmed_metadata import backfill_confirmed_metadata_for_date
-    from tennis_wc.ingestion.ingest_matches import ingest_default_history, ingest_upcoming_matches
-    from tennis_wc.ingestion.ingest_odds import enrich_sportsbet_event_markets, ingest_odds
-    from tennis_wc.ingestion.ingest_rankings import ingest_rankings
-    from tennis_wc.ingestion.ingest_sackmann import ingest_tml_low_tier_history
-    from tennis_wc.ingestion.ingest_tournaments import ingest_tournaments
-    from tennis_wc.modelling.elo_builder import build_sackmann_elo
+    from tennis_wc.sources.confirmed_metadata import backfill_confirmed_metadata_for_date
+    from tennis_wc.sources.ingest_matches import ingest_default_history, ingest_upcoming_matches
+    from tennis_wc.sources.ingest_odds import enrich_sportsbet_event_markets, ingest_odds
+    from tennis_wc.sources.ingest_rankings import ingest_rankings
+    from tennis_wc.sources.ingest_sackmann import ingest_tml_low_tier_history
+    from tennis_wc.sources.ingest_tournaments import ingest_tournaments
+    from tennis_wc.model.elo_builder import build_sackmann_elo
 
     year = int(match_date[:4])
     for label, step in (
@@ -104,7 +104,7 @@ def refresh_sources(match_date: str, stages: Stages) -> None:
 
 def merge_identities() -> dict:
     """Apply only the merges the identity planner is confident about."""
-    from tennis_wc.identity.player_identity import apply_merges, ensure_identity_schema, plan_merges
+    from tennis_wc.sources.identity import apply_merges, ensure_identity_schema, plan_merges
 
     with get_connection() as conn:
         ensure_identity_schema(conn)
@@ -130,8 +130,8 @@ def _started(start) -> bool:
 
 def predict_matches(match_date: str, stages: Stages) -> dict:
     """Feature snapshots -> match-win probability -> ``predictions`` (props read it)."""
-    from tennis_wc.features.feature_builder import build_sportsbet_feature_snapshots_for_date
-    from tennis_wc.modelling.pricing import price_match_snapshot
+    from tennis_wc.model.features.feature_builder import build_sportsbet_feature_snapshots_for_date
+    from tennis_wc.model.match_pricing import price_match_snapshot
     from tennis_wc.store.predictions import store_prediction
 
     skipped: list[dict] = []
@@ -173,10 +173,10 @@ def price_props(match_date: str) -> int:
 
 def price_day(match_date: str, *, today: str) -> dict:
     """The whole analysis for one date. Returns the health payload."""
-    from tennis_wc.features.feature_builder import odds_coverage_for_date
+    from tennis_wc.model.features.feature_builder import odds_coverage_for_date
     from tennis_wc.publish.dashboard import deploy, record_evidence
     from tennis_wc.publish.report import write_report
-    from tennis_wc.validation.current_slate import audit_current_slate
+    from tennis_wc.sources.slate_audit import audit_current_slate
 
     stages = Stages()
     stages.run("settlement_backlog", lambda: settle_backlog(match_date))
@@ -213,7 +213,7 @@ def price_day(match_date: str, *, today: str) -> dict:
 
 
 def _record_run(match_date: str, payload: dict) -> None:
-    from tennis_wc.ingestion.raw_response_store import store_raw_response
+    from tennis_wc.sources.raw_response_store import store_raw_response
 
     store_raw_response("tennis_wc_pipeline", "/run-daily/source-errors", {"date": match_date},
                        {"mode": "live_full", "errors": payload["source_errors"],
@@ -321,7 +321,3 @@ def results_extracted(review: dict) -> bool:
             (results.get("tennisexplorer") or {}).get("imported"),
             (review.get("settlement") or {}).get("graded"))
     return any(int(v or 0) > 0 for v in seen) or int(review.get("pending_for_date") or 0) == 0
-
-
-def write_json(path: Path, payload: dict) -> None:
-    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, default=str), encoding="utf-8")

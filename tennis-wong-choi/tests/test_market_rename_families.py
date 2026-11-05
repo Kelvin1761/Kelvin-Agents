@@ -22,8 +22,8 @@ def db(tmp_path, monkeypatch):
     from conftest import configure_test_db
 
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.database.migrations import init_db
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.store.migrations import init_db
 
     init_db()
     conn = get_connection()
@@ -177,7 +177,7 @@ def _group_market(market_id, name, selections):
 
 
 def test_event_fetch_adds_the_unrendered_market_tabs(monkeypatch):
-    from tennis_wc.providers import sportsbet_scrape_provider as mod
+    from tennis_wc.sources.providers import sportsbet_scrape_provider as mod
 
     provider = mod.SportsbetScrapeProvider()
     payload = _page()
@@ -221,7 +221,7 @@ def test_event_fetch_adds_the_unrendered_market_tabs(monkeypatch):
 
 
 def test_suspended_group_selections_are_not_prices():
-    from tennis_wc.providers.sportsbet_scrape_provider import SportsbetScrapeProvider
+    from tennis_wc.sources.providers.sportsbet_scrape_provider import SportsbetScrapeProvider
 
     market = SportsbetScrapeProvider()._group_market(_group_market(
         300, "Set Handicap",

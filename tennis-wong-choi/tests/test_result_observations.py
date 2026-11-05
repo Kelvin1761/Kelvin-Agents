@@ -6,9 +6,20 @@ import sqlite3
 import pytest
 
 from conftest import configure_test_db
-from tennis_wc.database.db import get_connection
-from tennis_wc.database.migrations import init_db
-from tennis_wc.database.result_observations import results_known_before
+from tennis_wc.store.db import get_connection
+from tennis_wc.store.migrations import init_db
+
+
+
+# Point-in-time reader of the append-only observations (test helper; no production caller).
+def results_known_before(conn, cutoff: str) -> list:
+    """Latest source state actually observed before cutoff; deletion is a state."""
+    return conn.execute('''WITH latest AS (
+        SELECT *,ROW_NUMBER() OVER(PARTITION BY match_id,source_provider ORDER BY id DESC) AS rn
+        FROM result_observations WHERE julianday(observed_at)<julianday(?)
+    ) SELECT result_id AS id,match_id,winner_player_id,score_json,observed_at AS created_at,
+             reported_created_at,observation_kind,player_a_id,player_b_id
+      FROM latest WHERE rn=1 AND observation_kind!='DELETED' ORDER BY result_id''',(cutoff,)).fetchall()
 
 
 @pytest.fixture
@@ -47,7 +58,7 @@ def test_legacy_seed_is_not_a_historical_availability_claim(conn):
     conn.execute('DROP TRIGGER result_observe_insert')
     conn.execute("INSERT INTO match_results(match_id,winner_player_id,source_provider,created_at) VALUES (1,1,'feed','2000-01-01')")
     conn.commit()
-    from tennis_wc.database.result_observations import ensure_result_observations
+    from tennis_wc.store.result_observations import ensure_result_observations
     ensure_result_observations(conn)
     row=conn.execute('SELECT * FROM result_observations').fetchone()
     assert row['observation_kind']=='LEGACY_SEED'

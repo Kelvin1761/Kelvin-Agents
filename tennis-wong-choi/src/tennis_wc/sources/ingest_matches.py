@@ -1,0 +1,213 @@
+from __future__ import annotations
+
+from tennis_wc.store.history_observations import upsert_history_observation
+
+from datetime import date, timedelta
+import logging
+
+from tennis_wc.config import get_settings
+from tennis_wc.model.history import clean_history_row
+from tennis_wc.store.db import get_connection
+from tennis_wc.sources.entity_mapping import (
+    get_internal_entity_id,
+    get_or_create_player,
+    upsert_tournament,
+    valid_player_identity,
+)
+from tennis_wc.sources.fixture_versions import upsert_fixture
+from tennis_wc.sources.ingest_odds import _row_start_time_utc
+from tennis_wc.sources.raw_response_store import store_raw_response, utc_now
+from tennis_wc.sources.providers import get_tennis_provider
+
+
+def _ensure_player(provider_name: str, provider_player_id: str, raw_id: int, embedded: dict | None = None) -> int:
+    if embedded and embedded.get("name"):
+        if not valid_player_identity(provider_player_id, embedded["name"]):
+            raise ValueError(
+                f"invalid embedded player identity: id={provider_player_id!r} "
+                f"name={embedded['name']!r}"
+            )
+        player_id = get_or_create_player(
+            provider_name,
+            provider_player_id,
+            embedded["name"],
+            embedded.get("tour") or "ATP",
+            raw_id,
+            current_rank=embedded.get("current_rank"),
+        )
+        return player_id
+
+    provider = get_tennis_provider()
+    profile = provider.fetch_player_profile(provider_player_id) or {}
+    stats = provider.fetch_player_stats(provider_player_id) or {}
+    resolved_name = profile.get("name")
+    if not valid_player_identity(provider_player_id, resolved_name):
+        raise ValueError(
+            f"provider returned placeholder player identity: id={provider_player_id!r} "
+            f"name={resolved_name!r}"
+        )
+    player_raw_id = store_raw_response(
+        provider_name,
+        "/mock/player-stats",
+        {"player_id": provider_player_id},
+        {"profile": profile, "stats": stats},
+        200,
+        "player",
+        provider_player_id,
+    )
+    player_id = get_or_create_player(
+        provider_name,
+        provider_player_id,
+        resolved_name,
+        profile.get("tour") or "ATP",
+        player_raw_id,
+        current_rank=profile.get("current_rank"),
+        overall_elo=stats.get("overall_elo"),
+        surface_elo=stats.get("surface_elo"),
+    )
+    return player_id
+
+
+def ingest_upcoming_matches(match_date: str) -> int:
+    provider = get_tennis_provider()
+    rows = provider.fetch_upcoming_matches(match_date)
+    raw_id = store_raw_response(
+        provider.provider_name,
+        "/mock/upcoming-matches",
+        {"date": match_date},
+        rows,
+        200,
+        "match",
+        match_date,
+    )
+    now = utc_now()
+    count = 0
+    for row in rows:
+        try:
+            player_a_id = _ensure_player(
+                provider.provider_name,
+                row.get("player_a_id"),
+                raw_id,
+                {"name": row.get("player_a_name"), "tour": row.get("tour"), "current_rank": row.get("player_a_current_rank")},
+            )
+            player_b_id = _ensure_player(
+                provider.provider_name,
+                row.get("player_b_id"),
+                raw_id,
+                {"name": row.get("player_b_name"), "tour": row.get("tour"), "current_rank": row.get("player_b_current_rank")},
+            )
+        except ValueError as exc:
+            logging.getLogger(__name__).warning("fixture/history identity rejected: %s",exc)
+            continue
+        if player_a_id == player_b_id:
+            continue
+        tournament_id = upsert_tournament(
+            provider.provider_name,
+            row["tournament_id"],
+            row.get("tournament_name") or row["tournament_id"],
+            row["tour"],
+            raw_id,
+            row.get("tournament_level") or "UNKNOWN",
+            row.get("surface"),
+            row.get("indoor_outdoor"),
+        )
+        with get_connection() as conn:
+            upsert_fixture(conn, {
+                "provider_match_id": str(row["id"]), "market_event_id": row.get("market_event_id"),
+                "tour": row["tour"], "match_date": row.get("analysis_date") or row["match_date"],
+                "tournament_id": tournament_id, "player_a_id": player_a_id, "player_b_id": player_b_id,
+                "round": row["round"], "source_provider": provider.provider_name,
+                "raw_response_id": raw_id, "start_time_utc": _row_start_time_utc(row),
+            }, now)
+        count += 1
+    return count
+
+
+def ingest_historical_matches(start_date: str, end_date: str) -> int:
+    provider = get_tennis_provider()
+    rows = provider.fetch_historical_matches(start_date, end_date)
+    raw_id = store_raw_response(
+        provider.provider_name,
+        "/mock/historical-matches",
+        {"start_date": start_date, "end_date": end_date},
+        rows,
+        200,
+        "match_history",
+        None,
+    )
+    now = utc_now()
+    count = 0
+    for row in rows:
+        row = clean_history_row(row)
+        try:
+            player_id = _ensure_player(
+                provider.provider_name,
+                row.get("player_id"),
+                raw_id,
+                {"name": row.get("player_name"), "tour": row.get("tour"), "current_rank": row.get("player_current_rank")},
+            )
+            opponent_id = _ensure_player(
+                provider.provider_name,
+                row.get("opponent_id"),
+                raw_id,
+                {"name": row.get("opponent_name"), "tour": row.get("tour"), "current_rank": row.get("opponent_current_rank")},
+            )
+        except ValueError as exc:
+            logging.getLogger(__name__).warning("fixture/history identity rejected: %s",exc)
+            continue
+        if player_id == opponent_id:
+            continue
+        upsert_tournament(
+            provider.provider_name,
+            row["tournament_id"],
+            row["tournament_id"],
+            row["tour"],
+            raw_id,
+            row.get("tournament_level", "UNKNOWN"),
+            row.get("surface"),
+            None,
+        )
+        with get_connection() as conn:
+            upsert_history_observation(
+                conn, {
+                    'provider_match_id': row["id"],
+                    'player_id': player_id,
+                    'opponent_id': opponent_id,
+                    'tour': row["tour"],
+                    'match_date': row["match_date"],
+                    'surface': row.get("surface"),
+                    'tournament_external_id': row["tournament_id"],
+                    'tournament_level': row.get("tournament_level", "UNKNOWN"),
+                    'round': row["round"],
+                    'format': row.get("format", "BO3"),
+                    'won': 1 if row["won"] else 0,
+                    'opponent_elo': row.get("opponent_elo"),
+                    'hold_rate': row.get("hold_rate"),
+                    'break_rate': row.get("break_rate"),
+                    'first_serve_points_won_pct': row.get("first_serve_points_won_pct"),
+                    'second_serve_points_won_pct': row.get("second_serve_points_won_pct"),
+                    'return_points_won_pct': row.get("return_points_won_pct"),
+                    'tiebreak_won': 1 if row.get("tiebreak_won") else 0,
+                    'deciding_set_won': 1 if row.get("deciding_set_won") else 0,
+                    'lost_first_set': 1 if row.get("lost_first_set") else 0,
+                    'comeback_after_losing_first_set': 1 if row.get("comeback_after_losing_first_set") else 0,
+                    'source_provider': provider.provider_name,
+                    'raw_response_id': raw_id,
+                    'created_at': now,
+                }, observed_at=now,
+            )
+        count += 1
+    return count
+
+
+def ingest_default_history(as_of_date: str, days: int | None = None) -> int:
+    # Daily runs only need to pick up RECENTLY-completed matches — older history
+    # is already in the DB (prior runs + the Sackmann backbone), so re-fetching a
+    # wide window every day is wasted work (many slow API calls). The window is
+    # configurable via HISTORY_BACKFILL_DAYS; the default stays wide so a fresh
+    # bootstrap (and the tests) still pull deep history.
+    if days is None:
+        days = get_settings().history_backfill_days
+    end = date.fromisoformat(as_of_date)
+    start = end - timedelta(days=days)
+    return ingest_historical_matches(start.isoformat(), as_of_date)

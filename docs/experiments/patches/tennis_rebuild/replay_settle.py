@@ -22,7 +22,10 @@ def main() -> int:
     p.add_argument("--legacy", action="store_true")
     a = p.parse_args()
     sys.path.insert(0, a.src)
-    import tennis_wc.features.common as common
+    try:  # tree layout after 2026-11-06 / before
+        import tennis_wc.model.features.common as common
+    except ImportError:
+        import tennis_wc.features.common as common
     common.utc_now = lambda: PINNED
     work = tempfile.mktemp(suffix=".db", dir=str(__import__("pathlib").Path(a.out).parent))
     shutil.copy(a.db, work)

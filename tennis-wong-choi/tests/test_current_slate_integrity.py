@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from conftest import configure_test_db
-from tennis_wc.database.db import get_connection
-from tennis_wc.database.migrations import init_db
-from tennis_wc.validation.current_slate import audit_current_slate
+from tennis_wc.store.db import get_connection
+from tennis_wc.store.migrations import init_db
+from tennis_wc.sources.slate_audit import audit_current_slate
 
 
 def _match(c,mid,date,a=1,b=2,quoted=True):

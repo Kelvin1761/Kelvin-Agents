@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from conftest import configure_test_db
-from tennis_wc.database.db import get_connection
-from tennis_wc.database.migrations import init_db
-from tennis_wc.ingestion.ingest_sackmann import _insert_history_pair
+from tennis_wc.store.db import get_connection
+from tennis_wc.store.migrations import init_db
+from tennis_wc.sources.ingest_sackmann import _insert_history_pair
 
 
 def match(ordinal='26',stage='QF',aces='7'):
@@ -63,7 +63,7 @@ def test_dated_correction_across_new_year_uses_tournament_identity(tmp_path,monk
 
 
 def test_elo_rebuild_keeps_source_order_after_internal_history_rekey(tmp_path,monkeypatch):
-    from tennis_wc.modelling.elo_builder import build_sackmann_elo
+    from tennis_wc.model.elo_builder import build_sackmann_elo
     configure_test_db(tmp_path,monkeypatch);init_db()
     with get_connection() as c:
         for pid in (1,2,3):
@@ -89,14 +89,14 @@ def test_elo_rebuild_keeps_source_order_after_internal_history_rekey(tmp_path,mo
 
 
 def test_cross_provider_dedup_cannot_identify_a_match_from_nearby_pair_alone(tmp_path,monkeypatch):
-    from tennis_wc.ingestion.ingest_sackmann import _history_pair_exists
+    from tennis_wc.sources.ingest_sackmann import _history_pair_exists
     configure_test_db(tmp_path,monkeypatch);init_db()
     _insert_history_pair('ATP',match(),1,1,2,'2026-07-20','2026-07-22T00:00:00Z',provider='jeff_sackmann')
     assert not _history_pair_exists('jeff_sackmann',1,2,'2026-07-27')
 
 
 def test_cross_provider_dedup_preserves_distinct_events_and_rounds(tmp_path,monkeypatch):
-    from tennis_wc.ingestion.ingest_sackmann import _history_pair_exists
+    from tennis_wc.sources.ingest_sackmann import _history_pair_exists
     configure_test_db(tmp_path,monkeypatch);init_db()
     _insert_history_pair('ATP',match(),1,1,2,'2026-07-20','2026-07-22T00:00:00Z',provider='jeff_sackmann')
     event=match()
@@ -108,7 +108,7 @@ def test_cross_provider_dedup_preserves_distinct_events_and_rounds(tmp_path,monk
 
 def test_cross_provider_same_event_opposite_winner_fails_visibly(tmp_path,monkeypatch):
     import pytest
-    from tennis_wc.ingestion.ingest_sackmann import _history_pair_exists
+    from tennis_wc.sources.ingest_sackmann import _history_pair_exists
     configure_test_db(tmp_path,monkeypatch);init_db()
     _insert_history_pair('ATP',match(),1,2,1,'2026-07-20','2026-07-22T00:00:00Z',provider='jeff_sackmann')
     with pytest.raises(ValueError,match='cross-provider winner conflict'):

@@ -7,8 +7,8 @@ from conftest import configure_test_db
 
 def test_tournament_level_stats_unknown_downgrades(tmp_path, monkeypatch):
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.features.tournament_level import calculate_tournament_level_stats
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.model.features.tournament_level import calculate_tournament_level_stats
 
     init_db()
     result = calculate_tournament_level_stats(1, "UNKNOWN", "Clay", date(2026, 5, 8), "LAST_52_WEEKS")
@@ -18,11 +18,11 @@ def test_tournament_level_stats_unknown_downgrades(tmp_path, monkeypatch):
 
 def test_tournament_level_stats_from_mock_history(tmp_path, monkeypatch):
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.ingestion.entity_mapping import get_internal_entity_id
-    from tennis_wc.ingestion.ingest_matches import ingest_default_history
-    from tennis_wc.ingestion.ingest_rankings import ingest_rankings
-    from tennis_wc.features.tournament_level import calculate_tournament_level_stats
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.sources.entity_mapping import get_internal_entity_id
+    from tennis_wc.sources.ingest_matches import ingest_default_history
+    from tennis_wc.sources.ingest_rankings import ingest_rankings
+    from tennis_wc.model.features.tournament_level import calculate_tournament_level_stats
 
     init_db()
     ingest_rankings("ATP", "2026-05-08")

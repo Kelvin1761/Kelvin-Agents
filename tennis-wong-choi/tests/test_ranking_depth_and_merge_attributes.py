@@ -15,7 +15,7 @@ from __future__ import annotations
 import logging
 import sqlite3
 
-from tennis_wc.providers import official_ranking_provider as orp
+from tennis_wc.sources.providers import official_ranking_provider as orp
 
 
 # --------------------------------------------------------------------------- #
@@ -68,12 +68,12 @@ def _real_db(tmp_path, monkeypatch) -> sqlite3.Connection:
     from conftest import configure_test_db
 
     db_path = configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
+    from tennis_wc.store.migrations import init_db
 
     init_db()
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
-    from tennis_wc.identity.player_identity import ensure_identity_schema
+    from tennis_wc.sources.identity import ensure_identity_schema
     ensure_identity_schema(conn)
     return conn
 
@@ -90,7 +90,7 @@ def _player(conn, pid, name, rank=None, elo=None, surface=None):
 
 def _merge(conn, canonical_id, duplicate_ids):
     """Drive the real `apply_merges` with the plan shape it consumes."""
-    from tennis_wc.identity.player_identity import apply_merges
+    from tennis_wc.sources.identity import apply_merges
 
     class Plan:
         pass
@@ -170,8 +170,8 @@ def test_a_historical_rebuild_does_not_receive_todays_rank(tmp_path, monkeypatch
     from conftest import configure_test_db
 
     db_path = configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.features.feature_builder import _rank_as_of
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.model.features.feature_builder import _rank_as_of
 
     init_db()
     conn = sqlite3.connect(db_path)
@@ -197,8 +197,8 @@ def test_a_live_card_still_gets_a_rank_when_the_refresh_is_late(tmp_path, monkey
     from conftest import configure_test_db
 
     db_path = configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.features.feature_builder import _rank_as_of
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.model.features.feature_builder import _rank_as_of
 
     init_db()
     conn = sqlite3.connect(db_path)
@@ -220,8 +220,8 @@ def test_a_genuine_as_of_row_always_wins_over_the_fallback(tmp_path, monkeypatch
     from conftest import configure_test_db
 
     db_path = configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.features.feature_builder import _rank_as_of
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.model.features.feature_builder import _rank_as_of
 
     init_db()
     conn = sqlite3.connect(db_path)

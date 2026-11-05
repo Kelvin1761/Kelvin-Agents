@@ -18,12 +18,12 @@ from conftest import configure_test_db
 
 def _db(tmp_path, monkeypatch) -> sqlite3.Connection:
     db_path = configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
+    from tennis_wc.store.migrations import init_db
 
     init_db()
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
-    from tennis_wc.identity.player_identity import ensure_identity_schema
+    from tennis_wc.sources.identity import ensure_identity_schema
     ensure_identity_schema(conn)
     return conn
 
@@ -70,7 +70,7 @@ def test_a_ranked_player_is_not_blocked_by_an_unranked_rows_history_label(tmp_pa
     held NO ranking history, only a match block ~90% labelled ATP. `derived_tour`
     falls back to that block, so the duplicate "derived" as ATP and blocked her
     own merge."""
-    from tennis_wc.identity.player_identity import plan_merges
+    from tennis_wc.sources.identity import plan_merges
 
     conn = _db(tmp_path, monkeypatch)
     _player(conn, 1, "Iga Swiatek", tour="WTA")
@@ -87,7 +87,7 @@ def test_a_ranked_player_is_not_blocked_by_an_unranked_rows_history_label(tmp_pa
 def test_two_players_ranked_on_different_tours_are_still_refused(tmp_path, monkeypatch):
     """The guard has to keep working: ranking evidence on both sides that
     disagrees is exactly the case where two people share a name."""
-    from tennis_wc.identity.player_identity import plan_merges
+    from tennis_wc.sources.identity import plan_merges
 
     conn = _db(tmp_path, monkeypatch)
     _player(conn, 1, "Sam Lee")
@@ -105,7 +105,7 @@ def test_the_merge_corrects_the_surviving_rows_tour_from_the_ranking(tmp_path, m
     """Canonical is chosen by history volume, which picked an ATP-labelled row
     for Destanee Aiava while she is ranked WTA. `tour` gates real behaviour
     downstream -- ace props are ATP-only."""
-    from tennis_wc.identity.player_identity import apply_merges, plan_merges
+    from tennis_wc.sources.identity import apply_merges, plan_merges
 
     conn = _db(tmp_path, monkeypatch)
     _player(conn, 1, "Destanee Aiava", tour="ATP")
@@ -124,14 +124,14 @@ def test_the_merge_corrects_the_surviving_rows_tour_from_the_ranking(tmp_path, m
 # Hyphens and middle names
 # --------------------------------------------------------------------------- #
 def test_a_hyphen_is_orthography_not_identity():
-    from tennis_wc.ingestion.name_matching import normalise_player_name
+    from tennis_wc.sources.name_matching import normalise_player_name
 
     assert normalise_player_name("Chan-Yeong Oh") == normalise_player_name("Chan Yeong Oh")
     assert normalise_player_name("Nuria Parrizas-Diaz") == normalise_player_name("Nuria Parrizas Diaz")
 
 
 def test_a_middle_name_variant_merges(tmp_path, monkeypatch):
-    from tennis_wc.identity.player_identity import plan_merges
+    from tennis_wc.sources.identity import plan_merges
 
     conn = _db(tmp_path, monkeypatch)
     _player(conn, 1, "Ammar Faleh Alhogbani", rank=1727)
@@ -147,7 +147,7 @@ def test_a_doubles_pair_is_never_merged_into_a_singles_player(tmp_path, monkeypa
     `normalise_player_name` moves a trailing initial to the front, so the pair
     `Filin N. / Fuchs A.` becomes `a filin n fuchs` -- same first and last token
     as `a fuchs`, and nested."""
-    from tennis_wc.identity.player_identity import plan_merges
+    from tennis_wc.sources.identity import plan_merges
 
     conn = _db(tmp_path, monkeypatch)
     _player(conn, 1, "Fuchs A.")
@@ -160,7 +160,7 @@ def test_a_doubles_pair_is_never_merged_into_a_singles_player(tmp_path, monkeypa
 
 def test_an_initialised_given_name_is_too_thin_to_merge_on(tmp_path, monkeypatch):
     """`a fuchs` is Alexander or Anna or Andrea."""
-    from tennis_wc.identity.player_identity import plan_merges
+    from tennis_wc.sources.identity import plan_merges
 
     conn = _db(tmp_path, monkeypatch)
     _player(conn, 1, "Fuchs A.")
@@ -171,7 +171,7 @@ def test_an_initialised_given_name_is_too_thin_to_merge_on(tmp_path, monkeypatch
 
 
 def test_two_different_middle_names_are_two_people(tmp_path, monkeypatch):
-    from tennis_wc.identity.player_identity import plan_merges
+    from tennis_wc.sources.identity import plan_merges
 
     conn = _db(tmp_path, monkeypatch)
     _player(conn, 1, "Maria Elena Costa")
@@ -188,7 +188,7 @@ def test_two_different_middle_names_are_two_people(tmp_path, monkeypatch):
 def test_a_chain_resolves_to_the_terminal_row(tmp_path, monkeypatch):
     """Merges chain across runs: 20089 -> 18856 -> 437. One hop lands on a row
     nothing should point at any more."""
-    from tennis_wc.identity.player_identity import terminal_canonical_id
+    from tennis_wc.sources.identity import terminal_canonical_id
 
     conn = _db(tmp_path, monkeypatch)
     _player(conn, 437, "Ammar Faleh Alhogbani")
@@ -205,7 +205,7 @@ def test_a_chain_resolves_to_the_terminal_row(tmp_path, monkeypatch):
 
 def test_a_cycle_cannot_hang_the_resolver(tmp_path, monkeypatch):
     """An identity resolver must not be able to hang the daily card."""
-    from tennis_wc.identity.player_identity import terminal_canonical_id
+    from tennis_wc.sources.identity import terminal_canonical_id
 
     conn = _db(tmp_path, monkeypatch)
     _player(conn, 1, "A B")
@@ -219,7 +219,7 @@ def test_a_cycle_cannot_hang_the_resolver(tmp_path, monkeypatch):
 
 
 def test_applying_a_merge_leaves_no_chain(tmp_path, monkeypatch):
-    from tennis_wc.identity.player_identity import apply_merges, plan_merges
+    from tennis_wc.sources.identity import apply_merges, plan_merges
 
     conn = _db(tmp_path, monkeypatch)
     _player(conn, 1, "Ammar Faleh Alhogbani")
@@ -240,7 +240,7 @@ def test_applying_a_merge_leaves_no_chain(tmp_path, monkeypatch):
 def test_a_database_without_the_column_still_resolves(tmp_path, monkeypatch):
     """`canonical_player_id` comes from `ensure_identity_schema`, not `init_db`.
     A resolver that raises on a fresh database takes the pipeline with it."""
-    from tennis_wc.identity.player_identity import terminal_canonical_id
+    from tennis_wc.sources.identity import terminal_canonical_id
 
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row

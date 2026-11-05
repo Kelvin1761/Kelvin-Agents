@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 import sqlite3
 
-from tennis_wc.features.surface_elo import get_surface_elo
+from tennis_wc.model.features.surface_elo import get_surface_elo
 
 RATINGS = json.dumps({"clay": 1710.24, "grass": 1873.09, "hard": 1859.23})
 
@@ -66,7 +66,7 @@ def _snapshot(surface):
 
 
 def test_the_model_says_when_it_was_not_given_a_surface():
-    from tennis_wc.modelling.probability_model import _component_probabilities
+    from tennis_wc.model.match import _component_probabilities
 
     named = {w for c in _component_probabilities(_snapshot("hard")) for w in c.warnings}
     assert "missing_surface" not in named

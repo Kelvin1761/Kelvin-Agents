@@ -76,8 +76,8 @@ def test_aces_are_read_from_whichever_source_carries_them(tmp_path, monkeypatch)
     from conftest import configure_test_db
 
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.database.db import get_connection
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.store.db import get_connection
     from tennis_wc.settle.props import actual_total_aces, actual_player_aces
 
     init_db()
@@ -94,8 +94,8 @@ def test_the_scoreline_still_comes_from_the_preferred_row(tmp_path, monkeypatch)
     from conftest import configure_test_db
 
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.database.db import get_connection
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.store.db import get_connection
     from tennis_wc.settle.props import actual_total_games
 
     init_db()
@@ -116,8 +116,8 @@ def test_a_disagreeing_source_is_not_used_to_fill_gaps(tmp_path, monkeypatch):
     from conftest import configure_test_db
 
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.database.db import get_connection
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.store.db import get_connection
     from tennis_wc.settle.props import actual_total_aces
 
     init_db()
@@ -163,8 +163,8 @@ def test_the_highest_ranked_row_is_still_the_base(tmp_path, monkeypatch):
     from conftest import configure_test_db
 
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.database.db import get_connection
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.store.db import get_connection
     from tennis_wc.settle.props import actual_total_games
 
     init_db()
@@ -192,8 +192,8 @@ def test_an_unparseable_score_row_never_shadows_a_real_one(tmp_path, monkeypatch
     from conftest import configure_test_db
 
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.database.db import get_connection
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.store.db import get_connection
     from tennis_wc.settle.props import actual_total_games, _merged_score
 
     init_db()
@@ -236,8 +236,8 @@ def test_an_asymmetric_empty_row_cannot_grade_a_bet_at_zero(tmp_path, monkeypatc
     from conftest import configure_test_db
 
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.database.db import get_connection
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.store.db import get_connection
     from tennis_wc.settle.props import actual_total_games
 
     init_db()

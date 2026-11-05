@@ -5,8 +5,8 @@ def test_history_schema_captures_service_games(tmp_path, monkeypatch):
     from conftest import configure_test_db
 
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.database.db import get_connection
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.store.db import get_connection
 
     init_db()
     columns = {
@@ -19,7 +19,7 @@ def test_history_schema_captures_service_games(tmp_path, monkeypatch):
 
 
 def test_sackmann_metrics_preserve_the_service_games_denominator():
-    from tennis_wc.ingestion.ingest_sackmann import _metrics
+    from tennis_wc.sources.ingest_sackmann import _metrics
 
     row = {
         "w_svpt": "72",

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-from tennis_wc.features.round_performance import normalise_round
+from tennis_wc.model.features.round_performance import normalise_round
 
 
 @pytest.mark.parametrize('raw,expected',[(code,code) for code in ('F','SF','QF','R16','R32','R64','R128','QUALIFYING')]+[('Final','F'),('Semifinal','SF'),('Quarterfinal','QF')])
@@ -13,10 +13,10 @@ def test_round_normalization_is_idempotent(raw,expected):
 def test_coded_and_named_finals_enter_the_same_performance_sample(tmp_path,monkeypatch):
     from datetime import date
     from conftest import configure_test_db
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.features.round_performance import calculate_round_stats
-    from tennis_wc.features.big_match import calculate_big_match_stats
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.model.features.round_performance import calculate_round_stats
+    from tennis_wc.model.features.big_match import calculate_big_match_stats
     configure_test_db(tmp_path,monkeypatch);init_db()
     with get_connection() as c:
         for index,stage,won in ((1,'F',1),(2,'Final',0)):

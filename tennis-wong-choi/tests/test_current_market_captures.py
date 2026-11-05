@@ -4,9 +4,9 @@ from __future__ import annotations
 import pytest
 
 from conftest import configure_test_db
-from tennis_wc.database.db import get_connection
-from tennis_wc.database.migrations import init_db
-from tennis_wc.ingestion.ingest_odds import _insert_market_odds
+from tennis_wc.store.db import get_connection
+from tennis_wc.store.migrations import init_db
+from tennis_wc.sources.ingest_odds import _insert_market_odds
 from tennis_wc.pricing.quotes import rows_for_date as _rows_for_date
 
 
@@ -35,7 +35,7 @@ def test_new_capture_retires_unobserved_lines_and_markets(tmp_path,monkeypatch):
 
 
 def test_exact_player_names_with_shared_first_name_have_correct_sides():
-    from tennis_wc.ingestion.ingest_odds import selection_side_for
+    from tennis_wc.sources.ingest_odds import selection_side_for
     assert selection_side_for('Alex Michelsen','Alex de Minaur','Alex Michelsen')=='player_a'
     assert selection_side_for('Alex Michelsen','Alex de Minaur','Alex de Minaur')=='player_b'
     assert selection_side_for('Alex Michelsen','Alex de Minaur','Alex') is None
@@ -52,7 +52,7 @@ def test_empty_capture_cannot_resurrect_positional_prices(tmp_path,monkeypatch):
         _insert_market_odds(c,row,1,'sportsbet',1,'2026-06-01T08:00:00Z')
         c.execute("INSERT INTO odds_snapshots(event_id,match_id,bookmaker,market,player_a_odds,player_b_odds,source_provider,raw_response_id,fetched_at,created_at) VALUES ('event',1,'Sportsbet','match_winner',1.9,1.9,'sportsbet',1,'2026-06-01T08:00:00Z','2026-06-01T08:00:00Z')")
         c.commit()
-        from tennis_wc.features.feature_builder import _market
+        from tennis_wc.model.features.feature_builder import _market
         assert _market(1)['mapping_status']['value']=='verified'
         _insert_market_odds(c,{**row,'markets':[],'player_a_odds':None,'player_b_odds':None},1,'sportsbet',2,'2026-06-01T09:00:00Z')
         c.commit()
@@ -63,17 +63,17 @@ def test_empty_capture_cannot_resurrect_positional_prices(tmp_path,monkeypatch):
 def test_preclose_capture_does_not_replace_the_current_live_batch(tmp_path,monkeypatch):
     configure_test_db(tmp_path,monkeypatch);init_db()
     with get_connection() as c:
-        from tennis_wc.database.market_captures import record_market_capture,current_market_clause
+        from tennis_wc.store.markets import record_market_capture,current_market_clause
         c.execute("INSERT INTO matches(id,provider_match_id,tour,match_date,tournament_id,player_a_id,player_b_id,round,source_provider,created_at,updated_at) VALUES (1,'event','ATP','2026-06-01',1,1,2,'R1','test','now','now')")
         c.execute("INSERT INTO market_odds_snapshots(event_id,match_id,bookmaker,market_key,market_name,selection_name,odds,source_provider,raw_response_id,fetched_at,created_at) VALUES ('event',1,'Sportsbet','test','Test','One',1.9,'sportsbet',1,'now','now')")
         row=dict(event_id='event',bookmaker='Sportsbet')
         record_market_capture(c,1,row,'sportsbet',1,'now','market_odds_snapshots')
         record_market_capture(c,1,row,'sportsbet',2,'later','preclose_market_odds_snapshots')
-        assert c.execute(f'SELECT COUNT(*) FROM market_odds_snapshots mo WHERE {current_market_clause(c)}').fetchone()[0]==1
+        assert c.execute(f'SELECT COUNT(*) FROM market_odds_snapshots mo WHERE {current_market_clause()}').fetchone()[0]==1
 
 
 def test_bookmaker_event_never_uses_another_providers_fixture_id(tmp_path, monkeypatch):
-    from tennis_wc.database.market_captures import bookmaker_event_for_match, record_market_capture
+    from tennis_wc.store.markets import bookmaker_event_for_match, record_market_capture
     configure_test_db(tmp_path, monkeypatch); init_db()
     with get_connection() as c:
         c.execute("INSERT INTO matches(id,provider_match_id,market_event_id,tour,match_date,tournament_id,player_a_id,player_b_id,round,source_provider,created_at,updated_at) VALUES (1,'fixture','espn-123','ATP','2026-06-01',1,1,2,'R1','composite','now','now')")
@@ -86,7 +86,7 @@ def test_bookmaker_event_never_uses_another_providers_fixture_id(tmp_path, monke
 
 
 def test_empty_book_listing_retires_composite_quotes_without_deleting_history(tmp_path,monkeypatch):
-    from tennis_wc.ingestion import ingest_odds
+    from tennis_wc.sources import ingest_odds
     configure_test_db(tmp_path,monkeypatch);init_db()
     with get_connection() as c:
         for pid,name in ((1,'Player One'),(2,'Player Two')):
@@ -104,7 +104,7 @@ def test_empty_book_listing_retires_composite_quotes_without_deleting_history(tm
         assert match['market_event_id']=='espn-123' and match['fixture_status']=='ACTIVE'
         assert c.execute('SELECT listed FROM market_captures ORDER BY id DESC LIMIT 1').fetchone()[0]==0
         c.commit()
-        from tennis_wc.features.feature_builder import odds_coverage_for_date
+        from tennis_wc.model.features.feature_builder import odds_coverage_for_date
         coverage=odds_coverage_for_date('2026-06-01')
         assert coverage['priced_matches']==0 and coverage['book_fixtures']==0
 
@@ -118,7 +118,7 @@ def test_empty_book_listing_retires_composite_quotes_without_deleting_history(tm
 def test_live_sportsbet_capture_preserves_raw_and_retires_current_quotes(tmp_path, monkeypatch, entry):
     from types import SimpleNamespace
     import json
-    from tennis_wc.ingestion import ingest_odds
+    from tennis_wc.sources import ingest_odds
     configure_test_db(tmp_path, monkeypatch)
     init_db()
     with get_connection() as c:

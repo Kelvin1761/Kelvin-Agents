@@ -10,10 +10,10 @@ from __future__ import annotations
 from tennis_wc.model.history import active_clause
 import json
 from datetime import date, timedelta
-from tennis_wc.database.db import get_connection
-from tennis_wc.features.common import utc_now
-from tennis_wc.ingestion.name_matching import match_pair_score, same_player_name
-from tennis_wc.providers import get_tennis_provider
+from tennis_wc.store.db import get_connection
+from tennis_wc.model.features.common import utc_now
+from tennis_wc.sources.name_matching import match_pair_score, same_player_name
+from tennis_wc.sources.providers import get_tennis_provider
 
 
 def fetch_results_for_date(match_date: str) -> dict:
@@ -40,7 +40,7 @@ def fetch_results_for_date(match_date: str) -> dict:
     winners_seen = len([row for row in target_rows if row.get("won")])
     lookup_winners_seen = len([row for row in rows if row.get("won")])
     try:
-        from tennis_wc.ingestion.ingest_tennismylife import ingest_tennismylife_results
+        from tennis_wc.sources.ingest_tennismylife import ingest_tennismylife_results
 
         tennis_my_life = ingest_tennismylife_results(match_date)
     except Exception as exc:
@@ -48,7 +48,7 @@ def fetch_results_for_date(match_date: str) -> dict:
     # ITF / UTR / Challenger: no other wired source publishes them, so without
     # this every prop on those tiers stays PENDING and never becomes evidence.
     try:
-        from tennis_wc.ingestion.ingest_tennisexplorer import (
+        from tennis_wc.sources.ingest_tennisexplorer import (
             ingest_tennisexplorer_results,
         )
 
@@ -133,7 +133,7 @@ def _resolve_pending_from_event_provider(match_date: str) -> dict:
     imported = 0
     errors = []
     try:
-        from tennis_wc.providers import get_odds_provider
+        from tennis_wc.sources.providers import get_odds_provider
 
         provider = get_odds_provider()
     except Exception as exc:
@@ -146,7 +146,7 @@ def _resolve_pending_from_event_provider(match_date: str) -> dict:
     if not callable(fetch_event_result):
         return {"event_id_tracked": event_id_tracked, "event_result_imported": 0, "event_result_errors": []}
 
-    from tennis_wc.database.market_captures import bookmaker_event_for_match
+    from tennis_wc.store.markets import bookmaker_event_for_match
 
     with get_connection() as conn:
         event_refs = {row['id']: bookmaker_event_for_match(conn, row['id'], provider.provider_name)

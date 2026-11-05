@@ -6,9 +6,9 @@ def _setup(tmp_path, monkeypatch):
     from conftest import configure_test_db
 
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.history import elo_history
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.model import elo_history
 
     init_db()
     conn = get_connection()
@@ -18,7 +18,7 @@ def _setup(tmp_path, monkeypatch):
 
 def test_rating_as_of_is_strictly_before_the_date(tmp_path, monkeypatch):
     """On-or-before would return the rating that match itself produced."""
-    from tennis_wc.history import elo_history
+    from tennis_wc.model import elo_history
 
     conn = _setup(tmp_path, monkeypatch)
     elo_history.record(conn, [
@@ -37,7 +37,7 @@ def test_rating_as_of_is_strictly_before_the_date(tmp_path, monkeypatch):
 
 
 def test_surface_rating_falls_back_to_overall(tmp_path, monkeypatch):
-    from tennis_wc.history import elo_history
+    from tennis_wc.model import elo_history
 
     conn = _setup(tmp_path, monkeypatch)
     elo_history.record(conn, [
@@ -53,7 +53,7 @@ def test_surface_rating_falls_back_to_overall(tmp_path, monkeypatch):
 
 def test_first_rating_of_a_day_wins(tmp_path, monkeypatch):
     """Two matches on one date: what we knew before play started is the first."""
-    from tennis_wc.history import elo_history
+    from tennis_wc.model import elo_history
 
     conn = _setup(tmp_path, monkeypatch)
     elo_history.record(conn, [(1, "2026-01-05", "", 1500.0, 0)])
@@ -68,11 +68,11 @@ def test_elo_builder_records_the_pre_match_rating(tmp_path, monkeypatch):
     from conftest import configure_test_db
 
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.ingestion.ingest_sackmann import HISTORY_PROVIDERS
-    from tennis_wc.modelling.elo_builder import build_sackmann_elo
-    from tennis_wc.history import elo_history
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.sources.ingest_sackmann import HISTORY_PROVIDERS
+    from tennis_wc.model.elo_builder import build_sackmann_elo
+    from tennis_wc.model import elo_history
 
     init_db()
     conn = get_connection()
@@ -113,10 +113,10 @@ def test_elo_opponent_updates_are_scoped_to_the_source_provider(tmp_path, monkey
     from conftest import configure_test_db
 
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.ingestion.ingest_sackmann import HISTORY_PROVIDERS
-    from tennis_wc.modelling import elo_builder
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.sources.ingest_sackmann import HISTORY_PROVIDERS
+    from tennis_wc.model import elo_builder
 
     init_db()
     conn = get_connection()
@@ -169,10 +169,10 @@ def test_elo_builder_batches_history_opponent_updates(tmp_path, monkeypatch):
     from conftest import configure_test_db
 
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.ingestion.ingest_sackmann import HISTORY_PROVIDERS
-    from tennis_wc.modelling import elo_builder
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.sources.ingest_sackmann import HISTORY_PROVIDERS
+    from tennis_wc.model import elo_builder
 
     init_db()
     conn = get_connection()
@@ -214,10 +214,10 @@ def test_feature_snapshot_prefers_as_of_elo_over_the_mutable_column(tmp_path, mo
     from conftest import configure_test_db
 
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.features import feature_builder
-    from tennis_wc.history import elo_history
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.model.features import feature_builder
+    from tennis_wc.model import elo_history
 
     init_db()
     conn = get_connection()
@@ -248,7 +248,7 @@ def test_v2_reads_the_rating_after_the_previous_match(tmp_path, monkeypatch):
     """The production table above is one match late: on 01-02 it still reads the
     rating from before the 01-01 win. v2 stores post-match ratings, so the same
     read sees the win."""
-    from tennis_wc.history import elo_history
+    from tennis_wc.model import elo_history
 
     conn = _setup(tmp_path, monkeypatch)
     elo_history.replace_post_match(conn, [
@@ -265,7 +265,7 @@ def test_v2_reads_the_rating_after_the_previous_match(tmp_path, monkeypatch):
 
 def test_v2_last_match_of_a_day_wins(tmp_path, monkeypatch):
     """Two matches on one date: the next day starts from the rating after both."""
-    from tennis_wc.history import elo_history
+    from tennis_wc.model import elo_history
 
     conn = _setup(tmp_path, monkeypatch)
     elo_history.replace_post_match(conn, [
@@ -279,7 +279,7 @@ def test_v2_last_match_of_a_day_wins(tmp_path, monkeypatch):
 def test_v2_is_rebuilt_not_accumulated(tmp_path, monkeypatch):
     """The production table keeps the first row it ever saw for a key, so it is a
     mixture of builds. v2 is cleared on every build."""
-    from tennis_wc.history import elo_history
+    from tennis_wc.model import elo_history
 
     conn = _setup(tmp_path, monkeypatch)
     elo_history.replace_post_match(conn, [(1, "2026-01-05", "", 1600.0, 1)])
@@ -290,7 +290,7 @@ def test_v2_is_rebuilt_not_accumulated(tmp_path, monkeypatch):
 
 
 def test_v2_surface_falls_back_to_overall(tmp_path, monkeypatch):
-    from tennis_wc.history import elo_history
+    from tennis_wc.model import elo_history
 
     conn = _setup(tmp_path, monkeypatch)
     elo_history.replace_post_match(conn, [
@@ -309,11 +309,11 @@ def test_elo_builder_writes_v2_ending_on_the_final_rating(tmp_path, monkeypatch)
     from conftest import configure_test_db
 
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.ingestion.ingest_sackmann import HISTORY_PROVIDERS
-    from tennis_wc.modelling.elo_builder import build_sackmann_elo
-    from tennis_wc.history import elo_history
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.sources.ingest_sackmann import HISTORY_PROVIDERS
+    from tennis_wc.model.elo_builder import build_sackmann_elo
+    from tennis_wc.model import elo_history
 
     init_db()
     conn = get_connection()
@@ -349,11 +349,11 @@ def test_a_failing_shadow_write_never_costs_production_its_elo(tmp_path, monkeyp
     from conftest import configure_test_db
 
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.ingestion.ingest_sackmann import HISTORY_PROVIDERS
-    from tennis_wc.modelling.elo_builder import build_sackmann_elo
-    from tennis_wc.history import elo_history
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.sources.ingest_sackmann import HISTORY_PROVIDERS
+    from tennis_wc.model.elo_builder import build_sackmann_elo
+    from tennis_wc.model import elo_history
 
     init_db()
     conn = get_connection()

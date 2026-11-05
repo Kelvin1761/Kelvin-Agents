@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 
-from tennis_wc.providers.tennisexplorer_provider import parse_results_page
+from tennis_wc.sources.providers.tennisexplorer_provider import parse_results_page
 
 
 def _seed_player(conn, pid, name):
@@ -108,7 +108,7 @@ def test_walkover_without_games_is_returned_as_retired_so_props_can_void():
 
 
 def test_surname_initial_names_match_full_names():
-    from tennis_wc.ingestion.name_matching import match_pair_score, same_player_name
+    from tennis_wc.sources.name_matching import match_pair_score, same_player_name
 
     assert same_player_name("Glushkova D.", "Denislava Glushkova")
     score, direction = match_pair_score(
@@ -125,10 +125,10 @@ def test_ingest_refuses_ambiguous_fixture_pairs(tmp_path, monkeypatch):
     from conftest import configure_test_db
 
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.ingestion import ingest_tennisexplorer
-    from tennis_wc.providers.tennisexplorer_provider import ParsedResult
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.sources import ingest_tennisexplorer
+    from tennis_wc.sources.providers.tennisexplorer_provider import ParsedResult
 
     init_db()
     conn = get_connection()
@@ -166,10 +166,10 @@ def test_ingest_writes_scoreline_in_the_fixture_player_order(tmp_path, monkeypat
     from conftest import configure_test_db
 
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.ingestion import ingest_tennisexplorer
-    from tennis_wc.providers.tennisexplorer_provider import ParsedResult
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.sources import ingest_tennisexplorer
+    from tennis_wc.sources.providers.tennisexplorer_provider import ParsedResult
 
     init_db()
     conn = get_connection()
@@ -213,11 +213,11 @@ def test_props_settle_from_an_imported_lower_tier_scoreline(tmp_path, monkeypatc
     from conftest import configure_test_db
 
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.ingestion import ingest_tennisexplorer
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.sources import ingest_tennisexplorer
     from tennis_wc.settle.props import settle_props
-    from tennis_wc.providers.tennisexplorer_provider import ParsedResult
+    from tennis_wc.sources.providers.tennisexplorer_provider import ParsedResult
 
     init_db()
     conn = get_connection()

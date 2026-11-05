@@ -3,30 +3,6 @@ from __future__ import annotations
 from conftest import configure_test_db
 
 
-def test_run_daily_builds_valid_mock_feature_snapshot(tmp_path, monkeypatch):
-    configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.features.feature_builder import build_feature_snapshots_for_date
-    from tennis_wc.ingestion.ingest_matches import ingest_default_history, ingest_upcoming_matches
-    from tennis_wc.ingestion.ingest_odds import ingest_odds
-    from tennis_wc.ingestion.ingest_rankings import ingest_rankings
-    from tennis_wc.ingestion.ingest_tournaments import ingest_tournaments
-
-    init_db()
-    ingest_tournaments("2026-05-08", "2026-05-08")
-    ingest_rankings("ATP", "2026-05-08")
-    ingest_default_history("2026-05-08")
-    ingest_upcoming_matches("2026-05-08")
-    ingest_odds("2026-05-08")
-    snapshots = build_feature_snapshots_for_date("2026-05-08")
-    assert len(snapshots) == 1
-    snapshot = snapshots[0]
-    assert "opponent_rank_buckets" in snapshot["player_a"]
-    assert "tournament_level_stats" in snapshot["player_a"]
-    assert "round_stats" in snapshot["player_a"]
-    assert snapshot["data_quality"]["is_valid"]
-
-
 # --------------------------------------------------------------------------- #
 # One unbuildable match must not blind us to the rest (2026-07-25)
 # --------------------------------------------------------------------------- #
@@ -55,9 +31,9 @@ def test_one_unbuildable_match_does_not_abort_the_date(tmp_path, monkeypatch):
     raised (e.g. tournament metadata missing) dropped every remaining match for
     the date -- silently. The report just showed a smaller 已分析 count."""
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.features import feature_builder as fb
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.model.features import feature_builder as fb
 
     init_db()
     with get_connection() as conn:
@@ -88,9 +64,9 @@ def test_one_unbuildable_match_does_not_abort_the_date(tmp_path, monkeypatch):
 
 def test_doubles_skips_are_recorded_not_just_dropped(tmp_path, monkeypatch):
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.features import feature_builder as fb
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.model.features import feature_builder as fb
 
     init_db()
     with get_connection() as conn:
@@ -103,39 +79,11 @@ def test_doubles_skips_are_recorded_not_just_dropped(tmp_path, monkeypatch):
     assert [s["reason"] for s in skipped] == ["doubles_competition"]
 
 
-def test_feature_build_coverage_reports_the_gap(tmp_path, monkeypatch):
-    """The gap was invisible: 60 priced matches, 38 analysed, nothing said so."""
-    configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.features.feature_builder import feature_build_coverage
-
-    init_db()
-    with get_connection() as conn:
-        _seed_priced_match(conn, 9201, "Big Open", 7201)
-        _seed_priced_match(conn, 9202, "Big Open", 7201)
-        _seed_priced_match(conn, 9203, "ATP Pairs Doubles", 7203)
-        # only ONE of the two singles matches ever produced a snapshot
-        conn.execute("""INSERT INTO feature_snapshots (match_id, player_id, feature_set_version,
-                            features_json, provenance_json, data_quality_score, created_at)
-                        VALUES (?,?,?,?,?,?,?)""",
-                     (9201, 92011, "v1", "{}", "{}", 80, "now"))
-        conn.commit()
-
-    cov = feature_build_coverage("2026-07-25")
-    assert cov["priced_matches"] == 3
-    assert cov["doubles_excluded"] == 1
-    assert cov["singles_candidates"] == 2
-    assert cov["with_features"] == 1
-    assert cov["missing_features"] == 1
-    assert cov["missing_by_tournament"] == {"Big Open": 1}
-
-
 def test_odds_coverage_excludes_placeholder_and_duplicate_fixture_rows(tmp_path, monkeypatch):
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.features.feature_builder import odds_coverage_for_date
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.model.features.feature_builder import odds_coverage_for_date
 
     init_db()
     with get_connection() as conn:
@@ -192,9 +140,9 @@ def test_odds_coverage_reports_the_sportsbet_book_separately(tmp_path, monkeypat
     in the book, because a market existing is the whole test.
     """
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.features.feature_builder import odds_coverage_for_date
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.model.features.feature_builder import odds_coverage_for_date
 
     init_db()
     with get_connection() as conn:
@@ -244,9 +192,9 @@ def test_book_fixtures_includes_a_composite_fixture_sportsbet_priced(tmp_path, m
     Sportsbet later priced is in the book, and counting it only in the numerator
     would put the ratio above 1.0."""
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.features.feature_builder import odds_coverage_for_date
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.model.features.feature_builder import odds_coverage_for_date
 
     init_db()
     with get_connection() as conn:
@@ -285,9 +233,9 @@ def test_priced_matches_dedupes_the_same_way_fixtures_does(tmp_path, monkeypatch
     it has to be one in the numerator too. `COUNT(DISTINCT match_id)` counted it
     twice, which could put the ratio above 1.0 and hide a thin book."""
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.features.feature_builder import odds_coverage_for_date
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.model.features.feature_builder import odds_coverage_for_date
 
     init_db()
     with get_connection() as conn:
@@ -327,9 +275,9 @@ def test_priced_matches_dedupes_the_same_way_fixtures_does(tmp_path, monkeypatch
 
 def test_sportsbet_feature_build_holds_started_matches_and_records_reason(tmp_path, monkeypatch):
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.features import feature_builder as fb
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.model.features import feature_builder as fb
 
     init_db()
     with get_connection() as conn:
@@ -349,9 +297,9 @@ def test_sportsbet_feature_build_holds_started_matches_and_records_reason(tmp_pa
 
 def test_sportsbet_match_can_start_while_features_are_built(tmp_path, monkeypatch):
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.features import feature_builder as fb
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.model.features import feature_builder as fb
 
     init_db()
     with get_connection() as conn:

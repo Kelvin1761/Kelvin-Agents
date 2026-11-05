@@ -6,8 +6,8 @@ def _setup(tmp_path, monkeypatch):
     from conftest import configure_test_db
 
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.database.db import get_connection
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.store.db import get_connection
 
     init_db()
     return get_connection()
@@ -41,7 +41,7 @@ def test_history_split_across_duplicate_ids_is_reunified(tmp_path, monkeypatch):
     The ace model needs ten prior matches, so the fragments can each look "too
     thin to model" while the player actually has plenty.
     """
-    from tennis_wc.identity import player_identity
+    from tennis_wc.sources import identity as player_identity
 
     conn = _setup(tmp_path, monkeypatch)
     _player(conn, 1, "Viktoria Hruncakova")
@@ -75,7 +75,7 @@ def test_history_split_across_duplicate_ids_is_reunified(tmp_path, monkeypatch):
 
 def test_two_players_who_faced_each_other_are_never_merged(tmp_path, monkeypatch):
     """A player cannot be their own opponent, so this proves they differ."""
-    from tennis_wc.identity import player_identity
+    from tennis_wc.sources import identity as player_identity
 
     conn = _setup(tmp_path, monkeypatch)
     _player(conn, 1, "Alex Smith", tour="ATP")
@@ -101,7 +101,7 @@ def test_tour_guard_reads_the_playing_record_not_the_players_label(tmp_path, mon
     duplicate row said ATP -- Potapova's second id claims ATP against 118 WTA
     ranking entries. Refuse only when the RECORDS disagree.
     """
-    from tennis_wc.identity import player_identity
+    from tennis_wc.sources import identity as player_identity
 
     conn = _setup(tmp_path, monkeypatch)
     # Same person, second row mislabelled ATP, but both records are WTA.
@@ -135,7 +135,7 @@ def test_tour_guard_reads_the_playing_record_not_the_players_label(tmp_path, mon
 
 
 def test_placeholders_are_not_players(tmp_path, monkeypatch):
-    from tennis_wc.identity import player_identity
+    from tennis_wc.sources import identity as player_identity
 
     assert player_identity.is_placeholder("TBD")
     assert player_identity.is_placeholder("Unknown Player")
@@ -150,7 +150,7 @@ def test_placeholders_are_not_players(tmp_path, monkeypatch):
 
 
 def test_resolve_reads_the_alias_table_and_invents_nothing(tmp_path, monkeypatch):
-    from tennis_wc.identity import player_identity
+    from tennis_wc.sources import identity as player_identity
 
     conn = _setup(tmp_path, monkeypatch)
     player_identity.ensure_identity_schema(conn)
@@ -199,9 +199,9 @@ def test_the_identity_merge_stage_only_applies_confident_plans(tmp_path, monkeyp
     from conftest import configure_test_db
 
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.identity.player_identity import ensure_identity_schema
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.sources.identity import ensure_identity_schema
     from tennis_wc.run import merge_identities as _merge_player_identities
 
     init_db()
@@ -239,9 +239,9 @@ def test_the_merge_stage_is_idempotent(tmp_path, monkeypatch):
     from conftest import configure_test_db
 
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.identity.player_identity import ensure_identity_schema
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.sources.identity import ensure_identity_schema
     from tennis_wc.run import merge_identities as _merge_player_identities
 
     init_db()

@@ -7,8 +7,8 @@ from __future__ import annotations
 
 import json
 
-from tennis_wc.database.db import get_connection
-from tennis_wc.features.common import utc_now
+from tennis_wc.store.db import get_connection
+from tennis_wc.model.features.common import utc_now
 
 
 def store_prediction(match_id: int, feature_set_version: str, pricing: dict) -> int:

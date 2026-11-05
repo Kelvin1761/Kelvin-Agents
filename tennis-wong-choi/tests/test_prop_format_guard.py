@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from tennis_wc.features.bo_format import detect_match_format
+from tennis_wc.model.features.bo_format import detect_match_format
 
 
 @pytest.mark.parametrize("round_name", ["Qualifying", "Q1", "Q2", "Q3", "QR1"])

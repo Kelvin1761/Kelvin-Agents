@@ -96,7 +96,7 @@ class _LegacyApi:
         """Every row the old engine would write to prop_tracker for ``day``."""
         import tennis_wc.props.daily as daily
 
-        from tennis_wc.features.common import utc_now
+        from tennis_wc.features.common import utc_now  # legacy tree layout
         from tennis_wc.props.pricing_evidence import freeze_context
         from tennis_wc.props.registry import family_for_market
 
@@ -131,7 +131,10 @@ def _engine_api():
 
 def run(src: str, db: str, start: str, end: str) -> dict:
     sys.path.insert(0, src)
-    import tennis_wc.features.common as common
+    try:  # tree layout after 2026-11-06 / before
+        import tennis_wc.model.features.common as common
+    except ImportError:
+        import tennis_wc.features.common as common
     engine_api = _engine_api()
 
     conn = _connect(db)

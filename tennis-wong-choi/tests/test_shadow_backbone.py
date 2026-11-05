@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import math
 
-from tennis_wc.features.elo import elo_probability
-from tennis_wc.modelling import probability_model as pm
+from tennis_wc.model.features.elo import elo_probability
+from tennis_wc.model import match as pm
 
 
 def _point(value):

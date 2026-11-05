@@ -22,10 +22,10 @@ def _provider(monkeypatch, module, rows):
 
 def test_identity_conflict_does_not_truncate_safe_ranking_rows(tmp_path, monkeypatch):
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.ingestion.entity_mapping import get_or_create_player
-    from tennis_wc.ingestion import ingest_rankings as module
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.sources.entity_mapping import get_or_create_player
+    from tennis_wc.sources import ingest_rankings as module
 
     init_db()
     wrong = get_or_create_player("feed", "KE64", "Toby Samuel", "ATP", 0, current_rank=100)
@@ -52,10 +52,10 @@ def test_identity_conflict_does_not_truncate_safe_ranking_rows(tmp_path, monkeyp
 
 def test_all_rows_held_is_an_explicit_failure(tmp_path, monkeypatch):
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.ingestion.entity_mapping import get_or_create_player
-    from tennis_wc.ingestion import ingest_rankings as module
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.sources.entity_mapping import get_or_create_player
+    from tennis_wc.sources import ingest_rankings as module
 
     init_db()
     get_or_create_player("feed", "KE64", "Toby Samuel", "ATP", 0)
@@ -68,8 +68,8 @@ def test_all_rows_held_is_an_explicit_failure(tmp_path, monkeypatch):
 
 def test_unexpected_database_or_programming_error_is_not_swallowed(tmp_path, monkeypatch):
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.ingestion import ingest_rankings as module
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.sources import ingest_rankings as module
 
     init_db()
     _provider(monkeypatch, module, [_ranking("TF", "Taylor Fritz", 1)])
@@ -83,11 +83,11 @@ def test_unexpected_database_or_programming_error_is_not_swallowed(tmp_path, mon
 @pytest.mark.parametrize("reverse", [False, True])
 def test_two_ranked_source_ids_claiming_one_canonical_player_are_both_held(tmp_path, monkeypatch, reverse):
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.identity.player_identity import ensure_identity_schema
-    from tennis_wc.ingestion.entity_mapping import get_or_create_player
-    from tennis_wc.ingestion import ingest_rankings as module
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.sources.identity import ensure_identity_schema
+    from tennis_wc.sources.entity_mapping import get_or_create_player
+    from tennis_wc.sources import ingest_rankings as module
 
     init_db()
     canonical = get_or_create_player("feed", "long", "Joao Lucas Reis Da Silva", "ATP", 0, current_rank=400)
@@ -112,9 +112,9 @@ def test_two_ranked_source_ids_claiming_one_canonical_player_are_both_held(tmp_p
 @pytest.mark.parametrize("same_key", [False, True])
 def test_ambiguous_repeated_new_identities_are_not_created(tmp_path, monkeypatch, same_key):
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.ingestion import ingest_rankings as module
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.sources import ingest_rankings as module
 
     init_db()
     rows = [_ranking("one", "Alex Smith", 1), _ranking("one" if same_key else "two", "Alex Smith", 2)]

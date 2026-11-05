@@ -6,8 +6,8 @@ def test_result_name_matching_requires_confident_pair_match(tmp_path, monkeypatc
     from conftest import configure_test_db
 
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.database.migrations import init_db
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.store.migrations import init_db
     from tennis_wc.settle.results import _match_by_names
 
     init_db()
@@ -47,8 +47,8 @@ def test_local_history_resolver_backfills_pending_match_result(tmp_path, monkeyp
     from conftest import configure_test_db
 
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.database.migrations import init_db
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.store.migrations import init_db
     from tennis_wc.settle.results import _resolve_pending_from_player_history
 
     init_db()
@@ -120,8 +120,8 @@ def test_the_settlement_backlog_sweeps_the_newest_dates_first(tmp_path, monkeypa
 
     configure_test_db(tmp_path, monkeypatch)
     from tennis_wc import run
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.database.migrations import init_db
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.store.migrations import init_db
     from tennis_wc.settle import results
 
     init_db()

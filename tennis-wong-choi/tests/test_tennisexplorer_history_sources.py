@@ -6,9 +6,9 @@ import json
 import pytest
 
 from test_tennisexplorer_history import _Stub, _result, _setup
-from tennis_wc.ingestion import ingest_tennisexplorer_history as corpus
-from tennis_wc.database.db import get_connection
-from tennis_wc.providers.tennisexplorer_provider import TennisExplorerResultsProvider,parse_results_page
+from tennis_wc.sources import ingest_tennisexplorer_history as corpus
+from tennis_wc.store.db import get_connection
+from tennis_wc.sources.providers.tennisexplorer_provider import TennisExplorerResultsProvider,parse_results_page
 
 
 def _stub():
@@ -133,7 +133,7 @@ def test_history_failure_keeps_source_committed(tmp_path,monkeypatch):
 
 
 def test_source_survives_lossless_retention(tmp_path,monkeypatch):
-    from tennis_wc.database.payload_archive import compact_payloads,read_payload
+    from tennis_wc.store.payload_archive import compact_payloads,read_payload
     _setup(tmp_path,monkeypatch)
     corpus.ingest_tennisexplorer_history('2026-03-01',provider=_stub())
     original=_raws()[0]
@@ -145,7 +145,7 @@ def test_source_survives_lossless_retention(tmp_path,monkeypatch):
 
 
 def test_same_source_preserves_numeric_history_and_elo(tmp_path,monkeypatch):
-    from tennis_wc.modelling.elo_builder import build_sackmann_elo
+    from tennis_wc.model.elo_builder import build_sackmann_elo
     stub=_stub();outputs=[]
     for mode in ['baseline','candidate']:
         _setup(tmp_path/mode,monkeypatch)

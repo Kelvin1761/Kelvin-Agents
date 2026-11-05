@@ -14,7 +14,7 @@ def match_probabilities(conn, day: str) -> dict[str, float]:
 
 
 def price_props(conn, day: str) -> list[dict]:
-    from tennis_wc.features.common import utc_now
+    from tennis_wc.model.features.common import utc_now
     from tennis_wc.pricing.props import price_date
 
     rows = []

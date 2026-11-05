@@ -12,7 +12,7 @@ from __future__ import annotations
 from collections import Counter
 from datetime import date, timedelta
 
-from tennis_wc.database.db import get_connection
+from tennis_wc.store.db import get_connection
 
 
 def _close(conn, pick) -> float | None:

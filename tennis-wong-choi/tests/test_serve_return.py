@@ -6,8 +6,8 @@ def _setup(tmp_path, monkeypatch):
     from conftest import configure_test_db
 
     configure_test_db(tmp_path, monkeypatch)
-    from tennis_wc.database.migrations import init_db
-    from tennis_wc.database.db import get_connection
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.store.db import get_connection
 
     init_db()
     conn = get_connection()

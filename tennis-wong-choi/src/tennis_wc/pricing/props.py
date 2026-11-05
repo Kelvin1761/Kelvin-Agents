@@ -180,7 +180,7 @@ class _Match:
         return simulate_match(holds[0], holds[1], trials=TRIALS, dispersion=FITTED_HOLD_GAP_DISPERSION)
 
     def named_player(self, market_name: str, family: str) -> tuple[int | None, str]:
-        from tennis_wc.ingestion.ingest_odds import selection_side_for
+        from tennis_wc.sources.ingest_odds import selection_side_for
 
         match = re.search(_PLAYER_NAME_IN_MARKET[family], market_name.strip(), re.I)
         who = match.group(1).strip() if match else ""
