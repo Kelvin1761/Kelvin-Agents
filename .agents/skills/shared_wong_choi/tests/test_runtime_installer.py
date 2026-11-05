@@ -60,10 +60,27 @@ def test_full_gate_runs_central_tests_and_propagates_failure(tmp_path, central_f
     assert ("FAIL  Central Wong Choi" if central_fails else "PASS  Central Wong Choi") in result.stdout
 
 
+def isolated_observer_installer(tmp_path):
+    """Keep simulated recovery independent of host process activity."""
+    observer = tmp_path / "idle-observer.py"
+    observer.write_text("raise SystemExit(0)\n")
+    isolated_installer = tmp_path / "install-runtime.sh"
+    source = INSTALLER.read_text()
+    assert 'runtime_active_guard || exit $?' in source
+    assert 'runtime_active_guard || return 1' in source
+    source = source.replace('PROJECT_ROOT="${SCRIPT_DIR:h:h:h}"',
+                            'PROJECT_ROOT=' + shlex.quote(str(REPO_ROOT)), 1)
+    source = source.replace('ACTIVE_RUN_GUARD="$PROJECT_ROOT/.agents/skills/shared_wong_choi/runtime_active_runs.py"',
+                            'ACTIVE_RUN_GUARD=' + shlex.quote(str(observer)), 1)
+    isolated_installer.write_text(source)
+    return isolated_installer
+
+
 @pytest.mark.parametrize("pointer_existed", [False, True])
 def test_runtime_installer_snapshot_restore_is_exact_and_idempotent(
     tmp_path: Path, pointer_existed: bool,
 ) -> None:
+    isolated_installer = isolated_observer_installer(tmp_path)
     agents = tmp_path / "LaunchAgents"
     agents.mkdir()
     snapshot = tmp_path / "snapshot"
@@ -98,7 +115,7 @@ exit 0
     )
 
     subprocess.run(
-        ["/bin/zsh", str(INSTALLER), "--snapshot", str(snapshot)],
+        ["/bin/zsh", str(isolated_installer), "--snapshot", str(snapshot)],
         env=env,
         text=True,
         capture_output=True,
@@ -111,7 +128,7 @@ exit 0
 
     for _attempt in range(2):
         subprocess.run(
-            ["/bin/zsh", str(INSTALLER), "--restore", str(snapshot)],
+            ["/bin/zsh", str(isolated_installer), "--restore", str(snapshot)],
             env=env,
             text=True,
             capture_output=True,
@@ -129,7 +146,7 @@ exit 0
     for metadata in snapshot.glob(".tennis-db-pointer-*"):
         metadata.unlink()
     pointer.write_bytes(b"newer-config-outside-legacy-snapshot\n")
-    damaged = subprocess.run(["/bin/zsh", str(INSTALLER), "--restore", str(snapshot)],
+    damaged = subprocess.run(["/bin/zsh", str(isolated_installer), "--restore", str(snapshot)],
                              env=env, capture_output=True, text=True)
     assert damaged.returncode != 0
     assert pointer.read_bytes() == b"newer-config-outside-legacy-snapshot\n"
@@ -215,19 +232,7 @@ def test_runtime_pointer_snapshot_rejects_unsafe_config(tmp_path, unsafe):
     (False, True, True, "bound-bootstrap-failure"),
 ])
 def test_runtime_installer_full_cutover_in_isolated_home(tmp_path: Path, active_run: bool, acceptance: bool, calendar_ok: bool, attempt: str) -> None:
-    # Simulated cutover owns its process observer, just as it owns launchctl.
-    # The separate native preflight tests exercise real kernel argv.
-    observer = tmp_path / "idle-observer.py"
-    observer.write_text("raise SystemExit(0)\n")
-    isolated_installer = tmp_path / "install-runtime.sh"
-    source = INSTALLER.read_text()
-    assert 'runtime_active_guard || exit $?' in source
-    assert 'runtime_active_guard || return 1' in source
-    source = source.replace('PROJECT_ROOT="${SCRIPT_DIR:h:h:h}"',
-                            'PROJECT_ROOT=' + shlex.quote(str(REPO_ROOT)), 1)
-    source = source.replace('ACTIVE_RUN_GUARD="$PROJECT_ROOT/.agents/skills/shared_wong_choi/runtime_active_runs.py"',
-                            'ACTIVE_RUN_GUARD=' + shlex.quote(str(observer)), 1)
-    isolated_installer.write_text(source)
+    isolated_installer = isolated_observer_installer(tmp_path)
     home = tmp_path / "home"
     agents = home / "Library" / "LaunchAgents"
     agents.mkdir(parents=True)
