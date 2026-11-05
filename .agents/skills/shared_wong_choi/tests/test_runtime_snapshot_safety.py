@@ -131,6 +131,37 @@ def test_restore_keeps_prior_unloaded_disabled_state_and_leaves_other_jobs_alone
     assert (agents / (label + ".plist")).read_bytes() == b"old plist\n"
 
 
+def test_owned_restore_defers_before_mutations_when_kernel_guard_detects_active_run(
+    isolated_runtime, tmp_path
+):
+    agents, label, loaded, calls, env, snapshot = isolated_runtime
+    assert invoke(env, "--snapshot", snapshot).returncode == 0
+    owned_publication(env, snapshot, label)
+    candidate = agents / (label + ".plist")
+    candidate_bytes = candidate.read_bytes()
+    loaded_bytes = loaded.read_bytes()
+    assert candidate_bytes != b"old plist\n"
+    assert not calls.exists()
+
+    folder = tmp_path / "folder with spaces"
+    folder.mkdir()
+    sleeper = folder / "central_research_review.py"
+    sleeper.write_text("import time; time.sleep(60)\n")
+    with subprocess.Popen([sys.executable, "-X", "dev", str(sleeper)]) as process:
+        try:
+            result = invoke(env, "--restore", snapshot)
+            assert process.poll() is None
+            assert result.returncode != 0
+            assert "automation run is active; cutover deferred" in result.stderr
+            assert not calls.exists()
+            assert candidate.read_bytes() == candidate_bytes
+            assert loaded.read_bytes() == loaded_bytes
+            assert (snapshot / ".write-ownership").is_dir()
+        finally:
+            process.terminate()
+            process.wait(timeout=10)
+
+
 @pytest.mark.parametrize("defect", ["damaged-proof", "missing-proof", "changed-backup"])
 def test_unverified_snapshot_blocks_before_any_launchd_mutation(isolated_runtime, defect):
     agents, label, _, calls, env, snapshot = isolated_runtime
