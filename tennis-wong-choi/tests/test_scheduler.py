@@ -15,6 +15,8 @@ def isolated(tmp_path, monkeypatch):
     monkeypatch.setattr(scheduler, "disk_headroom", lambda: {"ok": True, "detail": "ok"})
     sent = []
     monkeypatch.setattr(scheduler, "notify", lambda text, audience="primary": sent.append((audience, text)))
+    from tennis_wc import run
+    monkeypatch.setattr(run, "publish_day", lambda d, payload: {"cloudflare_deploy": {"status": "stub"}})
     return sent
 
 
@@ -133,3 +135,28 @@ def test_daily_reviews_yesterday_then_warms_tomorrow(monkeypatch):
     assert scheduler.main(["--today", "2026-11-05"]) == 0  # a Thursday: no weekly
     assert order == [("corpus", "2026-11-04"), ("review", "2026-11-04"),
                      ("archive", "2026-11-04"), ("analyse", "2026-11-06")]
+
+
+def test_the_dashboard_is_deployed_after_the_picks_are_recorded(monkeypatch):
+    from tennis_wc import run
+
+    order = []
+    monkeypatch.setattr(scheduler, "preflight", lambda: None)
+    monkeypatch.setattr(scheduler, "analyse", lambda d, today: order.append("analyse") or {"readiness": {}})
+    monkeypatch.setattr(scheduler, "publish", lambda d, label, main: order.append("picks") or [])
+    monkeypatch.setattr(run, "publish_day", lambda d, payload: order.append("deploy") or {})
+    scheduler.main(["--night", "21:00", "--today", "2026-11-06"])
+    scheduler.main(["--refresh-today", "--today", "2026-11-07"])
+    assert order == ["analyse", "picks", "deploy", "analyse", "picks", "deploy"]
+
+
+def test_a_failed_analysis_records_picks_but_does_not_deploy(monkeypatch):
+    from tennis_wc import run
+
+    order = []
+    monkeypatch.setattr(scheduler, "preflight", lambda: None)
+    monkeypatch.setattr(scheduler, "analyse", lambda d, today: (_ for _ in ()).throw(RuntimeError("down")))
+    monkeypatch.setattr(scheduler, "publish", lambda d, label, main: order.append("picks") or [])
+    monkeypatch.setattr(run, "publish_day", lambda d, payload: order.append("deploy") or {})
+    scheduler.main(["--night", "23:00", "--today", "2026-11-06"])
+    assert order == ["picks"]

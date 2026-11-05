@@ -174,7 +174,6 @@ def price_props(match_date: str) -> int:
 def price_day(match_date: str, *, today: str) -> dict:
     """The whole analysis for one date. Returns the health payload."""
     from tennis_wc.model.features.feature_builder import odds_coverage_for_date
-    from tennis_wc.publish.dashboard import deploy, record_evidence
     from tennis_wc.publish.report import write_report
     from tennis_wc.sources.slate_audit import audit_current_slate
 
@@ -204,12 +203,28 @@ def price_day(match_date: str, *, today: str) -> dict:
         "source_errors": stages.errors, "source_warnings": stages.warnings,
         "slate_integrity": slate, "stage_timings": stages.timings,
     }
-    payload["prediction_evidence"] = stages.run(
-        "prediction_evidence", lambda: record_evidence(match_date, Path(report)))
     payload["readiness"] = readiness(payload, horizon=horizon(match_date, today))
-    payload["cloudflare_deploy"] = deploy(match_date, payload)
     _record_run(match_date, payload)
     return payload
+
+
+def publish_day(match_date: str, payload: dict) -> dict:
+    """After 精選 are recorded: rewrite the report, freeze it as evidence, deploy.
+
+    Runs after the picks so the dashboard and the evidence carry them; the
+    deploy is still gated by the analysis readiness.
+    """
+    from tennis_wc.publish.dashboard import deploy, record_evidence
+    from tennis_wc.publish.report import write_report
+
+    out: dict = {}
+    try:
+        report = write_report(match_date)
+        out["prediction_evidence"] = record_evidence(match_date, Path(report))
+    except Exception as exc:  # noqa: BLE001 - evidence never blocks the dashboard
+        out["prediction_evidence"] = {"status": "failed", "error": f"{type(exc).__name__}: {exc}"}
+    out["cloudflare_deploy"] = deploy(match_date, payload)
+    return out
 
 
 def _record_run(match_date: str, payload: dict) -> None:

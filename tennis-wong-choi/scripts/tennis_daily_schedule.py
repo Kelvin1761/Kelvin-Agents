@@ -145,7 +145,6 @@ def analyse(match_date: str, *, today: str) -> dict:
         "date": match_date, "horizon": ready["horizon"], "severity": ready["severity"],
         "fixtures": coverage.get("fixtures"), "priced": coverage.get("priced_matches"),
         "analysed": payload["matches_analysed"], "props": payload["props_priced"],
-        "deploy": (payload.get("cloudflare_deploy") or {}).get("status"),
         "source_errors": len(errors), "source_warnings": len(warnings)}, ensure_ascii=False))
     observed = "; ".join(ready["observed"]) or "none"
     if ready["severity"] == "error":
@@ -167,6 +166,20 @@ def publish(match_date: str, label: str, *, main: bool) -> list[dict]:
         return []
 
 
+def publish_dashboard(match_date: str, payload: dict | None) -> None:
+    """Report, evidence and dashboard deploy, AFTER 精選 so they carry the picks."""
+    from tennis_wc import run
+
+    if payload is None:
+        log(f"Dashboard deploy skipped for {match_date}: no completed analysis.")
+        return
+    try:
+        out = run.publish_day(match_date, payload)
+        log(f"Dashboard deploy: {json.dumps(out.get('cloudflare_deploy'), ensure_ascii=False)}")
+    except Exception as exc:  # noqa: BLE001 - a dashboard failure never fails the run
+        log(f"Dashboard deploy failed: {type(exc).__name__}: {exc}")
+
+
 # --------------------------------------------------------------------------- the three jobs
 
 def night(today: date, label: str) -> int:
@@ -174,13 +187,15 @@ def night(today: date, label: str) -> int:
     target = (today + timedelta(days=1)).isoformat()
     main = label == "21:00"
     failure = None
+    payload = None
     try:
         preflight()
-        analyse(target, today=today.isoformat())
+        payload = analyse(target, today=today.isoformat())
     except Exception as exc:  # noqa: BLE001 - still publish what was priced
         failure = f"{type(exc).__name__}: {exc}"
         log(f"NIGHT {label}: analysis failed: {failure}")
     added = publish(target, label, main=main and failure is None)
+    publish_dashboard(target, payload)
     if failure and main:
         notify(f"⚠️ Tennis 21:00 精選抓盤失敗（{target}）：{failure[:300]}\n"
                f"已記錄 {len(added)} 注；23:00 同明朝 09:00 會再試。")
@@ -190,11 +205,13 @@ def night(today: date, label: str) -> int:
 
 def card(today: date) -> None:
     """09:00 backup: price today, top up 精選."""
+    payload = None
     try:
         preflight()
-        analyse(today.isoformat(), today=today.isoformat())
+        payload = analyse(today.isoformat(), today=today.isoformat())
     finally:
         publish(today.isoformat(), "09:00", main=False)
+        publish_dashboard(today.isoformat(), payload)
 
 
 def daily(today: date) -> None:
@@ -221,7 +238,8 @@ def daily(today: date) -> None:
     _dashboard_settlements(yesterday)
     if run.results_extracted(review):
         _archive(yesterday)
-    analyse((today + timedelta(days=1)).isoformat(), today=today.isoformat())
+    tomorrow = (today + timedelta(days=1)).isoformat()
+    publish_dashboard(tomorrow, analyse(tomorrow, today=today.isoformat()))
     if today.weekday() == 6:
         try:
             from tennis_wc.publish.weekly import send_weekly
