@@ -55,4 +55,5 @@
   每晚 interim 記「ability 有郁嘅馬數」同兩邊頭三初出馬入三數 —— 長期 0 = 斷咗。
 - **等價驗證**：2026-11-06 Cranbourne 副本，D1 評分後反事實重砌 vs 引擎 `WC_AU_DEBUT_NEUTRAL=0`：85 匹、6 匹初出路徑，差 **0.0000**，其他馬冇郁。
   正向路徑：2026-10-25 Coonabarabran 副本收到 1 場、1 匹 ability 有郁。測試 `tests/test_debut_neutral_forward.py`。
+- **補丁（2026-11-06）**：入選改為睇存值（穩定性分 = 60）唔靠日期 —— 11-06 場次上線前已用 52.4 評分，收入去會 live = 反事實、靜靜拉向零；而家記做 `pre_d1_record` 剔走。
 - AU golden 120 匹一致（fixture 冇初出馬）。

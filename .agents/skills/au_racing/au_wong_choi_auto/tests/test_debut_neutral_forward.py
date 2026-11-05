@@ -12,17 +12,18 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[5]
 sys.path.insert(0, str(ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts"))
 
-from au_debut_neutral_forward import affected, legacy_form_quality  # noqa: E402
+from au_debut_neutral_forward import affected, legacy_form_quality, race_rows, scored_with_d1  # noqa: E402
 from au_racing_engine.scoring import CONSISTENCY_MICRO_WEIGHTS, DEBUT_NO_EVIDENCE_LEGACY  # noqa: E402
 
 PROV = {"consistency_score": "career_tag", "performance_quality_score": "consistency_fallback",
         "form_quality_score": "form_quality_fallback_composite"}
 
 
-def auto(form=60.0, pq=60.0, fq=60.0, prov=PROV, trip=False):
+def auto(form=60.0, pq=60.0, fq=60.0, prov=PROV, trip=False, consistency=60.0):
     detail = {"trip_change": {"delta": -5.0}} if trip else {}
     return {"score_provenance": dict(prov),
-            "feature_scores": {"form_score": form, "performance_quality_score": pq, "form_quality_score": fq},
+            "feature_scores": {"form_score": form, "performance_quality_score": pq, "form_quality_score": fq,
+                               "consistency_score": consistency},
             "stability_detail": {"form_quality": detail}}
 
 
@@ -45,6 +46,13 @@ class DebutNeutralTests(unittest.TestCase):
         self.assertTrue(affected(auto()))
         self.assertFalse(affected(auto(prov={**PROV, "form_quality_score": "form_quality_field_relative"})))
         self.assertFalse(affected(auto(prov={**PROV, "consistency_score": "computed"})))
+
+
+    def test_pre_d1_record_is_skipped_not_counted_as_unchanged(self) -> None:
+        old = auto(pq=52.4, fq=0.6 * 60 + 0.4 * 52.4, consistency=52.4)
+        self.assertFalse(scored_with_d1(old))
+        self.assertTrue(scored_with_d1(auto()))
+        self.assertEqual(race_rows({"horses": {"1": {"python_auto": old}}}, [])[3], "pre_d1_record")
 
 
 if __name__ == "__main__":

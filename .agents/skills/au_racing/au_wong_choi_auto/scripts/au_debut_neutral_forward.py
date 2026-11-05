@@ -44,6 +44,12 @@ def affected(auto: dict) -> bool:
     return all(prov.get(k) == v for k, v in PATH.items())
 
 
+def scored_with_d1(auto: dict) -> bool:
+    """存值係咪 D1（穩定性分 60）。⚠️ 唔可以靠日期：2026-11-06 嘅場次上線前已經用 52.4 評咗分，
+    收入去 live = 反事實，會靜靜拉向零。"""
+    return abs(float((auto.get("feature_scores") or {}).get("consistency_score", 0.0)) - 60.0) < 1e-6
+
+
 def legacy_form_quality(auto: dict) -> tuple[float | None, str]:
     """→ (舊 52.4 下嘅近績質素, 問題)。live 重砌對唔上就回問題。"""
     features = auto.get("feature_scores") or {}
@@ -72,6 +78,8 @@ def race_rows(logic, result_rows):
             continue
         base_features = dict(features)
         is_debut = affected(auto)
+        if is_debut and not scored_with_d1(auto):
+            return [], [], 0, "pre_d1_record"
         if is_debut:
             legacy, problem = legacy_form_quality(auto)
             if problem:
