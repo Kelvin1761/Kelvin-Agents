@@ -34,7 +34,10 @@ def ingest_odds(date: str) -> int:
     now = utc_now()
     count = 0
     rows = [row for row in rows if _row_matches_requested_date(row, date)]
-    _prune_stale_sportsbet_odds_for_date(provider.provider_name, date, {str(row.get("event_id")) for row in rows if row.get("event_id")}, raw_id=raw_id)
+    live_ids = {str(row["event_id"]) for row in rows if row.get("event_id")
+                and _sportsbet_in_play(provider.provider_name, row)}
+    rows = [row for row in rows if not _sportsbet_in_play(provider.provider_name, row)]
+    _prune_stale_sportsbet_odds_for_date(provider.provider_name, date, {str(row.get("event_id")) for row in rows if row.get("event_id")}, raw_id=raw_id, in_play_event_ids=live_ids)
     for row in rows:
         if provider.provider_name == "mock":
             row = row | {"event_id": f"mock-event-{date}-1"}
@@ -169,7 +172,8 @@ def _insert_market_odds(conn, row: dict, match_id: int | None, provider_name: st
 
 
 def _prune_stale_sportsbet_odds_for_date(provider_name: str, match_date: str,
-                                         active_event_ids: set[str], *, raw_id: int | None = None) -> None:
+                                         active_event_ids: set[str], *, raw_id: int | None = None,
+                                         in_play_event_ids: set[str] | None = None) -> None:
     if provider_name not in {"sportsbet", "sportsbet_scrape"}:
         return
     from tennis_wc.database.market_captures import bookmaker_event_for_match,record_market_capture
@@ -192,6 +196,8 @@ def _prune_stale_sportsbet_odds_for_date(provider_name: str, match_date: str,
                 for book in books or {provider_name}:
                     record_market_capture(conn,int(row['id']),{'event_id':event_id,'bookmaker':book,'listed':False},
                                           provider_name,raw_id,utc_now(),'market_odds_snapshots')
+            if event_id in (in_play_event_ids or set()):
+                continue
             # Availability belongs to the book; another fixture feed may still
             # list the event. Retain every old quote and forecast in both cases.
             if row['source_provider'] in {'sportsbet','sportsbet_scrape'} and row['fixture_status']=='ACTIVE':
@@ -607,12 +613,23 @@ def ingest_event_odds(event_id: str, match_id: int | None = None, *, preclose: b
         event_id,
     )
     _validate_sportsbet_event_response(provider.provider_name, event_id, row)
+    if preclose and _sportsbet_in_play(provider.provider_name, row):
+        return 0
     if preclose:
         return _store_preclose_event(row, match_id, provider.provider_name, raw_id)
     now = utc_now()
     with get_connection() as conn:
         match_id,blocked=_resolve_odds_fixture(conn,row,explicit_id=match_id,provider_name=provider.provider_name)
         if blocked:
+            return 0
+        if _sportsbet_in_play(provider.provider_name, row):
+            from tennis_wc.database.market_captures import record_market_capture
+
+            if match_id is not None:
+                record_market_capture(
+                    conn, match_id, {**row, 'listed': False}, provider.provider_name,
+                    raw_id, now, 'market_odds_snapshots',
+                )
             return 0
         a_odds, b_odds, a_open, b_open = _oriented_positional_odds(conn, match_id, row)
         if a_odds is not None and b_odds is not None:
@@ -642,6 +659,14 @@ def ingest_event_odds(event_id: str, match_id: int | None = None, *, preclose: b
             )
         _insert_market_odds(conn, row, match_id, provider.provider_name, raw_id, now)
     return 1
+
+
+def _sportsbet_in_play(provider_name: str, row: dict) -> bool:
+    if provider_name not in {'sportsbet', 'sportsbet_scrape'}:
+        return False
+    raw = row.get('raw')
+    event = raw.get('event') if isinstance(raw, dict) else None
+    return isinstance(event, dict) and str(event.get('status') or '').casefold() == 'live'
 
 
 def _validate_sportsbet_event_response(provider_name: str, event_ref: str, row: dict) -> None:

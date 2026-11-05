@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261105-tennis-pregame-phase](EXP-20261105-tennis-pregame-phase-guard.md) | 2026-11-05 | Tennis | 分離明示 live 原文與賽前定價，檢查建構／定價跨開賽時間 | **資料修正**。固定 57 場有 12 已開賽且原文明示 live，篩後 45 場輸入 SHA 一致。qualification 仍 0，無 accuracy 改善證據，發佈以 Central manifest 為準 |
 | [EXP-20261105-04](EXP-20261105-04-hkjc-front-habit-and-night-bias-results.md) | 2026-11-05 | HKJC | 全場步速預測準唔準；前置習慣 ±K 入檔位與走位；當晚前置唔著數就熄（偏外檔守中）（[協議](EXP-20261105-04-hkjc-front-habit-and-night-bias-protocol.md)） | **A 全部 REJECT（286 場）**：步速預測 ρ 0.125 唔入分；A4 Gold +1.75pp [+0.33,+3.45]、前三平均名次改善，但 Good 一路細負（沙田三個 K 都負，A6 −2.45pp）→ primary_regression，live 冇改。cohort +8.6pp 唔等於排名收益。**C（當晚開關）照舊 forward**，tracker `front_habit_night_gate` 60 晚 |
 | [EXP-20261105-03](EXP-20261105-03-hkjc-form-linear-and-l400-standardised-results.md) | 2026-11-05 | HKJC | 近績分改直線名次（12 名封頂）並剷穩定性分；L400 門檻改為對場地路程標準化（[協議](EXP-20261105-03-hkjc-form-linear-and-l400-standardised-protocol.md)） | **7 個 arm 全部 REJECT（286 場）**：A1 直線名次 Good −2.45pp CI 全負（現行分檔＋輸距覆核穩定性分要留）；A2 合併判唔到（Gold −0.35、Good −0.70）；B1 L400 標準化 Gold +1.40 [+0.34,+2.78] 但 Good −0.35，refit 後 Gold 0；冇開 forward、live 冇改。篩選 +0.012 係比較基準錯（用咗簡化重砌穩定性分），對 live 係打和 |
 | [EXP-20261105-02](EXP-20261105-02-hkjc-weight-score-into-class.md) | 2026-11-05 | HKJC | 負磅分由馬匹健康（38.9%）搬入級數優勢，總權重不變 | **STRUCTURAL KEEP（rank-neutral，唔聲稱改善）**：剷走已經 REJECT 過（EXP-20260904-08、20261019-04）；shim `LEGACY_WEIGHT_MERGE` 保持兩維度加權和逐匹不變，全語料 5,365 匹（170 初出）2 位小數零差，4 場次 538 匹真引擎除 class／health 四欄外逐格一樣；shim 唔可以 round（6 位已令 2 匹翻轉）；兩維度顯示尺重量 |

@@ -1,0 +1,11 @@
+{
+  "counts": {
+    "observations": 57,
+    "accepted": 45,
+    "raw_live_rejected": 12,
+    "match_already_started": 12
+  },
+  "accepted_snapshot_sha256": "22a5c38fc80cf39d1b721f556329f1af1cdb0da6e59c132db4c9da125881bcd2",
+  "accepted_payload_parity": true,
+  "production_updates": 0
+}

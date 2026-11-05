@@ -1,6 +1,8 @@
 """A current board cannot combine disappeared lines or different quote batches."""
 from __future__ import annotations
 
+import pytest
+
 from conftest import configure_test_db
 from tennis_wc.database.db import get_connection
 from tennis_wc.database.migrations import init_db
@@ -117,3 +119,44 @@ def test_empty_book_listing_retires_composite_quotes_without_deleting_history(tm
         _insert_market_odds(c,row,1,'sportsbet',3,'2026-06-01T10:00:00Z')
         assert len(_rows_for_date(c,'2026-06-01'))==2
         assert c.execute('SELECT COUNT(*) FROM market_odds_snapshots').fetchone()[0]==4
+
+
+@pytest.mark.parametrize("entry", ("listing", "event", "preclose"))
+def test_live_sportsbet_capture_preserves_raw_and_retires_current_quotes(tmp_path, monkeypatch, entry):
+    from types import SimpleNamespace
+    import json
+    from tennis_wc.ingestion import ingest_odds
+    configure_test_db(tmp_path, monkeypatch)
+    init_db()
+    with get_connection() as c:
+        for pid, name in ((1, "Player One"), (2, "Player Two")):
+            c.execute("INSERT INTO players(id,name,tour,source_provider,created_at,updated_at) VALUES (?,?,'ATP','test','now','now')", (pid, name))
+        c.execute("INSERT INTO matches(id,provider_match_id,tour,match_date,tournament_id,player_a_id,player_b_id,round,source_provider,created_at,updated_at) VALUES (1,'fixture','ATP','2026-06-01',1,1,2,'R1','composite','now','now')")
+        if entry == "listing":
+            c.execute("UPDATE matches SET source_provider='sportsbet' WHERE id=1")
+        row = dict(event_id="event", bookmaker="Sportsbet", player_a_name="Player One",
+                   player_b_name="Player Two", player_a_odds=1.9, player_b_odds=1.9,
+                   start_time_utc="2026-06-01T08:00:00Z", raw={"event": {"status": "live"}},
+                   markets=[dict(market_key="total_games", market_name="Match Total Games", selections=[
+                       dict(selection_name="Over", line=22.5, odds=1.9),
+                       dict(selection_name="Under", line=22.5, odds=1.9),
+                   ])])
+        c.execute(
+            "INSERT INTO raw_api_responses(id,provider_name,endpoint,request_url_hash,request_params_json,response_json,status_code,fetched_at,entity_type,created_at) VALUES (1,'sportsbet','/odds','hash','{}',?,200,'2026-06-01T07:00:00Z','odds','2026-06-01T07:00:00Z')",
+            (json.dumps([row]),),
+        )
+        _insert_market_odds(c, row, 1, "sportsbet", 1, "2026-06-01T07:00:00Z")
+        assert len(_rows_for_date(c, "2026-06-01")) == 2
+    provider = SimpleNamespace(provider_name="sportsbet", fetch_upcoming_odds_for_date=lambda day: [row],
+                               fetch_event_odds=lambda event, markets: row)
+    monkeypatch.setattr(ingest_odds, "get_odds_provider", lambda: provider)
+    if entry == "listing":
+        assert ingest_odds.ingest_odds("2026-06-01") == 0
+    else:
+        assert ingest_odds.ingest_event_odds("event", match_id=1, preclose=entry == "preclose") == 0
+    with get_connection() as c:
+        assert len(_rows_for_date(c, "2026-06-01")) == (2 if entry == "preclose" else 0)
+        assert c.execute("SELECT count(*) FROM market_odds_snapshots").fetchone()[0] == 2
+        assert c.execute("SELECT fixture_status FROM matches WHERE id=1").fetchone()[0] == "ACTIVE"
+        body = c.execute("SELECT response_json FROM raw_api_responses ORDER BY id DESC LIMIT 1").fetchone()[0]
+        assert (json.loads(body)[0] if entry == "listing" else json.loads(body))["raw"]["event"]["status"] == "live"

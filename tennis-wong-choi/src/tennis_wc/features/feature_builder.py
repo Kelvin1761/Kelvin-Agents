@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 
 from tennis_wc.database.market_captures import current_market_clause, book_listing_clause
@@ -567,7 +567,7 @@ def _sportsbet_priced_matches(conn, match_date: str) -> list[dict]:
         dict(row)
         for row in conn.execute(
             f"""
-            SELECT DISTINCT m.id, t.name AS tournament_name
+            SELECT DISTINCT m.id, m.start_time_utc, t.name AS tournament_name
             FROM matches m
             JOIN tournaments t ON t.id = m.tournament_id
             JOIN odds_snapshots o ON o.match_id = m.id
@@ -611,7 +611,21 @@ def build_sportsbet_feature_snapshots_for_date(
                         "reason": "doubles_competition"})
             continue
         try:
-            snapshots.append(build_match_feature_snapshot(match_id))
+            start = row['start_time_utc']
+            if start:
+                parsed_start = datetime.fromisoformat(str(start).replace('Z', '+00:00'))
+                if parsed_start.utcoffset() is None:
+                    raise ValueError('match start requires a timezone')
+                if parsed_start <= datetime.fromisoformat(utc_now().replace('Z', '+00:00')):
+                    log.append({'match_id': match_id, 'tournament': row['tournament_name'],
+                                'reason': 'match_already_started'})
+                    continue
+            snapshot = build_match_feature_snapshot(match_id)
+            if start and parsed_start <= datetime.fromisoformat(utc_now().replace('Z', '+00:00')):
+                log.append({'match_id': match_id, 'tournament': row['tournament_name'],
+                            'reason': 'match_started_during_feature_build'})
+                continue
+            snapshots.append(snapshot)
         except Exception as exc:  # one bad match must not blind us to the rest
             log.append({"match_id": match_id, "tournament": row["tournament_name"],
                         "reason": f"{type(exc).__name__}: {exc}"})

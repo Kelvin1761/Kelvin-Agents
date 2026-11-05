@@ -323,3 +323,43 @@ def test_priced_matches_dedupes_the_same_way_fixtures_does(tmp_path, monkeypatch
     assert coverage["priced_matches"] == 1
     assert coverage["priced_ratio"] == 1.0
     assert coverage["book_priced_ratio"] == 1.0
+
+
+def test_sportsbet_feature_build_holds_started_matches_and_records_reason(tmp_path, monkeypatch):
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.features import feature_builder as fb
+
+    init_db()
+    with get_connection() as conn:
+        for mid in (9801, 9802, 9803):
+            _seed_priced_match(conn, mid, "Open", 7801)
+        conn.execute("UPDATE matches SET start_time_utc='2026-07-25T09:00:00Z' WHERE id=9801")
+        conn.execute("UPDATE matches SET start_time_utc='2026-07-25T08:59:59Z' WHERE id=9802")
+        conn.execute("UPDATE matches SET start_time_utc='2026-07-25T09:00:01Z' WHERE id=9803")
+    monkeypatch.setattr(fb, "utc_now", lambda: "2026-07-25T09:00:00Z")
+    built = []
+    monkeypatch.setattr(fb, "build_match_feature_snapshot", lambda mid: built.append(mid) or {"match_id": mid})
+    skipped = []
+    assert fb.build_sportsbet_feature_snapshots_for_date("2026-07-25", skipped) == [{"match_id": 9803}]
+    assert built == [9803]
+    assert {row["reason"] for row in skipped} == {"match_already_started"}
+
+
+def test_sportsbet_match_can_start_while_features_are_built(tmp_path, monkeypatch):
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.features import feature_builder as fb
+
+    init_db()
+    with get_connection() as conn:
+        _seed_priced_match(conn, 9811, "Open", 7811)
+        conn.execute("UPDATE matches SET start_time_utc='2026-07-25T09:00:00Z' WHERE id=9811")
+    clock = iter(("2026-07-25T08:59:59Z", "2026-07-25T09:00:00Z"))
+    monkeypatch.setattr(fb, "utc_now", lambda: next(clock))
+    monkeypatch.setattr(fb, "build_match_feature_snapshot", lambda mid: {"match_id": mid})
+    skipped = []
+    assert fb.build_sportsbet_feature_snapshots_for_date("2026-07-25", skipped) == []
+    assert skipped[0]["reason"] == "match_started_during_feature_build"

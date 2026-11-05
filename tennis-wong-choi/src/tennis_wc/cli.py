@@ -284,11 +284,46 @@ def validate_provenance(args: argparse.Namespace) -> None:
     _print_json([validate_data_freshness(snapshot) for snapshot in snapshots])
 
 
+def _price_pregame_snapshot(snapshot: dict, skipped: list[dict] | None = None) -> dict | None:
+    """Check the operational clock on both sides of pricing, including queue delay."""
+    def reject(reason: str) -> None:
+        if skipped is not None:
+            match_id = snapshot.get("match_id")
+            if isinstance(match_id, dict):
+                match_id = match_id.get("value")
+            skipped.append({"match_id": match_id, "reason": reason})
+
+    start = (snapshot.get("match_context") or {}).get("start_time_utc")
+    if isinstance(start, dict):
+        start = start.get("value")
+    parsed_start = None
+    if start:
+        try:
+            parsed_start = datetime.fromisoformat(str(start).replace("Z", "+00:00"))
+        except ValueError:
+            reject("invalid_match_start")
+            return None
+        if parsed_start.utcoffset() is None:
+            reject("match_start_missing_timezone")
+            return None
+        if parsed_start <= datetime.now(timezone.utc):
+            reject("match_already_started_at_pricing")
+            return None
+    pricing = price_match_snapshot(snapshot)
+    if parsed_start is not None and parsed_start <= datetime.now(timezone.utc):
+        reject("match_started_during_pricing")
+        return None
+    return pricing
+
+
 def predict_daily(args: argparse.Namespace) -> None:
-    snapshots = build_sportsbet_feature_snapshots_for_date(args.date)
+    pregame_skipped: list[dict] = []
+    snapshots = build_sportsbet_feature_snapshots_for_date(args.date, skipped=pregame_skipped)
     predictions = []
     for snapshot in snapshots:
-        pricing = price_match_snapshot(snapshot)
+        pricing = _price_pregame_snapshot(snapshot, pregame_skipped)
+        if pricing is None:
+            continue
         filter_result = apply_bet_filter(snapshot, pricing)
         prediction_id = store_prediction(
             snapshot["match_id"]["value"],
@@ -315,14 +350,17 @@ def predict_daily(args: argparse.Namespace) -> None:
                 "hard_no_bet_reasons": filter_result["hard_no_bet_reasons"],
             }
         )
-    _print_json({"date": args.date, "predictions": predictions})
+    _print_json({"date": args.date, "predictions": predictions, "pregame_skipped": pregame_skipped})
 
 
 def run_agents_command(args: argparse.Namespace) -> None:
-    snapshots = build_sportsbet_feature_snapshots_for_date(args.date)
+    pregame_skipped: list[dict] = []
+    snapshots = build_sportsbet_feature_snapshots_for_date(args.date, skipped=pregame_skipped)
     outputs = []
     for snapshot in snapshots:
-        pricing = price_match_snapshot(snapshot)
+        pricing = _price_pregame_snapshot(snapshot, pregame_skipped)
+        if pricing is None:
+            continue
         filter_result = apply_bet_filter(snapshot, pricing)
         agent_output = run_agent_reviews(snapshot, pricing, filter_result)
         outputs.append(
@@ -334,7 +372,7 @@ def run_agents_command(args: argparse.Namespace) -> None:
                 "reviews": agent_output["reviews"],
             }
         )
-    _print_json({"date": args.date, "agent_runs": outputs})
+    _print_json({"date": args.date, "agent_runs": outputs, "pregame_skipped": pregame_skipped})
 
 
 def generate_report(args: argparse.Namespace) -> None:
@@ -929,9 +967,10 @@ def run_daily(args: argparse.Namespace) -> None:
     if slate_integrity['held']:
         source_warnings.append({'source': 'slate_integrity',
                                 'warning': f"held fixtures (excluded from card): {slate_integrity['held']}"})
+    pregame_skipped: list[dict] = []
     snapshots = _run_timed_stage(
         "feature_snapshots",
-        lambda: build_sportsbet_feature_snapshots_for_date(args.date),
+        lambda: build_sportsbet_feature_snapshots_for_date(args.date, skipped=pregame_skipped),
         stage_timings,
     )
     valid = [snapshot for snapshot in snapshots if snapshot["data_quality"]["is_valid"]]
@@ -941,7 +980,9 @@ def run_daily(args: argparse.Namespace) -> None:
     def price_and_review() -> list[dict]:
         output = []
         for snapshot in snapshots:
-            pricing = price_match_snapshot(snapshot)
+            pricing = _price_pregame_snapshot(snapshot, pregame_skipped)
+            if pricing is None:
+                continue
             filter_result = apply_bet_filter(snapshot, pricing)
             prediction_id = store_prediction(
                 snapshot["match_id"]["value"], snapshot["feature_set_version"],
@@ -1005,6 +1046,7 @@ def run_daily(args: argparse.Namespace) -> None:
     payload = {
         "date": args.date,
         "matches_analysed": len(snapshots),
+        "pregame_skipped": pregame_skipped,
         "valid_feature_snapshots": len(valid),
         "invalid_due_to_data_issue": len(snapshots) - len(valid),
         "odds_coverage": odds_coverage_for_date(args.date),
