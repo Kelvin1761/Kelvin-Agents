@@ -1,7 +1,10 @@
 # Tennis Wong Choi：全面重建 + 盈利策略 + 精選 + 夜晚落注 —— 總計劃
 
 - 建立：2026-11-05（Claude Code，同 Kelvin 對話整理）
-- 狀態：**計劃，未實作**。Codex 已停手，tennis 由呢份計劃接手。
+- 狀態：**階段一／二已實作（EXP-20261105-08），等部署**；階段三（全面重建）未開始。Codex 已停手，tennis 由呢份計劃接手。
+- 階段一／二實際做咗：`tennis_wc/featured.py`、`scripts/tennis_night_card.py` + launchd `.night`（21:00／23:00）、
+  09:00 card 改補充、取消舊 card／早報／每朝健康心跳推送、統一 ROI 板 tennis 行改精選、前向夠數提示、
+  dashboard 精選主位＋其餘紙上注收起。新 code 寫成重建後結構會保留嘅樣（`featured.py` 唔依賴舊 report）。
 - 原則：跟 `AGENTS.md`「改模型嘅規矩」同 `docs/model-evaluation-contract.md`；統一研究計劃
   （`tennis-research-execution-plan-20261028.md`）嘅 15 個 REJECT_DEV 唔重開。
 

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!--
+    21:00 精選 card for tomorrow (always sent) and 23:00 top-up (new picks
+    only). Kelvin 2026-11-05: bet 21:00-00:00 like NBA; 09:00 is the backup.
+  -->
+  <key>Label</key>
+  <string>com.antigravity.tennis-wong-choi.night</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>__TENNIS_PYTHON_BIN__</string>
+    <string>__PROJECT_DIR__/scripts/tennis_night_card.py</string>
+    <string>--label</string>
+    <string>auto</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>__PROJECT_DIR__</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>DATABASE_URL</key>
+    <string>__DATABASE_URL__</string>
+    <key>TENNIS_ENV_FILE</key>
+    <string>__TENNIS_ENV_FILE__</string>
+    <key>TENNIS_PYTHON_BIN</key>
+    <string>__TENNIS_PYTHON_BIN__</string>
+    <key>TENNIS_LOG_DIR</key>
+    <string>__TENNIS_LOG_DIR__</string>
+    <key>TENNIS_ANALYSIS_OUTPUT_ROOT</key>
+    <string>__TENNIS_ANALYSIS_OUTPUT_ROOT__</string>
+    <key>TENNIS_NOTIFY_BETS</key>
+    <string>1</string>
+  </dict>
+
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict>
+      <key>Hour</key><integer>21</integer>
+      <key>Minute</key><integer>0</integer>
+    </dict>
+    <dict>
+      <key>Hour</key><integer>23</integer>
+      <key>Minute</key><integer>0</integer>
+    </dict>
+  </array>
+
+  <key>StandardOutPath</key>
+  <string>__PROJECT_DIR__/data/logs/launchd.night.stdout.log</string>
+  <key>StandardErrorPath</key>
+  <string>__PROJECT_DIR__/data/logs/launchd.night.stderr.log</string>
+  <key>RunAtLoad</key><false/>
+</dict>
+</plist>

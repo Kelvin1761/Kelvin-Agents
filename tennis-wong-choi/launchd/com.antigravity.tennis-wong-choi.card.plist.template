@@ -52,17 +52,9 @@
     <string>__TENNIS_LOG_DIR__</string>
     <key>TENNIS_ANALYSIS_OUTPUT_ROOT</key>
     <string>__TENNIS_ANALYSIS_OUTPUT_ROOT__</string>
-    <!--
-      The daily health line, pushed. Enabled 2026-08-11 on Kelvin's go-ahead.
-      Sent on EVERY outcome including a day with no bet: an empty card is a
-      legitimate output, and that is exactly why it hid a broken pipeline for
-      two months once and three dark days again. The BOARD MISSING alarm is
-      separate and always on; this is the heartbeat that makes silence visible.
-      Set here rather than in run_launcher.sh so that it is version controlled.
-    -->
-    <key>TENNIS_NOTIFY_HEALTH</key>
-    <string>1</string>
-    <!-- Formal betting card only: primary owner + WC_NOTIFY_TELEGRAM_EXTRA. -->
+    <!-- 2026-11-05: no routine health push (Kelvin: too noisy). BOARD MISSING
+         and 精選 failure alerts are separate and always on. -->
+    <!-- 09:00 backup: 補充精選 only when new picks were added. -->
     <key>TENNIS_NOTIFY_BETS</key>
     <string>1</string>
   </dict>

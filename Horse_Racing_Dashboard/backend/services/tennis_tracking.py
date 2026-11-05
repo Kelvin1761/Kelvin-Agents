@@ -206,6 +206,37 @@ def export_tennis_tracking(db_path):
                     continue
                 prop_ids.add(r["id"])
                 records.append(make(r, f"tennis:prop:{r['id']}", "prop"))
+            # 精選 (2026-11-05): frozen at the price each pick was sent at; the
+            # result comes from prop_tracker, the single settlement source.
+            # Read separately so a database without the table adds no warning.
+            prop_by_id = {r["id"]: r for r in sources["prop_tracker"] or []}
+            for f in _rows(c, "featured_picks") or []:
+                base = prop_by_id.get(f.get("prop_id"), {})
+                status = str(base.get("result_status") or "PENDING").upper()
+                frozen = _number(f.get("odds"))
+                pnl = None
+                if frozen and frozen > 1:
+                    pnl = {"WON": frozen - 1, "LOST": -1.0, "VOID": 0.0}.get(status)
+                row = {
+                    **base,
+                    "match_id": f.get("match_id"),
+                    "market_key": f.get("market_key"),
+                    "selection": f.get("feed_selection_name") or f.get("selection"),
+                    "decimal_odds": frozen,
+                    "result_status": status,
+                    "recorded_at": f.get("featured_at"),
+                    "is_point_in_time": None,
+                    "stake_units": 1.0 if pnl is not None else None,
+                    "profit_loss_units": pnl,
+                    "tier": f"精選 #{f.get('rank')}",
+                }
+                record = make(row, f"tennis:featured:{f.get('prop_id')}", "featured")
+                record.update(
+                    featured=True,
+                    featured_rank=f.get("rank"),
+                    sportsbet_market=f.get("feed_market_name") or None,
+                )
+                records.append(record)
             clv_pred = set()
             clv_market = set()
             for r in sources["clv_tracker"] or []:

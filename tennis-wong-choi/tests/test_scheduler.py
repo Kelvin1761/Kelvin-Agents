@@ -481,50 +481,6 @@ def test_content_notification_attempts_every_recipient(tmp_path, monkeypatch):
     assert recipients == ["kelvin", "heison"]
 
 
-def test_daily_bet_message_contains_only_formal_recommendations(tmp_path):
-    import scripts.tennis_daily_schedule as scheduler_module
-
-    report = tmp_path / "Tennis_Daily_Report.txt"
-    report.write_text(
-        "🎾 Tennis Wong Choi 每日投注報告\n"
-        "日期：2026-08-14\n\n"
-        "## 🎯 今日落注建議（先睇呢度）\n\n"
-        "今日結論：✅ 有 1 組已通過驗證嘅 prop 選擇。\n\n"
-        "### 注 1｜✅ VALIDATED_SINGLE\n"
-        "- 選擇：Player A Win ≥1 Set YES @ 1.80（A vs B）\n"
-        "- 狀態：VALIDATED_SINGLE\n"
-        "- 賠率：1.80｜建議注碼：0.5u\n"
-        "- 校準命中概率：60.0%\n"
-        "- 公式可信度：中（70/100）\n"
-        "- 信心理據：too long for Telegram\n\n"
-        "❌ 跳過：Match-winner reference only\n\n"
-        "## 📎 觀察名單\n\n"
-        "- Player B @ 2.50\n"
-    )
-    message = scheduler_module.daily_bet_message("2026-08-14", report)
-    assert "Player A Win ≥1 Set" in message
-    assert "0.5u" in message and "60.0%" in message
-    assert "Player B" not in message
-    assert "too long" not in message
-    assert "Match-winner reference only" not in message
-
-
-def test_daily_bet_message_sends_an_explicit_no_bet_conclusion(tmp_path):
-    import scripts.tennis_daily_schedule as scheduler_module
-
-    report = tmp_path / "Tennis_Daily_Report.txt"
-    report.write_text(
-        "## 🎯 今日落注建議（先睇呢度）\n\n"
-        "今日結論：❌ 今日無清晰好注，建議唔落。\n"
-        "（研究訊號只留喺觀察板。）\n\n"
-        "## 📎 觀察名單\n- Player C\n"
-    )
-    message = scheduler_module.daily_bet_message("2026-08-15", report)
-    assert "今日無清晰好注" in message
-    assert "今日無正式推薦" in message
-    assert "Player C" not in message
-
-
 def test_the_health_line_is_emitted_on_a_no_bet_day(monkeypatch):
     """A quiet day and a dead pipeline must not look the same.
 
@@ -617,32 +573,6 @@ def test_review_sends_daily_performance_when_enabled(monkeypatch):
 
     assert scheduler.review_previous_day("2026-08-20") == payload
     assert sent == ["2026-08-20"]
-
-
-def test_completed_same_day_card_sends_formal_bets_when_enabled(monkeypatch):
-    """The content push belongs after the readiness gate, on same-day only."""
-    from scripts import tennis_daily_schedule as scheduler_module
-
-    payload = {
-        "odds_coverage": {"fixtures": 60, "priced_matches": 40},
-        "matches_analysed": 40,
-        "valid_feature_snapshots": 40,
-        "source_errors": [],
-        "report_path": "/tmp/Tennis_Daily_Report.txt",
-    }
-    sent: list[tuple[str, dict]] = []
-    monkeypatch.setenv("TENNIS_NOTIFY_BETS", "1")
-    monkeypatch.delenv("TENNIS_NOTIFY_HEALTH", raising=False)
-    monkeypatch.setattr(scheduler_module, "run_cli_json", lambda *_a, **_k: payload)
-    monkeypatch.setattr(scheduler_module, "notify_daily_bets",
-                        lambda day, result: sent.append((day, result)) or True)
-    monkeypatch.setattr(scheduler_module, "log", lambda *_a, **_k: None)
-    monkeypatch.setattr(scheduler_module, "_prop_counts",
-                        lambda _d: {"props": 1, "value": 1, "pending_older": 0})
-
-    scheduler_module.analyse_next_day("2026-08-14", today="2026-08-14")
-
-    assert sent == [("2026-08-14", payload)]
 
 
 # --------------------------------------------------------------------------- #
@@ -1036,96 +966,6 @@ def _next_day_payload():
     }
 
 
-def _run_next_day(monkeypatch, sent):
-    from scripts import tennis_daily_schedule as scheduler_module
-
-    payload = _next_day_payload()
-    monkeypatch.delenv("TENNIS_NOTIFY_HEALTH", raising=False)
-    monkeypatch.setattr(scheduler_module, "run_cli_json", lambda *_a, **_k: payload)
-    monkeypatch.setattr(
-        scheduler_module, "notify_daily_bets",
-        lambda day, result, **kw: sent.append((day, kw.get("early", False))) or True,
-    )
-    monkeypatch.setattr(scheduler_module, "log", lambda *_a, **_k: None)
-    monkeypatch.setattr(scheduler_module, "_prop_counts",
-                        lambda _d: {"props": 1, "value": 1, "pending_older": 0})
-    scheduler_module.analyse_next_day("2026-08-17", today="2026-08-16")
-    return payload
-
-
-def test_evening_pass_sends_an_early_card_when_enabled(monkeypatch):
-    sent: list[tuple[str, bool]] = []
-    monkeypatch.setenv("TENNIS_NOTIFY_EARLY_BETS", "1")
-    monkeypatch.delenv("TENNIS_NOTIFY_BETS", raising=False)
-    _run_next_day(monkeypatch, sent)
-    assert sent == [("2026-08-17", True)]
-
-
-def test_evening_pass_stays_silent_by_default(monkeypatch):
-    sent: list[tuple[str, bool]] = []
-    monkeypatch.delenv("TENNIS_NOTIFY_EARLY_BETS", raising=False)
-    monkeypatch.delenv("TENNIS_NOTIFY_BETS", raising=False)
-    _run_next_day(monkeypatch, sent)
-    assert sent == []
-
-
-def test_the_morning_switch_does_not_turn_on_the_evening_card(monkeypatch):
-    """Two independent switches. Turning the evening card off must never be a
-    reason the day's real card stops going out, or the reverse."""
-    sent: list[tuple[str, bool]] = []
-    monkeypatch.setenv("TENNIS_NOTIFY_BETS", "1")
-    monkeypatch.delenv("TENNIS_NOTIFY_EARLY_BETS", raising=False)
-    _run_next_day(monkeypatch, sent)
-    assert sent == []
-
-
-def test_the_early_card_says_the_board_is_half_open(tmp_path):
-    """It is sent precisely because it is incomplete; hiding that would make it
-    indistinguishable from the finished card."""
-    import scripts.tennis_daily_schedule as scheduler_module
-
-    report = tmp_path / "Tennis_Daily_Report.txt"
-    report.write_text(
-        "## 🎯 今日落注建議（先睇呢度）\n\n"
-        "今日結論：✅ 有 1 組已通過驗證嘅 prop 選擇。\n\n"
-        "### 注 1｜✅ VALIDATED_SINGLE\n"
-        "- 選擇：Player A Win ≥1 Set YES @ 1.80（A vs B）\n"
-        "- 開賽：08-17 01:00 悉尼時間（仲有 5 小時 12 分）\n"
-        "- 賠率：1.80｜建議注碼：0.5u\n\n"
-        "## 📎 觀察名單\n- Player C\n",
-        encoding="utf-8",
-    )
-    early = scheduler_module.daily_bet_message("2026-08-17", report, early=True)
-    assert "早報" in early
-    assert "盤口未開齊" in early
-    assert "01:00 悉尼時間" in early
-
-    normal = scheduler_module.daily_bet_message("2026-08-17", report)
-    assert "早報" not in normal
-    assert "盤口未開齊" not in normal
-
-
-def test_the_card_carries_the_start_time_so_the_window_is_visible(tmp_path):
-    """The card's job is to be actionable. Before 2026-08-16 it printed no start
-    time at all, so "can I still place this?" was unanswerable from the push."""
-    import scripts.tennis_daily_schedule as scheduler_module
-
-    report = tmp_path / "Tennis_Daily_Report.txt"
-    report.write_text(
-        "## 🎯 今日落注建議（先睇呢度）\n\n"
-        "今日結論：✅ 有 1 組已通過驗證嘅 prop 選擇。\n\n"
-        "### 注 1｜✅ VALIDATED_SINGLE\n"
-        "- 選擇：Player A Win ≥1 Set YES @ 1.80（A vs B）\n"
-        "- 開賽：08-17 01:00 悉尼時間（⚠️ 仲有 42 分）\n"
-        "- 賠率：1.80｜建議注碼：0.5u\n\n"
-        "## 📎 觀察名單\n- Player C\n",
-        encoding="utf-8",
-    )
-    message = scheduler_module.daily_bet_message("2026-08-17", report)
-    assert "開賽：08-17 01:00 悉尼時間" in message
-    assert "仲有 42 分" in message
-
-
 # --------------------------------------------------------------------------- #
 # The gate must divide by Sportsbet's book, not by the whole tennis calendar
 # (2026-08-24: the US Open qualifying draw blocked a healthy card)
@@ -1296,3 +1136,139 @@ def test_priced_matches_lost_after_any_source_failure_is_still_an_error():
     readiness = analysis_readiness(payload, horizon="next_day")
     assert readiness["severity"] == SEVERITY_ERROR
     assert "zero matches after source failures" in readiness["reasons"]
+
+
+# --------------------------------------------------------------------------- #
+# 2026-11-05: the only betting push is 精選 (featured picks)
+# --------------------------------------------------------------------------- #
+@pytest.mark.parametrize("today", ["2026-08-14", "2026-08-13"])
+def test_analysis_never_pushes_bets(monkeypatch, today):
+    """The old card push sent "資料未就緒" daily; analysis no longer sends bets."""
+    from scripts import tennis_daily_schedule as scheduler_module
+
+    payload = {
+        "odds_coverage": {"fixtures": 60, "priced_matches": 40},
+        "matches_analysed": 40, "valid_feature_snapshots": 40, "source_errors": [],
+        "report_path": "/tmp/Tennis_Daily_Report.txt",
+    }
+    sent = []
+    monkeypatch.setenv("TENNIS_NOTIFY_BETS", "1")
+    monkeypatch.setenv("TENNIS_NOTIFY_EARLY_BETS", "1")
+    monkeypatch.delenv("TENNIS_NOTIFY_HEALTH", raising=False)
+    monkeypatch.setattr(scheduler_module, "run_cli_json", lambda *_a, **_k: payload)
+    monkeypatch.setattr(scheduler_module, "notify", lambda *a, **k: sent.append(a) or True)
+    monkeypatch.setattr(scheduler_module, "log", lambda *_a, **_k: None)
+    monkeypatch.setattr(scheduler_module, "_prop_counts",
+                        lambda _d: {"props": 1, "value": 1, "pending_older": 0})
+    scheduler_module.analyse_next_day("2026-08-14", today=today)
+    assert sent == []
+
+
+def _featured_db(monkeypatch, tmp_path, candidates):
+    import sqlite3
+
+    import tennis_wc.database.db as db
+    import tennis_wc.featured as featured
+
+    path = tmp_path / "t.db"
+    conn = sqlite3.connect(path)
+    conn.execute("CREATE TABLE prop_tracker (id INTEGER PRIMARY KEY, result_status TEXT, actual_value REAL)")
+    conn.commit()
+    conn.close()
+
+    def connect():
+        c = sqlite3.connect(path)
+        c.row_factory = sqlite3.Row
+        return c
+
+    monkeypatch.setattr(db, "get_connection", connect)
+    monkeypatch.setattr(featured, "candidates", lambda c, d, n: candidates())
+
+
+def _cand(prop_id, match_id, edge):
+    import tennis_wc.featured as featured
+
+    return featured.Candidate(
+        prop_id=prop_id, match_id=match_id, market_key="first_set_winner_1",
+        selection="A", match_label="A vs B", start_time_utc="2099-01-01T10:00:00Z",
+        odds=2.0, edge=edge, ev=0.05, model_prob=0.55,
+        feed_market_name="Set 1 Winner", feed_selection_name="A",
+    )
+
+
+def test_main_featured_card_is_sent_even_when_empty(monkeypatch, tmp_path):
+    from scripts import tennis_daily_schedule as scheduler_module
+
+    _featured_db(monkeypatch, tmp_path, lambda: [])
+    sent = []
+    monkeypatch.setenv("TENNIS_NOTIFY_BETS", "1")
+    monkeypatch.setattr(scheduler_module, "notify",
+                        lambda text, **kw: sent.append((text, kw.get("audience"))) or True)
+    monkeypatch.setattr(scheduler_module, "log", lambda *_a, **_k: None)
+    assert scheduler_module.publish_featured("2099-01-01", "21:00", main=True) == []
+    (text, audience), = sent
+    assert audience == "content"
+    assert "精選 0／10" in text and "無精選" in text
+    assert "資料未就緒" not in text
+
+
+def test_top_up_sends_only_new_picks(monkeypatch, tmp_path):
+    from scripts import tennis_daily_schedule as scheduler_module
+
+    pool = [[_cand(1, 1, 0.2)]]
+    _featured_db(monkeypatch, tmp_path, lambda: pool[0])
+    sent = []
+    monkeypatch.setenv("TENNIS_NOTIFY_BETS", "1")
+    monkeypatch.setattr(scheduler_module, "notify", lambda text, **kw: sent.append(text) or True)
+    monkeypatch.setattr(scheduler_module, "log", lambda *_a, **_k: None)
+
+    scheduler_module.publish_featured("2099-01-01", "21:00", main=True)
+    assert scheduler_module.publish_featured("2099-01-01", "23:00", main=False) == []
+    pool[0] = [_cand(1, 1, 0.2), _cand(2, 2, 0.1)]
+    added = scheduler_module.publish_featured("2099-01-01", "09:00", main=False)
+    assert [r["prop_id"] for r in added] == [2]
+    assert len(sent) == 2
+    assert "補充精選" in sent[1] and "新增 1 注" in sent[1]
+
+
+def test_featured_push_respects_the_bets_switch(monkeypatch, tmp_path):
+    from scripts import tennis_daily_schedule as scheduler_module
+
+    _featured_db(monkeypatch, tmp_path, lambda: [_cand(1, 1, 0.2)])
+    sent = []
+    monkeypatch.delenv("TENNIS_NOTIFY_BETS", raising=False)
+    monkeypatch.setattr(scheduler_module, "notify", lambda *a, **k: sent.append(a) or True)
+    monkeypatch.setattr(scheduler_module, "log", lambda *_a, **_k: None)
+    assert len(scheduler_module.publish_featured("2099-01-01", "21:00", main=True)) == 1
+    assert sent == []
+
+
+def test_forward_milestone_pushes_once(monkeypatch, tmp_path):
+    import tennis_wc.featured as featured
+    from scripts import tennis_daily_schedule as scheduler_module
+
+    rows = [{"result_status": "WON", "unit_profit": 1.0}] * 150 + [
+        {"result_status": "LOST", "unit_profit": -1.0}] * 100
+    _featured_db(monkeypatch, tmp_path, lambda: [])
+    monkeypatch.setattr(featured, "picks_with_results", lambda conn: rows)
+    monkeypatch.setattr(scheduler_module, "LOG_DIR", tmp_path)
+    sent = []
+    monkeypatch.setattr(scheduler_module, "notify", lambda text, **kw: sent.append(text) or True)
+    monkeypatch.setattr(scheduler_module, "log", lambda *_a, **_k: None)
+    assert scheduler_module.check_featured_forward_milestone() == "ELIGIBLE_FOR_RELEASE_REVIEW"
+    assert scheduler_module.check_featured_forward_milestone() is None
+    assert len(sent) == 1 and "250 注" in sent[0]
+
+
+def test_forward_milestone_is_silent_before_250(monkeypatch, tmp_path):
+    import tennis_wc.featured as featured
+    from scripts import tennis_daily_schedule as scheduler_module
+
+    _featured_db(monkeypatch, tmp_path, lambda: [])
+    monkeypatch.setattr(featured, "picks_with_results",
+                        lambda conn: [{"result_status": "WON", "unit_profit": 1.0}] * 249)
+    monkeypatch.setattr(scheduler_module, "LOG_DIR", tmp_path)
+    sent = []
+    monkeypatch.setattr(scheduler_module, "notify", lambda text, **kw: sent.append(text) or True)
+    assert scheduler_module.check_featured_forward_milestone() is None
+    assert sent == []
