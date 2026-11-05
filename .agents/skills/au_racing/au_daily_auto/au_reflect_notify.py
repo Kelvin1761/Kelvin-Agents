@@ -327,7 +327,8 @@ def main() -> int:
     if "--send" in sys.argv:
         sys.path.insert(0, str(Path(__file__).resolve().parent))
         import au_notify
-        print("\n送出：", au_notify.push(text) or "冇配置出口")
+        # 覆盤係內容 —— Kelvin + Heison（同排程一樣）。
+        print("\n送出：", au_notify.push(text, audience="content") or "冇配置出口")
     return 0
 
 

@@ -137,6 +137,33 @@ def evening(run: dict) -> str | None:
     return "\n".join(lines)
 
 
+def evening_content(run: dict) -> str | None:
+    """Kelvin + Heison 收嘅版本：淨係「分析好咗」同 dashboard 睇唔睇得到。
+
+    2026-11-05 Kelvin：ROI 同「分析已完成」發俾兩個人，錯誤同系統訊息淨係發
+    Kelvin。`evening()` 會夾住「❌ 未發佈得到」「⚠️ 以下場次未有分析」呢類運維
+    句子，以前成條發俾 Heison。嗰啲細節 Kelvin 經 run status（`au_notify.send`）
+    同 `alert_now` 已經收到，所以呢度只留讀者用得着嘅一句。
+    """
+    added = run.get("races_added") or []
+    if not added:
+        return None
+    dep = run.get("cloudflare_deployment") or {}
+    progressive = run.get("progressive_publication") or {}
+    held = set(run.get("publication_rejected") or {}) | set(progressive.get("pending") or [])
+    live = (dep.get("verified") or {}).get("ok") or dep.get("skipped")
+    total = sum(len(r.get("races") or []) for r in added)
+    lines = [f"🆕 新分析已完成 · {len(added)} 個馬場 / {total} 場", ""]
+    for r in sorted(added, key=lambda x: x["meeting"]):
+        n = len(r.get("races") or [])
+        going = r.get("going") or "—"
+        later = "（稍後上線）" if r["meeting"] in held else ""
+        lines.append(f"· {_venue(r['meeting'])} — {n} 場 · {going}{later}")
+    lines.append("")
+    lines.append("✅ dashboard 睇得到" if live and not held else "⏳ dashboard 稍後更新")
+    return "\n".join(lines)
+
+
 def main() -> int:
     mode = sys.argv[1] if len(sys.argv) > 1 else "morning"
     path = sys.argv[2] if len(sys.argv) > 2 else None
@@ -149,7 +176,7 @@ def main() -> int:
             print("冇 run 記錄")
             return 1
         run = json.loads(files[0].read_text(encoding="utf-8"))
-    text = (morning if mode == "morning" else evening)(run)
+    text = (morning if mode == "morning" else evening_content)(run)
     if not text:
         print("冇嘢好講 —— 唔發")
         return 0
@@ -157,7 +184,8 @@ def main() -> int:
     if "--send" in sys.argv:
         sys.path.insert(0, str(HERE))
         import au_notify
-        print("\n送出：", au_notify.push(text) or "冇出口")
+        # 賽事內容 —— Kelvin + Heison（同排程一樣）。
+        print("\n送出：", au_notify.push(text, audience="content") or "冇出口")
     return 0
 
 

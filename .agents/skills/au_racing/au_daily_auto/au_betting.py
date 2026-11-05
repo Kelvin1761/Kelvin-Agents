@@ -229,11 +229,11 @@ def scratch_deduction(prices: dict, finished: dict, places: int) -> float:
     return min(DEDUCTION_CAP, total / max(1, places))
 
 
-def settle(day: str) -> str | None:
+def settle_data(day: str) -> dict | None:
     # ⚠️ 用 `last`（當朝）嘅價結算 —— 因為落注時機係當朝。用晚更價結算會報一個
     # 你實際上冇落到嘅價。
 
-    """結算：命中、ROI（全日同逐個馬場）。⚠️ 用賽果檔嘅 SP，所以係精確嘅。"""
+    """結算數字（全日同逐個馬場）。⚠️ 用賽果檔嘅 SP，所以係精確嘅。冇注 = None。"""
     rows, tot_stake, tot_ret = [], 0.0, 0.0
     refunds, unsettled, stale_tags, deducted = [], [], set(), []
     for folder in _folders(day):
@@ -292,6 +292,59 @@ def settle(day: str) -> str | None:
                      "ret": m_ret, "hits": hits, "bets": bets})
     if not tot_stake:
         return None
+    return {"rows": rows, "stake": tot_stake, "ret": tot_ret, "refunds": refunds,
+            "unsettled": unsettled, "deducted": deducted, "stale_tags": stale_tags,
+            "hits": sum(len(r["hits"]) for r in rows)}
+
+
+# 統一 ROI 板（wongchoi_roi）：AU 落注策略由 2026-08-12 開始（Kelvin 定規則嗰日）。
+ROI_SINCE = "2026-08-12"
+ROI_REFRESH_DAYS = 7  # 最近幾日每次都重算 —— 遲到嘅賽果會改到嗰日嘅數
+
+
+def roi_row(day: str) -> dict:
+    """一日嘅統一 ROI 格：注數、中、本金、盈虧（單位）。冇注 = 全 0。"""
+    data = settle_data(day)
+    if not data:
+        return {"bets": 0, "hits": 0, "stake": 0.0, "pnl": 0.0}
+    return {"bets": int(round(data["stake"] / STAKE)), "hits": data["hits"],
+            "stake": data["stake"], "pnl": data["ret"] - data["stake"]}
+
+
+def record_roi(day: str, path=None) -> dict:
+    """將 `day` 寫入統一 ROI ledger，順手補返 ledger 未有嘅舊日子。
+
+    第一次跑會由 ROI_SINCE 補到 `day`（每日讀一次賽果檔，大約一分鐘內）；
+    之後只重算最近 ROI_REFRESH_DAYS 日同未見過嘅日子。
+    """
+    shared = Path(__file__).resolve().parents[2] / "shared_racing" / "scripts"
+    if str(shared) not in sys.path:
+        sys.path.insert(0, str(shared))
+    import wongchoi_roi  # noqa: PLC0415
+    from datetime import date as _date, timedelta as _td  # noqa: PLC0415
+
+    end = _date.fromisoformat(day)
+    known = wongchoi_roi.known_days("au", path)
+    fresh = {(end - _td(days=i)).isoformat() for i in range(ROI_REFRESH_DAYS)}
+    todo, cur = {}, _date.fromisoformat(ROI_SINCE)
+    while cur <= end:
+        key = cur.isoformat()
+        if key not in known or key in fresh:
+            todo[key] = roi_row(key)
+        cur += _td(days=1)
+    return wongchoi_roi.record_days("au", todo, day=day, since=ROI_SINCE,
+                                    path=path, merge=True)
+
+
+def settle(day: str) -> str | None:
+    """結算訊息（逐個馬場明細）。Telegram 而家發統一 ROI 板，呢個留畀 CLI／覆核用。"""
+    data = settle_data(day)
+    if not data:
+        return None
+    rows, tot_stake, tot_ret = data["rows"], data["stake"], data["ret"]
+    refunds, unsettled = data["refunds"], data["unsettled"]
+    deducted, stale_tags = data["deducted"], data["stale_tags"]
+
     def roi(r, s):
         return 100 * (r - s) / s
 
