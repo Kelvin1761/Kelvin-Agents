@@ -1848,10 +1848,11 @@ _PERFORMANCE_QUALITY_CLASS_CREDIT = 4.0
 _PERFORMANCE_QUALITY_REFERENCE_PRIZE = 50000.0
 
 
-def _form_quality_digest(official_entries: list[dict], *, meeting_date: str = "") -> dict:
+def _form_quality_digest(official_entries: list[dict], *, meeting_date: str = "", legacy: bool = False) -> dict:
     """近績質素 raw（`stability.digest`）；往績揀選同表現質素分一樣。"""
     return _stab.digest(_performance_quality_digest(
-        official_entries, meeting_date=meeting_date, max_runs=len(_stab.RECENCY_WEIGHTS)).get("runs", []))
+        official_entries, meeting_date=meeting_date, max_runs=len(_stab.RECENCY_WEIGHTS)).get("runs", []),
+        legacy=legacy)
 
 
 def refresh_trial_runs(logic_data: dict, facts_path: Path | None) -> int:
@@ -1912,6 +1913,11 @@ def refresh_form_quality(logic_data: dict, facts_path: Path | None) -> int:
         formguide = None
     date_match = re.search(r"(\d{4}-\d{2}-\d{2})", _meeting_dir(Path(facts_path)).name)
     meeting_date = date_match.group(1) if date_match else ""
+    race_info = logic_data.get("race_analysis") or {}
+    mi = race_info.get("meeting_intelligence") if isinstance(race_info.get("meeting_intelligence"), dict) else {}
+    sm = race_info.get("speed_map") if isinstance(race_info.get("speed_map"), dict) else {}
+    today_going = mi.get("going") or sm.get("going") or sm.get("track_condition") or race_info.get("going") or ""
+    legacy = _stab.HEAVY_MODE == "H2" and _stab.is_heavy_going(today_going)  # EXP-20261105-06 研究開關
     digests = {}
     if formguide and formguide.exists():
         text = formguide.read_text(encoding="utf-8")
@@ -1920,7 +1926,7 @@ def refresh_form_quality(logic_data: dict, facts_path: Path | None) -> int:
             section = text[head.start(): heads[i + 1].start() if i + 1 < len(heads) else len(text)]
             entries = [e for e in _parse_formguide_entries(section, head.group(2).strip())
                        if str(e.get("date") or "") < meeting_date and not e["is_trial"]]
-            digests[head.group(1)] = _form_quality_digest(entries, meeting_date=meeting_date)
+            digests[head.group(1)] = _form_quality_digest(entries, meeting_date=meeting_date, legacy=legacy)
     refreshed = 0
     for number, horse in horses.items():
         if not isinstance(horse, dict):

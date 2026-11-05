@@ -25,6 +25,8 @@ refit arm Gold +1.89pp [+0.73, +3.12]、Good +1.75pp [+0.14, +3.55]。
 from __future__ import annotations
 
 import math
+import os
+import re
 
 from .scoring import clip_score
 
@@ -38,7 +40,17 @@ TRIP_CHANGE_M = 400.0
 TRIP_CHANGE_PEN = -5.0
 
 
-def digest(runs):
+# EXP-20261105-06 研究開關（只喺分支）：H1 濕地往績唔打折；H2 今場大爛地用返舊公式。
+HEAVY_MODE = os.environ.get("WC_AU_FQ_HEAVY", "").strip().upper()
+_HEAVY = re.compile(r"\bHeavy\b", re.I)
+
+
+def is_heavy_going(going):
+    """場地家族係 Heavy（往績 Formguide 只有家族名、冇數字；今場有冇數字都算）。"""
+    return bool(_HEAVY.search(str(going or "")))
+
+
+def digest(runs, *, legacy=False):
     """表現質素分揀好嘅往績（最新先）→ {raw, run_count, runs}；完整往績少過 2 場 → {}。"""
     values = []
     for run in runs:
@@ -48,7 +60,8 @@ def digest(runs):
         pct = (finish - 1) / (starters - 1)
         z_place = (0.5 - pct) / SD_PCT
         z_prize_raw = (math.log10(float(run["prize"])) - MU_LOG_PRIZE) / SD_LOG_PRIZE
-        z_prize = z_prize_raw * (1.0 - pct) if z_prize_raw > 0 else z_prize_raw
+        undiscounted = legacy or (HEAVY_MODE == "H1" and is_heavy_going(run.get("going")))
+        z_prize = z_prize_raw * (1.0 - pct) if z_prize_raw > 0 and not undiscounted else z_prize_raw
         values.append((run, (z_place + z_prize) / 2, z_place, z_prize, z_prize_raw))
     if len(values) < MIN_RUNS:
         return {}
