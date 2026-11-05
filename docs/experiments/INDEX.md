@@ -394,3 +394,4 @@
 - [EXP-20261104-12](EXP-20261104-12-au-betting-settlement-scratch-deductions.md) — §7：`au_betting.settle` 加退出馬扣減（估算：Σ1/退出馬位賠 ÷ 派位數）。08-13..11-03 共 1,896 注，106 注中咗有遲退出；ROI −21.82% → −23.59%，以前每日結算報好咗 1.8pp。
 - [EXP-20261104-13](EXP-20261104-13-nba-teammate-absence-shift-results.md) — NBA「缺陣變化」（今日缺陣 − 最近缺陣，按份額）：加入模型 holdout 反而差 +0.0005 → REJECT；接手／復出腿 ROI 同對照一樣；live 模型反而輕微高估接手球員
 - [EXP-20261105-01](EXP-20261105-01-au-rank1-odds-threshold.md) — AU 模型第 1 選 × 賠率門檻（用戶：≥ 2.0）：贏注 Sportsbet −15.7%、Betfair BSP +1.0% [−7.5, +10.5]；所有門檻 BSP ≈ 0、Sportsbet −15 至 −20%；位注門檻越高越差。門檻唔會變出優勢，差距全部係抽水。
+- [EXP-20261105-05](EXP-20261105-05-au-form-quality-prize-dominance-results.md) — AU 近績質素分獎金蓋過名次（大賽輸遠都高分）：C1 獎金 z 夾 ±1.567 §8 **RANKING_WIN**（refit arm，跨候選 Holm p≈0.012；top3@5 +0.47、AUC +0.32，Gold/Good CI 跨零），要連 refit 權重；C2（跑得好先攞獎金）、C3（PF 場數收縮）REJECT。

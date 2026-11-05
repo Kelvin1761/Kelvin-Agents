@@ -18,6 +18,7 @@ refit arm Gold +1.89pp [+0.73, +3.12]、Good +1.75pp [+0.14, +3.55]。
 from __future__ import annotations
 
 import math
+import os
 
 from .scoring import clip_score
 
@@ -29,6 +30,16 @@ MIN_RUNS = 2
 MIN_FIELD = 3
 TRIP_CHANGE_M = 400.0
 TRIP_CHANGE_PEN = -5.0
+PRIZE_ARM = os.environ.get("WC_AU_FQ_PRIZE", "")      # EXP-20261105-05 研究開關（分支）：C1／C2
+Z_PLACE_MAX = 0.5 / SD_PCT
+
+
+def _prize_term(z_prize, pct):
+    if PRIZE_ARM == "C1":
+        return max(-Z_PLACE_MAX, min(Z_PLACE_MAX, z_prize))
+    if PRIZE_ARM == "C2" and z_prize > 0:
+        return z_prize * (1.0 - pct)
+    return z_prize
 
 
 def digest(runs):
@@ -38,9 +49,10 @@ def digest(runs):
         finish, starters = int(run.get("finish_pos") or 0), int(run.get("starters") or 0)
         if not (starters >= 2 and 1 <= finish <= starters):
             continue
-        z_place = (0.5 - (finish - 1) / (starters - 1)) / SD_PCT
+        pct = (finish - 1) / (starters - 1)
+        z_place = (0.5 - pct) / SD_PCT
         z_prize = (math.log10(float(run["prize"])) - MU_LOG_PRIZE) / SD_LOG_PRIZE
-        values.append((run, (z_place + z_prize) / 2, z_place, z_prize))
+        values.append((run, (z_place + _prize_term(z_prize, pct)) / 2, z_place, z_prize))
     if len(values) < MIN_RUNS:
         return {}
     weights = RECENCY_WEIGHTS[: len(values)]

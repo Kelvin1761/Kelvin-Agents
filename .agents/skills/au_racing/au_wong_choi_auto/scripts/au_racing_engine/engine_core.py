@@ -2642,6 +2642,9 @@ class RacingEngine(NarrativeMixin):
         if mean is None or stdev <= 0.0:
             detail["state"] = "no_spread"
             return 60, "同場 L600 環境數據無有效分散，L600 環境分中性處理。", "no_spread"
+        if os.environ.get("WC_AU_PF_SHRINK") == "1":   # EXP-20261105-05 C3 研究開關（分支）
+            n = detail["runs"]
+            value = mean + (float(value) - mean) * n / (n + 2.0)
         z = (float(value) - mean) / stdev
         score = _speed.score(float(value), mean, stdev)
         detail.update({"value": round(float(value), 2), "mean": round(mean, 2),
