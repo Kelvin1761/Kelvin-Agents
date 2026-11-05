@@ -396,3 +396,4 @@
 - [EXP-20261104-13](EXP-20261104-13-nba-teammate-absence-shift-results.md) — NBA「缺陣變化」（今日缺陣 − 最近缺陣，按份額）：加入模型 holdout 反而差 +0.0005 → REJECT；接手／復出腿 ROI 同對照一樣；live 模型反而輕微高估接手球員
 - [EXP-20261105-01](EXP-20261105-01-au-rank1-odds-threshold.md) — AU 模型第 1 選 × 賠率門檻（用戶：≥ 2.0）：贏注 Sportsbet −15.7%、Betfair BSP +1.0% [−7.5, +10.5]；所有門檻 BSP ≈ 0、Sportsbet −15 至 −20%；位注門檻越高越差。門檻唔會變出優勢，差距全部係抽水。
 - [EXP-20261105-05](EXP-20261105-05-au-form-quality-prize-dominance-results.md) — AU 近績質素分獎金蓋過名次（大賽輸遠都高分）：C1 獎金封頂 §8 RANKING_WIN；用戶揀 **C2（跑得好先攞獎金分）+ C2 refit 權重 USER-ACCEPTED 上線**（Good +0.91～+1.15，Gold 冇升，大爛地 Good CI 全負待跟進）；C3（PF 場數收縮）REJECT。
+- [EXP-20261105-06](EXP-20261105-06-au-c2-heavy-going-results.md) — AU C2 大爛地 Good 變差：診斷係大爛地「大賽跑唔好」反而唔代表今場差（打折只 7.4% 嚟自爛地往績）。**H2 今場 Heavy 用舊公式** v3 PRIMARY_WIN（Good +0.15 [+0.03,+0.31]；大爛地 +2.59，收返 ~83%）但 §8 功效唔夠 REJECT，待用戶決定；H1（往績 Heavy 唔打折）REJECT。
