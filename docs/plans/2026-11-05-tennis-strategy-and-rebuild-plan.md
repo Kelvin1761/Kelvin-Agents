@@ -158,7 +158,24 @@
 
 ### 階段三：全面重建（主體，約 1–2 星期）
 
-**目標**：用最簡單、最清楚嘅 code 重寫 Tennis Wong Choi；同一概念只有一個真源；剷晒死 code；舊 bug 喺重建入面修好。
+**目標**：用最簡單、最清楚嘅 code 重寫**成個** Tennis Wong Choi；同一概念只有一個真源；剷晒死 code；舊 bug 喺重建入面修好。
+
+**範圍 = 全部，唔係部分**（Kelvin 2026-11-05 確認）：
+
+| 部分 | 而家 | 重建後 |
+|---|---|---|
+| 抓數（Sportsbet、ESPN、TennisExplorer、排名）同身份配對 | `providers/`、`ingestion/`、`identity/` | `sources/` 重寫 |
+| 數據庫、帳本 | `database/`、`betting/ledger.py` 三本帳 | `store/` 一本帳 |
+| 特徵、Elo、模型 | `features/`、`modelling/`、`history/`、`props/*_model.py` | `model/` |
+| 定價、選注 | `props/`、`betting/` | `pricing/`、`select/` |
+| card、Telegram、dashboard export | `reports/`、`scripts/tennis_daily_schedule.py` 嗰部分、dashboard `tennis_tracking.py` | `publish/` |
+| 結算 | `props/settlement.py`、`ledger.py` 一部分 | `settle/` |
+| 排程同入口 | `cli.py` 47 命令、`tennis_daily_schedule.py` 1,401 行、recovery、preclose、`daily.sh` | `run.py` + launchd templates |
+| 測試 | 103 檔 | 按新結構重寫 |
+| 研究腳本 | `scripts/` 39 檔 | 有記錄引用就搬去 `docs/experiments/patches/`，其餘刪 |
+
+Codex 近排加嘅數據防線（來源歸屬、event ID 驗證、賽前階段防線、排名日期等）係**行為**，唔係 code：
+重寫時每條都要有測試保住，唔可以因為重寫而靜靜冇咗。
 
 **現況盤點（2026-11-05 掃描）**
 
@@ -170,11 +187,11 @@
 | 冇人 import 嘅 module | 24 個，1,485 行（`agents/` 殘骸、`research_kernel/`、`betting/devig.py`、`modelling/combiner_backtest.py`、`probability_calibration.py`、betfair／odds_api／sportradar／statsperform 空殼 provider、`features/fatigue|form|injury` 空檔等） |
 | 帳本 | 三本：`prop_tracker`、`clv_tracker`、`combo_tracker`（+ 空嘅 `bet_ledger`、`prop_tracker_pre_rebuild`） |
 
-**目標結構**（每層一個責任，上層只讀下層）
+**目標結構**（每層一個責任，上層只讀下層；舊目錄全部唔保留）
 
 ```
 tennis_wc/
-  sources/    Sportsbet、ESPN、TennisExplorer、排名（保留 Codex 嘅防線，只整理結構）
+  sources/    Sportsbet、ESPN、TennisExplorer、排名、身份配對（重寫；Codex 防線變測試）
   store/      schema、migration、一本帳（ledger：每個推薦、精選旗、結算、CLV）
   model/      Elo、發球／接發、單一比賽 kernel、市場去水
   pricing/    每個 family 由 model 出機率、edge、EV
@@ -208,7 +225,9 @@ tennis_wc/
 1. **先凍結 baseline**：用舊引擎對固定一批過去日子（例如 10-28 至 11-05 全部賽事）輸出每個 prop 嘅機率、value 判斷、精選；連 commit hash 存檔。
    DB 有 2GB：凍結複本一律放外置碟 `/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/tennis-rebuild-20261105/`（先確認有掛載、`df` ≥10GB），唔放 Mac 內置碟。
 2. 逐層寫新 code。
-3. **replay 對比**：同一批輸入，新引擎每個機率差 ≤1e-9、value 判斷同精選完全一樣。
+3. **replay 對比**（兩層都要過）：
+   - 抓數層：用已存檔嘅原始回應（raw responses）重新解析，新 `sources/` 出嘅賽事、球員、盤口、賠率要同舊版一樣；
+   - 模型層：同一批輸入，新引擎每個機率差 ≤1e-9、value 判斷同精選完全一樣。
    唔一樣嘅只可以係上面「一定要修嘅 bug」，逐個列明。
 4. 切換排程，舊 code 喺同一個 release 刪走。
 5. 模型數學（`tennis-v1`）**唔郁**；15 個 REJECT_DEV 唔重開。
@@ -240,7 +259,7 @@ tennis_wc/
 |---|---|
 | 11-05 晚 | 階段一：試抓上線 |
 | 11-06 – 11-07 | 階段二：精選 + 新 Telegram + 登記前向 |
-| 11-08 – 約 11-20 | 階段三：全面重建 |
+| 11-08 – 約 11-25 | 階段三：全面重建（成個系統，包括抓數層） |
 | 約 11-12 | 試抓判決 → 階段四喺重建入面做 |
 | 11 月尾起 | 階段五、六 |
 | 約 12 月中 | 精選 250 場第一次判決 |
@@ -268,7 +287,8 @@ tennis_wc/
 
 | Kelvin 喺對話提過 | 喺計劃邊度 |
 |---|---|
-| 用最簡單、最乾淨嘅 code 全面重建，統一、剷 bug 同死 code、需要就改結構 | F 階段三（盤點、目標結構、bug 清單、剷走清單、replay 方法） |
+| 用最簡單、最乾淨嘅 code 全面重建，統一、剷 bug 同死 code、需要就改結構 | F 階段三（範圍＝全部、盤點、目標結構、bug 清單、剷走清單、兩層 replay） |
+| 係成個重建，唔係部分 | F 階段三「範圍 = 全部」表 |
 | 重建排前定排後 | E（先細嘢 → 重建 → 其餘，附理由） |
 | 盈利策略：放棄某啲注類／props | A1、B2–B3、B7 |
 | 兩樣一齊做定先做重建 | E |
