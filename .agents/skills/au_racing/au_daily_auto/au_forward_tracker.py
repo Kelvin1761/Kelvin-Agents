@@ -57,6 +57,11 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 "scheduler 夠數會自動判一次（v3 fixed_rule：有代理 vs 冇代理）並凍結；睇 au-overseas-proxy-forward-status.json，"
                 "keep=false 就建議 WC_AU_OVERSEAS_RATING_PROXY=0 回退",
                 status_file="au-overseas-proxy-forward-status.json"),
+    ForwardTest("heavy_h2", "大爛地近績質素分用返舊公式（H2；live 照用 C2，只做反事實）",
+                "EXP-20261105-06", "status_file", 200, "場",
+                "scheduler 夠數會自動判一次（v3 fixed_rule：live C2 vs H2，只計大爛地）並凍結；睇 au-heavy-h2-forward-status.json，"
+                "adopt_h2=true 就由你決定係咪上線 H2",
+                status_file="au-heavy-h2-forward-status.json"),
 )
 
 _S2_DAYS = re.compile(r"forward days with snapshot \+ results:\s*(\d+)\s*/\s*(\d+)")

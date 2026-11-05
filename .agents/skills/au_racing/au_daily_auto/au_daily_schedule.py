@@ -108,6 +108,7 @@ L600_RECENCY_FORWARD = (AU_SKILL / "au_wong_choi_auto" / "scripts"
                         / "au_l600_recency_forward.py")
 DRAW_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_draw_forward.py"
 OVERSEAS_PROXY_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_overseas_proxy_forward.py"
+HEAVY_H2_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_heavy_h2_forward.py"
 GENERATE_STATIC = DASHBOARD_DIR / "generate_static.py"
 DEPLOY_SH = DASHBOARD_DIR / "deploy.sh"
 
@@ -1638,6 +1639,30 @@ def step_overseas_proxy_forward(runlog: RunLog) -> bool:
                 target=status.get("target_races"), keep=(status.get("evaluation") or {}).get("keep"),
                 rank_error_with=(interim.get("with_proxy") or {}).get("proxy_rank_error"),
                 rank_error_without=(interim.get("without_proxy") or {}).get("proxy_rank_error"))
+    return True
+
+
+def step_heavy_h2_forward(runlog: RunLog) -> bool:
+    """EXP-20261105-06 forward：今場大爛地，近績質素分用返 C2 之前嘅舊公式（H2）vs live C2。
+    只計 C2 上線後嘅大爛地場次；未夠數每晚寫累計描述（interim）；夠 200 場判一次並凍結，夠數由 forward tracker 推
+    Telegram。失敗唔阻 live 分析，永遠唔會自動改模型。"""
+    status_path = WORK_DIR / "au-heavy-h2-forward-status.json"
+    rc, out = run_cmd([sys.executable, str(HEAVY_H2_FORWARD), "--data-root", str(AU_RACING),
+                       "--output", str(status_path)], timeout=1800)
+    if rc != 0 or not status_path.exists():
+        detail = error_excerpt(out, rc)
+        runlog.warn(f"大爛地 H2 forward 更新失敗（唔影響 live 排名）：{detail}")
+        runlog.step("heavy-h2-forward", "failed", detail=detail)
+        return False
+    try:
+        status = json.loads(status_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        runlog.step("heavy-h2-forward", "failed", detail=str(exc))
+        return False
+    interim = status.get("interim") or {}
+    runlog.step("heavy-h2-forward", status.get("state", "unknown"), races=status.get("races_collected", 0),
+                target=status.get("target_races"), adopt_h2=(status.get("evaluation") or {}).get("adopt_h2"),
+                top2_changed=interim.get("top2_changed"))
     return True
 
 
@@ -4335,6 +4360,7 @@ def run_evening(runlog: RunLog, args, review_day: date) -> int:
         step_l600_recency_forward(runlog)
         step_draw_forward(runlog)
         step_overseas_proxy_forward(runlog)
+        step_heavy_h2_forward(runlog)
         step_forward_tracker(runlog)
     publisher = None
     progressive = (not args.skip_deploy and not args.skip_analysis

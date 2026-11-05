@@ -25,6 +25,7 @@ refit arm Gold +1.89pp [+0.73, +3.12]、Good +1.75pp [+0.14, +3.55]。
 from __future__ import annotations
 
 import math
+import re
 
 from .scoring import clip_score
 
@@ -79,6 +80,28 @@ def trip_change(today_m, last_m):
     if not (last_m and today_m and abs(today_m - last_m) >= TRIP_CHANGE_M):
         return 0.0, ""
     return TRIP_CHANGE_PEN, "增程" if today_m > last_m else "縮程"
+
+
+_HEAVY = re.compile(r"\bHeavy\b", re.I)
+
+
+def is_heavy_going(going):
+    """場地家族係 Heavy（有冇數字都算）。EXP-20261105-06 H2 forward 用。"""
+    return bool(_HEAVY.search(str(going or "")))
+
+
+def legacy_raw(runs):
+    """C2 之前（EXP-20261016-06 eq2_N6）嘅 raw：獎金分唔打折。由已存 `runs`（`z_place`、`z_prize_raw`）重砌；
+    C2 之前嘅紀錄冇 `z_prize_raw`，嗰陣 `z_prize` 本身就係未打折值。少過 2 場 → None。
+    只供 EXP-20261105-06 H2 forward（今場大爛地用舊公式）反事實用，live 唔讀。"""
+    rows = [r for r in runs or [] if r.get("z_place") is not None]
+    if len(rows) < MIN_RUNS:
+        return None
+    total = sum(float(r.get("weight") or 0.0) for r in rows)
+    if total <= 0:
+        return None
+    return sum((float(r["z_place"]) + float(r["z_prize_raw"] if r.get("z_prize_raw") is not None else r["z_prize"]))
+               / 2 * float(r.get("weight") or 0.0) for r in rows) / total
 
 
 def score_without_proxy(features, detail):
