@@ -1,4 +1,4 @@
-# Tennis Wong Choi：盈利策略 + 精選 + 夜晚落注 + 重建 —— 總計劃
+# Tennis Wong Choi：全面重建 + 盈利策略 + 精選 + 夜晚落注 —— 總計劃
 
 - 建立：2026-11-05（Claude Code，同 Kelvin 對話整理）
 - 狀態：**計劃，未實作**。Codex 已停手，tennis 由呢份計劃接手。
@@ -66,9 +66,10 @@
 2. 停組合注（card、Telegram、dashboard、tracking 全部拎走）。
 3. 暫停靠技術統計結算嘅 family：`player_aces`、`player_double_faults`、`match_total_aces`，同 `player_exact_set_score`。
    保留靠比分結算嘅 6 個：讓局、首盤勝方、贏一盤、首盤讓局、讓盤、總局數。
-4. 前向測試未過，唔落真錢。
+4. 前向測試未過，唔落真錢。之後真係落注，用 `record-bet`（重建後喺 `tools/`）記入帳本，dashboard 實盤同紙上分開顯示。
 5. 加「精選」：最多 10 注，可以係 0。
 6. 想好似 NBA 咁 **21:00–00:00 落晒**，要先量到做唔做到。
+7. Match-winner 參考單（273 注 −13.8%）同 market-leg 參考：唔再喺 card／Telegram 出；只喺研究記錄保留。
 
 ---
 
@@ -111,81 +112,177 @@
 
 ---
 
-## E. 執行步驟（逐步做，每步都要 `./檢查.sh` 同 `./保存.sh`）
+## E. 先後次序：點解「先做細嘢 → 再全面重建 → 再做其餘」
 
-### 第 0 步：夜晚試抓（今晚起，一星期）
+重建係呢份計劃嘅**主幹**，唔係附帶一步。次序咁定：
 
-- 新 launchd job：每晚 **21:00 同 23:30** 悉尼，唯讀抓**明日**全部賽事 + props。
-- 寫去獨立檔（`<資料根>/Tennis_Night_Probe/<日期>/<時間>.jsonl.gz`），**唔寫** `prop_tracker`／`market_odds_snapshots`，唔影響現役 card。
-- 每朝 09:00 card 出完，對比報告：
-  1. 精選注入面，幾多注前一晚 21:00／23:30 已經有盤；
-  2. 嗰陣嘅價同 09:00 一唔一樣；
-  3. 幾多精選賽事喺 00:00–09:00 開（而家 card 完全捉唔到，夜晚 card 會多咗呢批）。
-- **預先定好嘅判斷**（一星期後）：
-  - ≥80% 精選注 21:00 已有盤，而且 ≥90% 價錢同 09:00 一樣 → card 改去 **21:00 出、21:00–00:00 落**（似 NBA），09:00 只補漏；
-  - 23:30 先達標 → card 改 23:30；
-  - 都唔達標 → 維持 09:00 card，09:00–09:30 落，先落最早開賽嘅。
-- 結果推 Telegram。
-
-### 第 1 步：card 解封同誠實化
-
-1. 修 A4-1：「資料未就緒」改成只判斷**今日 slate** 嘅資料（今日場次 disputed、今日定價時間），歷史問題放「數據狀態」區顯示，唔再封鎖 card。
-2. card 頂部改成「🎯 今日精選（N／10）」；其餘紙上 value 注降做參考區。
-
-### 第 2 步：精選上線
-
-1. `featured_picks` 表 + 選注函數（純函數，有單元測試：一場一注、上限 10、0 注、打和規則、只加唔減）。
-2. card、Telegram（`daily_bet_message` 只推精選）、dashboard（`tennis_tracking.py` 加精選紀錄同獨立 ROI）。
-3. Telegram 每日績效加：精選前向進度（x／250 場、ROI、CI）。
-
-### 第 3 步：策略清理
-
-1. 停組合注：card、Telegram、dashboard 拎走；`combo_tracker` 保留歷史唯讀。
-2. 暫停 4 個技術統計 family 嘅推薦（研究記分卡可以照記）。
-3. `recommendation_gate`：拎走自動開正式注嘅路，只留停損（drawdown／近期轉負就停）。
-
-### 第 4 步：登記同記錄
-
-1. `docs/experiments/EXP-20261105-xx-tennis-featured-forward.md`：A 部分量度 + C／D 定義 + 指令 + commit hash。
-2. tennis forward tracker + `AGENTS.md`。
-3. 舊 `clv_tracker` 8 月總局數錯結算：寫入記錄，留待重建時合併帳本，唔即刻改歷史。
-
-### 第 5 步：重建（第 0–4 步上線後先開始）
-
-- 範圍：模型、選注、報告、帳本。**唔掂**抽取同身份層（第 6 步先處理）。
-- 方法同 NBA（EXP-20261103-15）：新引擎逐場 replay，對比舊引擎結果一樣先換。
-- 同時做：一本帳（合併 `clv_tracker`／`prop_tracker`／`combo_tracker`）；剷走組合、4 個暫停 family、
-  回填期嘅相容 code、自動閘；`daily_report.py`（5,200 行）拆細。
-- 統一計分 kernel（研究計劃 C08／C09，令所有 props 互相一致）會改輸出 → 當獨立候選，過
-  `model-regression-gate` 先用。
-- 15 個 REJECT_DEV 唔重開。
-
-### 第 6 步：接手 Codex 數據線
-
-- 按研究計劃「下一步」：來源身份、as-of Elo generation、缺特徵來源。
-- 先讀 `codex-tennis-source-owner-guard-20261104` 嘅記錄再決定接邊幾段；喺重建後嘅新底上做。
-
-### 第 7 步：令精選真係賺錢嘅研究（每項都要預先登記）
-
-1. **更好價錢**：Sportsbet 以外有冇其他莊家／exchange 開同類 props；同一注賠率高 3% = ROI 加 3 個百分點，唔使模型變準。
-2. **模型準過市場**：等第 6 步數據修好之後先再試；Brier 要先贏市場。
-3. 精選再收窄（例如 edge 門檻、賠率範圍）：只可以作為新 arm，前向驗。
+| 階段 | 內容 | 點解排呢度 |
+|---|---|---|
+| 一 | 夜晚試抓 | 獨立唯讀腳本，唔郁舊 code；要儘早開始累積一星期數據 |
+| 二 | 精選 + 新 Telegram（細、獨立） | Kelvin 而家日日收無用訊息；前向測試要儘早開始計數。寫成**新結構嘅第一批 module**，重建時直接保留，唔使做兩次 |
+| 三 | **全面重建**（主體） | card 封鎖、兩本帳、組合、自動閘全部住喺舊 code（`daily_report.py` 5,208 行、`ledger.py` 2,863 行）。喺舊 code 修完再重建 = 做兩次，所以呢啲修正直接喺重建入面做 |
+| 四 | 夜晚 card 切換 | 等試抓判決（約 11-12），喺新結構上做 |
+| 五 | 接手 Codex 數據線 | 喺乾淨嘅新底上做，唔會越修越亂 |
+| 六 | 盈利研究 | 要先有乾淨數據同一本帳先量得準 |
 
 ---
 
-## F. 時間表（估計）
+## F. 執行步驟（每步都要 `./檢查.sh` 同 `./保存.sh`）
+
+### 階段一：夜晚試抓（今晚起，一星期）
+
+- 新 launchd job：每晚 **21:00 同 23:30** 悉尼，唯讀抓**明日**全部賽事 + props。
+- 寫去獨立檔（runtime 嘅 `data/exports/night_probe/<日期>/<時間>.jsonl.gz`），**唔寫** `prop_tracker`／`market_odds_snapshots`，唔影響現役 card。
+- 每朝 card 出完對比：
+  1. 精選注入面，幾多注前一晚 21:00／23:30 已經有盤（用 `matches.market_event_id` + 盤名 + 選項名對）；
+  2. 嗰陣嘅價同 09:00 一唔一樣；
+  3. 幾多精選賽事喺 00:00–09:00 開（而家 card 完全捉唔到）。
+- **預先定好嘅判斷**（一星期後）：
+  - ≥80% 精選注 21:00 已有盤、而且 ≥90% 價錢同 09:00 一樣 → card 改去 **21:00 出、21:00–00:00 落**（似 NBA）；
+    其餘未有盤嘅，有盤先推「補充精選」+ 入 dashboard；
+  - 23:30 先達標 → card 改 23:30；
+  - 都唔達標 → 維持 09:00 card，09:00–09:30 落，先落最早開賽嘅。
+- 結果推 Telegram。
+- 部署：新 plist template + `install_macos_launchd.sh` 加 label；排程行 `/Users/imac/wongchoi-scheduler`，經 `./保存.sh` 上線後要確認 job loaded。
+- 第一晚（11-05）如果排程未上線，就由 worktree 人手跑一次 23:30 試抓。
+
+### 階段二：精選 + 新 Telegram（1–2 日）
+
+1. 新 module `tennis_wc/featured.py`：純函數揀精選（C 部分），單元測試覆蓋一場一注、上限 10、0 注、打和、只加唔減。
+2. 新表 `featured_picks`：出 card 嗰刻寫低，之後唔改。
+3. Telegram 換成 H 部分嘅格式：精選訊息、補充精選、每日成績（精選前向進度）。**唔再推「資料未就緒」**；
+   個別場次資料有問題就唔入精選，歷史累計數字唔封鎖。
+4. dashboard：精選做主角；非精選紙上注喺主頁、預設收起。
+   **ROI 只計賽前可核實嘅注**；回填批（`is_point_in_time` 空）另列「歷史參考，唔計成績」，唔再撐高總 ROI。
+5. 登記前向測試（D 部分）：`docs/experiments/` 記錄 + tennis forward tracker（夠數推 Telegram）+ `AGENTS.md` 加 tennis 一行。
+
+### 階段三：全面重建（主體，約 1–2 星期）
+
+**目標**：用最簡單、最清楚嘅 code 重寫 Tennis Wong Choi；同一概念只有一個真源；剷晒死 code；舊 bug 喺重建入面修好。
+
+**現況盤點（2026-11-05 掃描）**
+
+| 項目 | 數字 |
+|---|---|
+| 總行數 | ~65,000（src 36,565、scripts 39 檔、tests 103 檔） |
+| 最大嘅檔 | `reports/daily_report.py` 5,208、`betting/ledger.py` 2,863、`props/daily.py` 1,692、`cli.py` 1,433、`props/settlement.py` 1,157 |
+| CLI 命令 | 47 個，排程實際只用 7 個（init-db、run-daily、review-date、weekly-review、build-lowtier-corpus、config-check、network-check） |
+| 冇人 import 嘅 module | 24 個，1,485 行（`agents/` 殘骸、`research_kernel/`、`betting/devig.py`、`modelling/combiner_backtest.py`、`probability_calibration.py`、betfair／odds_api／sportradar／statsperform 空殼 provider、`features/fatigue|form|injury` 空檔等） |
+| 帳本 | 三本：`prop_tracker`、`clv_tracker`、`combo_tracker`（+ 空嘅 `bet_ledger`、`prop_tracker_pre_rebuild`） |
+
+**目標結構**（每層一個責任，上層只讀下層）
+
+```
+tennis_wc/
+  sources/    Sportsbet、ESPN、TennisExplorer、排名（保留 Codex 嘅防線，只整理結構）
+  store/      schema、migration、一本帳（ledger：每個推薦、精選旗、結算、CLV）
+  model/      Elo、發球／接發、單一比賽 kernel、市場去水
+  pricing/    每個 family 由 model 出機率、edge、EV
+  select/     value 判斷、formal profile、精選
+  publish/    card、Telegram、dashboard export
+  settle/     賽果 → 帳本
+  run.py      排程入口：card、settle、probe、review
+```
+
+目標 src 大約 1 萬到 1.2 萬行。（估計，做完先知。）
+
+**一定要修嘅 bug（重建入面做，每個獨立 commit、前後對比）**
+
+1. card 用累計歷史數字封鎖（A4-1）→ 只判今日 slate。
+2. 兩本帳結算唔一致（A4-2）→ 一本帳；8 月錯判嘅總局數由賽果重算，舊值留 audit。
+3. 組合冇記錄（A4-3）→ 組合 code 剷走。
+4. 自動閘重複測試（A4-4）→ 閘只可以停。
+5. 同場疊注 → 精選一場一注（紙上 value 注照記，用嚟做研究）。
+6. 重建途中再搵到嘅 bug：照同一做法逐個記錄。
+
+**剷走清單**
+
+- 24 個冇人 import 嘅 module。
+- 40 個排程冇用嘅 CLI 命令：逐個睇；真係要人手用嘅（例如 `record-bet` 記實盤、`settle-backlog`）搬去細嘅 `tools/`，其餘刪。
+- `scripts/` 一次性研究腳本：有實驗記錄引用嘅搬去 `docs/experiments/patches/`，其餘刪。
+- 組合、4 個暫停 family 嘅推薦路、回填期相容 code、`bet_ledger`／`prop_tracker_pre_rebuild` 空表。
+- 測試：刪咗嘅 code 嘅測試一齊刪；新結構按行為重寫。
+
+**方法（同 NBA EXP-20261103-15 一樣）**
+
+1. **先凍結 baseline**：用舊引擎對固定一批過去日子（例如 10-28 至 11-05 全部賽事）輸出每個 prop 嘅機率、value 判斷、精選；連 commit hash 存檔。
+   DB 有 2GB：凍結複本一律放外置碟 `/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/tennis-rebuild-20261105/`（先確認有掛載、`df` ≥10GB），唔放 Mac 內置碟。
+2. 逐層寫新 code。
+3. **replay 對比**：同一批輸入，新引擎每個機率差 ≤1e-9、value 判斷同精選完全一樣。
+   唔一樣嘅只可以係上面「一定要修嘅 bug」，逐個列明。
+4. 切換排程，舊 code 喺同一個 release 刪走。
+5. 模型數學（`tennis-v1`）**唔郁**；15 個 REJECT_DEV 唔重開。
+6. 統一 kernel（研究計劃 C08／C09，令所有 props 互相一致）會改輸出 → 重建完之後當獨立候選，過 `model-regression-gate` 先用。
+
+### 階段四：夜晚 card 切換
+
+- 按階段一判決，喺新結構改 card 時間，同埋加「補充精選」。
+- 而家 18:00 嗰個「早報（前一晚）」Telegram 會被夜晚 card 取代；判決係維持 09:00 嘅話，早報都改成只推精選。
+
+### 階段五：接手 Codex 數據線
+
+- 按研究計劃「下一步」：來源身份、as-of Elo generation、缺特徵來源。
+- 119 場 disputed fixture 結算被扣住：會影響 ROI 分母，要逐場解決或者明確排除。
+- 研究參考：外部項目比較筆記 `docs/plans/tennis-external-project-review-notes-20261028.md`、來源清單 `docs/plans/tennis-external-project-sources-20261028.json`、15 個 REJECT 證據喺 `codex-tennis-unified-research-20261028`。
+- 先讀 `codex-tennis-source-owner-guard-20261104` 嘅記錄，再決定接邊幾段。
+
+### 階段六：令精選真係賺錢嘅研究（每項都要預先登記）
+
+1. **更好價錢**：Sportsbet 以外有冇其他莊家／exchange 開同類 props；同一注賠率高 3% = ROI 加 3 個百分點，唔使模型變準。
+2. **模型準過市場**：等階段五數據修好之後再試；Brier 要先贏市場。
+3. 精選再收窄（例如 edge 門檻、賠率範圍）：只可以做新 arm，前向驗。
+
+---
+
+## 時間表（估計）
 
 | 時間 | 事項 |
 |---|---|
-| 11-05 晚 | 第 0 步試抓上線 |
-| 11-06 – 11-08 | 第 1–4 步（card 解封、精選、清理、登記） |
-| 11-12 左右 | 試抓一星期判斷：夜晚 card 定朝早 card |
-| 11-09 起 | 第 5 步重建 |
-| 約 12 月中 | 精選 250 場第一次判決（每日約 10 注） |
+| 11-05 晚 | 階段一：試抓上線 |
+| 11-06 – 11-07 | 階段二：精選 + 新 Telegram + 登記前向 |
+| 11-08 – 約 11-20 | 階段三：全面重建 |
+| 約 11-12 | 試抓判決 → 階段四喺重建入面做 |
+| 11 月尾起 | 階段五、六 |
+| 約 12 月中 | 精選 250 場第一次判決 |
 
-## G. 要 Kelvin 決定嘅嘢
 
-1. 前向判決點 250 場（約 6 星期）定直接 600 場（約 2 個月）？
-2. 精選打和規則（edge → EV → 賠率）OK？
-3. 夜晚 card 判斷門檻（80% 有盤、90% 同價）OK？
-4. 紙上 value 注（非精選）仲要唔要喺 dashboard 顯示？建議保留但標明「參考，唔係建議」。
+## G. Kelvin 決定（2026-11-05 確認）
+
+1. 前向判決：250 場判一次，唔清楚就延到 600 場，之後唔再延。✅
+2. 精選打和規則 edge → EV → 賠率。✅
+3. 夜晚 card 門檻 80% 有盤、90% 同價。✅ **另加**：夜晚未有盤嘅精選（約兩成），之後一有盤就推「補充精選」Telegram，同時加入 dashboard。
+4. 非精選紙上注：放 dashboard 主頁，**預設收起**，撳開先見。✅
+
+## H. Telegram 訊息整頓（Kelvin 指定優先）
+
+而家每日收到：「資料未就緒，唔可以判斷」+ 一個每日 ROI 訊息，兩樣都冇用。改成：
+
+1. **精選訊息**（每日一個）：今日精選 N／10 注，逐注列選擇、賠率、開賽時間；0 注就一句「今日無精選」，唔再出「資料未就緒」。
+   資料問題只影響個別場次（嗰幾場唔入精選），歷史累計數字唔再封鎖成張 card。
+2. **補充精選**（有先推）：之後先開盤而又入選嘅注。
+3. **每日成績**：只講精選（昨日、前向進度 x／250 場、ROI、CI）；全部紙上注一行帶過。
+4. 真係抓唔到盤（Sportsbet 斷線等）先推一個簡短警告。
+
+
+## I. 對話要求對照表（2026-11-05 逐條核對）
+
+| Kelvin 喺對話提過 | 喺計劃邊度 |
+|---|---|
+| 用最簡單、最乾淨嘅 code 全面重建，統一、剷 bug 同死 code、需要就改結構 | F 階段三（盤點、目標結構、bug 清單、剷走清單、replay 方法） |
+| 重建排前定排後 | E（先細嘢 → 重建 → 其餘，附理由） |
+| 盈利策略：放棄某啲注類／props | A1、B2–B3、B7 |
+| 兩樣一齊做定先做重建 | E |
+| 參考統一研究計劃同 GitHub 外部項目 | F 階段三第 5–6 點、階段五研究參考 |
+| 接手 Codex | A5、F 階段五 |
+| Dashboard ROI 睇落唔錯 | A1（回填批）、F 階段二第 4 點 |
+| 同一球員 3–4 注唔聰明 | A2、C 第 4 點 |
+| 精選最多 10 注、可以 0、最好賺錢 | C、D、F 階段六 |
+| 揀最高信心嘅 10 注會唔會好啲 | A2（量咗：按信心揀最差） |
+| 精選做唔做到 profitable | A2、C 最後一段、F 階段六 |
+| 似 NBA 咁 21:00–00:00 落注 | F 階段一、階段四 |
+| 做唔到就話我知最佳時間 | F 階段一判斷第三條、A3 |
+| 未有盤嘅兩成：有盤再推＋入 dashboard | G3、F 階段四 |
+| 非精選：dashboard 主頁、預設收起 | G4、F 階段二第 4 點 |
+| 「資料未就緒」＋每日 ROI 訊息無用，要整頓 Telegram | A4-1、H、F 階段二第 3 點 |
+| 前向判決點、打和規則、夜晚門檻 | G1–G3 |
+| 唔落真錢直到證實 | B4 |
