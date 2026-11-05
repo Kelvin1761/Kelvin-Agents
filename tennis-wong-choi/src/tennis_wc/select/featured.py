@@ -338,7 +338,7 @@ def _pick_lines(picks: list[dict]) -> list[str]:
         lines += [
             "",
             f"{_sydney_time(p['start_time_utc'])}  {p.get('match_label') or ''}",
-            f"• {family}｜Sportsbet：{market} → {choice}",
+            f"• Sportsbet：{market} → {choice}",
             f"• 賠率 {float(p['odds']):.2f}｜1 注",
         ]
     return lines

@@ -155,7 +155,7 @@ def test_report_lists_featured_first_and_value_props(conn, monkeypatch, tmp_path
     text = report.render("2026-11-07")
     assert text.index("精選 1／10") < text.index("其他 value props")
     assert "#1 Ann vs Bea｜Set 1 Winner → Ann｜賠率 2.20" in text
-    assert "首盤勝方" in text
+    assert "Set 1 Winner → Ann｜賠率 2.20" in text  # Sportsbet English names, not our labels
 
 
 def test_weekly_counts_picks_by_run_and_price_move(conn):

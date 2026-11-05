@@ -147,7 +147,13 @@ def export_tennis_tracking(db_path):
                 if r.get("is_value") != 1:
                     continue
                 prop_ids.add(r["id"])
-                records.append(make(r, f"tennis:prop:{r['id']}", "prop"))
+                record = make(r, f"tennis:prop:{r['id']}", "prop")
+                # Sportsbet's own English market and selection, so a bet can be
+                # found on the site as written (Kelvin 2026-11-06).
+                record["sportsbet_market"] = r.get("feed_market_name") or None
+                if r.get("feed_selection_name"):
+                    record["selection"] = r["feed_selection_name"]
+                records.append(record)
             # 精選 (2026-11-05): frozen at the price each pick was sent at; the
             # result comes from prop_tracker, the single settlement source.
             # Read separately so a database without the table adds no warning.

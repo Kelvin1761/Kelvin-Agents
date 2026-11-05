@@ -169,3 +169,18 @@ def test_missing_featured_table_adds_no_warning(tmp_path):
     out = export_tennis_tracking(path)
     assert out["warnings"] == []
     assert not [r for r in out["records"] if r["kind"] == "featured"]
+
+
+def test_prop_cards_carry_sportsbets_english_market_and_selection(tmp_path):
+    path = tmp_path / "db"
+    c = database(path)
+    prop(c, 1)
+    prop(c, 2)
+    c.execute("ALTER TABLE prop_tracker ADD COLUMN feed_market_name TEXT")
+    c.execute("ALTER TABLE prop_tracker ADD COLUMN feed_selection_name TEXT")
+    c.execute("UPDATE prop_tracker SET feed_market_name='Set 1 Winner', feed_selection_name='Player A' WHERE id=1")
+    c.commit()
+    c.close()
+    one, two = export_tennis_tracking(path)["records"]
+    assert one["sportsbet_market"] == "Set 1 Winner" and one["selection"] == "Player A"
+    assert two["sportsbet_market"] is None and two["selection"] == "Player A Over 3.5"

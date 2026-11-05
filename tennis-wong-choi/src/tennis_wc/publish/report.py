@@ -42,7 +42,7 @@ def render(match_date: str) -> str:
             if conn.execute("SELECT 1 FROM sqlite_master WHERE name='featured_picks'").fetchone() else []
         props = conn.execute("""
             SELECT match_label, market_key, selection, decimal_odds, model_prob_raw,
-                   market_prob_fair, edge, ev, is_value
+                   market_prob_fair, edge, ev, is_value, feed_market_name, feed_selection_name
             FROM prop_tracker WHERE match_date = ? ORDER BY match_label, market_key, selection""",
             (match_date,)).fetchall()
     lines = [f"Tennis Wong Choi｜{match_date}", ""]
@@ -60,8 +60,8 @@ def render(match_date: str) -> str:
     for label, rows in by_match.items():
         lines.append(label)
         for p in rows:
-            family = FAMILY_LABELS.get(family_for_market(p["market_key"]), p["market_key"])
-            lines.append(f"  {family}｜{p['selection']}｜賠率 {p['decimal_odds']:.2f}｜模型 "
+            market = p["feed_market_name"] or FAMILY_LABELS.get(family_for_market(p["market_key"]), p["market_key"])
+            lines.append(f"  {market} → {p['feed_selection_name'] or p['selection']}｜賠率 {p['decimal_odds']:.2f}｜模型 "
                          f"{p['model_prob_raw']:.1%} vs 市場 {p['market_prob_fair']:.1%}｜EV {p['ev']:+.3f}")
     return "\n".join(lines) + "\n"
 
