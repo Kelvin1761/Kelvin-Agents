@@ -834,6 +834,29 @@ def _extract_career_starts(block: str) -> int:
     return int(match.group(1)) if match else 0
 
 
+def refresh_career_starts(logic_data: dict) -> int:
+    """由已存 `_data.facts_section` 重新抽 `career_race_starts`／`career_tag` → 改咗幾多匹。
+
+    Live 經 `enrich_logic_from_facts` 每次都重抽；但重播（`au_dump_engine_leaves.py`）直接讀 Logic，
+    而 2026-08-05～09 嘅 23 個場次存住舊 parser 寫低嘅 0（Facts 寫 `生涯: 7`，舊 parser 要冒號），
+    令 2,086 匹有往績嘅馬喺重播被當初出、試閘分照計（EXP-20261105-08）。冇 facts_section 就唔郁。
+    """
+    horses = logic_data.get("horses") if isinstance(logic_data, dict) else None
+    changed = 0
+    for horse in (horses or {}).values():
+        if not isinstance(horse, dict):
+            continue
+        section = (horse.get("_data") or {}).get("facts_section")
+        if not section:
+            continue
+        starts = _extract_career_starts(section)
+        if horse.get("career_race_starts") != starts:
+            changed += 1
+        horse["career_race_starts"] = starts
+        horse["career_tag"] = _extract_career_tag(section)
+    return changed
+
+
 def _extract_career_tag(block: str) -> str:
     starts = _extract_career_starts(block)
     if starts == 0:
