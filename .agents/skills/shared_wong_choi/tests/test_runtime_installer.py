@@ -4,6 +4,7 @@ import os
 import json
 import plistlib
 import shutil
+import shlex
 import sqlite3
 import subprocess
 import sys
@@ -214,6 +215,19 @@ def test_runtime_pointer_snapshot_rejects_unsafe_config(tmp_path, unsafe):
     (False, True, True, "bound-bootstrap-failure"),
 ])
 def test_runtime_installer_full_cutover_in_isolated_home(tmp_path: Path, active_run: bool, acceptance: bool, calendar_ok: bool, attempt: str) -> None:
+    # Simulated cutover owns its process observer, just as it owns launchctl.
+    # The separate native preflight tests exercise real kernel argv.
+    observer = tmp_path / "idle-observer.py"
+    observer.write_text("raise SystemExit(0)\n")
+    isolated_installer = tmp_path / "install-runtime.sh"
+    source = INSTALLER.read_text()
+    assert 'runtime_active_guard || exit $?' in source
+    assert 'runtime_active_guard || return 1' in source
+    source = source.replace('PROJECT_ROOT="${SCRIPT_DIR:h:h:h}"',
+                            'PROJECT_ROOT=' + shlex.quote(str(REPO_ROOT)), 1)
+    source = source.replace('ACTIVE_RUN_GUARD="$PROJECT_ROOT/.agents/skills/shared_wong_choi/runtime_active_runs.py"',
+                            'ACTIVE_RUN_GUARD=' + shlex.quote(str(observer)), 1)
+    isolated_installer.write_text(source)
     home = tmp_path / "home"
     agents = home / "Library" / "LaunchAgents"
     agents.mkdir(parents=True)
@@ -348,7 +362,7 @@ raise SystemExit(0 if accepted else 1)
     outer_proof = None
     foreign = agents / "com.antigravity.hkjc-wong-choi.prerace.plist"
     if attempt.startswith("outer"):
-        captured = subprocess.run(["/bin/zsh", str(INSTALLER), "--snapshot", str(outer)],
+        captured = subprocess.run(["/bin/zsh", str(isolated_installer), "--snapshot", str(outer)],
                                   env=env, text=True, capture_output=True, timeout=30)
         assert captured.returncode == 0, captured.stderr
         outer_proof = (outer / ".launchd-state.json").read_bytes()
@@ -357,7 +371,7 @@ raise SystemExit(0 if accepted else 1)
         if attempt == "outer-conflict":
             foreign.write_bytes(plistlib.dumps({"Label": foreign.stem, "ProgramArguments": ["/foreign/owner"]}))
     result = subprocess.run(
-        ["/bin/zsh", str(INSTALLER), *install_arguments],
+        ["/bin/zsh", str(isolated_installer), *install_arguments],
         env=env,
         text=True,
         capture_output=True,
