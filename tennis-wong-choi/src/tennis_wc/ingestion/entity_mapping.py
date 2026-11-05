@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 from contextlib import nullcontext
+from datetime import datetime
 
 from tennis_wc.database.db import get_connection
 from tennis_wc.database.history_observations import history_active_clause
@@ -107,10 +108,66 @@ def _terminal_player_id(conn, player_id: int, name: str, tour: str) -> int:
     return terminal
 
 
+def _proven_merged_source_target(conn, row, name: str, tour: str) -> int | None:
+    """Accept a stale tour only with exact source names and a complete merge receipt."""
+    from tennis_wc.ingestion.name_matching import normalise_player_name as alias_name
+
+    key = normalise_player_name(name)
+    tokens = alias_name(name).split()
+    if (tour not in {"ATP", "WTA"} or len(tokens) < 2 or any(len(t) < 2 for t in tokens)
+            or normalise_player_name(row["name"]) != key
+            or normalise_player_name(str(row["entity_name"] or "")) != key):
+        return None
+    tables = {r[0] for r in conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('player_aliases','player_merge_log')"
+    )}
+    if tables != {"player_aliases", "player_merge_log"}:
+        return None
+    if "canonical_player_id" not in {r[1] for r in conn.execute("PRAGMA table_info(players)")}:
+        return None
+    original = int(row["internal_entity_id"])
+    current = original
+    seen: set[int] = set()
+    for _ in range(16):
+        if current in seen:
+            return None
+        seen.add(current)
+        player = conn.execute(
+            "SELECT name,tour,canonical_player_id FROM players WHERE id=?", (current,)
+        ).fetchone()
+        if player is None or normalise_player_name(player["name"]) != key:
+            return None
+        parent = player["canonical_player_id"]
+        if parent is None:
+            alias = conn.execute(
+                "SELECT canonical_player_id,source FROM player_aliases WHERE alias_norm=?",
+                (alias_name(name),),
+            ).fetchone()
+            if (current != original and player["tour"] == tour and alias is not None
+                    and alias["source"] == "merge"
+                    and int(alias["canonical_player_id"]) in seen - {original}):
+                return current
+            return None
+        log = conn.execute(
+            "SELECT canonical_player_id,canonical_name,duplicate_name,merged_at "
+            "FROM player_merge_log WHERE duplicate_id=? ORDER BY id DESC LIMIT 1", (current,)
+        ).fetchone()
+        if (log is None or log["canonical_player_id"] != parent or not log["merged_at"]
+                or any(normalise_player_name(str(log[k] or "")) != key
+                       for k in ("canonical_name", "duplicate_name"))):
+            return None
+        try:
+            datetime.fromisoformat(str(log["merged_at"]).replace("Z", "+00:00"))
+        except ValueError:
+            return None
+        current = int(parent)
+    return None
+
+
 def _existing_player_choice(conn, provider_name: str, provider_player_id: str, name: str, tour: str):
     """The existing selection policy, without changing a player or alias."""
     row = conn.execute(
-        """SELECT pe.internal_entity_id, p.name, p.tour FROM provider_entities pe
+        """SELECT pe.internal_entity_id, pe.entity_name, p.name, p.tour FROM provider_entities pe
         JOIN players p ON p.id = pe.internal_entity_id
         WHERE pe.provider_name=? AND pe.entity_type='player' AND pe.provider_entity_id=?""",
         (provider_name, provider_player_id),
@@ -119,6 +176,9 @@ def _existing_player_choice(conn, provider_name: str, provider_player_id: str, n
         matched = _canonical_player_row(conn, name, tour)
         return None, int(matched["id"]) if matched else None
     if not _identity_agrees(row, name, tour):
+        target = _proven_merged_source_target(conn, row, name, tour)
+        if target is not None:
+            return row, target
         raise PlayerIdentityConflict(f"provider player identity changed: {provider_name}/{provider_player_id}: "
                                      f"{row['name']!r} -> {name!r}")
     player_id = int(row["internal_entity_id"])
@@ -168,11 +228,28 @@ def get_or_create_player(
         row, player_id = _existing_player_choice(conn, provider_name, provider_player_id, name, tour)
         if row:
             if player_id != int(row["internal_entity_id"]):
-                conn.execute(
-                    """UPDATE provider_entities SET internal_entity_id=?, entity_name=?, updated_at=?
-                    WHERE provider_name=? AND entity_type='player' AND provider_entity_id=?""",
-                    (player_id, name, now, provider_name, provider_player_id),
-                )
+                if not conn.in_transaction:
+                    conn.execute("BEGIN")
+                conn.execute("SAVEPOINT tennis_player_alias_rebind")
+                try:
+                    changed = conn.execute(
+                        """UPDATE provider_entities SET internal_entity_id=?, entity_name=?, updated_at=?
+                        WHERE provider_name=? AND entity_type='player' AND provider_entity_id=?
+                          AND internal_entity_id=? AND entity_name IS ?""",
+                        (player_id, name, now, provider_name, provider_player_id,
+                         row["internal_entity_id"], row["entity_name"]),
+                    )
+                    if changed.rowcount != 1:
+                        raise PlayerIdentityConflict("provider player alias changed during resolution")
+                    if (not _identity_agrees(row, name, tour)
+                            and _proven_merged_source_target(conn, row, name, tour) != player_id):
+                        raise PlayerIdentityConflict("merge receipt changed during resolution")
+                except BaseException:
+                    conn.execute("ROLLBACK TO SAVEPOINT tennis_player_alias_rebind")
+                    conn.execute("RELEASE SAVEPOINT tennis_player_alias_rebind")
+                    raise
+                else:
+                    conn.execute("RELEASE SAVEPOINT tennis_player_alias_rebind")
             conn.execute(
                 """
                 UPDATE players

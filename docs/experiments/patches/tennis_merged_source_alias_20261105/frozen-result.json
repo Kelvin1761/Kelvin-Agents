@@ -1,0 +1,32 @@
+{
+  "alias_plan_sha256": "770911d8a98c27521b136059f4fdaa28216005a3ccc3a76cd68f8379d0122c1d",
+  "all_history_and_receipts_unchanged": true,
+  "baseline_blocked_fixtures": 18,
+  "baseline_commit": "64aacf58f96daa7ffb58e5c0ff2dc10925a516d2",
+  "baseline_rejected_actors": 13,
+  "candidate_blocked_fixtures": 7,
+  "candidate_rejected_actors": 4,
+  "current_card_recovered_id_overlap": 0,
+  "current_card_recovered_name_overlap": 0,
+  "database_kind": "archived_immutable",
+  "database_sha256": "fb5638c6ad30476ea0a4d5aceb5462f20c271d6c9ee0ebc0f8a00b273f90f9fe",
+  "direct_archived_conflicts_verified": 13,
+  "identity_projection_sha256": "4edc9c17a815e1afe3768743953cd3f7ac9e3a015e31a80021308d98e2d0bd40",
+  "immutable_metadata_projection": true,
+  "isolated_write_changes": {
+    "alias_rebindings": 9,
+    "target_player_metadata_updates": 9
+  },
+  "previously_resolved_actors": 463,
+  "production_updates": 0,
+  "readonly_resolution_no_mutations": true,
+  "recovered_actors": 9,
+  "source_actors": 476,
+  "source_fixtures": 478,
+  "source_sha256": {
+    "tennis-espn-atp-20260131.json": "c9c278a5ec8b1d21d02109cb93ecb39418d2b84234586db4d5d037d79fe0a219",
+    "tennis-espn-wta-20260131.json": "13f3c956ea9918d203b47eb44415aa32fe2b8dfade86a31e0d93754b3932e8a7"
+  },
+  "transaction_rollback_exact": true,
+  "unchanged_nonconflicting_lookups": 463
+}
