@@ -569,39 +569,40 @@ def test_the_health_push_is_opt_in(monkeypatch):
     assert sent == [], "the health push must stay silent until it is switched on"
 
 
-def test_daily_performance_message_separates_paper_from_live_and_lists_families():
+def test_daily_performance_goes_to_the_unified_roi_board(monkeypatch, tmp_path):
+    """2026-11-05: only bets / hits / ROI / ROI% on the shared board, to content."""
     snapshot = {
         "paper": {
-            "daily": {"settled": 4, "wins": 3, "pnl": 1.4, "roi": 0.35},
-            "recent_14": {"settled": 43, "wins": 21, "pnl": -4.2, "roi": -0.0977},
-            "overall": {"settled": 57, "wins": 29, "pnl": -4.765, "roi": -0.0836},
-            "families": {
-                "player_win_a_set": {
-                    "settled": 57, "pnl": -4.765, "roi": -0.0836,
-                    "recent_roi": -0.2144,
-                },
-                "player_aces": {
-                    "settled": 26, "pnl": -2.824, "roi": -0.1086,
-                    "recent_roi": -0.1086,
-                },
-            },
+            "daily": {"settled": 4, "wins": 3, "staked": 4.0, "pnl": 1.4},
+            "overall": {"settled": 57, "wins": 29, "staked": 57.0, "pnl": -4.765},
         },
-        "live": {"settled": 0, "wins": 0, "pnl": 0.0, "roi": None},
-        "scorecard": {
-            "model": {"brier": 0.2127}, "market": {"brier": 0.1962},
-        },
-        "gate": {"enabled_families": []},
-        "pending_value_older": 2,
     }
+    sent = []
+    monkeypatch.setenv("WONGCHOI_CONTROL_STATE_ROOT", str(tmp_path))
+    monkeypatch.setattr(scheduler, "daily_performance_snapshot", lambda day: snapshot)
+    monkeypatch.setattr(scheduler, "notify",
+                        lambda text, **kw: sent.append((text, kw.get("audience"))) or True)
+    monkeypatch.setattr(scheduler, "log", lambda *_a: None)
 
-    message = scheduler.daily_performance_message("2026-08-20", snapshot)
+    assert scheduler.notify_daily_performance("2026-08-20") is True
+    (message, audience), = sent
+    assert audience == "content"
+    assert "🎾 網球 🆕" in message
+    assert "4 注｜中 3｜ROI +1.40u｜+35.0%" in message
+    assert "57 注｜中 29｜ROI −4.77u｜−8.4%" in message or "57 注｜中 29｜ROI −4.76u｜−8.4%" in message
+    for noise in ("紙上盤", "近14日", "Brier", "RESEARCH_ONLY", "實盤"):
+        assert noise not in message
 
-    assert "紙上盤" in message and "實盤 0 注" in message
-    assert "當日 4 注" in message and "+1.400u" in message
-    assert "近14日 43 注" in message and "-4.200u" in message
-    assert "贏一盤" in message and "球員 Ace" in message
-    assert "Model 0.2127" in message and "Market 0.1962" in message
-    assert "RESEARCH_ONLY" in message and "未結算 2" in message
+
+def test_daily_performance_without_settled_bets_sends_nothing(monkeypatch, tmp_path):
+    sent = []
+    monkeypatch.setenv("WONGCHOI_CONTROL_STATE_ROOT", str(tmp_path))
+    monkeypatch.setattr(scheduler, "daily_performance_snapshot",
+                        lambda day: {"paper": {"daily": {}, "overall": {"settled": 5, "pnl": 1}}})
+    monkeypatch.setattr(scheduler, "notify", lambda *a, **k: sent.append(a) or True)
+    monkeypatch.setattr(scheduler, "log", lambda *_a: None)
+    assert scheduler.notify_daily_performance("2026-08-20") is False
+    assert sent == []
 
 
 def test_review_sends_daily_performance_when_enabled(monkeypatch):

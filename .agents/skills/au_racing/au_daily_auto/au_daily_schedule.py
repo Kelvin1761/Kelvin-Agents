@@ -4293,17 +4293,42 @@ def push_betting(runlog: RunLog, day: str, mode: str) -> None:
         import au_betting
         import au_notify
 
+        if mode == "settle":
+            push_roi_board(runlog, day)
+            return
         text = ({"list": lambda d: au_betting.bet_list(d, "first"),
-                 "update": lambda d: au_betting.bet_list(d, "last"),
-                 "settle": au_betting.settle}[mode])(day)
+                 "update": lambda d: au_betting.bet_list(d, "last")}[mode])(day)
         if not text:
             return
-        # 落注相關嘅三張都係內容 —— heison 一齊收。
+        # 落注單同觀察名單係內容 —— heison 一齊收。
         sent = au_notify.push(text, audience="content")
         runlog.step("betting-push", "ok" if sent else "no-outlet", mode=mode,
                     day=day, detail="; ".join(sent) or None)
     except Exception as exc:  # noqa: BLE001
         runlog.step("betting-push", "failed", mode=mode,
+                    detail=f"{type(exc).__name__}: {exc}")
+
+
+def push_roi_board(runlog: RunLog, day: str) -> None:
+    """結算 → 寫入統一 ROI ledger → 發統一 ROI 板（Kelvin + Heison）。
+
+    2026-11-05 Kelvin：所有旺財嘅 ROI 用同一個格式（注數、中、ROI、ROI%，
+    最近一日 + 累計），任何一個結算完都發成塊板。舊嘅「📊 落注結算」逐馬場明細
+    唔再推，`au_betting.py settle <日期>` 仲印得到。
+    """
+    try:
+        import au_betting
+        import wongchoi_roi
+
+        entry = au_betting.record_roi(day)
+        if not (entry.get("latest") or {}).get("bets"):
+            runlog.step("roi-board", "skipped", day=day, detail="當日冇已結算注")
+            return
+        result = wongchoi_roi.publish("au")
+        runlog.step("roi-board", "ok" if result.get("ok") else "failed", day=day,
+                    detail=str(result.get("status")))
+    except Exception as exc:  # noqa: BLE001 —— 報告唔可以令 run 失敗
+        runlog.step("roi-board", "failed", day=day,
                     detail=f"{type(exc).__name__}: {exc}")
 
 
@@ -4319,7 +4344,7 @@ def push_run_summary(runlog: RunLog, mode: str) -> None:
         import au_run_summary
 
         text = (au_run_summary.morning if mode == "morning"
-                else au_run_summary.evening)(runlog.data)
+                else au_run_summary.evening_content)(runlog.data)
         if not text:
             return
         # ⚠️ 兩條都係**賽事內容**（退出馬、場地、排名、新分析上咗線冇），所以額外

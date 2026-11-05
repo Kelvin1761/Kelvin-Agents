@@ -240,6 +240,23 @@ def bet_tracking_lines(tracking: Mapping[str, Any], target_date: str) -> list[st
     return lines
 
 
+def tracking_days(tracking: Mapping[str, Any]) -> dict[str, dict]:
+    """Dashboard tracking records → per-day rows for the unified ROI board
+    (``wongchoi_roi``): settled bets (won/lost), hits, $1 stake each, profit.
+    Pending / unpriced / void records are not bets yet, exactly as in
+    ``bet_tracking_lines``."""
+    days: dict[str, dict] = {}
+    for r in tracking.get("records") or []:
+        if r.get("state") not in ("won", "lost") or not r.get("day"):
+            continue
+        row = days.setdefault(str(r["day"]), {"bets": 0, "hits": 0, "stake": 0.0, "pnl": 0.0})
+        row["bets"] += 1
+        row["hits"] += r["state"] == "won"
+        row["stake"] += 1.0
+        row["pnl"] += float(r.get("profit") or 0)
+    return days
+
+
 def _roi(b: Mapping[str, Any], basis: str) -> str:
     x = b.get(basis) or {}
     if x.get("roi") is None:
