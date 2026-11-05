@@ -1051,12 +1051,35 @@ class TestReflectionPush(unittest.TestCase):
         # 變成測結算而唔係測推送次序。
         fake_bet = unittest.mock.MagicMock()
         fake_bet.settle = lambda day: None
+        fake_bet.record_roi = lambda day: {"latest": {"bets": 0}}
         fake_bet.bet_list = lambda day, which="first": None
+        fake_roi = unittest.mock.MagicMock()
         with unittest.mock.patch.dict(sys.modules, {"au_notify": fake_notify,
                                                     "au_reflect_notify": fake_reflect,
-                                                    "au_betting": fake_bet}):
+                                                    "au_betting": fake_bet,
+                                                    "wongchoi_roi": fake_roi}):
             S.push_reflection(runlog)
+        fake_roi.publish.assert_not_called()
         return pushed, runlog
+
+    def test_settle_records_ledger_and_publishes_unified_board(self):
+        """2026-11-05：結算唔再推「📊 落注結算」，改為寫 ledger + 發統一 ROI 板。"""
+        runlog = unittest.mock.MagicMock()
+        runlog.notify_enabled = True
+        recorded = []
+        fake_bet = unittest.mock.MagicMock()
+        fake_bet.record_roi = lambda day: (recorded.append(day),
+                                           {"latest": {"bets": 3}})[1]
+        fake_notify = unittest.mock.MagicMock()
+        fake_roi = unittest.mock.MagicMock()
+        fake_roi.publish.return_value = {"ok": True, "status": "sent"}
+        with unittest.mock.patch.dict(sys.modules, {"au_notify": fake_notify,
+                                                    "au_betting": fake_bet,
+                                                    "wongchoi_roi": fake_roi}):
+            S.push_betting(runlog, "2026-11-04", "settle")
+        self.assertEqual(recorded, ["2026-11-04"])
+        fake_roi.publish.assert_called_once_with("au")
+        fake_notify.push.assert_not_called()
 
     def test_pushes_once_per_race_day_that_was_archived(self):
         pushed, _ = self._push(["2026-08-09 Wagga Race 1-7",

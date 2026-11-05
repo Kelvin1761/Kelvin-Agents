@@ -35,6 +35,21 @@ import，所以**呢份文件係唯一真源** —— 新規則加喺呢度，�
 - **失手體檢嘅結果唔准用嚟擇參、調權重或者揀 leaf。** EXP-20261013-01 已經證實
   失手共識搬去下一段 dev 會蝕。佢嘅用途係搵數據 bug。
 
+### Telegram 收件人同 ROI 格式（Kelvin 2026-11-05 定）
+
+- **ROI、「分析已完成」、覆盤、落注單** → `audience="content"`（Kelvin + Heison）。
+  **錯誤、系統、運維、forward 測試、release** → `audience="primary"`（淨係 Kelvin）。
+  兩個 helper（`racing_telegram.send_message`、`au_notify.push`）預設係 primary，
+  所以發內容一定要明寫 `audience="content"`；內容訊息入面唔好夾錯誤句。
+- **ROI 一律經統一板** `shared_racing/scripts/wongchoi_roi.py`：每個旺財結算後將
+  「注數／中／本金／盈虧」寫入 `<WongChoiControl>/roi_board.json`（`record` 或
+  `record_days`），再 `render(updated=<旺財>)` 發成塊板（其他旺財照列）。每朝 09:00
+  悉尼 `central_wong_choi/install_roi_summary.sh` 嘅 launchd job 發總結。
+  只報四樣嘢：注數、中、ROI（u）、ROI%；時間窗 = 最近結算日 + 累計。
+  **唔准再喺各旺財自己嘅訊息度另加 ROI 段。** HKJC 未有落注定義，暫時唔喺板上。
+  口徑：AU = `au_betting` 位注策略（2026-08-12 起）；NBA = dashboard tracking
+  （21:00 版本穩膽 $1）；網球 = 正式推薦紙上盤。
+
 ### Forward 測試一律登記入追蹤表（夠數一定要 Telegram）
 
 **規則：每個 forward／shadow 測試（「夠 N 場／N 日先判」），第一次夠數可以做實驗嗰刻一定要推 Telegram 俾 Kelvin。**

@@ -1011,7 +1011,9 @@ def run_lineup(
 
     record["lineup_unapplied_streak"] = 0
     save_state(state_path, state)
-    notify(f"✅ HKJC 名單變動已反映｜{meeting['date']} {meeting['venue']}\n{summary}")
+    # 更新咗嘅分析係內容 —— Kelvin + Heison（2026-11-05 Kelvin 定）。
+    notify(f"✅ HKJC 名單變動已反映｜{meeting['date']} {meeting['venue']}\n{summary}",
+           audience="content")
     return code
 
 
@@ -1647,10 +1649,11 @@ def run_postrace(state: dict, state_path: Path) -> int:
             set_control_outcome("partial", reason="dashboard_refresh_pending")
             return max(overall, EXIT_TEMPORARY)
         for meeting_dir in completed:
+            # 覆盤完成係內容 —— Kelvin + Heison（2026-11-05 Kelvin 定）。
             notify(
                 f"🏁 HKJC 覆盤完成｜{meeting_dir.name}\n"
-                "正式賽果已對齊 pre-race prediction，forward corpus／Matrix review 已更新；"
-                "已由 Wong Choi dashboard 移除已完成賽日。"
+                "正式賽果已對齊賽前預測；已由 Wong Choi dashboard 移除已完成賽日。",
+                audience="content",
             )
         if completed:
             forward_tracker_remind(state, state_path)

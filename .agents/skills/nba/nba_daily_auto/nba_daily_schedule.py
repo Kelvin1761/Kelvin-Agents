@@ -1476,11 +1476,23 @@ def _record_settlement_evidence(archive: Path, target_date: str, log: RunLog) ->
     )
 
 
-def _combo_roi_text(target_date: str, log: RunLog) -> str:
-    """Bet tracking exactly as the dashboard shows it; never blocks the postgame summary.
+def _roi_board_text(log: RunLog) -> str | None:
+    try:
+        import wongchoi_roi
+        return wongchoi_roi.render(updated="nba", today=date.today().isoformat())
+    except Exception as exc:  # noqa: BLE001 — a reporting add-on must not fail postgame
+        log.step("telegram_roi_board", "failed", error=f"{type(exc).__name__}: {exc}")
+        return None
 
-    The research ROI files (combo types, B0/B1/B2, bet/latest views) are still written,
-    but the message reports only the dashboard's records so the two always agree.
+
+def _record_roi_board(target_date: str, log: RunLog) -> bool:
+    """Write the dashboard's bet tracking into the unified ROI ledger; never blocks postgame.
+
+    2026-11-05 (Kelvin): every Wong Choi reports ROI in one format on one board
+    (``wongchoi_roi``), so the postgame review no longer carries its own
+    「📊 落注追蹤」 block. The numbers are still the dashboard's own records
+    (first verified 21:00 publication, $1 flat), so the board and the dashboard
+    always agree. Research ROI files are still written.
     """
     try:
         reports = nba_combo_roi.write_reports(target_date, market_ledger.ledger_root())
@@ -1489,13 +1501,17 @@ def _combo_roi_text(target_date: str, log: RunLog) -> str:
     except Exception as exc:  # noqa: BLE001 — research files must not fail postgame
         log.step("combo_roi", "failed", error=f"{type(exc).__name__}: {exc}")
     try:
+        import wongchoi_roi
         from services.nba_tracking import export_tracking
         tracking = export_tracking(PROJECT_ROOT)
         log.step("bet_tracking", str(tracking.get("status")), records=len(tracking.get("records") or []))
-        return "\n".join(nba_combo_roi.bet_tracking_lines(tracking, target_date))
+        days = nba_combo_roi.tracking_days(tracking)
+        entry = wongchoi_roi.record_days("nba", days, day=target_date,
+                                         since=tracking.get("inception_date"))
+        return bool((entry.get("latest") or {}).get("bets"))
     except Exception as exc:  # noqa: BLE001 — a reporting add-on must not fail postgame
         log.step("bet_tracking", "failed", error=f"{type(exc).__name__}: {exc}")
-        return "📊 落注追蹤：今次計算失敗（已記錄），唔影響上面賽果摘要。"
+        return False
 
 
 def _steady_stop_text(target_date: str, log: RunLog) -> str:
@@ -1697,8 +1713,8 @@ def run_postgame(target_date: str, log: RunLog) -> str:
     elif archive.is_dir():
         try:
             performance_message = postgame_message(target_date, archive)
-            performance_message += "\n\n" + _combo_roi_text(target_date, log)
-            performance_message += "\n" + _steady_stop_text(target_date, log)
+            board_has_bets = _record_roi_board(target_date, log)
+            performance_message += "\n\n" + _steady_stop_text(target_date, log)
             performance_message += "\n\n" + _reliability_text(target_date, log)
         except ValueError as exc:
             warning = notify_once(
@@ -1719,6 +1735,10 @@ def run_postgame(target_date: str, log: RunLog) -> str:
                 audience="content",
             )
             log.step("telegram_performance", str(performance.get("status") or "unknown"))
+            board_text = _roi_board_text(log) if board_has_bets else None
+            if board_text:
+                board = notify_once(f"roi-board:{target_date}", board_text, audience="content")
+                log.step("telegram_roi_board", str(board.get("status") or "unknown"))
     else:
         log.step("telegram_performance", "skipped", reason="archive_path_unavailable")
     return "archived"

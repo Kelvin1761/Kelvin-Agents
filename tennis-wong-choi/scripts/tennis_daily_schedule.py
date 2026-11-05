@@ -722,18 +722,6 @@ def notify_board_missing(detail: str) -> bool:
     )
 
 
-PERFORMANCE_FAMILY_LABELS = {
-    "player_aces": "球員 Ace",
-    "player_double_faults": "球員雙錯",
-    "player_total_games": "球員總局數",
-    "player_win_a_set": "贏一盤",
-    "first_set_winner": "首盤勝方",
-    "player_game_handicap": "球員讓局",
-    "player_set_handicap": "球員讓盤",
-    "player_exact_set_score": "盤數波膽",
-}
-
-
 def daily_performance_snapshot(match_date: str) -> dict:
     """One read-only, auditable performance view for the Telegram review.
 
@@ -811,78 +799,52 @@ def daily_performance_snapshot(match_date: str) -> dict:
     }
 
 
-def _performance_pct(value) -> str:
-    return "—" if value is None else f"{float(value):+.1%}"
+def _roi_row(profile: dict) -> dict:
+    settled = int(profile.get("settled") or 0)
+    return {
+        "bets": settled,
+        "hits": int(profile.get("wins") or 0),
+        "stake": float(profile.get("staked") or settled),
+        "pnl": float(profile.get("pnl") or 0.0),
+    }
 
 
-def _performance_units(value) -> str:
-    return f"{float(value or 0):+.3f}u"
+def _roi_board():
+    """The shared Wong Choi ROI board (``wongchoi_roi``) beside racing_telegram."""
+    shared = PROJECT_DIR.parent / ".agents" / "skills" / "shared_racing" / "scripts"
+    if str(shared) not in sys.path:
+        sys.path.insert(0, str(shared))
+    import wongchoi_roi
+
+    return wongchoi_roi
 
 
-def daily_performance_message(match_date: str, snapshot: dict) -> str:
+def record_roi_board(match_date: str, snapshot: dict) -> bool:
+    """Write the formal paper-recommendation day + cumulative into the unified ledger.
+
+    2026-11-05 (Kelvin): the old Tennis performance message mixed paper, 14-day,
+    live, eight market families, Brier and the strategy gate, and nobody could
+    read it. Every Wong Choi now reports only bets / hits / ROI / ROI% on one
+    board; Tennis uses the formal paper recommendations (the card's own bets).
+    Returns True when the day had settled formal bets.
+    """
     paper = snapshot.get("paper") or {}
-    daily = paper.get("daily") or {}
-    recent_14 = paper.get("recent_14") or {}
-    overall = paper.get("overall") or {}
-    live = snapshot.get("live") or {}
-    scorecard = snapshot.get("scorecard") or {}
-    gate = snapshot.get("gate") or {}
-    model = (scorecard.get("model") or {}).get("brier")
-    market = (scorecard.get("market") or {}).get("brier")
-    enabled = gate.get("enabled_families") or []
-
-    lines = [
-        f"📊 Tennis Wong Choi｜{match_date} 每日績效",
-        "口徑：正式 player-prop 推薦；紙上盤同已登記實盤分開。",
-        (
-            f"當日 {daily.get('settled', 0)} 注｜"
-            f"{daily.get('wins', 0)} 中｜{_performance_units(daily.get('pnl'))}｜"
-            f"ROI {_performance_pct(daily.get('roi'))}"
-        ),
-        (
-            f"近14日 {recent_14.get('settled', 0)} 注｜"
-            f"{recent_14.get('wins', 0)} 中｜{_performance_units(recent_14.get('pnl'))}｜"
-            f"ROI {_performance_pct(recent_14.get('roi'))}"
-        ),
-        (
-            f"紙上盤累計 {overall.get('settled', 0)} 注｜"
-            f"{_performance_units(overall.get('pnl'))}｜"
-            f"ROI {_performance_pct(overall.get('roi'))}"
-        ),
-        (
-            f"實盤 {live.get('settled', 0)} 注｜{_performance_units(live.get('pnl'))}｜"
-            f"ROI {_performance_pct(live.get('roi'))}"
-        ),
-        "",
-        "逐市場（正式紙上盤）：",
-    ]
-    families = paper.get("families") or {}
-    for family, label in PERFORMANCE_FAMILY_LABELS.items():
-        stats = families.get(family) or {}
-        lines.append(
-            f"• {label}: {stats.get('settled', 0)} 注｜"
-            f"{_performance_units(stats.get('pnl'))}｜ROI {_performance_pct(stats.get('roi'))}｜"
-            f"近 {stats.get('short_term_settled', stats.get('recent_settled', 0)) or 0} 注 "
-            f"{_performance_pct(stats.get('short_term_roi', stats.get('recent_roi')))}"
-        )
-    if model is not None and market is not None:
-        comparison = "Model 較佳" if float(model) < float(market) else "Market 較佳"
-        lines.extend([
-            "",
-            f"概率校準：Model {float(model):.4f}｜Market {float(market):.4f}｜{comparison}",
-        ])
-    lines.append(
-        "策略閘：" + ("、".join(enabled) if enabled else "RESEARCH_ONLY（暫停正式下注）")
+    entry = _roi_board().record(
+        "tennis",
+        day=match_date,
+        latest=_roi_row(paper.get("daily") or {}),
+        cumulative=_roi_row(paper.get("overall") or {}),
     )
-    lines.append(f"三日前 value 未結算 {snapshot.get('pending_value_older', 0)} 筆")
-    lines.append("ROI 係歷史樣本結果，唔保證之後為正；只會用未來 OOS 數據升級市場。")
-    return "\n".join(lines)
+    return bool((entry.get("latest") or {}).get("bets"))
 
 
 def notify_daily_performance(match_date: str) -> bool:
     try:
         snapshot = daily_performance_snapshot(match_date)
-        message = daily_performance_message(match_date, snapshot)
+        if not record_roi_board(match_date, snapshot):
+            log(f"ROI board: no settled formal Tennis bets on {match_date}; not sent.")
+            return False
+        message = _roi_board().render(updated="tennis", today=local_today().isoformat())
     except Exception as exc:  # noqa: BLE001 - review must still complete
         log(f"Daily-performance notification skipped: {exc}")
         return False
