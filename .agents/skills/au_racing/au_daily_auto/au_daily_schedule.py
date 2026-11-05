@@ -109,6 +109,7 @@ L600_RECENCY_FORWARD = (AU_SKILL / "au_wong_choi_auto" / "scripts"
 DRAW_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_draw_forward.py"
 OVERSEAS_PROXY_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_overseas_proxy_forward.py"
 HEAVY_H2_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_heavy_h2_forward.py"
+DEBUT_NEUTRAL_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_debut_neutral_forward.py"
 GENERATE_STATIC = DASHBOARD_DIR / "generate_static.py"
 DEPLOY_SH = DASHBOARD_DIR / "deploy.sh"
 
@@ -1663,6 +1664,30 @@ def step_heavy_h2_forward(runlog: RunLog) -> bool:
     runlog.step("heavy-h2-forward", status.get("state", "unknown"), races=status.get("races_collected", 0),
                 target=status.get("target_races"), adopt_h2=(status.get("evaluation") or {}).get("adopt_h2"),
                 top2_changed=interim.get("top2_changed"))
+    return True
+
+
+def step_debut_neutral_forward(runlog: RunLog) -> bool:
+    """EXP-20261105-09 forward 監察：初出馬冇證據穩定性分 52.4 → 60（實驗性上線）上線版 vs 舊值。
+    只計有初出路徑馬嘅場次；未夠數每晚寫累計描述（interim）；夠 700 場判一次並凍結，夠數由 forward tracker 推
+    Telegram。失敗唔阻 live 分析，永遠唔會自動改模型。"""
+    status_path = WORK_DIR / "au-debut-neutral-forward-status.json"
+    rc, out = run_cmd([sys.executable, str(DEBUT_NEUTRAL_FORWARD), "--data-root", str(AU_RACING),
+                       "--output", str(status_path)], timeout=1800)
+    if rc != 0 or not status_path.exists():
+        detail = error_excerpt(out, rc)
+        runlog.warn(f"初出馬 D1 forward 更新失敗（唔影響 live 排名）：{detail}")
+        runlog.step("debut-neutral-forward", "failed", detail=detail)
+        return False
+    try:
+        status = json.loads(status_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        runlog.step("debut-neutral-forward", "failed", detail=str(exc))
+        return False
+    interim = status.get("interim") or {}
+    runlog.step("debut-neutral-forward", status.get("state", "unknown"), races=status.get("races_collected", 0),
+                target=status.get("target_races"), keep=(status.get("evaluation") or {}).get("keep"),
+                horses_moved=interim.get("horses_ability_moved"))
     return True
 
 
@@ -4386,6 +4411,7 @@ def run_evening(runlog: RunLog, args, review_day: date) -> int:
         step_draw_forward(runlog)
         step_overseas_proxy_forward(runlog)
         step_heavy_h2_forward(runlog)
+        step_debut_neutral_forward(runlog)
         step_forward_tracker(runlog)
     publisher = None
     progressive = (not args.skip_deploy and not args.skip_analysis

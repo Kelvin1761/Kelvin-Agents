@@ -36,7 +36,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 # 每個 leaf 嘅「冇證據」值 —— 由 scoring.py 嘅 *_MICRO_WEIGHTS 讀返嚟嘅
 # base / career0_base。呢度寫死係為咗令輸出講得出「呢個值代表咩」。
 NO_EVIDENCE = {
-    "consistency_score": [(52.4, "career0_base：初出馬，冇往績可言"),
+    "consistency_score": [(60.0, "career0_base：初出馬，冇往績可言（EXP-20261105-09 由 52.4 改）"),
                           (64.6, "base：有往績但冇任何加減觸發")],
     "class_score": [(57.7, "career0_base：初出馬")],
     "sectional_score": [(60.0, "base：冇 PI／段速數據（2026-08-01 已由 35.8 修上嚟）")],

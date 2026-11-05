@@ -307,8 +307,15 @@ CLASS_MICRO_WEIGHTS = {
     # career0_2yo_bonus（+0.84）同 metro_prov_pen（−5.48）已剷走：EXP-20261102-04 逐條消融。
 }
 
+# EXP-20261105-09 D1（2026-11-05 USER-ACCEPTED，連 forward 監察）：初出馬「冇證據」穩定性分 52.4 → 60。
+# consistency_score 唔入任何維度，只經表現質素 fallback → 近績質素後備組合影響初出馬（57.0 → 60.0）。
+# v3 RANKING_WIN（Good +0.17 [0, +0.37]、ndcg +0.07 CI 全正）；§8 方向正但證據唔夠（REJECT），用戶接受上線。
+# Rollback：WC_AU_DEBUT_NEUTRAL=0。Forward：`au_debut_neutral_forward.py`（tracker `debut_neutral`）。
+DEBUT_NO_EVIDENCE_LEGACY = 52.4
+DEBUT_NO_EVIDENCE = DEBUT_NO_EVIDENCE_LEGACY if os.environ.get("WC_AU_DEBUT_NEUTRAL") == "0" else 60.0
+
 CONSISTENCY_MICRO_WEIGHTS = {
-    "career0_base": 52.4,
+    "career0_base": DEBUT_NO_EVIDENCE,
     "base": 64.6,
     "recent_place_bonus": 7.86,
     "recent_poor_pen": -2.7,

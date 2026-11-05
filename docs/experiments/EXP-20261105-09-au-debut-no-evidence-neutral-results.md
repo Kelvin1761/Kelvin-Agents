@@ -41,3 +41,18 @@
 
 按預先登記：§8 冇 WIN → **唔上線**。同 EXP-20261105-06 H2 一樣，係「v3 贏、§8 方向正但功效唔夠」；用戶可以另外決定以用戶接受上線或者開 forward。
 唔會換第二個值再試（例如 56／58）—— 嗰個係用結果揀參數，要另開協議 + dev/holdout。
+
+## 用戶決定（2026-11-05）：上線 + forward 監察
+
+用戶：「actually i think we can make it live first then continue forward too」。**USER-ACCEPTED 實驗性上線**（正式判決仍係 §8 REJECT／證據唔夠）：
+
+- `scoring.DEBUT_NO_EVIDENCE = 60.0`（`CONSISTENCY_MICRO_WEIGHTS["career0_base"]`）；舊值 `DEBUT_NO_EVIDENCE_LEGACY = 52.4`。
+  **Rollback：`WC_AU_DEBUT_NEUTRAL=0`**。維度權重唔郁（§8 fixed arm 就係量呢個組合）。
+- **Forward**：`au_debut_neutral_forward.py`，scheduler `step_debut_neutral_forward`，狀態 `work/au-debut-neutral-forward-status.json`，
+  tracker `debut_neutral`（第一次夠數推 Telegram）。2026-11-06 起、有初出路徑馬（provenance：穩定性 `career_tag` → 表現質素
+  `consistency_fallback` → 近績質素 `form_quality_fallback_composite`）嘅已完賽賽事；candidate = live，baseline = 反事實 52.4。
+  **夠 700 場**（≈ v3 改咗嘅 706 場）用 v3 fixed_rule 判一次並凍結；primary_regression／ranking_metric_harm → `keep=false`，建議回退。
+  每晚 interim 記「ability 有郁嘅馬數」同兩邊頭三初出馬入三數 —— 長期 0 = 斷咗。
+- **等價驗證**：2026-11-06 Cranbourne 副本，D1 評分後反事實重砌 vs 引擎 `WC_AU_DEBUT_NEUTRAL=0`：85 匹、6 匹初出路徑，差 **0.0000**，其他馬冇郁。
+  正向路徑：2026-10-25 Coonabarabran 副本收到 1 場、1 匹 ability 有郁。測試 `tests/test_debut_neutral_forward.py`。
+- AU golden 120 匹一致（fixture 冇初出馬）。

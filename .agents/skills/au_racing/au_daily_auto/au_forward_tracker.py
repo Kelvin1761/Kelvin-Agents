@@ -62,6 +62,11 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 "scheduler 夠數會自動判一次（v3 fixed_rule：live C2 vs H2，只計大爛地）並凍結；睇 au-heavy-h2-forward-status.json，"
                 "adopt_h2=true 就由你決定係咪上線 H2",
                 status_file="au-heavy-h2-forward-status.json"),
+    ForwardTest("debut_neutral", "初出馬冇證據穩定性分 52.4 → 60（D1，用戶接受嘅實驗性上線）",
+                "EXP-20261105-09", "status_file", 700, "場",
+                "scheduler 夠數會自動判一次（v3 fixed_rule：上線版 vs 舊 52.4）並凍結；睇 au-debut-neutral-forward-status.json，"
+                "keep=false 就建議 WC_AU_DEBUT_NEUTRAL=0 回退",
+                status_file="au-debut-neutral-forward-status.json"),
 )
 
 _S2_DAYS = re.compile(r"forward days with snapshot \+ results:\s*(\d+)\s*/\s*(\d+)")
