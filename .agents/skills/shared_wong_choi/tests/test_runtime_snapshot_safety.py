@@ -322,3 +322,29 @@ def test_cancelled_native_restore_can_resume_owned_recovery(
     state = json.loads(loaded.read_text())[label]
     assert state == {"loaded": True, "disabled": False}
     assert (snapshot / ".launchd-state.json").read_bytes() == proof
+
+
+def test_native_restore_publishes_original_plist_without_direct_target_copy(isolated_runtime, tmp_path):
+    agents, label, _, _, env, snapshot = isolated_runtime
+    (agents / (label + ".plist")).chmod(0o640)
+    assert invoke(env, "--snapshot", snapshot).returncode == 0
+    owned_publication(env, snapshot, label)
+    target = agents / (label + ".plist")
+    tools = tmp_path / "fault-tools"
+    tools.mkdir()
+    copy = tools / "cp"
+    copy.write_text(
+        "#!" + sys.executable + "\n"
+        "import os, sys\n"
+        "from pathlib import Path\n"
+        "if sys.argv[-1] == os.environ['TEST_COPY_TARGET']:\n"
+        "    Path(sys.argv[-1]).write_bytes(b'partial interrupted copy')\n"
+        "    raise SystemExit(9)\n"
+        "os.execv('/bin/cp', ['/bin/cp', *sys.argv[1:]])\n"
+    )
+    copy.chmod(0o755)
+    env = {**env, "PATH": str(tools) + ":" + env["PATH"], "TEST_COPY_TARGET": str(target)}
+    restored = invoke(env, "--restore", snapshot)
+    assert restored.returncode == 0, restored.stderr
+    assert target.read_bytes() == b"old plist\n"
+    assert target.stat().st_mode & 0o777 == 0o640

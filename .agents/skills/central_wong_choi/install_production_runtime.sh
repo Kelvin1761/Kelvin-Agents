@@ -190,7 +190,7 @@ restore_runtime() {
     fi
     wc_runtime_journal "$source" verify-job "$label" || return 1
     if [ -f "$source/$label.plist" ]; then
-      if ! cp -p "$source/$label.plist" "$target"; then
+      if ! wc_runtime_journal "$source" restore-job "$label"; then
         failed=1
         continue
       fi

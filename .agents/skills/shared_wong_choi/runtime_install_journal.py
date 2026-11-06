@@ -254,7 +254,27 @@ def publish_job(snapshot: Path, agents: Path, *, domain: str, label: str):
     _publish_file(target, data, before['jobs'][label]['file'])
 
 
-def _publish_file(target, data, original):
+
+def restore_job(snapshot: Path, agents: Path, *, domain: str, launchctl: str, label: str):
+    """Restore verified original bytes without exposing a partial target file."""
+    verify_job(snapshot, agents, domain=domain, launchctl=launchctl, label=label)
+    _, plan, before = _context(snapshot, agents, domain)
+    original = before['jobs'][label]['file']
+    if not original['exists']:
+        raise OwnershipError('original plist is absent')
+    target = agents / (label + '.plist')
+    current = file_state(target)
+    if current == original:
+        return
+    if current != plan['candidates'][label]:
+        raise OwnershipError('unowned target before original publication')
+    data = _bytes(snapshot / (label + '.plist'))
+    if hashlib.sha256(data).hexdigest() != original['sha256']:
+        raise OwnershipError('original changed before publication')
+    _publish_file(target, data, current, mode=original['mode'])
+
+
+def _publish_file(target, data, original, *, mode=0o644):
     if any(part.is_symlink() for part in target.parents):
         raise OwnershipError('symlinked publication parent')
     if file_state(target) != original:
@@ -264,7 +284,7 @@ def _publish_file(target, data, original):
     staged = Path(raw)
     with os.fdopen(fd, 'wb') as handle:
         handle.write(data)
-        os.fchmod(handle.fileno(), 0o644)
+        os.fchmod(handle.fileno(), mode)
         handle.flush()
         os.fsync(handle.fileno())
     # Cooperative peers cannot interleave while the EX lease is held. These
@@ -335,7 +355,7 @@ def verify_recovery(snapshot: Path, agents: Path, *, domain: str, launchctl: str
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--mode', choices=('prepare', 'begin-job', 'publish-job',
-                        'begin-pointer', 'publish-pointer', 'verify-job', 'verify-unchanged', 'verify-recovery'), required=True)
+                        'begin-pointer', 'publish-pointer', 'restore-job', 'verify-job', 'verify-unchanged', 'verify-recovery'), required=True)
     parser.add_argument('--snapshot', type=Path, required=True)
     parser.add_argument('--agents', type=Path, required=True)
     parser.add_argument('--domain', required=True)
@@ -373,6 +393,8 @@ def main(argv=None):
             begin_job(args.snapshot, args.agents, **binding, launchctl=args.launchctl, label=args.label)
         elif args.mode == 'publish-job':
             publish_job(args.snapshot, args.agents, **binding, label=args.label)
+        elif args.mode == 'restore-job':
+            restore_job(args.snapshot, args.agents, **binding, launchctl=args.launchctl, label=args.label)
         elif args.mode == 'verify-job':
             verify_job(args.snapshot, args.agents, **binding, launchctl=args.launchctl, label=args.label)
         elif args.mode == 'verify-unchanged':
