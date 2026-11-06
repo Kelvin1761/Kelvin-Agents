@@ -29,9 +29,21 @@ NOTIFY_ENV="$HOME/.wongchoi_notify.env"
 cd "$PROJECT_ROOT" || exit 1
 case "$TASK" in
   healthcheck) exec /usr/bin/python3 "$SCRIPT_DIR/au_healthcheck.py" ;;
+  # EXP-20261106-02 Betfair 市場走勢記錄（只讀，唔落注）。credentials 喺 repo 外 ~/.wongchoi_betfair.env。
+  betfair-snapshot|betfair-settle)
+    BF_ENV="$HOME/.wongchoi_betfair.env"
+    [ -f "$BF_ENV" ] || { print -r -- "$BF_ENV 唔存在，Betfair 記錄器停用" >&2; exit 0; }
+    set -a; source "$BF_ENV"; set +a
+    BF="$SCRIPT_DIR/../au_betfair/au_betfair_logger.py"
+    if [ "$TASK" = "betfair-snapshot" ]; then
+      exec /usr/bin/python3 "$BF" snapshot
+    fi
+    /usr/bin/python3 "$BF" settle
+    exec /usr/bin/python3 "$BF" status --output "$SCRIPT_DIR/work/au-betfair-log-status.json"
+    ;;
   bot)         exec /usr/bin/python3 "$SCRIPT_DIR/au_telegram_bot.py" ;;
   *)
-    print -r -- "用法：$0 healthcheck|bot" >&2
+    print -r -- "用法：$0 healthcheck|bot|betfair-snapshot|betfair-settle" >&2
     exit 2
     ;;
 esac

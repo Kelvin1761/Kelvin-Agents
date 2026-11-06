@@ -1,0 +1,198 @@
+#!/usr/bin/env python3
+"""AU Betfair 市場走勢記錄器（EXP-20261106-02 修訂：用 API 自己記錄，Basic 歷史數據資料檢查唔過）。**唔落注**。
+
+    au_betfair_logger.py snapshot            # launchd 每 60 秒：未來 75 分鐘開跑嘅 AU 純種馬 WIN 市場，最佳買／賣價＋LTP
+    au_betfair_logger.py settle [--date D]   # 每晚：配結果（WINNER／LOSER）同 BSP
+    au_betfair_logger.py status --output F   # forward tracker 讀：有齊 T−60、T−5 快照兼已結算嘅場數
+
+資料：`<AU 資料根>/Betfair_Market_Log/<悉尼日期>/{catalogue,snapshots,settle}.jsonl`（細檔，留喺資料根，夜晚自動壓縮）。
+delayed key：價延遲 1–180 秒（每行記 `delayed`），冇成交量。harness（Pace／Trot）剔走。
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import sys
+import time
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from zoneinfo import ZoneInfo
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+import betfair_client as bf  # noqa: E402
+
+SYDNEY = ZoneInfo("Australia/Sydney")
+DATA_ROOT = Path(os.environ.get("WONGCHOI_AU_DATA_ROOT",
+                                str(Path.home() / "WongChoiData/Wong Choi Horse Race Analysis/AU_Racing")))
+LOG_ROOT = DATA_ROOT / "Betfair_Market_Log"
+HARNESS = re.compile(r"\b(Pace|Trot|Pacers?|Trotters?)\b", re.I)
+AHEAD_MIN, BEHIND_MIN = 75, 10
+QUIET_HOURS = range(1, 9)        # 悉尼 01:00–08:59 冇 AU 賽事，唔 call API
+BOOK_CHUNK = 40                  # EX_BEST_OFFERS weight 5 × 40 = 200（Betfair 上限）
+TARGET_RACES = 2000
+WINDOWS = {"t60": (70, 60), "t15": (18, 15), "t5": (8, 5)}   # 開跑前 [早, 遲] 分鐘內最後一張未開跑快照
+
+
+def iso(dt: datetime) -> str:
+    return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def day_dir(when: datetime) -> Path:
+    path = LOG_ROOT / when.astimezone(SYDNEY).strftime("%Y-%m-%d")
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def append(path: Path, rows: list[dict]) -> None:
+    if rows:
+        with path.open("a", encoding="utf-8") as fh:
+            for row in rows:
+                fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+
+
+def read(path: Path) -> list[dict]:
+    try:
+        return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    except (OSError, ValueError):
+        return []
+
+
+def is_thoroughbred(market: dict) -> bool:
+    return not HARNESS.search(market.get("marketName") or "")
+
+
+def catalogue(now: datetime, rpc=bf.rpc) -> list[dict]:
+    flt = {"eventTypeIds": ["7"], "marketCountries": ["AU"], "marketTypeCodes": ["WIN"],
+           "marketStartTime": {"from": iso(now - timedelta(minutes=BEHIND_MIN)),
+                               "to": iso(now + timedelta(minutes=AHEAD_MIN))}}
+    out = rpc("listMarketCatalogue", {"filter": flt, "maxResults": 200,
+                                      "marketProjection": ["MARKET_START_TIME", "RUNNER_DESCRIPTION", "EVENT"]})
+    return [m for m in out or [] if is_thoroughbred(m)]
+
+
+def book_rows(markets: list[dict], now_ms: int, rpc=bf.rpc) -> list[dict]:
+    starts = {m["marketId"]: m.get("marketStartTime") for m in markets}
+    rows = []
+    ids = list(starts)
+    for i in range(0, len(ids), BOOK_CHUNK):
+        books = rpc("listMarketBook", {"marketIds": ids[i:i + BOOK_CHUNK], "priceProjection": {
+            "priceData": ["EX_BEST_OFFERS"], "exBestOffersOverrides": {"bestPricesDepth": 1}}}) or []
+        for book in books:
+            runners = []
+            for r in book.get("runners") or []:
+                ex = r.get("ex") or {}
+                back = (ex.get("availableToBack") or [{}])[0]
+                lay = (ex.get("availableToLay") or [{}])[0]
+                runners.append({"id": r.get("selectionId"), "status": r.get("status"), "ltp": r.get("lastPriceTraded"),
+                                "back": back.get("price"), "back_size": back.get("size"),
+                                "lay": lay.get("price"), "lay_size": lay.get("size")})
+            rows.append({"ts": now_ms, "market": book.get("marketId"), "start": starts.get(book.get("marketId")),
+                         "status": book.get("status"), "inplay": book.get("inplay"),
+                         "delayed": book.get("isMarketDataDelayed"), "runners": runners})
+    return rows
+
+
+def cmd_snapshot(now: datetime | None = None, rpc=bf.rpc) -> int:
+    now = now or datetime.now(timezone.utc)
+    if now.astimezone(SYDNEY).hour in QUIET_HOURS:
+        return 0
+    markets = catalogue(now, rpc)
+    if not markets:
+        return 0
+    folder = day_dir(now)
+    seen = {m["market"] for m in read(folder / "catalogue.jsonl")}
+    append(folder / "catalogue.jsonl", [{
+        "market": m["marketId"], "name": m.get("marketName"), "start": m.get("marketStartTime"),
+        "event": (m.get("event") or {}).get("name"), "venue": (m.get("event") or {}).get("venue"),
+        "runners": [{"id": r.get("selectionId"), "name": r.get("runnerName")} for r in m.get("runners") or []],
+    } for m in markets if m["marketId"] not in seen])
+    rows = book_rows(markets, int(now.timestamp() * 1000), rpc)
+    append(folder / "snapshots.jsonl", rows)
+    return len(rows)
+
+
+def cmd_settle(date_str: str, rpc=bf.rpc) -> int:
+    folder = LOG_ROOT / date_str
+    ids = sorted({m["market"] for m in read(folder / "catalogue.jsonl")})
+    done = {s["market"] for s in read(folder / "settle.jsonl") if s.get("status") == "CLOSED"}
+    todo = [i for i in ids if i not in done]
+    rows = []
+    for i in range(0, len(todo), BOOK_CHUNK):
+        books = rpc("listMarketBook", {"marketIds": todo[i:i + BOOK_CHUNK],
+                                       "priceProjection": {"priceData": ["SP_TRADED"]}}) or []
+        for book in books:
+            if book.get("status") != "CLOSED":
+                continue
+            rows.append({"market": book.get("marketId"), "status": "CLOSED", "runners": [
+                {"id": r.get("selectionId"), "status": r.get("status"),
+                 "bsp": (r.get("sp") or {}).get("actualSP")} for r in book.get("runners") or []]})
+    append(folder / "settle.jsonl", rows)
+    return len(rows)
+
+
+def usable_race(snaps: list[dict], start_iso: str) -> dict | None:
+    """有齊 T−60／T−15／T−5（各自窗口內最後一張未開跑快照）→ {window: snapshot}；否則 None。"""
+    t0 = datetime.strptime(start_iso.replace("Z", "+0000")[:19] + "+0000", "%Y-%m-%dT%H:%M:%S%z").timestamp() * 1000
+    picked = {}
+    for key, (early, late) in WINDOWS.items():
+        lo, hi = t0 - early * 60000, t0 - late * 60000
+        cands = [s for s in snaps if lo <= s["ts"] <= hi and not s.get("inplay") and s.get("status") == "OPEN"]
+        if not cands:
+            return None
+        picked[key] = max(cands, key=lambda s: s["ts"])
+    return picked
+
+
+def collect_counts(root: Path = LOG_ROOT) -> dict:
+    races = days = 0
+    for folder in sorted(p for p in root.glob("20*") if p.is_dir()):
+        cat = {m["market"]: m for m in read(folder / "catalogue.jsonl")}
+        settled = {s["market"] for s in read(folder / "settle.jsonl") if s.get("status") == "CLOSED"}
+        snaps = {}
+        for s in read(folder / "snapshots.jsonl"):
+            snaps.setdefault(s["market"], []).append(s)
+        n = sum(1 for mid, m in cat.items() if mid in settled and m.get("start") and usable_race(snaps.get(mid, []), m["start"]))
+        races += n
+        days += bool(n)
+    return {"races": races, "days": days}
+
+
+def cmd_status(output: Path) -> dict:
+    counts = collect_counts()
+    status = {"experiment": "EXP-20261106-02", "kind": "betfair_market_log", "target_races": TARGET_RACES,
+              "races_collected": counts["races"], "race_days": counts["days"],
+              "outcomes_visible": False, "state": "collecting",
+              "generated_at": datetime.now(timezone.utc).isoformat()}
+    output.write_text(json.dumps(status, ensure_ascii=False, indent=1), encoding="utf-8")
+    return status
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    sub.add_parser("snapshot")
+    s = sub.add_parser("settle")
+    s.add_argument("--date", help="悉尼日期 YYYY-MM-DD（預設：今日同昨日）")
+    st = sub.add_parser("status")
+    st.add_argument("--output", required=True)
+    args = ap.parse_args()
+    try:
+        if args.cmd == "snapshot":
+            print(f"snapshot rows {cmd_snapshot()}")
+        elif args.cmd == "settle":
+            today = datetime.now(SYDNEY).date()
+            for d in ([args.date] if args.date else [str(today - timedelta(days=1)), str(today)]):
+                print(f"settle {d}: {cmd_settle(d)} markets")
+        else:
+            print(json.dumps(cmd_status(Path(args.output)), ensure_ascii=False))
+    except bf.BetfairError as exc:
+        print(f"Betfair error: {exc}", file=sys.stderr)
+        return 2
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

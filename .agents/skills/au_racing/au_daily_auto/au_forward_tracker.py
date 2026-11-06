@@ -67,6 +67,10 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 "scheduler 夠數會自動判一次（v3 fixed_rule：上線版 vs 舊 52.4）並凍結；睇 au-debut-neutral-forward-status.json，"
                 "keep=false 就建議 WC_AU_DEBUT_NEUTRAL=0 回退",
                 status_file="au-debut-neutral-forward-status.json"),
+    ForwardTest("betfair_market_log", "Betfair 市場走勢記錄（API 自己記，T−60／T−15／T−5 最佳買賣價＋BSP）",
+                "EXP-20261106-02", "status_file", 2000, "場",
+                "夠數就跑修訂協議嘅 Q1（走勢喺 BSP 以外有冇資訊）同 Q2（四條 BSP 規則，Holm）；只係研究，唔會自動落注",
+                status_file="au-betfair-log-status.json"),
 )
 
 _S2_DAYS = re.compile(r"forward days with snapshot \+ results:\s*(\d+)\s*/\s*(\d+)")
