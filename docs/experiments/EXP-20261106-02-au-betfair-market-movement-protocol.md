@@ -67,7 +67,7 @@ ROI、賽日 bootstrap 95% CI。
 
 - **記錄器**：`.agents/skills/au_racing/au_betfair/au_betfair_logger.py`（只讀 client，`placeOrders` 等一律拒絕）；launchd 每 60 秒快照
   未來 75 分鐘開跑嘅 AU 純種馬 WIN 市場：每匹 LTP、最佳買價／賣價同量；每晚 23:45 結算（WINNER／LOSER、actualSP）。
-  delayed key：價延遲 1–180 秒（每行記 `delayed`），冇成交量。資料：`<AU 資料根>/Betfair_Market_Log/<悉尼日期>/`。
+  delayed key：價延遲 1–180 秒（每行記 `delayed`），冇成交量。資料：外置碟 `/Volumes/Kelvin Hardisk 1/WongChoi-Archive/betfair-market-log/<悉尼日期>/`（用戶 2026-11-06 要求；冇掛載就停手唔寫入內置碟、每晚推 Telegram）。
 - **時點價**：T−60／T−15／T−5 = 開跑前 [70,60]／[18,15]／[8,5] 分鐘窗口內最後一張 `OPEN` 兼未開跑快照；
   價 = **最佳買賣中間價**（兩邊都有）否則 LTP；記低用咗邊個。冇齊三個時點 → 唔計。
 - **資料檢查（替換上面四項）**：(1) 合資格場 ≥ 60% 已結算場；(2) T−5 中間價買賣差 ≤ 2 格嘅馬 ≥ 80%；

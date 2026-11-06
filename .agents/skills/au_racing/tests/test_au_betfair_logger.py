@@ -39,9 +39,11 @@ def fake_rpc(method, params):
 class LoggerTests(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
+        self._root = lg.LOG_ROOT
         lg.LOG_ROOT = Path(self.tmp.name)
 
     def tearDown(self) -> None:
+        lg.LOG_ROOT = self._root
         self.tmp.cleanup()
 
     def test_snapshot_skips_harness_and_writes_best_prices(self) -> None:
@@ -67,6 +69,17 @@ class LoggerTests(unittest.TestCase):
         self.assertIsNotNone(lg.usable_race(snaps, START))
         self.assertIsNone(lg.usable_race(snaps[:2], START))                               # 冇 T−5
         self.assertIsNone(lg.usable_race(snaps[:2] + [{"ts": t0 - 6 * 60000, "status": "OPEN", "inplay": True}], START))
+
+
+class ExternalDiskTests(unittest.TestCase):
+    def test_unmounted_volume_stops_without_creating_local_folder(self) -> None:
+        fake = Path("/Volumes/__wongchoi_test_not_mounted__/betfair-market-log")
+        with self.assertRaises(lg.DiskOffline):
+            lg.ensure_log_root(fake)
+        self.assertFalse(Path("/Volumes/__wongchoi_test_not_mounted__").exists())
+
+    def test_default_root_is_external_disk(self) -> None:
+        self.assertTrue(str(lg.LOG_ROOT).startswith("/Volumes/Kelvin Hardisk 1/") or "WONGCHOI_BETFAIR_LOG_ROOT" in __import__("os").environ)
 
 
 class ClientTests(unittest.TestCase):

@@ -5,7 +5,8 @@
     au_betfair_logger.py settle [--date D]   # 每晚：配結果（WINNER／LOSER）同 BSP
     au_betfair_logger.py status --output F   # forward tracker 讀：有齊 T−60、T−5 快照兼已結算嘅場數
 
-資料：`<AU 資料根>/Betfair_Market_Log/<悉尼日期>/{catalogue,snapshots,settle}.jsonl`（細檔，留喺資料根，夜晚自動壓縮）。
+資料：`/Volumes/Kelvin Hardisk 1/WongChoi-Archive/betfair-market-log/<悉尼日期>/{catalogue,snapshots,settle}.jsonl`
+（外置碟；冇掛載就停手唔寫，結束碼 3，每晚結算時推 Telegram）。
 delayed key：價延遲 1–180 秒（每行記 `delayed`），冇成交量。harness（Pace／Trot）剔走。
 """
 from __future__ import annotations
@@ -25,9 +26,25 @@ sys.path.insert(0, str(HERE))
 import betfair_client as bf  # noqa: E402
 
 SYDNEY = ZoneInfo("Australia/Sydney")
-DATA_ROOT = Path(os.environ.get("WONGCHOI_AU_DATA_ROOT",
-                                str(Path.home() / "WongChoiData/Wong Choi Horse Race Analysis/AU_Racing")))
-LOG_ROOT = DATA_ROOT / "Betfair_Market_Log"
+# 用戶 2026-11-06：數據放外置碟（Mac 內置碟位唔多）。⚠️ 唔用 symlink（AGENTS.md：拔碟 = 靜靜讀空）；
+# 寫之前確認碟有掛載，冇就停手、唔寫入內置碟（否則 /Volumes/... 會靜靜變成本機資料夾）。
+LOG_ROOT = Path(os.environ.get("WONGCHOI_BETFAIR_LOG_ROOT",
+                               "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/betfair-market-log"))
+STATE_DIR = HERE.parent / "au_daily_auto" / "work"
+
+
+class DiskOffline(RuntimeError):
+    pass
+
+
+def ensure_log_root(root: Path | None = None) -> Path:
+    """外置碟路徑（/Volumes/<碟>/...）一定要個碟真係掛載咗；其他路徑（測試）照用。"""
+    root = root or LOG_ROOT
+    parts = root.parts
+    if len(parts) > 2 and parts[1] == "Volumes" and not os.path.ismount(os.path.join("/", parts[1], parts[2])):
+        raise DiskOffline(f"外置碟 {parts[2]} 冇掛載")
+    root.mkdir(parents=True, exist_ok=True)
+    return root
 HARNESS = re.compile(r"\b(Pace|Trot|Pacers?|Trotters?)\b", re.I)
 AHEAD_MIN, BEHIND_MIN = 75, 10
 QUIET_HOURS = range(1, 9)        # 悉尼 01:00–08:59 冇 AU 賽事，唔 call API
@@ -41,7 +58,7 @@ def iso(dt: datetime) -> str:
 
 
 def day_dir(when: datetime) -> Path:
-    path = LOG_ROOT / when.astimezone(SYDNEY).strftime("%Y-%m-%d")
+    path = ensure_log_root() / when.astimezone(SYDNEY).strftime("%Y-%m-%d")
     path.mkdir(parents=True, exist_ok=True)
     return path
 
@@ -115,7 +132,7 @@ def cmd_snapshot(now: datetime | None = None, rpc=bf.rpc) -> int:
 
 
 def cmd_settle(date_str: str, rpc=bf.rpc) -> int:
-    folder = LOG_ROOT / date_str
+    folder = ensure_log_root() / date_str
     ids = sorted({m["market"] for m in read(folder / "catalogue.jsonl")})
     done = {s["market"] for s in read(folder / "settle.jsonl") if s.get("status") == "CLOSED"}
     todo = [i for i in ids if i not in done]
@@ -161,13 +178,24 @@ def collect_counts(root: Path = LOG_ROOT) -> dict:
 
 
 def cmd_status(output: Path) -> dict:
-    counts = collect_counts()
+    counts = collect_counts(ensure_log_root())
     status = {"experiment": "EXP-20261106-02", "kind": "betfair_market_log", "target_races": TARGET_RACES,
               "races_collected": counts["races"], "race_days": counts["days"],
               "outcomes_visible": False, "state": "collecting",
               "generated_at": datetime.now(timezone.utc).isoformat()}
     output.write_text(json.dumps(status, ensure_ascii=False, indent=1), encoding="utf-8")
     return status
+
+
+def notify_offline(reason: str) -> None:
+    """外置碟冇掛載 → 推 Telegram（primary，淨係 Kelvin）；失敗唔影響結束碼。"""
+    try:
+        sys.path.insert(0, str(HERE.parent / "au_daily_auto"))
+        import au_notify
+        au_notify.push(f"⚠️ Betfair 市場走勢記錄停咗：{reason}。插返外置碟就會自動繼續（今日嘅快照冇咗）。",
+                       title="🏇 AU Betfair 記錄", audience="primary")
+    except Exception as exc:  # noqa: BLE001
+        print(f"Telegram 推送失敗：{type(exc).__name__}", file=sys.stderr)
 
 
 def main() -> int:
@@ -191,6 +219,11 @@ def main() -> int:
     except bf.BetfairError as exc:
         print(f"Betfair error: {exc}", file=sys.stderr)
         return 2
+    except DiskOffline as exc:
+        print(f"停手（冇寫入內置碟）：{exc}", file=sys.stderr)
+        if args.cmd != "snapshot":          # 每晚結算時推一次 Telegram（快照每分鐘一次，唔推）
+            notify_offline(str(exc))
+        return 3
     return 0
 
 
