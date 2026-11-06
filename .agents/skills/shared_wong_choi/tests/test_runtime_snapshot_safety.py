@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from _runtime_owned_test_helpers import owned_cli, owned_publication
+from _runtime_owned_test_helpers import isolated_observer_installer, owned_cli, owned_publication
 
 
 @pytest.fixture(autouse=True)
@@ -20,6 +20,7 @@ def isolated_cutover_control(tmp_path, monkeypatch):
 ROOT = Path(__file__).resolve().parents[4]
 INSTALLER = ROOT / ".agents/skills/central_wong_choi/install_production_runtime.sh"
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from shared_wong_choi.release_activation import _run_installer
 from shared_wong_choi.runtime_snapshot_state import SnapshotStateError, disabled_jobs
 
 
@@ -83,12 +84,13 @@ else:
     env = {**os.environ, "HOME": str(home), "WC_LAUNCH_AGENTS_DIR": str(agents),
            "WC_LAUNCHCTL_BIN": str(launchctl), "WC_TENNIS_DB_POINTER": str(home / "pointer"),
            "WC_TENNIS_RUNTIME_ROOT": str(home / "tennis"),
-           "TEST_JOB_STATES": str(loaded), "TEST_JOB_MUTATIONS": str(calls)}
+           "TEST_JOB_STATES": str(loaded), "TEST_JOB_MUTATIONS": str(calls),
+           "TEST_INSTALLER_PATH": str(isolated_observer_installer(tmp_path))}
     return agents, label, loaded, calls, env, tmp_path / "snapshot"
 
 
 def invoke(env, *args):
-    return subprocess.run(["/bin/zsh", str(INSTALLER), *map(str, args)],
+    return subprocess.run(["/bin/zsh", env.get("TEST_INSTALLER_PATH", str(INSTALLER)), *map(str, args)],
                           env=env, capture_output=True, text=True, timeout=30)
 
 
@@ -135,6 +137,7 @@ def test_owned_restore_defers_before_mutations_when_kernel_guard_detects_active_
     isolated_runtime, tmp_path
 ):
     agents, label, loaded, calls, env, snapshot = isolated_runtime
+    env = {**env, "TEST_INSTALLER_PATH": str(INSTALLER)}
     assert invoke(env, "--snapshot", snapshot).returncode == 0
     owned_publication(env, snapshot, label)
     candidate = agents / (label + ".plist")
@@ -277,3 +280,45 @@ def test_owned_pointer_with_identical_bytes_restores_original_mode_without_job_m
     assert pointer.read_bytes() == original
     assert pointer.stat().st_mode & 0o777 == 0o640
     assert not calls.exists()
+
+
+@pytest.mark.parametrize("blocked_command", ["bootout", "bootstrap"])
+def test_cancelled_native_restore_can_resume_owned_recovery(
+    isolated_runtime, tmp_path, monkeypatch, blocked_command
+):
+    agents, label, loaded, calls, env, snapshot = isolated_runtime
+    installer = isolated_observer_installer(tmp_path)
+    assert invoke(env, "--snapshot", snapshot).returncode == 0
+    owned_publication(env, snapshot, label)
+    target = agents / (label + ".plist")
+    candidate = target.read_bytes()
+    proof = (snapshot / ".launchd-state.json").read_bytes()
+    launchctl = Path(env["WC_LAUNCHCTL_BIN"])
+    source = launchctl.read_text()
+    marker = tmp_path / "blocked-launchctl"
+    source = source.replace('    if command == "bootout":',
+        '    if command == os.environ.get("TEST_BLOCK_COMMAND"):\n'
+        '        Path(os.environ["TEST_BLOCK_MARKER"]).touch()\n'
+        '        import time\n'
+        '        time.sleep(60)\n'
+        '    if command == "bootout":', 1)
+    launchctl.write_text(source)
+    for key, value in env.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.setenv("TEST_BLOCK_COMMAND", blocked_command)
+    monkeypatch.setenv("TEST_BLOCK_MARKER", str(marker))
+    result = _run_installer(ROOT, "/bin/zsh", str(installer), "--restore", str(snapshot), timeout=8)
+    assert marker.exists(), result.stderr
+    assert result.returncode == 124
+    expected = candidate if blocked_command == "bootout" else b"old plist\n"
+    assert target.read_bytes() == expected
+    assert (snapshot / ".launchd-state.json").read_bytes() == proof
+    assert (snapshot / ".write-ownership").is_dir()
+
+    monkeypatch.delenv("TEST_BLOCK_COMMAND")
+    resumed = _run_installer(ROOT, "/bin/zsh", str(installer), "--restore", str(snapshot), timeout=30)
+    assert resumed.returncode == 0, resumed.stderr
+    assert target.read_bytes() == b"old plist\n"
+    state = json.loads(loaded.read_text())[label]
+    assert state == {"loaded": True, "disabled": False}
+    assert (snapshot / ".launchd-state.json").read_bytes() == proof

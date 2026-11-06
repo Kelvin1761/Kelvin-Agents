@@ -4,7 +4,6 @@ import os
 import json
 import plistlib
 import shutil
-import shlex
 import sqlite3
 import subprocess
 import sys
@@ -12,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from _runtime_owned_test_helpers import owned_cli, owned_publication
+from _runtime_owned_test_helpers import isolated_observer_installer, owned_cli, owned_publication
 
 
 @pytest.fixture(autouse=True)
@@ -60,20 +59,6 @@ def test_full_gate_runs_central_tests_and_propagates_failure(tmp_path, central_f
     assert ("FAIL  Central Wong Choi" if central_fails else "PASS  Central Wong Choi") in result.stdout
 
 
-def isolated_observer_installer(tmp_path):
-    """Keep simulated recovery independent of host process activity."""
-    observer = tmp_path / "idle-observer.py"
-    observer.write_text("raise SystemExit(0)\n")
-    isolated_installer = tmp_path / "install-runtime.sh"
-    source = INSTALLER.read_text()
-    assert 'runtime_active_guard || exit $?' in source
-    assert 'runtime_active_guard || return 1' in source
-    source = source.replace('PROJECT_ROOT="${SCRIPT_DIR:h:h:h}"',
-                            'PROJECT_ROOT=' + shlex.quote(str(REPO_ROOT)), 1)
-    source = source.replace('ACTIVE_RUN_GUARD="$PROJECT_ROOT/.agents/skills/shared_wong_choi/runtime_active_runs.py"',
-                            'ACTIVE_RUN_GUARD=' + shlex.quote(str(observer)), 1)
-    isolated_installer.write_text(source)
-    return isolated_installer
 
 
 @pytest.mark.parametrize("pointer_existed", [False, True])

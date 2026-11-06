@@ -1,5 +1,6 @@
 """Build real pre-write proofs in fixture roots; never synthesize journal JSON."""
 import os
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -50,3 +51,19 @@ def _run(env, snapshot, mode, *, label=None, commit=None):
 def owned_publication(env, snapshot, label):
     owned_cli(env, snapshot, 'begin-job', label)
     owned_cli(env, snapshot, 'publish-job', label)
+
+
+def isolated_observer_installer(tmp_path):
+    """Keep simulated recovery independent of host process activity."""
+    observer = tmp_path / "idle-observer.py"
+    observer.write_text("raise SystemExit(0)\n")
+    isolated_installer = tmp_path / "install-runtime.sh"
+    source = INSTALLER.read_text()
+    assert 'runtime_active_guard || exit $?' in source
+    assert 'runtime_active_guard || return 1' in source
+    source = source.replace('PROJECT_ROOT="${SCRIPT_DIR:h:h:h}"',
+                            'PROJECT_ROOT=' + shlex.quote(str(ROOT)), 1)
+    source = source.replace('ACTIVE_RUN_GUARD="$PROJECT_ROOT/.agents/skills/shared_wong_choi/runtime_active_runs.py"',
+                            'ACTIVE_RUN_GUARD=' + shlex.quote(str(observer)), 1)
+    isolated_installer.write_text(source)
+    return isolated_installer
