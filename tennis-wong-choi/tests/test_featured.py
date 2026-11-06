@@ -107,3 +107,19 @@ def test_paused_families_are_not_featured():
         assert family_for_market(key) not in F.FAMILIES
     for key in ("player_game_handicap_2.5", "first_set_winner_3075", "player_win_a_set_582"):
         assert family_for_market(key) in F.FAMILIES
+
+
+def test_settled_by_day_feeds_the_roi_board_per_match_date():
+    from tennis_wc.publish.telegram import settled_by_day
+
+    rows = [
+        {"match_date": "2026-11-05", "result_status": "WON", "unit_profit": 0.9},
+        {"match_date": "2026-11-05", "result_status": "LOST", "unit_profit": -1.0},
+        {"match_date": "2026-11-05", "result_status": "VOID", "unit_profit": 0.0},
+        {"match_date": "2026-11-06", "result_status": None, "unit_profit": None},
+        {"match_date": "2026-11-06", "result_status": "WON", "unit_profit": 1.2},
+    ]
+    assert settled_by_day(rows) == {
+        "2026-11-05": {"bets": 2, "hits": 1, "stake": 2.0, "pnl": -0.1},
+        "2026-11-06": {"bets": 1, "hits": 1, "stake": 1.0, "pnl": 1.2},
+    }

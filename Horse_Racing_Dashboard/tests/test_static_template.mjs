@@ -82,6 +82,9 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
       setFocusedElementForTest: (value) => { document.activeElement = value; },
       setSeenAutoVersionForTest: (value) => { sessionStorage.setItem('wc_nba_auto_version', value); },
       calcProfit,
+      pfPeriod, pfSum, renderPortfolioWorkspace,
+      setPortfolioForTest: (value) => { portfolioSnapshot = value; },
+      setPfViewForTest: (granularity, offset = 0) => { pfGranularity = granularity; pfOffset = offset; },
       mergeBetStateMaps,
       renderSilk: typeof renderSilk === "function" ? renderSilk : null,
       hkjcHorseProfileUrl,
@@ -1053,6 +1056,45 @@ test("portfolio workspace is backed by the D1 portfolio endpoint", () => {
   assert.match(template, /id="sport-portfolio"[\s\S]*?showSport\('portfolio'\)/);
   assert.match(template, /const PORTFOLIO_ENDPOINT = [^;]*'\/api\/portfolio'/);
   assert.match(template, /function renderPortfolioWorkspace\(/);
+});
+
+test("portfolio periods: weeks run Monday to Sunday, months are calendar months", () => {
+  const { pfPeriod } = loadTemplateFunctions();
+  // 2026-11-07 is a Saturday.
+  assert.equal(JSON.stringify(pfPeriod("week", "2026-11-07")), '{"start":"2026-11-02","end":"2026-11-08"}');
+  assert.equal(JSON.stringify(pfPeriod("week", "2026-11-02")), '{"start":"2026-11-02","end":"2026-11-08"}');
+  assert.equal(JSON.stringify(pfPeriod("week", "2026-11-08")), '{"start":"2026-11-02","end":"2026-11-08"}');
+  assert.equal(JSON.stringify(pfPeriod("week", "2026-11-07", -1)), '{"start":"2026-10-26","end":"2026-11-01"}');
+  assert.equal(JSON.stringify(pfPeriod("month", "2026-11-07")), '{"start":"2026-11-01","end":"2026-11-30"}');
+  assert.equal(JSON.stringify(pfPeriod("month", "2026-03-15", -1)), '{"start":"2026-02-01","end":"2026-02-28"}');
+  assert.equal(JSON.stringify(pfPeriod("month", "2026-01-10", -1)), '{"start":"2025-12-01","end":"2025-12-31"}');
+  assert.equal(JSON.stringify(pfPeriod("day", "2026-11-01", -1)), '{"start":"2026-10-31","end":"2026-10-31"}');
+});
+
+test("portfolio shows all four sports: board for AU/NBA/tennis, D1 for HKJC", () => {
+  const data = {
+    ...EMPTY_DASHBOARD_DATA,
+    roi_board: {
+      status: "valid",
+      domains: {
+        au: { source: "au_betting", days: { "2026-11-02": { bets: 10, hits: 3, stake: 10, pnl: -2 }, "2026-10-31": { bets: 5, hits: 1, stake: 5, pnl: -3 } } },
+        nba: { source: "tracking", days: { "2026-11-03": { bets: 2, hits: 2, stake: 2, pnl: 1.5 } } },
+        tennis: { source: "精選", days: {}, cumulative: { bets: 0 } },
+      },
+    },
+  };
+  const t = loadTemplateFunctions(data);
+  t.setPortfolioForTest({ days: { hkjc: { "2026-11-04": { bets: 4, hits: 1, stake: 4, pnl: 0.5 } } }, horses_by_region: { hkjc: { pending: 2 } } });
+  t.setPfViewForTest("week");
+  const html = t.renderPortfolioWorkspace();
+  for (const label of ["香港賽馬", "AU 賽馬", "NBA", "網球"]) assert.match(html, new RegExp(label));
+  // Week of the latest settled day (Mon 11-02 .. Sun 11-08): 20 bets, pnl -2 + 1.5 + 0.5 = 0.
+  assert.match(html, /11月2日 – 11月8日/);
+  assert.match(html, /<span>注數<\/span><strong>16<\/strong>/);
+  assert.match(html, /另有 2 注未結算唔計/);
+  t.setPfViewForTest("all");
+  assert.match(t.renderPortfolioWorkspace(), /<span>注數<\/span><strong>21<\/strong>/);
+  assert.equal(t.pfSum(data.roi_board.domains.au.days, { start: "2026-11-01", end: "2026-11-30" }).pnl, -2);
 });
 
 test("sports ledger exposes per-leg settlement controls and D1 audit history", () => {

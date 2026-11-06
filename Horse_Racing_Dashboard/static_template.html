@@ -710,11 +710,68 @@
     .sports-roi-card { padding:14px; border:1px solid #E2E8F0; border-radius:12px; background:#FFFFFF; }
     .sports-roi-card span { color:#64748B; font-size:.62rem; font-weight:750; }
     .sports-roi-card strong { display:block; margin-top:4px; color:#0F172A; font-size:1.15rem; }
-    .portfolio-table { width:100%; border-collapse:collapse; overflow:hidden; border:1px solid #E2E8F0; border-radius:12px; background:#FFFFFF; }
-    .portfolio-table th,.portfolio-table td { padding:12px 14px; border-bottom:1px solid #EEF2F7; text-align:right; font-size:.72rem; }
-    .portfolio-table th { color:#64748B; background:#F8FAFC; font-size:.64rem; text-transform:uppercase; letter-spacing:.04em; }
-    .portfolio-table th:first-child,.portfolio-table td:first-child { text-align:left; }
-    .portfolio-table tr:last-child td { border-bottom:0; }
+    /* 📈 Portfolio (pf-*). Light only, like the rest of the dashboard. Series colours are a validated
+       4-slot categorical set; text never wears them (aqua/yellow are under 3:1, so values are labelled). */
+    .pf { --pf-ink:#0F172A; --pf-muted:#64748B; --pf-line:#E2E8F0; --pf-paper:#FFFFFF; --pf-up:#047857; --pf-down:#B91C1C; max-width:1180px; margin:0 auto; padding:20px 16px 32px; color:var(--pf-ink); }
+    .pf-hero { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:flex-end; gap:16px; margin-bottom:18px; }
+    .pf-eyebrow { color:var(--pf-muted); font-size:.62rem; font-weight:800; letter-spacing:.12em; }
+    .pf-title { margin:4px 0 6px; font-size:1.6rem; font-weight:900; letter-spacing:-.01em; }
+    .pf-intro { margin:0; color:var(--pf-muted); font-size:.76rem; max-width:52ch; }
+    .pf-controls { display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
+    .pf-segs { display:inline-flex; padding:3px; border:1px solid var(--pf-line); border-radius:12px; background:#F1F5F9; }
+    .pf-seg { min-width:56px; min-height:38px; padding:0 14px; border:0; border-radius:9px; background:transparent; color:#475569; font:inherit; font-size:.78rem; font-weight:800; cursor:pointer; }
+    .pf-seg.is-active { background:var(--pf-paper); color:var(--pf-ink); box-shadow:0 1px 2px rgba(15,23,42,.12); }
+    .pf-nav { display:flex; align-items:center; gap:6px; }
+    .pf-nav__btn { width:36px; height:36px; border:1px solid var(--pf-line); border-radius:9px; background:var(--pf-paper); color:var(--pf-ink); font-size:1.1rem; cursor:pointer; }
+    .pf-nav__btn:disabled { opacity:.35; cursor:default; }
+    .pf-nav__label { min-width:180px; text-align:center; font-size:.78rem; font-weight:800; font-variant-numeric:tabular-nums; }
+    .pf-kpis { display:grid; grid-template-columns:1.4fr repeat(4,1fr); gap:10px; margin-bottom:14px; }
+    .pf-kpi { padding:14px 16px; border:1px solid var(--pf-line); border-radius:14px; background:var(--pf-paper); }
+    .pf-kpi span { display:block; color:var(--pf-muted); font-size:.64rem; font-weight:800; }
+    .pf-kpi strong { display:block; margin-top:4px; font-size:1.25rem; font-weight:900; font-variant-numeric:tabular-nums; }
+    .pf-kpi strong small { color:var(--pf-muted); font-size:.7rem; font-weight:700; }
+    .pf-kpi--main strong { font-size:1.9rem; }
+    .pf-cards { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-bottom:14px; }
+    .pf-card { display:flex; flex-direction:column; padding:16px; border:1px solid var(--pf-line); border-radius:14px; background:var(--pf-paper); }
+    .pf-card__head { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+    .pf-card__name { font-size:.84rem; font-weight:850; }
+    .pf-dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; vertical-align:middle; flex:none; }
+    .pf-card__head .pf-dot { margin-right:0; }
+    .pf-card__roi { font-size:1.7rem; font-weight:900; line-height:1.1; font-variant-numeric:tabular-nums; }
+    .pf-card__pnl { margin-top:2px; font-size:.86rem; font-weight:800; font-variant-numeric:tabular-nums; }
+    .pf-card__stats { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin:12px 0 0; padding-top:10px; border-top:1px solid #EEF2F7; }
+    .pf-card__stats dt { color:var(--pf-muted); font-size:.6rem; font-weight:750; }
+    .pf-card__stats dd { margin:2px 0 0; font-size:.86rem; font-weight:850; font-variant-numeric:tabular-nums; }
+    .pf-card__none { margin-top:6px; color:var(--pf-muted); font-size:.74rem; }
+    .pf-card__src { margin:auto 0 0; padding-top:12px; color:var(--pf-muted); font-size:.62rem; line-height:1.45; }
+    .pf-card__src--warn { color:#B45309; }
+    .pf-up { color:var(--pf-up); } .pf-down { color:var(--pf-down); } .pf-flat { color:var(--pf-ink); } .pf-muted { color:#94A3B8; }
+    .pf-panel { margin-bottom:14px; padding:16px; border:1px solid var(--pf-line); border-radius:14px; background:var(--pf-paper); }
+    .pf-h2 { margin:0 0 12px; font-size:.9rem; font-weight:900; }
+    .pf-h2 small { margin-left:6px; color:var(--pf-muted); font-size:.68rem; font-weight:700; }
+    .pf-chart { position:relative; }
+    .pf-chart svg { display:block; width:100%; height:auto; }
+    .pf-grid { stroke:#EEF2F7; stroke-width:1; } .pf-zero { stroke:#94A3B8; stroke-width:1; }
+    .pf-cross { stroke:#94A3B8; stroke-width:1; stroke-dasharray:3 3; }
+    .pf-axis { fill:#64748B; font-size:11px; font-variant-numeric:tabular-nums; }
+    .pf-endlabel { fill:#0F172A; font-size:11px; font-weight:700; font-variant-numeric:tabular-nums; }
+    .pf-tip { position:absolute; top:8px; width:180px; padding:8px 10px; border:1px solid var(--pf-line); border-radius:10px; background:var(--pf-paper); box-shadow:0 6px 18px rgba(15,23,42,.12); font-size:.68rem; pointer-events:none; }
+    .pf-tip strong { display:block; margin-bottom:4px; }
+    .pf-tip div { display:flex; align-items:center; gap:6px; } .pf-tip b { margin-left:auto; font-variant-numeric:tabular-nums; }
+    .pf-tip i { width:8px; height:8px; border-radius:50%; }
+    .pf-empty { padding:28px 8px; color:var(--pf-muted); font-size:.76rem; text-align:center; }
+    .pf-table-wrap { overflow-x:auto; }
+    .pf-table { width:100%; border-collapse:collapse; font-size:.72rem; font-variant-numeric:tabular-nums; }
+    .pf-table th,.pf-table td { padding:9px 10px; border-bottom:1px solid #EEF2F7; text-align:right; white-space:nowrap; }
+    .pf-table thead th { color:var(--pf-muted); font-size:.64rem; font-weight:800; background:#F8FAFC; }
+    .pf-table th:first-child { text-align:left; }
+    .pf-table tbody th { font-weight:800; }
+    .pf-table td span { font-weight:850; }
+    .pf-table td small { display:block; color:var(--pf-muted); font-size:.6rem; }
+    .pf-table tr.is-current { background:#F1F5F9; }
+    .pf-table tr:last-child th,.pf-table tr:last-child td { border-bottom:0; }
+    @media (max-width: 860px) { .pf-cards { grid-template-columns:repeat(2,minmax(0,1fr)); } .pf-kpis { grid-template-columns:repeat(2,1fr); } .pf-kpi--main { grid-column:1/-1; } .pf-controls { align-items:stretch; width:100%; } .pf-segs { display:grid; grid-template-columns:repeat(4,1fr); } .pf-nav { justify-content:space-between; } }
+    @media (max-width: 420px) { .pf { padding:16px 12px 28px; } .pf-nav__label { min-width:0; } .pf-card { padding:12px; } .pf-card__roi { font-size:1.3rem; } .pf-card__stats { gap:4px; } .pf-card__stats dd { font-size:.76rem; } .pf-kpi--main strong { font-size:1.6rem; } }
     .sports-modal__grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
     .sports-modal__grid .roi-modal__field--wide { grid-column:1/-1; }
     .sports-leg-editor { grid-column:1/-1; display:grid; gap:8px; padding:11px; border:1px solid #DCE5EF; border-radius:10px; background:#F8FAFC; }
@@ -3041,64 +3098,311 @@ function renderSportsWorkspace(sport = activeSport) {
   </section>`;
 }
 
-function renderPortfolioWorkspace() {
-  const data = portfolioSnapshot;
-  if (!data || data.error) {
-    return `<section class="sports-shell sports-shell--portfolio">
-      <div class="sports-hero"><div><div class="sports-eyebrow">WONG CHOI PORTFOLIO</div><h1 class="sports-title">📈 全運動 Portfolio</h1><p class="sports-intro">統一顯示 Horses、NBA、Tennis 嘅已結算 ROI 同 pending exposure。</p></div></div>
-      <div class="sports-notice"><span>⏳</span><span>D1 Portfolio 暫時未能讀取${data?.error ? `：${esc(data.error)}` : ''}。</span></div>
-    </section>`;
+// ── 📈 Portfolio: ROI of all four 旺財 by day / week (Mon–Sun) / calendar month / all-time ──
+// AU, NBA and 網球 come from the unified ROI board (DASHBOARD_DATA.roi_board, the same numbers
+// the Telegram board sends); HKJC has no betting definition on that board, so it comes from the
+// bets recorded in the app (D1, /api/portfolio days.hkjc). Rows are {bets, hits, stake, pnl}.
+const PF_SPORTS = [
+  { key: 'hkjc', label: '香港賽馬', emoji: '🇭🇰', color: '#2a78d6' },
+  { key: 'au', label: 'AU 賽馬', emoji: '🇦🇺', color: '#eb6834' },
+  { key: 'nba', label: 'NBA', emoji: '🏀', color: '#1baf7a' },
+  { key: 'tennis', label: '網球', emoji: '🎾', color: '#eda100' },
+];
+const PF_GRANULARITIES = [['day', '日'], ['week', '週'], ['month', '月'], ['all', '累計']];
+let pfGranularity = 'week';
+let pfOffset = 0;
+
+function pfDays(key) {
+  if (key === 'hkjc') return portfolioSnapshot?.days?.hkjc || {};
+  return DASHBOARD_DATA.roi_board?.domains?.[key]?.days || {};
+}
+
+function pfSource(key) {
+  if (key === 'hkjc') {
+    if (!portfolioSnapshot) return { text: 'App 記嘅實注（D1）· 載入中…', ok: false };
+    if (portfolioSnapshot.error) return { text: `App 記嘅實注（D1）· 讀取失敗：${portfolioSnapshot.error}`, ok: false };
+    return { text: 'App 記嘅實注（D1 ledger）· 未有統一板落注定義', ok: true };
   }
-  const total = data.total || {};
-  // Horses split into HKJC / AU rows when the endpoint provides horses_by_region;
-  // an older endpoint without it falls back to the single Horses row.
-  const byRegion = data.horses_by_region;
-  const sports = byRegion
-    ? [
-        ['horses:hkjc', '香港賽馬'],
-        ['horses:au', '澳洲賽馬'],
-        ...(Number(byRegion.unknown?.bets || 0) ? [['horses:unknown', '🏇 賽馬（未分地區）']] : []),
-        ['nba', '🏀 NBA'],
-        ['tennis', '🎾 Tennis'],
-      ]
-    : [
-        ['horses', '🏇 Horses'],
-        ['nba', '🏀 NBA'],
-        ['tennis', '🎾 Tennis'],
-      ];
-  const profitColor = Number(total.profit || 0) >= 0 ? '#047857' : '#B91C1C';
-  const rows = sports.map(([key, label]) => {
-    const item = key.startsWith('horses:')
-      ? (byRegion?.[key.slice(7)] || {})
-      : (data.by_sport?.[key] || {});
-    const color = Number(item.profit || 0) >= 0 ? '#047857' : '#B91C1C';
-    const roi = item.roi == null ? '—' : `${(Number(item.roi) * 100).toFixed(1)}%`;
-    return `<tr><td><strong>${label}</strong></td><td>${Number(item.bets || 0)}</td><td>${Number(item.settled || 0)}</td><td>${Number(item.pending || 0)}</td><td>${Number(item.pending_exposure || 0).toFixed(2)}u</td><td style="color:${color};font-weight:850">${Number(item.profit || 0) > 0 ? '+' : ''}${Number(item.profit || 0).toFixed(2)}u</td><td style="color:${color};font-weight:850">${roi}</td></tr>`;
+  const board = DASHBOARD_DATA.roi_board;
+  const domain = board?.domains?.[key];
+  if (!domain) return { text: '統一 ROI 板未有資料', ok: false };
+  const parts = [domain.source || '統一 ROI 板'];
+  if (domain.since) parts.push(`${domain.since} 起`);
+  if (board.status === 'stale') parts.push('⚠️ 板讀取失敗，顯示上次數字');
+  if (!domain.has_days && Number(domain.cumulative?.bets || 0)) parts.push('只有累計，未分日');
+  return { text: parts.join(' · '), ok: board.status !== 'stale' };
+}
+
+function pfAddDays(iso, n) {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+function pfWeekStart(iso) {
+  const dow = new Date(`${iso}T00:00:00Z`).getUTCDay(); // 0 = Sunday
+  return pfAddDays(iso, -((dow + 6) % 7));
+}
+
+function pfMonthStart(iso, shift = 0) {
+  const d = new Date(`${iso.slice(0, 7)}-01T00:00:00Z`);
+  d.setUTCMonth(d.getUTCMonth() + shift);
+  return d.toISOString().slice(0, 10);
+}
+
+// Inclusive [start, end] for the period `offset` steps from the one holding `anchor`.
+function pfPeriod(granularity, anchor, offset = 0) {
+  if (granularity === 'all') return { start: '0000-01-01', end: '9999-12-31' };
+  if (granularity === 'day') {
+    const day = pfAddDays(anchor, offset);
+    return { start: day, end: day };
+  }
+  if (granularity === 'week') {
+    const start = pfAddDays(pfWeekStart(anchor), 7 * offset);
+    return { start, end: pfAddDays(start, 6) };
+  }
+  const start = pfMonthStart(anchor, offset);
+  return { start, end: pfAddDays(pfMonthStart(start, 1), -1) };
+}
+
+function pfPeriodLabel(granularity, period) {
+  const md = (iso) => `${Number(iso.slice(5, 7))}月${Number(iso.slice(8, 10))}日`;
+  if (granularity === 'all') return '全部記錄';
+  if (granularity === 'day') {
+    const dow = '日一二三四五六'[new Date(`${period.start}T00:00:00Z`).getUTCDay()];
+    return `${period.start.slice(0, 4)}年${md(period.start)}（星期${dow}）`;
+  }
+  if (granularity === 'week') return `${md(period.start)} – ${md(period.end)}（一至日）`;
+  return `${period.start.slice(0, 4)}年${Number(period.start.slice(5, 7))}月`;
+}
+
+function pfSum(days, period) {
+  const out = { bets: 0, hits: 0, stake: 0, pnl: 0 };
+  for (const [day, row] of Object.entries(days || {})) {
+    if (day < period.start || day > period.end) continue;
+    out.bets += Number(row.bets || 0);
+    out.hits += Number(row.hits || 0);
+    out.stake += Number(row.stake ?? row.bets ?? 0);
+    out.pnl += Number(row.pnl || 0);
+  }
+  return out;
+}
+
+// Latest settled day across all four, so 「日」 opens on a day that has results
+// rather than on today (which only settles tomorrow).
+function pfAnchor() {
+  let latest = '';
+  for (const sport of PF_SPORTS) {
+    for (const [day, row] of Object.entries(pfDays(sport.key))) {
+      if (Number(row.bets || 0) && day > latest) latest = day;
+    }
+  }
+  return latest || new Date().toISOString().slice(0, 10);
+}
+
+function pfMoney(value) {
+  const v = Number(value || 0);
+  return `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(2)}u`;
+}
+
+function pfRoi(row) {
+  if (!Number(row.stake || 0)) return '—';
+  const pct = 100 * Number(row.pnl || 0) / Number(row.stake);
+  return `${pct > 0 ? '+' : pct < 0 ? '−' : ''}${Math.abs(pct).toFixed(1)}%`;
+}
+
+function pfTone(row) {
+  if (!Number(row.bets || 0)) return 'flat';
+  const pnl = Number(row.pnl || 0);
+  return pnl > 0.0001 ? 'up' : pnl < -0.0001 ? 'down' : 'flat';
+}
+
+function pfSetGranularity(granularity) {
+  if (!PF_GRANULARITIES.some(([key]) => key === granularity)) return;
+  pfGranularity = granularity;
+  pfOffset = 0;
+  render();
+}
+
+function pfShift(step) {
+  pfOffset = Math.min(0, pfOffset + step);
+  render();
+}
+
+// Recent periods of the current granularity, newest first, for the breakdown table.
+function pfRecentPeriods(granularity, anchor, count) {
+  if (granularity === 'all') {
+    const start = pfMonthStart(anchor, -(count - 1));
+    return Array.from({ length: count }, (_, i) => pfPeriod('month', start, count - 1 - i))
+      .map(period => ({ period, label: pfPeriodLabel('month', period) }));
+  }
+  return Array.from({ length: count }, (_, i) => pfPeriod(granularity, anchor, pfOffset - i))
+    .map(period => ({ period, label: pfShortLabel(granularity, period) }));
+}
+
+function pfShortLabel(granularity, period) {
+  const md = (iso) => `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))}`;
+  if (granularity === 'day') return md(period.start);
+  if (granularity === 'week') return `${md(period.start)}–${md(period.end)}`;
+  return `${period.start.slice(0, 4)}年${Number(period.start.slice(5, 7))}月`;
+}
+
+// Cumulative P/L per sport over every settled day (one line each, shared u axis).
+function pfCumulativeChart(period) {
+  const allDays = new Set();
+  for (const sport of PF_SPORTS) {
+    for (const day of Object.keys(pfDays(sport.key))) {
+      if (day >= period.start && day <= period.end) allDays.add(day);
+    }
+  }
+  const days = [...allDays].sort();
+  if (days.length < 2) {
+    return '<div class="pf-empty">呢段時間未夠兩日有結算，未畫到走勢。</div>';
+  }
+  const series = PF_SPORTS.map(sport => {
+    const byDay = pfDays(sport.key);
+    let running = 0;
+    let started = false;
+    const points = days.map(day => {
+      const row = byDay[day];
+      if (row && Number(row.bets || 0)) { running += Number(row.pnl || 0); started = true; }
+      return started ? running : null;
+    });
+    return { ...sport, points };
+  }).filter(s => s.points.some(v => v !== null));
+  const values = series.flatMap(s => s.points.filter(v => v !== null)).concat([0]);
+  let lo = Math.min(...values);
+  let hi = Math.max(...values);
+  const pad = Math.max(1, (hi - lo) * 0.08);
+  lo -= pad; hi += pad;
+  // Narrow screens get a narrower viewBox so 11px labels stay 11px instead of shrinking.
+  const narrow = typeof window !== 'undefined' && Number(window.innerWidth) > 0 && window.innerWidth < 600;
+  const W = narrow ? 360 : 720, H = narrow ? 240 : 260, L = 40, R = narrow ? 100 : 118, T = 14, B = 26;
+  const x = (i) => L + (days.length === 1 ? 0 : i * (W - L - R) / (days.length - 1));
+  const y = (v) => T + (hi - v) * (H - T - B) / (hi - lo);
+  const step = Math.pow(10, Math.floor(Math.log10((hi - lo) / 4)));
+  const tick = [1, 2, 5, 10].map(m => m * step).find(t => (hi - lo) / t <= 6) || step * 10;
+  const grid = [];
+  for (let v = Math.ceil(lo / tick) * tick; v <= hi; v += tick) {
+    grid.push(`<line x1="${L}" x2="${W - R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" class="${Math.abs(v) < tick / 2 ? 'pf-zero' : 'pf-grid'}"/><text x="${L - 6}" y="${(y(v) + 3.5).toFixed(1)}" class="pf-axis" text-anchor="end">${Math.round(v)}u</text>`);
+  }
+  const labels = [0, Math.floor((days.length - 1) / 2), days.length - 1]
+    .filter((v, i, a) => a.indexOf(v) === i)
+    .map(i => `<text x="${x(i).toFixed(1)}" y="${H - 6}" class="pf-axis" text-anchor="${i === 0 ? 'start' : i === days.length - 1 ? 'end' : 'middle'}">${Number(days[i].slice(5, 7))}/${Number(days[i].slice(8, 10))}</text>`).join('');
+  // End labels: nudge apart so they never overlap.
+  const ends = series.map(s => {
+    const last = s.points[s.points.length - 1];
+    return { s, last, yy: y(last) };
+  }).sort((a, b) => a.yy - b.yy);
+  for (let i = 1; i < ends.length; i++) ends[i].yy = Math.max(ends[i].yy, ends[i - 1].yy + 14);
+  const lines = series.map(s => {
+    let d = '';
+    s.points.forEach((v, i) => { if (v !== null) d += `${d ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`; });
+    return `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
   }).join('');
-  return `<section class="sports-shell sports-shell--portfolio">
-    <div class="sports-hero">
-      <div><div class="sports-eyebrow">WONG CHOI PORTFOLIO · D1 LEDGER</div><h1 class="sports-title">📈 全運動 Portfolio</h1><p class="sports-intro">已結算 P/L 同 pending exposure 分開計，pending 永遠唔會預先當輸。</p></div>
-      <div class="sports-hero__aside">
-        <div class="sports-hero-stat"><strong>${Number(total.bets || 0)}</strong><span>總投注</span></div>
-        <div class="sports-hero-stat"><strong>${Number(total.pending || 0)}</strong><span>Pending</span></div>
-        <div class="sports-hero-stat"><strong>${Number(total.pending_exposure || 0).toFixed(2)}u</strong><span>Exposure</span></div>
-        <div class="sports-hero-stat"><strong style="color:${profitColor}">${Number(total.profit || 0) > 0 ? '+' : ''}${Number(total.profit || 0).toFixed(2)}u</strong><span>Realised P/L</span></div>
+  const endMarks = ends.map(({ s, last, yy }) => `<circle cx="${x(days.length - 1).toFixed(1)}" cy="${y(last).toFixed(1)}" r="4" fill="${s.color}" stroke="#fff" stroke-width="2"/><text x="${(W - R + 8).toFixed(1)}" y="${(yy + 4).toFixed(1)}" class="pf-endlabel">${esc(s.label)} ${pfMoney(last)}</text>`).join('');
+  const payload = esc(JSON.stringify({ days, series: series.map(s => ({ label: s.label, color: s.color, points: s.points })) }));
+  return `<div class="pf-chart" data-pf="${payload}" data-l="${L}" data-r="${R}" data-w="${W}" onmousemove="pfHover(event, this)" onmouseleave="pfHover(null, this)">
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="四個旺財累計盈虧走勢（單位 u）">${grid.join('')}${labels}${lines}${endMarks}<line class="pf-cross" x1="0" x2="0" y1="${T}" y2="${H - B}" style="display:none"/></svg>
+    <div class="pf-tip" style="display:none"></div>
+  </div>`;
+}
+
+function pfHover(event, el) {
+  const tip = el.querySelector('.pf-tip');
+  const cross = el.querySelector('.pf-cross');
+  if (!event) { tip.style.display = 'none'; cross.style.display = 'none'; return; }
+  const data = JSON.parse(el.dataset.pf);
+  const W = Number(el.dataset.w), L = Number(el.dataset.l), R = Number(el.dataset.r);
+  const box = el.getBoundingClientRect();
+  const sx = (event.clientX - box.left) * W / box.width;
+  const n = data.days.length;
+  const i = Math.max(0, Math.min(n - 1, Math.round((sx - L) / ((W - L - R) / (n - 1)))));
+  const cx = L + i * (W - L - R) / (n - 1);
+  cross.setAttribute('x1', cx); cross.setAttribute('x2', cx); cross.style.display = '';
+  const rows = data.series.map(s => {
+    const v = s.points[i];
+    return `<div><i style="background:${s.color}"></i>${esc(s.label)}<b>${v === null ? '—' : pfMoney(v)}</b></div>`;
+  }).join('');
+  tip.innerHTML = `<strong>${esc(data.days[i])} 累計</strong>${rows}`;
+  tip.style.display = '';
+  const px = cx * box.width / W;
+  tip.style.left = `${Math.min(Math.max(px + 12, 0), box.width - 190)}px`;
+}
+
+function renderPortfolioWorkspace() {
+  const anchor = pfAnchor();
+  const period = pfPeriod(pfGranularity, anchor, pfOffset);
+  const rows = PF_SPORTS.map(sport => ({ ...sport, row: pfSum(pfDays(sport.key), period), source: pfSource(sport.key) }));
+  const total = rows.reduce((acc, { row }) => ({
+    bets: acc.bets + row.bets, hits: acc.hits + row.hits, stake: acc.stake + row.stake, pnl: acc.pnl + row.pnl,
+  }), { bets: 0, hits: 0, stake: 0, pnl: 0 });
+  const hitRate = (row) => row.bets ? `${Math.round(100 * row.hits / row.bets)}%` : '—';
+  const tabs = PF_GRANULARITIES.map(([key, label]) =>
+    `<button type="button" class="pf-seg${pfGranularity === key ? ' is-active' : ''}" aria-pressed="${pfGranularity === key}" onclick="pfSetGranularity('${key}')">${label}</button>`).join('');
+  const nav = pfGranularity === 'all' ? `<div class="pf-nav"><span class="pf-nav__label">${pfPeriodLabel('all', period)}</span></div>` : `<div class="pf-nav">
+      <button type="button" class="pf-nav__btn" aria-label="上一段" onclick="pfShift(-1)">‹</button>
+      <span class="pf-nav__label">${pfPeriodLabel(pfGranularity, period)}</span>
+      <button type="button" class="pf-nav__btn" aria-label="下一段" onclick="pfShift(1)" ${pfOffset >= 0 ? 'disabled' : ''}>›</button>
+    </div>`;
+  const cards = rows.map(({ key, label, emoji, color, row, source }) => {
+    const tone = pfTone(row);
+    const body = row.bets
+      ? `<div class="pf-card__roi pf-${tone}">${pfRoi(row)}</div>
+         <div class="pf-card__pnl pf-${tone}">${pfMoney(row.pnl)}</div>
+         <dl class="pf-card__stats"><div><dt>注數</dt><dd>${row.bets}</dd></div><div><dt>中</dt><dd>${row.hits}</dd></div><div><dt>命中率</dt><dd>${hitRate(row)}</dd></div></dl>`
+      : `<div class="pf-card__roi pf-flat">—</div><div class="pf-card__none">呢段時間冇已結算注</div>`;
+    return `<article class="pf-card" data-sport="${key}">
+      <header class="pf-card__head"><span class="pf-dot" style="background:${color}"></span><span class="pf-card__name">${emoji} ${esc(label)}</span></header>
+      ${body}
+      <p class="pf-card__src${source.ok ? '' : ' pf-card__src--warn'}">${esc(source.text)}</p>
+    </article>`;
+  }).join('');
+  const recent = pfRecentPeriods(pfGranularity, anchor, pfGranularity === 'day' ? 14 : pfGranularity === 'all' ? 6 : 8);
+  const tableRows = recent.map(({ period: p, label }) => {
+    const cells = PF_SPORTS.map(sport => pfSum(pfDays(sport.key), p));
+    const sum = cells.reduce((a, r) => ({ bets: a.bets + r.bets, hits: a.hits + r.hits, stake: a.stake + r.stake, pnl: a.pnl + r.pnl }), { bets: 0, hits: 0, stake: 0, pnl: 0 });
+    const cell = (r) => r.bets ? `<td><span class="pf-${pfTone(r)}">${pfRoi(r)}</span><small>${pfMoney(r.pnl)} · ${r.bets}注</small></td>` : '<td class="pf-muted">—</td>';
+    const current = p.start === period.start && p.end === period.end;
+    return `<tr${current ? ' class="is-current"' : ''}><th scope="row">${esc(label)}</th>${cells.map(cell).join('')}${cell(sum)}</tr>`;
+  }).join('');
+  const tableTitle = pfGranularity === 'all' ? '最近 6 個月' : pfGranularity === 'day' ? '最近 14 日' : pfGranularity === 'week' ? '最近 8 週' : '最近 8 個月';
+  const pending = Number(portfolioSnapshot?.horses_by_region?.hkjc?.pending || 0);
+  const totalTone = pfTone(total);
+  return `<section class="sports-shell sports-shell--portfolio pf">
+    <div class="pf-hero">
+      <div>
+        <div class="pf-eyebrow">WONG CHOI PORTFOLIO</div>
+        <h1 class="pf-title">📈 全運動 ROI</h1>
+        <p class="pf-intro">香港賽馬、AU 賽馬、NBA、網球四個旺財嘅已結算 ROI。週 = 星期一至日，月 = 公曆月。</p>
+      </div>
+      <div class="pf-controls">
+        <div class="pf-segs" role="group" aria-label="時間範圍">${tabs}</div>
+        ${nav}
       </div>
     </div>
-    <div class="sports-roi-grid">
-      <div class="sports-roi-card"><span>已結算</span><strong>${Number(total.settled || 0)}</strong></div>
-      <div class="sports-roi-card"><span>Won / Lost / Void</span><strong>${Number(total.wins || 0)} / ${Number(total.losses || 0)} / ${Number(total.voids || 0)}</strong></div>
-      <div class="sports-roi-card"><span>已結算注碼</span><strong>${Number(total.realised_stake || 0).toFixed(2)}u</strong></div>
-      <div class="sports-roi-card"><span>淨利</span><strong style="color:${profitColor}">${Number(total.profit || 0) > 0 ? '+' : ''}${Number(total.profit || 0).toFixed(2)}u</strong></div>
-      <div class="sports-roi-card"><span>Portfolio ROI</span><strong style="color:${profitColor}">${total.roi == null ? '—' : `${(Number(total.roi) * 100).toFixed(1)}%`}</strong></div>
+    <div class="pf-kpis">
+      <div class="pf-kpi pf-kpi--main"><span>組合 ROI</span><strong class="pf-${totalTone}">${pfRoi(total)}</strong></div>
+      <div class="pf-kpi"><span>盈虧</span><strong class="pf-${totalTone}">${pfMoney(total.pnl)}</strong></div>
+      <div class="pf-kpi"><span>注數</span><strong>${total.bets}</strong></div>
+      <div class="pf-kpi"><span>中</span><strong>${total.hits}<small> · ${hitRate(total)}</small></strong></div>
+      <div class="pf-kpi"><span>本金</span><strong>${total.stake.toFixed(2)}u</strong></div>
     </div>
-    <div style="overflow-x:auto"><table class="portfolio-table"><thead><tr><th>Sport</th><th>投注</th><th>Settled</th><th>Pending</th><th>Exposure</th><th>P/L</th><th>ROI</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="pf-cards">${cards}</div>
+    <section class="pf-panel">
+      <h2 class="pf-h2">累計盈虧走勢 <small>${pfGranularity === 'all' ? '全部日子' : pfGranularity === 'day' ? `截至 ${esc(period.end)} 最近 14 日` : esc(pfPeriodLabel(pfGranularity, period))}</small></h2>
+      ${pfCumulativeChart(pfGranularity === 'day' ? { start: pfAddDays(period.end, -13), end: period.end } : period)}
+    </section>
+    <section class="pf-panel">
+      <h2 class="pf-h2">${tableTitle} <small>ROI% · 盈虧 · 注數</small></h2>
+      <div class="pf-table-wrap"><table class="pf-table"><thead><tr><th scope="col">時段</th>${PF_SPORTS.map(s => `<th scope="col"><span class="pf-dot" style="background:${s.color}"></span>${esc(s.label)}</th>`).join('')}<th scope="col">合計</th></tr></thead><tbody>${tableRows}</tbody></table></div>
+    </section>
     <div class="scope-note">
       <span>📋</span>
-      <span><strong>統計範圍：</strong>只計經 App 寫入 database 嘅投注，跨 Horses／NBA／Tennis。
-      唔包含匯入嘅賽馬歷史記錄，所以「📊 ROI」個馬匹數字會大過呢一頁 —— 兩邊都冇錯，只係計唔同嘅範圍。</span>
+      <span><strong>數字點嚟：</strong>AU、NBA、網球直接讀統一 ROI 板（同 Telegram 個板同一份數），每次部署更新；
+      香港賽馬未有落注定義，用你喺 App 記嘅實注（D1）${pending ? `，另有 ${pending} 注未結算唔計` : ''}。
+      全部按賽事日期分日；只計已結算嘅贏／輸，未結算唔會當輸。單位：每注 1u（NBA $1 = 1u）。</span>
     </div>
-    <div class="sports-notice"><span>🧾</span><span>資料來源：Cloudflare D1 unified ledger。所有修改、刪除及結算都會寫 audit log；KV 保留作 rollback shadow。</span></div>
   </section>`;
 }
 

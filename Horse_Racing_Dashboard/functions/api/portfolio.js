@@ -74,6 +74,41 @@ export function horseRegion(record) {
   return region === "hkjc" || region === "au" ? region : "unknown";
 }
 
+// Per-day rows in the unified ROI board's shape ({bets, hits, stake, pnl}) so the
+// Portfolio page can bucket HKJC by day / week / month next to the board's AU,
+// NBA and tennis rows. Settled won/lost only (voids return the stake and are
+// not a bet on the board), keyed by event_date.
+function boardKey(record) {
+  if (record.sport === "horses") {
+    const region = horseRegion(record);
+    return region === "unknown" ? null : region;
+  }
+  return record.sport === "nba" || record.sport === "tennis" ? record.sport : null;
+}
+
+export function buildDailyBoard(records) {
+  const days = { hkjc: {}, au: {}, nba: {}, tennis: {} };
+  for (const record of Object.values(records || {})) {
+    if (!record || record._deleted) continue;
+    if (record.status !== "won" && record.status !== "lost") continue;
+    const key = boardKey(record);
+    const day = String(record.event_date || "").slice(0, 10);
+    if (!key || !/^\d{4}-\d{2}-\d{2}$/.test(day)) continue;
+    const cell = days[key][day] || (days[key][day] = { bets: 0, hits: 0, stake: 0, pnl: 0 });
+    cell.bets += 1;
+    if (record.status === "won") cell.hits += 1;
+    cell.stake += Number(record.stake || 0);
+    cell.pnl += Number(record.profit || 0);
+  }
+  for (const byDay of Object.values(days)) {
+    for (const cell of Object.values(byDay)) {
+      cell.stake = Number(cell.stake.toFixed(4));
+      cell.pnl = Number(cell.pnl.toFixed(4));
+    }
+  }
+  return days;
+}
+
 export function buildPortfolio(records) {
   const bySport = {
     horses: emptyBucket(),
@@ -98,6 +133,7 @@ export function buildPortfolio(records) {
     total,
     by_sport: bySport,
     horses_by_region: horsesByRegion,
+    days: buildDailyBoard(records),
   };
 }
 

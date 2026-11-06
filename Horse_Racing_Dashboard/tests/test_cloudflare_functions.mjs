@@ -443,6 +443,23 @@ test("portfolio splits horse bets into HKJC and AU rows", async () => {
   assert.equal(summary.by_sport.horses.bets, 3);
 });
 
+test("portfolio days bucket settled won/lost bets per board key and event date", async () => {
+  const portfolio = await loadModule("../functions/api/portfolio.js");
+  const days = portfolio.buildDailyBoard({
+    a: { sport: "horses", status: "won", stake: 1, profit: 1.95, event_date: "2026-11-04", analysis_snapshot: { region: "hkjc" } },
+    b: { sport: "horses", status: "lost", stake: 1, profit: -1, event_date: "2026-11-04", analysis_snapshot: { region: "hkjc" } },
+    pending: { sport: "horses", status: "pending", stake: 1, profit: 0, event_date: "2026-11-04", analysis_snapshot: { region: "hkjc" } },
+    voided: { sport: "horses", status: "void", stake: 1, profit: 0, event_date: "2026-11-04", analysis_snapshot: { region: "hkjc" } },
+    noRegion: { sport: "horses", status: "won", stake: 1, profit: 1, event_date: "2026-11-04" },
+    nba: { sport: "nba", status: "lost", stake: 2, profit: -2, event_date: "2026-11-05" },
+    deleted: { sport: "nba", status: "won", stake: 1, profit: 1, event_date: "2026-11-05", _deleted: true },
+  });
+  assert.deepEqual(days.hkjc, { "2026-11-04": { bets: 2, hits: 1, stake: 2, pnl: 0.95 } });
+  assert.deepEqual(days.nba, { "2026-11-05": { bets: 1, hits: 0, stake: 2, pnl: -2 } });
+  assert.deepEqual(days.au, {});
+  assert.ok(portfolio.buildPortfolio({}).days);
+});
+
 test("portfolio summary separates realised ROI from pending exposure by sport", async () => {
   const portfolio = await loadModule("../functions/api/portfolio.js");
   const summary = portfolio.buildPortfolio({

@@ -135,7 +135,22 @@ def featured_performance(match_date: str) -> dict:
     with get_connection() as conn:
         day = featured.picks_with_results(conn, since=match_date, until=match_date)
         overall = featured.picks_with_results(conn, until=match_date)
-    return {"daily": featured.performance(day), "overall": featured.performance(overall)}
+    return {"daily": featured.performance(day), "overall": featured.performance(overall),
+            "by_day": settled_by_day(overall)}
+
+
+def settled_by_day(rows: list[dict]) -> dict:
+    """Per match-date board rows (settled, non-void 精選 only), for the dashboard Portfolio."""
+    days: dict[str, dict] = {}
+    for r in rows:
+        if r.get("unit_profit") is None or r.get("result_status") == "VOID":
+            continue
+        cell = days.setdefault(str(r["match_date"]), {"bets": 0, "hits": 0, "stake": 0.0, "pnl": 0.0})
+        cell["bets"] += 1
+        cell["hits"] += int(r.get("result_status") == "WON")
+        cell["stake"] += 1.0
+        cell["pnl"] = round(cell["pnl"] + float(r["unit_profit"]), 4)
+    return days
 
 
 def send_roi_board(match_date: str, today: str) -> bool:
@@ -143,7 +158,7 @@ def send_roi_board(match_date: str, today: str) -> bool:
     perf = featured_performance(match_date)
     board = _roi_board()
     entry = board.record("tennis", day=match_date, latest=_roi_row(perf["daily"]),
-                         cumulative=_roi_row(perf["overall"]))
+                         cumulative=_roi_row(perf["overall"]), days=perf["by_day"])
     if not (entry.get("latest") or {}).get("bets"):
         return False
     return notify(board.render(updated="tennis", today=today), audience="content")

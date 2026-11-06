@@ -47,6 +47,7 @@ from services.au_display_policy import apply_au_display_policy
 from services.nba_tracking import TRACKING_START_DATE
 from services.hkjc_insights import export_insights as export_hkjc_insights
 from services.hkjc_roi_meta import export_race_meta as export_hkjc_race_meta
+from services.roi_board_export import export_roi_board
 from services.au_market_odds import enrich_au_market_odds
 from models.race import AnalystName, Meeting, Region
 
@@ -981,6 +982,14 @@ def generate_html(data):
         if data.get("hkjc_insights"):
             data["hkjc_insights"]["status"] = "valid"
             data["hkjc_insights"]["stale"] = True
+    # 統一 ROI 板 (AU / NBA / 網球): the Portfolio page's daily/weekly/monthly ROI.
+    # Rebuilt on every deploy; on failure keep the previous copy marked stale.
+    try:
+        data["roi_board"] = export_roi_board()
+    except Exception as exc:
+        print(f"   ⚠️ ROI board not available: {exc}")
+        if isinstance(data.get("roi_board"), dict):
+            data["roi_board"]["status"] = "stale"
     history_path = Path(__file__).resolve().parent / "data" / "multisport_history.json"
     if "sports_history" not in data:
         try:
@@ -1483,7 +1492,7 @@ def main():
     html = generate_html(html_payload)
     # generate_html rebuilds the live sports feed on the copy it is handed;
     # carry that back so the snapshot JSON does not ship yesterday's feed.
-    for key in ("sports_feed", "sports_history", "meta"):
+    for key in ("sports_feed", "sports_history", "meta", "roi_board"):
         if key in html_payload:
             data[key] = html_payload[key]
     
