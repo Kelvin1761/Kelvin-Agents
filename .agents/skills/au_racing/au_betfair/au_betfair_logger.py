@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """AU Betfair 市場走勢記錄器（EXP-20261106-02 修訂：用 API 自己記錄，Basic 歷史數據資料檢查唔過）。**唔落注**。
 
-    au_betfair_logger.py snapshot            # launchd 每 60 秒：未來 75 分鐘開跑嘅 AU 純種馬 WIN 市場，最佳買／賣價＋LTP
+    au_betfair_logger.py snapshot            # launchd 每 60 秒：未來 75 分鐘開跑嘅 AU 純種馬 WIN＋PLACE 市場，最佳買／賣價＋LTP
     au_betfair_logger.py settle [--date D]   # 每晚：配結果（WINNER／LOSER）同 BSP
     au_betfair_logger.py status --output F   # forward tracker 讀：有齊 T−60、T−5 快照兼已結算嘅場數
 
@@ -49,7 +49,8 @@ HARNESS = re.compile(r"\b(Pace|Trot|Pacers?|Trotters?)\b", re.I)
 AHEAD_MIN, BEHIND_MIN = 75, 10
 QUIET_HOURS = range(1, 9)        # 悉尼 01:00–08:59 冇 AU 賽事，唔 call API
 BOOK_CHUNK = 40                  # EX_BEST_OFFERS weight 5 × 40 = 200（Betfair 上限）
-TARGET_RACES = 2000
+TARGET_RACES = 2000             # 只計 WIN（預先登記嘅分析）；PLACE 只係記錄，分析要另開協議
+MARKET_TYPES = ("WIN", "PLACE")  # 用戶 2026-11-06：「can we track place as well」
 WINDOWS = {"t60": (70, 60), "t15": (18, 15), "t5": (8, 5)}   # 開跑前 [早, 遲] 分鐘內最後一張未開跑快照
 
 
@@ -82,12 +83,19 @@ def is_thoroughbred(market: dict) -> bool:
 
 
 def catalogue(now: datetime, rpc=bf.rpc) -> list[dict]:
-    flt = {"eventTypeIds": ["7"], "marketCountries": ["AU"], "marketTypeCodes": ["WIN"],
+    flt = {"eventTypeIds": ["7"], "marketCountries": ["AU"], "marketTypeCodes": list(MARKET_TYPES),
            "marketStartTime": {"from": iso(now - timedelta(minutes=BEHIND_MIN)),
                                "to": iso(now + timedelta(minutes=AHEAD_MIN))}}
     out = rpc("listMarketCatalogue", {"filter": flt, "maxResults": 200,
-                                      "marketProjection": ["MARKET_START_TIME", "RUNNER_DESCRIPTION", "EVENT"]})
-    return [m for m in out or [] if is_thoroughbred(m)]
+                                      "marketProjection": ["MARKET_START_TIME", "RUNNER_DESCRIPTION", "EVENT",
+                                                           "MARKET_DESCRIPTION"]})
+    markets = out or []
+    kind = lambda m: (m.get("description") or {}).get("marketType")  # noqa: E731
+    key = lambda m: ((m.get("event") or {}).get("id"), m.get("marketStartTime"))  # noqa: E731
+    wins = [m for m in markets if kind(m) in ("WIN", None) and is_thoroughbred(m)]
+    # PLACE 市場名係「To Be Placed」，冇 Pace／Trot 字眼 —— 一定要跟返同 event 同開跑時間嘅純種馬 WIN 市場先收
+    win_keys = {key(m) for m in wins}
+    return wins + [m for m in markets if kind(m) == "PLACE" and key(m) in win_keys]
 
 
 def book_rows(markets: list[dict], now_ms: int, rpc=bf.rpc) -> list[dict]:
@@ -107,7 +115,7 @@ def book_rows(markets: list[dict], now_ms: int, rpc=bf.rpc) -> list[dict]:
                                 "back": back.get("price"), "back_size": back.get("size"),
                                 "lay": lay.get("price"), "lay_size": lay.get("size")})
             rows.append({"ts": now_ms, "market": book.get("marketId"), "start": starts.get(book.get("marketId")),
-                         "status": book.get("status"), "inplay": book.get("inplay"),
+                         "status": book.get("status"), "inplay": book.get("inplay"), "winners": book.get("numberOfWinners"),
                          "delayed": book.get("isMarketDataDelayed"), "runners": runners})
     return rows
 
@@ -122,7 +130,8 @@ def cmd_snapshot(now: datetime | None = None, rpc=bf.rpc) -> int:
     folder = day_dir(now)
     seen = {m["market"] for m in read(folder / "catalogue.jsonl")}
     append(folder / "catalogue.jsonl", [{
-        "market": m["marketId"], "name": m.get("marketName"), "start": m.get("marketStartTime"),
+        "market": m["marketId"], "type": (m.get("description") or {}).get("marketType"),
+        "event_id": (m.get("event") or {}).get("id"), "name": m.get("marketName"), "start": m.get("marketStartTime"),
         "event": (m.get("event") or {}).get("name"), "venue": (m.get("event") or {}).get("venue"),
         "runners": [{"id": r.get("selectionId"), "name": r.get("runnerName")} for r in m.get("runners") or []],
     } for m in markets if m["marketId"] not in seen])
@@ -163,24 +172,31 @@ def usable_race(snaps: list[dict], start_iso: str) -> dict | None:
     return picked
 
 
+def market_type(row: dict) -> str:
+    return row.get("type") or "WIN"      # 2026-11-06 加 PLACE 之前嘅目錄冇 type，嗰陣只記 WIN
+
+
 def collect_counts(root: Path = LOG_ROOT) -> dict:
-    races = days = 0
+    races = days = place = 0
     for folder in sorted(p for p in root.glob("20*") if p.is_dir()):
         cat = {m["market"]: m for m in read(folder / "catalogue.jsonl")}
         settled = {s["market"] for s in read(folder / "settle.jsonl") if s.get("status") == "CLOSED"}
         snaps = {}
         for s in read(folder / "snapshots.jsonl"):
             snaps.setdefault(s["market"], []).append(s)
-        n = sum(1 for mid, m in cat.items() if mid in settled and m.get("start") and usable_race(snaps.get(mid, []), m["start"]))
+        ok = [m for mid, m in cat.items() if mid in settled and m.get("start") and usable_race(snaps.get(mid, []), m["start"])]
+        n = sum(market_type(m) == "WIN" for m in ok)
         races += n
+        place += sum(market_type(m) == "PLACE" for m in ok)
         days += bool(n)
-    return {"races": races, "days": days}
+    return {"races": races, "days": days, "place_markets": place}
 
 
 def cmd_status(output: Path) -> dict:
     counts = collect_counts(ensure_log_root())
     status = {"experiment": "EXP-20261106-02", "kind": "betfair_market_log", "target_races": TARGET_RACES,
               "races_collected": counts["races"], "race_days": counts["days"],
+              "place_markets_collected": counts["place_markets"],
               "outcomes_visible": False, "state": "collecting",
               "generated_at": datetime.now(timezone.utc).isoformat()}
     output.write_text(json.dumps(status, ensure_ascii=False, indent=1), encoding="utf-8")

@@ -21,9 +21,15 @@ START = "2026-11-07T05:00:00.000Z"
 def fake_rpc(method, params):
     if method == "listMarketCatalogue":
         return [{"marketId": "1.1", "marketName": "R3 1200m Mdn", "marketStartTime": START,
-                 "event": {"name": "Randwick (AUS) 7th Nov", "venue": "Randwick"},
+                 "description": {"marketType": "WIN"},
+                 "event": {"id": "E1", "name": "Randwick (AUS) 7th Nov", "venue": "Randwick"},
                  "runners": [{"selectionId": 11, "runnerName": "1. A"}, {"selectionId": 12, "runnerName": "2. B"}]},
-                {"marketId": "1.2", "marketName": "R4 2138m Pace M", "marketStartTime": START, "event": {}, "runners": []}]
+                {"marketId": "1.3", "marketName": "To Be Placed", "marketStartTime": START,
+                 "description": {"marketType": "PLACE"}, "event": {"id": "E1", "venue": "Randwick"}, "runners": []},
+                {"marketId": "1.2", "marketName": "R4 2138m Pace M", "marketStartTime": START,
+                 "description": {"marketType": "WIN"}, "event": {"id": "E2"}, "runners": []},
+                {"marketId": "1.4", "marketName": "To Be Placed", "marketStartTime": START,
+                 "description": {"marketType": "PLACE"}, "event": {"id": "E2"}, "runners": []}]
     if method == "listMarketBook":
         if params["priceProjection"]["priceData"] == ["SP_TRADED"]:
             return [{"marketId": "1.1", "status": "CLOSED", "runners": [
@@ -47,15 +53,16 @@ class LoggerTests(unittest.TestCase):
         self.tmp.cleanup()
 
     def test_snapshot_skips_harness_and_writes_best_prices(self) -> None:
-        self.assertEqual(lg.cmd_snapshot(NOW, fake_rpc), 1)
+        self.assertEqual(lg.cmd_snapshot(NOW, fake_rpc), 2)
         folder = lg.LOG_ROOT / "2026-11-07"
         cat = lg.read(folder / "catalogue.jsonl")
-        self.assertEqual([c["market"] for c in cat], ["1.1"])
+        # 純種馬 WIN + 佢嘅 PLACE；harness 嘅 WIN 同 PLACE（名冇 Pace 字眼）都剔走
+        self.assertEqual([(c["market"], c["type"]) for c in cat], [("1.1", "WIN"), ("1.3", "PLACE")])
         snap = lg.read(folder / "snapshots.jsonl")[0]
         self.assertEqual(snap["runners"][0]["back"], 3.45)
         self.assertTrue(snap["delayed"])
         lg.cmd_snapshot(NOW, fake_rpc)
-        self.assertEqual(len(lg.read(folder / "catalogue.jsonl")), 1)     # 目錄唔重覆寫
+        self.assertEqual(len(lg.read(folder / "catalogue.jsonl")), 2)     # 目錄唔重覆寫
 
     def test_quiet_hours_do_not_call_api(self) -> None:
         night = datetime(2026, 11, 6, 17, 0, tzinfo=timezone.utc)       # 悉尼 04:00
@@ -64,6 +71,7 @@ class LoggerTests(unittest.TestCase):
     def test_settle_and_usable_window(self) -> None:
         lg.cmd_snapshot(NOW, fake_rpc)
         self.assertEqual(lg.cmd_settle("2026-11-07", fake_rpc), 1)
+        self.assertEqual(lg.market_type({}), "WIN")                                       # 舊目錄冇 type
         t0 = datetime(2026, 11, 7, 5, 0, tzinfo=timezone.utc).timestamp() * 1000
         snaps = [{"ts": t0 - m * 60000, "status": "OPEN", "inplay": False} for m in (65, 16, 6)]
         self.assertIsNotNone(lg.usable_race(snaps, START))

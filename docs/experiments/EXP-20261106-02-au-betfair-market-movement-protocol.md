@@ -75,3 +75,9 @@ ROI、賽日 bootstrap 95% CI。
 - **樣本**：夠 **2,000 場**合資格賽事（forward tracker `betfair_market_log`，第一次夠數推 Telegram）先跑 Q1／Q2；
   切法改為頭 50% 賽日 fit、後 50% 測（同原協議）。
 - 判決規則、四條規則、Holm、唔准換時點／門檻全部不變。
+
+## 補充（2026-11-06，用戶：「can we track place as well」）
+
+記錄器加埋 **PLACE** 市場（同一個快照 job）：目錄記 `type`、`event_id`，快照記 `winners`（派位數）。PLACE 市場名係「To Be Placed」，
+冇 Pace／Trot 字眼，所以只收同 event、同開跑時間有純種馬 WIN 市場嘅 PLACE。**PLACE 只係記錄，唔喺今次預先登記範圍**；
+2,000 場進度照舊只計 WIN（狀態檔另列 `place_markets_collected`）。要分析位市場走勢就另開協議。
