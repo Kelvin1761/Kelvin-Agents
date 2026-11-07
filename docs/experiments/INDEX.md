@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261107-01](EXP-20261107-01-au-position-environment-results.md) | 2026-11-07 | AU | 將位置修正 L600 與賽事環境分離，P/E/各半 EP 消融並雙邊重訓 | **三邊 REJECT，未改 live**：時間 MAE 0.870→0.520 秒，但 2,512 場 OOS P Good −0.36pp、EP Gold −0.52pp；整體 CI 跨零。ranking 功效不足，source availability FLAG；不聲稱更準末段永遠無用 |
 | [EXP-20261106-01](EXP-20261106-01-tennis-rebuild.md) | 2026-11-06 | Tennis | 全面重建（一本帳、7 個定價 family、剷死 code），輸出要同舊引擎一樣 | **結構重建，已驗證等價**。9 日 978 行定價重播 0 差異；11,712 行結算重播 0 差異。src 36,907→約 17,500 行，CLI 47→7 命令，測試 551 全過。模型數學冇改；抓數層只剷死 code（冇原始 HTML 做重播） |
 | [EXP-20261105-10](EXP-20261105-10-tennis-featured-forward.md) | 2026-11-05 | Tennis | 精選：一場一注（edge 最高）、每日最多 10 注、21:00 出 card；取代每日「資料未就緒」card | **前向測試登記（Kelvin 決定）**。可核實 value 注 1,357 注 −10.7% [−15.7,−5.7]、每 family 都負；同場額外注差 15.1pp [+4.2,+25.9]；按信心揀頭 10 注最差。250 注判一次、600 注終判，唔落真錢直到 ELIGIBLE。模型數學冇改 |
 | [EXP-20261105-tennis-component-blockers](EXP-20261105-tennis-card-component-blockers.md) | 2026-11-05 | Tennis | 固定 card 的資格阻擋及三站官方場地來源 | **診斷／來源核實**。45 賽前場次有 28 active warning、17 無有效 component；六場 Challenger 找齊公開標籤，官方 Hard／Hard／Clay，5/6 雙方完整姓名在 draw 唯一吻合。未套用 metadata，qualification 仍 0 |

@@ -1,0 +1,49 @@
+{
+ "full_gate_exit_code": 0,
+ "full_gate_command": "PYTHON_BIN=/Library/Developer/CommandLineTools/usr/bin/python3 PYTHONDONTWRITEBYTECODE=1 ./檢查.sh",
+ "full_gate_runtime": "Python 3.9.6",
+ "suites_passed": [
+  "AU Wong Choi",
+  "AU daily auto",
+  "AU racing",
+  "HKJC Wong Choi",
+  "HKJC daily auto",
+  "HKJC extractor",
+  "HKJC reflector",
+  "Shared racing",
+  "Shared Wong Choi",
+  "Central Wong Choi",
+  "Race compliance QA",
+  "NBA Wong Choi",
+  "Agent scripts",
+  "Dashboard (python)",
+  "Tennis Wong Choi",
+  "Dashboard (node)"
+ ],
+ "elapsed_seconds": 1009,
+ "initial_sandbox_failures": {
+  "ps_permission_denied": 4,
+  "APFS_compression": 1
+ },
+ "same_runtime_unsandboxed_file_retry_passed": 17,
+ "optional_python314_run": "stopped after unrelated Path.touch / os.open monkeypatch recursion reproduced in test_production_lock_handles.py",
+ "research_production_changes": false,
+ "logs": {
+  "initial_sandbox.log": {
+   "path": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/au-position-environment-20261107/verification/initial_sandbox.log",
+   "sha256": "7e3b22cf91f3b3b4c9cbec9e98acea9accb7f3350de7238506f1b59f10d11fb5"
+  },
+  "optional_python314_stopped.log": {
+   "path": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/au-position-environment-20261107/verification/optional_python314_stopped.log",
+   "sha256": "153628be550d2272a984a47a28260a83ffadfc643f1538aba22d1e23b8ca2624"
+  },
+  "final_python39_unsandboxed.log": {
+   "path": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/au-position-environment-20261107/verification/final_python39_unsandboxed.log",
+   "sha256": "de84778a33c6e74b43f7e4a7322dafde7b900c3d3fcd15aea0293ad3c8399360"
+  },
+  "quick.log": {
+   "path": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/au-position-environment-20261107/verification/quick.log",
+   "sha256": "9436092bd155bb531f82af7d8f905604b6051f4300e9898721dd38051deaff66"
+  }
+ }
+}

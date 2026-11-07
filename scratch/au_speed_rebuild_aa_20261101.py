@@ -32,7 +32,6 @@ sys.path.insert(0, str(SCRIPT_DIR))
 def _corpus_meeting_dirs(root):
     """Meeting folders under `root` AND under `root/Archive`."""
     import sys as _s
-    from pathlib import Path as _P
     shared = SCRIPT_DIR.parents[2] / "shared_racing" / "scripts"
     if str(shared) not in _s.path:
         _s.path.insert(0, str(shared))
@@ -101,9 +100,9 @@ def _extra(eng, res, ctx, hd, age_sex):
             "age": age, "sex": sex,
             "career_starts": eng._career_starts(), "race_bucket": eng._race_class_bucket(),
             "latest_placing": latest.get("placing"), "latest_field_size": latest.get("field_size"),
-            "today_tier": eng._venue_tier(eng._meeting_intelligence().get("venue") or eng._track_profile().get("venue") or ""),
-            "latest_tier": eng._venue_tier(latest.get("venue") if entries else ""),
-            "class_move": eng._class_move_today(), "latest_rt": eng._latest_l600_rt_metrics().get("rt"),
+            "today_tier": None,  # Retired venue-tier helper; research metadata only.
+            "latest_tier": None,
+            "class_move": eng._class_move_today(), "latest_rt": None,
             "class_notes": (getattr(eng, "class_detail", None) or {}).get("notes", []),
         },
     }
@@ -248,6 +247,7 @@ def main():
                     "wet": float(res.get("wet_form_feature") or 0.0),
                     "proven_class": float(res.get("proven_class_feature") or 0.0),
                     "full_time": float(res.get("full_time_speed_feature") or 0.0),
+                    "draw": float(res.get("draw_feature") or 0.0),
                     "ability": float(res.get("ability_score") or 0.0),
                     # 分層用（唔入分）：初出／休後實驗要喺同一份 dump 切 cohort。
                     "career_starts": hd.get("career_race_starts"),
