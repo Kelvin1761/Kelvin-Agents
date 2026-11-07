@@ -1,14 +1,17 @@
-"""Read-only eligibility for the approved forward-only installer proposal.
+"""Forward installer eligibility and append-only requests for fresh gates.
 
-This preview cannot issue an intent, approve a release or run an installer.
-An eligible preview still requires the fresh full gate and independent approval.
+The preview is read-only. Intent creation records a pending request that still
+requires a fresh full gate and independent approval before installation.
 """
 from __future__ import annotations
 
+import hashlib
 import json
+import os
+import tempfile
 import re
 import subprocess
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Mapping
 from urllib.parse import quote
@@ -183,3 +186,69 @@ def preview_installation_reconciliation(
     except (OSError, ValueError, TypeError, KeyError, AttributeError, subprocess.SubprocessError) as exc:
         result["error"] = f"preview probe failed closed: {type(exc).__name__}"
     return result
+
+
+def create_installation_intent(
+    repo: Path, state_root: Path, *, source_commit: str, target_commit: str,
+    production_roots: Mapping[str, Path], actor: str,
+) -> dict:
+    """Append a request for fresh gates using current verified eligibility."""
+    if not isinstance(actor, str) or not actor.strip():
+        raise ReleaseError("installation intent actor is required")
+    eligibility = preview_installation_reconciliation(
+        repo, state_root, source_commit=source_commit, target_commit=target_commit,
+        production_roots=production_roots)
+    if eligibility["status"] != "eligible_for_fresh_gate":
+        raise ReleaseError(eligibility.get("error", "installation eligibility blocked"))
+    # Hash the immutable manifests as well as binding their release IDs. A later
+    # gate/executor must reobserve eligibility and compare these exact bytes.
+    manifests = {
+        commit: hashlib.sha256((state_root / "releases" / (commit + ".json")).read_bytes()).hexdigest()
+        for commit in (source_commit, target_commit)
+    }
+    payload = {
+        "schema_version": "wong-choi-installation-intent/v1",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "actor": actor.strip(),
+        "source_commit": source_commit, "target_commit": target_commit,
+        "source_release_id": eligibility["source_release_id"],
+        "target_release_id": eligibility["target_release_id"],
+        "manifest_hashes": manifests,
+        "production_roots": {domain: str(Path(root).expanduser().resolve())
+                             for domain, root in sorted(production_roots.items())},
+        "rollback_commit": target_commit,
+        "installers": [INSTALLER],
+        "status": "pending_fresh_gate",
+        "installation_authorized": False,
+        "fresh_full_gate_required": True,
+        "independent_approval_required": True,
+    }
+    if preview_installation_reconciliation(
+            repo, state_root, source_commit=source_commit, target_commit=target_commit,
+            production_roots=production_roots) != eligibility:
+        raise ReleaseError("installation eligibility changed during intent preparation")
+    payload["content_hash"] = _hash(payload)
+    folder = state_root.expanduser().absolute() / "installation-intents"
+    if any(path.is_symlink() for path in (folder, *folder.parents)):
+        raise ReleaseError("installation intent directory is symlinked")
+    folder.mkdir(mode=0o700, parents=True, exist_ok=True)
+    if not folder.is_dir():
+        raise ReleaseError("installation intent directory is invalid")
+    destination = folder / (payload["content_hash"] + ".json")
+    descriptor, name = tempfile.mkstemp(prefix=".intent-", dir=folder)
+    temporary = Path(name)
+    try:
+        with os.fdopen(descriptor, "w") as handle:
+            json.dump(payload, handle, ensure_ascii=False, sort_keys=True, indent=2)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.link(temporary, destination)  # Never replace an existing intent.
+        directory = os.open(folder, os.O_RDONLY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
+    finally:
+        temporary.unlink(missing_ok=True)
+    return {**payload, "path": str(destination)}

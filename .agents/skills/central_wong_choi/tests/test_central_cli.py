@@ -130,3 +130,25 @@ def test_active_sqlite_is_rejected_for_non_tennis_domain(tmp_path):
     )
 
     assert code == 1
+
+
+def test_installation_intent_dispatch_does_not_enter_approval_or_activation(tmp_path, monkeypatch):
+    from shared_wong_choi import installation_reconciliation, release_automation
+
+    captured = {}
+    def create(repo, state_root, **kwargs):
+        captured.update(kwargs)
+        return {"status": "pending_fresh_gate", "installation_authorized": False}
+    def forbidden(*args, **kwargs):
+        raise AssertionError("intent creation entered approval or activation")
+    monkeypatch.setattr(installation_reconciliation, "create_installation_intent", create)
+    monkeypatch.setattr(release_automation, "production_roots", lambda: {"au": tmp_path})
+    monkeypatch.setattr(cli, "approve_release", forbidden)
+    monkeypatch.setattr(cli, "activate_release", forbidden)
+    assert cli.main([
+        "--repo", str(tmp_path), "--state-root", str(tmp_path / "state"),
+        "reconcile-installation-intent", "--source-commit", "a" * 40,
+        "--target-commit", "b" * 40, "--actor", "fixture", "--json",
+    ]) == 0
+    assert captured["actor"] == "fixture"
+    assert captured["target_commit"] == "b" * 40

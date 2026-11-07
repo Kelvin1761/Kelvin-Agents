@@ -223,3 +223,43 @@ def test_renamed_hash_valid_rejection_cannot_reorder_approval(history):
     result = preview(history)
     assert result["status"] == "blocked"
     assert "invalid release event" in result["error"]
+
+
+def test_intent_binds_target_and_keeps_existing_evidence_immutable(history):
+    root, production, state, source, target = history
+    before = {p.relative_to(state): p.read_bytes() for p in state.rglob("*") if p.is_file()}
+    result = reconciliation.create_installation_intent(
+        root, state, source_commit=source, target_commit=target,
+        production_roots={domain: production for domain in reconciliation.DOMAINS},
+        actor="test")
+    assert result["status"] == "pending_fresh_gate"
+    assert result["installation_authorized"] is False
+    assert result["rollback_commit"] == target
+    assert set(result["manifest_hashes"]) == {source, target}
+    saved = json.loads(Path(result["path"]).read_text())
+    digest = saved.pop("content_hash")
+    assert digest == reconciliation._hash(saved)
+    assert all((state / path).read_bytes() == data for path, data in before.items())
+
+
+def test_blocked_intent_leaves_no_intent_directory(history):
+    root, production, state, source, _ = history
+    with pytest.raises(reconciliation.ReleaseError):
+        reconciliation.create_installation_intent(
+            root, state, source_commit=source, target_commit="0" * 40,
+            production_roots={domain: production for domain in reconciliation.DOMAINS},
+            actor="test")
+    assert not (state / "installation-intents").exists()
+
+
+def test_intent_rejects_symlinked_destination(history, tmp_path):
+    root, production, state, source, target = history
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    (state / "installation-intents").symlink_to(elsewhere)
+    with pytest.raises(reconciliation.ReleaseError):
+        reconciliation.create_installation_intent(
+            root, state, source_commit=source, target_commit=target,
+            production_roots={domain: production for domain in reconciliation.DOMAINS},
+            actor="test")
+    assert list(elsewhere.iterdir()) == []

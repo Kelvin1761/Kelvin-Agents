@@ -428,3 +428,20 @@ Final affected installer regressions40passed12deselected in48.29s
 (wc-run-keq08vga); final quick wc-run-xl4ega70 passed, native shell syntax
 and diff checks passed. Original source goldens remain unchanged. Full source
 and immutable approval gates remain unrun for this unfinished workflow.
+
+
+## Forward intent command checkpoint
+
+Central now exposes `reconcile-installation-intent` with explicit source SHA,
+target SHA and actor. The command reuses strict preview eligibility, observes it
+again before publication, and appends a hashed request binding release IDs,
+exact manifest byte hashes, four production roots and rollback SHA. Publication
+uses exclusive file creation through a hard link plus fsync. Existing evidence
+is retained. The intent is pending a fresh gate and carries installation
+authorization false. No live intent was created during implementation.
+
+Focused reconciliation and Central CLI tests passed 38 cases. The preview
+retains its read-only behavior. Fresh gate, independent approval, append-only
+execution outcomes and the native executor remain required before this workflow
+can install anything. Current changed-dependency and target-provenance holds
+continue to apply.
