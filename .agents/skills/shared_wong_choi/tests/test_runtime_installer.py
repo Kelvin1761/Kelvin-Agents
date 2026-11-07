@@ -4,6 +4,7 @@ import os
 import json
 import plistlib
 import shutil
+import shlex
 import sqlite3
 import subprocess
 import sys
@@ -12,6 +13,9 @@ from pathlib import Path
 import pytest
 
 from _runtime_owned_test_helpers import isolated_observer_installer, owned_cli, owned_publication
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from shared_wong_choi.release_activation import _run_installer
 
 
 @pytest.fixture(autouse=True)
@@ -216,7 +220,7 @@ def test_runtime_pointer_snapshot_rejects_unsafe_config(tmp_path, unsafe):
     (False, True, True, "outer"), (False, True, True, "outer-conflict"),
     (False, True, True, "bound-bootstrap-failure"),
 ])
-def test_runtime_installer_full_cutover_in_isolated_home(tmp_path: Path, active_run: bool, acceptance: bool, calendar_ok: bool, attempt: str) -> None:
+def test_runtime_installer_full_cutover_in_isolated_home(tmp_path: Path, active_run: bool, acceptance: bool, calendar_ok: bool, attempt: str, monkeypatch) -> None:
     isolated_installer = isolated_observer_installer(tmp_path)
     home = tmp_path / "home"
     agents = home / "Library" / "LaunchAgents"
@@ -360,13 +364,27 @@ raise SystemExit(0 if accepted else 1)
         install_arguments = ["--install-from-snapshot", str(outer), "--expected-commit", expected_commit]
         if attempt == "outer-conflict":
             foreign.write_bytes(plistlib.dumps({"Label": foreign.stem, "ProgramArguments": ["/foreign/owner"]}))
-    result = subprocess.run(
-        ["/bin/zsh", str(isolated_installer), *install_arguments],
-        env=env,
-        text=True,
-        capture_output=True,
-        check=False,
+    # Preserve complete fixture assertions separately from the controller's
+    # bounded diagnostics. Both processes remain in the owned timeout group.
+    stdout_log = tmp_path / "installer.stdout"
+    stderr_log = tmp_path / "installer.stderr"
+    wrapper = tmp_path / "capture-installer.sh"
+    wrapper.write_text(
+        "#!/bin/zsh\nexec /bin/zsh " + shlex.quote(str(isolated_installer))
+        + ' "$@" >' + shlex.quote(str(stdout_log))
+        + " 2>" + shlex.quote(str(stderr_log)) + "\n"
     )
+    # Use the controller's real cancellation and output handling with its
+    # existing production deadline, including any inner recovery work.
+    with monkeypatch.context() as process_environment:
+        for key, value in env.items():
+            process_environment.setenv(key, value)
+        result = _run_installer(
+            REPO_ROOT, "/bin/zsh", str(wrapper), *install_arguments, timeout=300
+        )
+    result.stdout = stdout_log.read_text()
+    result.stderr += stderr_log.read_text()
+    assert result.returncode != 124, result.stdout + result.stderr
 
     assert "runtime cutover stage: interpreter preflight" in result.stdout
     assert "runtime cutover stage: active-run preflight" in result.stdout
