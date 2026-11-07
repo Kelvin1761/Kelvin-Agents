@@ -1,0 +1,247 @@
+{
+  "source_commit": "6525f23eb",
+  "code_references": [
+    {
+      "file": ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/dimensions.py",
+      "sha256": "94060b93449b52f3157916555992022ce7efa129311ab333c6aef28b85ca1d14",
+      "references": {
+        "DimensionSpec('stability'": 80,
+        "DimensionSpec('race_shape'": 84,
+        "DimensionSpec('form_line'": 88
+      }
+    },
+    {
+      "file": ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/stability.py",
+      "sha256": "11b1846453feb61055e1d9d078d74dc4a0d597757db107cd5c979110b13c2549",
+      "references": {
+        "RECENCY_WEIGHTS =": 32,
+        "def digest(": 42
+      }
+    },
+    {
+      "file": ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/engine_core.py",
+      "sha256": "b859650e4ba8d8901881fb842819caf98f22554bbb2599b3a55964e298bc7fbf",
+      "references": {
+        "def trial_performance_applies(": 268,
+        "def performance_pf_metrics(": 293,
+        "def _weight_score(": 2699,
+        "def _health_score(": 3226
+      }
+    },
+    {
+      "file": ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/data_prep.py",
+      "sha256": "772604479d6f8acfa3b3df39dc322c2af929e2f78eeb90a8e9455b7bbab7a7a8",
+      "references": {
+        "def _parse_formguide_pf_metrics(": 326,
+        "def refresh_form_quality(": 1920
+      }
+    },
+    {
+      "file": ".agents/skills/au_racing/claw_sportsbet_form.py",
+      "sha256": "71352116de9d478ce4164275ba345fc8efb97f670efd7ef9b61895c5fbedb43d",
+      "references": {
+        "f_fg.write(\"Video:": 1311
+      }
+    },
+    {
+      "file": ".agents/scripts/inject_fact_anchors.py",
+      "sha256": "6c84f6be280334a25a983facb92594339f8745d09e4d4e3c8a8470497599c9a1",
+      "references": {
+        "def _format_notes(": 2215
+      }
+    }
+  ],
+  "confirmed_duplicate_downstream_evidence": {
+    "5": {
+      "name": "Torsheen",
+      "PF_Jan21": [
+        {
+          "source": "sportsbet_race_context",
+          "l600_time": null,
+          "runner_time": null,
+          "race_time_diff": null,
+          "l800_delta": null,
+          "l600_delta": 1.12,
+          "l400_delta": null,
+          "l200_delta": null,
+          "tempo_qrank": null,
+          "rt_rating": null,
+          "early_runner_pace": null,
+          "early_race_pace": null,
+          "run_kind": "formal",
+          "run_date": "2026-01-21",
+          "distance": 1300,
+          "margin": 1.25,
+          "pos_800": 4,
+          "pos_400": 3,
+          "finish": 2,
+          "starters": 7,
+          "winning_time": 78.09,
+          "race_l600": 35.69,
+          "venue": "Sportsbet Sandown Hillside",
+          "own_l600_delta": 1.3325
+        },
+        {
+          "source": "sportsbet_race_context",
+          "l600_time": null,
+          "runner_time": null,
+          "race_time_diff": null,
+          "l800_delta": null,
+          "l600_delta": 1.12,
+          "l400_delta": null,
+          "l200_delta": null,
+          "tempo_qrank": null,
+          "rt_rating": null,
+          "early_runner_pace": null,
+          "early_race_pace": null,
+          "run_kind": "formal",
+          "run_date": "2026-01-21",
+          "distance": 1300,
+          "margin": 1.25,
+          "pos_800": 4,
+          "pos_400": 3,
+          "finish": 2,
+          "starters": 7,
+          "winning_time": 78.09,
+          "race_l600": 35.69,
+          "venue": "Sandown Hillside",
+          "own_l600_delta": 1.3325
+        }
+      ],
+      "FQ_Jan21": [],
+      "risk_flags": [
+        "top_weight",
+        "久休 196 日後首仗；本輪尚未有正式賽表現可驗證狀態"
+      ],
+      "prep_cycle": {
+        "as_of": "2026-11-07",
+        "stage": "first_up",
+        "label": "久休復出",
+        "days_since_last_run": 196,
+        "prior_spell_days": 196,
+        "completed_prep_runs": 0,
+        "prep_start_date": "2026-11-07",
+        "return_run_date": null,
+        "return_finish": null,
+        "return_margin": null,
+        "evidence_dates": [
+          "2026-04-25",
+          "2026-04-18",
+          "2026-04-04",
+          "2026-03-21",
+          "2026-03-04",
+          "2026-02-18",
+          "2026-01-21"
+        ],
+        "summary": "久休 196 日後首仗；本輪尚未有正式賽表現可驗證狀態"
+      }
+    },
+    "14": {
+      "name": "Royal Rendezvous",
+      "PF_Jan21": [
+        {
+          "source": "sportsbet_race_context",
+          "l600_time": null,
+          "runner_time": null,
+          "race_time_diff": null,
+          "l800_delta": null,
+          "l600_delta": 1.12,
+          "l400_delta": null,
+          "l200_delta": null,
+          "tempo_qrank": null,
+          "rt_rating": null,
+          "early_runner_pace": null,
+          "early_race_pace": null,
+          "run_kind": "formal",
+          "run_date": "2026-01-21",
+          "distance": 1300,
+          "margin": 2.21,
+          "pos_800": 1,
+          "pos_400": 1,
+          "finish": 5,
+          "starters": 7,
+          "winning_time": 78.09,
+          "race_l600": 35.69,
+          "venue": "Sportsbet Sandown Hillside",
+          "own_l600_delta": 1.4957
+        },
+        {
+          "source": "sportsbet_race_context",
+          "l600_time": null,
+          "runner_time": null,
+          "race_time_diff": null,
+          "l800_delta": null,
+          "l600_delta": 1.12,
+          "l400_delta": null,
+          "l200_delta": null,
+          "tempo_qrank": null,
+          "rt_rating": null,
+          "early_runner_pace": null,
+          "early_race_pace": null,
+          "run_kind": "formal",
+          "run_date": "2026-01-21",
+          "distance": 1300,
+          "margin": 2.21,
+          "pos_800": 1,
+          "pos_400": 1,
+          "finish": 5,
+          "starters": 7,
+          "winning_time": 78.09,
+          "race_l600": 35.69,
+          "venue": "Sandown Hillside",
+          "own_l600_delta": 1.4957
+        }
+      ],
+      "FQ_Jan21": [
+        {
+          "date": "2026-01-21",
+          "finish_pos": 5,
+          "starters": 7,
+          "prize": 35000.0,
+          "distance": 1300,
+          "value": -0.320719,
+          "z_place": -0.5223,
+          "z_prize": -0.1191,
+          "z_prize_raw": -0.1191,
+          "weight": 0.3
+        },
+        {
+          "date": "2026-01-21",
+          "finish_pos": 5,
+          "starters": 7,
+          "prize": 35000.0,
+          "distance": 1300,
+          "value": -0.320719,
+          "z_place": -0.5223,
+          "z_prize": -0.1191,
+          "z_prize_raw": -0.1191,
+          "weight": 0.2
+        }
+      ],
+      "risk_flags": [],
+      "prep_cycle": {
+        "as_of": "2026-11-07",
+        "stage": "established_prep",
+        "label": "本輪第 4 仗",
+        "days_since_last_run": 17,
+        "prior_spell_days": 197,
+        "completed_prep_runs": 3,
+        "prep_start_date": "2026-08-21",
+        "return_run_date": "2026-08-21",
+        "return_finish": 5,
+        "return_margin": 7.55,
+        "evidence_dates": [
+          "2026-10-21",
+          "2026-09-28",
+          "2026-08-21",
+          "2026-02-05",
+          "2026-01-21",
+          "2026-01-03"
+        ],
+        "summary": "本輪第 4 仗；本輪首仗前休 197 日，距上仗 17 日，本輪已跑 3 仗；休前往績需與復出後表現分開睇"
+      }
+    }
+  },
+  "counterfactual_rankings_run": false,
+  "model_changes": false
+}

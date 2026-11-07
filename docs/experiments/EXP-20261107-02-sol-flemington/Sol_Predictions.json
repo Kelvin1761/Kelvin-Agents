@@ -1,0 +1,4300 @@
+{
+  "model_requested": "gpt-6.1-sol",
+  "meeting": "2026-11-07 Flemington",
+  "method": "retrospective input-blind, no market",
+  "read_files": [
+    "protocol.md",
+    "inputs/R1.md",
+    "inputs/R2.md",
+    "inputs/R3.md",
+    "inputs/R4.md",
+    "inputs/R5.md",
+    "inputs/R6.md",
+    "inputs/R7.md",
+    "inputs/R8.md",
+    "inputs/R9.md"
+  ],
+  "recognised_outcomes": [],
+  "races": [
+    {
+      "race": 1,
+      "ranking": [
+        4,
+        5,
+        7,
+        13,
+        10,
+        3,
+        1,
+        9,
+        8,
+        11,
+        2
+      ],
+      "top4": [
+        4,
+        5,
+        7,
+        13
+      ],
+      "top2": [
+        4,
+        5
+      ],
+      "confidence": "low",
+      "pace_scenarios": [
+        {
+          "scenario": "Soldi與She's Supreme同時爭先",
+          "implication": "兩匹有正式領放證據，快步速增加新馬追入機會，但新馬跑法未知。",
+          "evidence": [
+            "R1.md:F0083",
+            "R1.md:F0121"
+          ]
+        },
+        {
+          "scenario": "Soldi順利掌速",
+          "implication": "已有好地1000米取勝經驗最有用，維持首選。",
+          "evidence": [
+            "R1.md:F0083"
+          ]
+        }
+      ],
+      "key_comparisons": [
+        "Soldi正式勝績勝於純跳閘；She's Supreme十二駒入位較有可核實性。",
+        "Goddess Kay與Rusty Pearl跳閘勝出只作準備訊號，不用跨場時間排名。"
+      ],
+      "missing_information": [
+        "當日風、直路跑線偏差、馬匹狀態及實際出閘未提供。",
+        "Stewards 空白唔代表冇受阻；RaceL600 係全場而非個體。",
+        "現行磅按Racecard；歷史行是來源記錄負磅，未明示減磅時不假定已扣，也不對不明現役claim自行扣重。"
+      ],
+      "data_quality_flags": [
+        "Soldi 9月24日跳閘疑似重複且starter數不同。",
+        "Naughty May finish與名次互相矛盾；Rusty Pearl出現4/1。",
+        "大多數係新馬，信心低；0.00跳閘輸距不可信作量化。",
+        "Natural Emotion F0227記3/6但F0228列第二；只把該早期跳閘當作準備，不作精確排名依據。"
+      ],
+      "runner_assessments": [
+        {
+          "number": 1,
+          "name": "Public Affairs",
+          "assessment": "兩次本場跳閘有基本準備，暫列中後。",
+          "support": [
+            "兩次800米跳閘第二、第三。"
+          ],
+          "risks": [
+            "未正式上陣；首次眼罩效果未知。"
+          ],
+          "evidence": [
+            {
+              "file": "R1.md",
+              "line": "F0017",
+              "fact": "Flemington **(TRIAL)** R8 2026-10-23 800m cond:None $0 Billy Egan (None) Nonekg . margin:0.00L starters:5 finish:3/5 RaceClass:[Jump Out - G4 Barrier Trial] WinningTime:45.050"
+            },
+            {
+              "file": "R1.md",
+              "line": "F0022",
+              "fact": "Flemington **(TRIAL)** R10 2026-10-09 800m cond:None $0 Billy Egan (None) Nonekg . margin:0.00L starters:4 finish:2/4 RaceClass:[Jump Out - G4 Barrier Trial] WinningTime:48.570"
+            },
+            {
+              "file": "R1.md",
+              "line": "R0006",
+              "fact": "Gear: Blinkers FIRST TIME"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "name": "Steel Point",
+          "assessment": "現有試閘證據較弱，列末位但新馬變數大。",
+          "support": [
+            "840米試閘第三。"
+          ],
+          "risks": [
+            "輸6.05馬位，冇正式賽績。"
+          ],
+          "evidence": [
+            {
+              "file": "R1.md",
+              "line": "F0041",
+              "fact": "Doomben **(TRIAL)** R14 2026-10-06 840m cond:Good $0 Michael Rodd (2) Nonekg . margin:6.05L starters:6 finish:3/6 RaceClass:[2Y-TRL Barrier Trial] WinningTime:49.870 RaceL600:33.760 PF[Source: sportsbet_race_context L600 Delta: -0.46]"
+            },
+            {
+              "file": "R1.md",
+              "line": "F0032",
+              "fact": "Career:    0: 0-0-0        Last 10:                   Prize:     $0"
+            }
+          ]
+        },
+        {
+          "number": 3,
+          "name": "The Chancer",
+          "assessment": "有短程跳閘勝績，列新馬中游。",
+          "support": [
+            "650米跳閘第一，800米第三。"
+          ],
+          "risks": [
+            "跳閘勝負唔足以證實實戰水平，首次綁舌。"
+          ],
+          "evidence": [
+            {
+              "file": "R1.md",
+              "line": "F0060",
+              "fact": "Cranbourne **(TRIAL)** R5 2026-10-12 800m cond:None $0 Ben Melham (None) Nonekg . margin:0.00L starters:7 finish:3/7 RaceClass:[Jump Out - S6 Barrier Trial] WinningTime:47.270"
+            },
+            {
+              "file": "R1.md",
+              "line": "F0065",
+              "fact": "Cranbourne **(TRIAL)** R10 2026-09-28 650m cond:None $0 Caitlin Hollowood (None) Nonekg . margin:0L starters:3 finish:1/3 RaceClass:[Jump Out - S5 Barrier Trial] WinningTime:36.120"
+            },
+            {
+              "file": "R1.md",
+              "line": "F0049",
+              "fact": "SportsbetGear: Changes: Tongue Tie FIRST TIME"
+            }
+          ]
+        },
+        {
+          "number": 4,
+          "name": "Soldi",
+          "assessment": "首選；唯一正式勝馬，已證1000米可領可贏。",
+          "support": [
+            "Debutant Stakes 領放以0.10馬位勝出。"
+          ],
+          "risks": [
+            "只一場、贏距窄，九檔及其他前速可能令領放更辛苦。"
+          ],
+          "evidence": [
+            {
+              "file": "R1.md",
+              "line": "F0083",
+              "fact": "Caulfield R1 2026-10-14 1000m cond:Good $200000 Blake Shinn (5) 56.0kg [historical market price removed] 1st@800m 1st@400m. margin:0L starters:6 finish:1/6 RaceClass:[DEBUTANT STKS] WinningTime:57.620 RaceL600:33.660 PF[Source: sportsbet_race_context L600 Delta: -0.49]"
+            },
+            {
+              "file": "R1.md",
+              "line": "F0084",
+              "fact": "1-Soldi (56.0kg), 2-Royal Press (58.0kg) 0.10L, 3-Maalefushi (56.0kg) 1.35L"
+            },
+            {
+              "file": "R1.md",
+              "line": "R0015",
+              "fact": "4. Soldi (9)"
+            }
+          ]
+        },
+        {
+          "number": 5,
+          "name": "She's Supreme",
+          "assessment": "次選；已有大場1000米入位證據。",
+          "support": [
+            "Gimcrack 十二駒跑第三，最近再試閘第二。"
+          ],
+          "risks": [
+            "曾領放最後落後2.64馬位；好地適應未實證。"
+          ],
+          "evidence": [
+            {
+              "file": "R1.md",
+              "line": "F0121",
+              "fact": "Randwick R3 2026-10-03 1000m cond:Soft $250000 Kerrin McEvoy (1) 56.0kg [historical market price removed] 1st@800m 1st@400m. margin:2.64L starters:12 finish:3/12 RaceClass:[GIMCRACK] WinningTime:59.660 RaceL600:35.830 PF[Source: sportsbet_race_context L600 Delta: 2.09]"
+            },
+            {
+              "file": "R1.md",
+              "line": "F0116",
+              "fact": "Warwick Farm **(TRIAL)** R7 2026-10-30 805m cond:Good $0 Reece Jones (None) Nonekg . margin:1.71L starters:9 finish:2/9 RaceClass:[2YO BT Barrier Trial] WinningTime:47.260 RaceL600:33.550 PF[Source: sportsbet_race_context L600 Delta: 0.1]"
+            },
+            {
+              "file": "R1.md",
+              "line": "F0110",
+              "fact": "Firm:      0: 0-0-0        Good:      0: 0-0-0        Soft:      1: 0-0-1"
+            }
+          ]
+        },
+        {
+          "number": 7,
+          "name": "Goddess Kay",
+          "assessment": "新馬中優先；兩次本場跳閘第一。",
+          "support": [
+            "9月及10月800米跳閘均第一。"
+          ],
+          "risks": [
+            "0.00輸距唔係齊頭；未有正式賽可比。"
+          ],
+          "evidence": [
+            {
+              "file": "R1.md",
+              "line": "F0145",
+              "fact": "Flemington **(TRIAL)** R6 2026-10-30 800m cond:None $0 Craig Williams (None) Nonekg . margin:0L starters:6 finish:1/6 RaceClass:[Jump Out - G4 Barrier Trial] WinningTime:48.400"
+            },
+            {
+              "file": "R1.md",
+              "line": "F0150",
+              "fact": "Flemington **(TRIAL)** R10 2026-09-24 800m cond:None $0 Holly Durnan (None) Nonekg . margin:0L starters:4 finish:1/4 RaceClass:[Jump Out - G4 Barrier Trial] WinningTime:47.150"
+            },
+            {
+              "file": "R1.md",
+              "line": "F0136",
+              "fact": "Career:    0: 0-0-0        Last 10:                   Prize:     $0"
+            }
+          ]
+        },
+        {
+          "number": 8,
+          "name": "Jacquets Off",
+          "assessment": "試閘有勝但證據薄，排後。",
+          "support": [
+            "最近本場800米跳閘第一。"
+          ],
+          "risks": [
+            "僅兩駒；此前六駒第五，十三檔跑線未明。"
+          ],
+          "evidence": [
+            {
+              "file": "R1.md",
+              "line": "F0169",
+              "fact": "Flemington **(TRIAL)** R12 2026-10-30 800m cond:None $0 Jordan Childs (None) Nonekg . margin:0L starters:2 finish:1/2 RaceClass:[Jump Out - G4 Barrier Trial] WinningTime:49.920"
+            },
+            {
+              "file": "R1.md",
+              "line": "F0179",
+              "fact": "Flemington **(TRIAL)** R16 2026-10-09 800m cond:None $0 Damien Thornton (None) Nonekg . starters:6 finish:5/6 RaceClass:[Jump Out - G4 Barrier Trial]"
+            },
+            {
+              "file": "R1.md",
+              "line": "R0025",
+              "fact": "8. Jacquets Off (13)"
+            }
+          ]
+        },
+        {
+          "number": 9,
+          "name": "Miss Ruthless",
+          "assessment": "正式試閘接近，屬可進步冷門。",
+          "support": [
+            "Gosford 八駒第四僅輸1.07。"
+          ],
+          "risks": [
+            "只有一次試閘，軟地轉好地未知。"
+          ],
+          "evidence": [
+            {
+              "file": "R1.md",
+              "line": "F0198",
+              "fact": "Gosford **(TRIAL)** R11 2026-10-28 800m cond:Soft $0 Chad Schofield (None) Nonekg . margin:1.07L starters:8 finish:4/8 RaceClass:[2Y-BT Barrier Trial] WinningTime:48.330 RaceL600:35.990 PF[Source: sportsbet_race_context L600 Delta: 1.84]"
+            },
+            {
+              "file": "R1.md",
+              "line": "F0189",
+              "fact": "Career:    0: 0-0-0        Last 10:                   Prize:     $0"
+            }
+          ]
+        },
+        {
+          "number": 10,
+          "name": "Natural Emotion",
+          "assessment": "近期兩次跳閘頭二，可爭四席。",
+          "support": [
+            "750米十三駒第二；800米四駒第一。"
+          ],
+          "risks": [
+            "合成地與草地不能直接比時間；首次多件裝備。"
+          ],
+          "evidence": [
+            {
+              "file": "R1.md",
+              "line": "F0217",
+              "fact": "Pakenham Synthetic **(TRIAL)** R5 2026-10-27 750m cond:None $0 Luke Cartwright (None) Nonekg . margin:0.00L starters:13 finish:2/13 RaceClass:[JumpOut - Synth Barrier Trial] WinningTime:45.810"
+            },
+            {
+              "file": "R1.md",
+              "line": "F0222",
+              "fact": "Pakenham **(TRIAL)** R14 2026-10-20 800m cond:None $0 Luke Cartwright (None) Nonekg . margin:0L starters:4 finish:1/4 RaceClass:[Jump Out - G4 Barrier Trial] WinningTime:50.060"
+            },
+            {
+              "file": "R1.md",
+              "line": "F0206",
+              "fact": "SportsbetGear: Changes: Lugging Bit FIRST TIME, Nose Roll FIRST TIME, Stallion Chain FIRST TIME"
+            }
+          ]
+        },
+        {
+          "number": 11,
+          "name": "Naughty May",
+          "assessment": "記錄矛盾，暫列較後。",
+          "support": [
+            "近期750米跳閘有前列記錄。"
+          ],
+          "risks": [
+            "finish寫2/3但名次列第一；早前本場第四。"
+          ],
+          "evidence": [
+            {
+              "file": "R1.md",
+              "line": "F0246",
+              "fact": "Mornington **(TRIAL)** R10 2026-10-28 750m cond:None $0 Michael Dee (None) Nonekg . margin:0.00L starters:3 finish:2/3 RaceClass:[Jump Out - S5 Barrier Trial]"
+            },
+            {
+              "file": "R1.md",
+              "line": "F0247",
+              "fact": "1-Naughty May (Nonekg) 0.00L, 2-Vassago (Nonekg) 0.00L, 3-"
+            },
+            {
+              "file": "R1.md",
+              "line": "F0251",
+              "fact": "Flemington **(TRIAL)** R3 2026-09-24 800m cond:None $0 Jamie Melham (None) Nonekg . margin:0.00L starters:6 finish:4/6 RaceClass:[Jump Out - G4 Barrier Trial] WinningTime:46.470"
+            }
+          ]
+        },
+        {
+          "number": 13,
+          "name": "Rusty Pearl",
+          "assessment": "近期十駒跳閘勝出，列第四。",
+          "support": [
+            "760米合成地跳閘第一。"
+          ],
+          "risks": [
+            "早前4/1不可能記錄；草地實戰未明。"
+          ],
+          "evidence": [
+            {
+              "file": "R1.md",
+              "line": "F0270",
+              "fact": "Cranbourne **(TRIAL)** R4 2026-10-26 760m cond:None $0 Ben Allen (None) Nonekg . margin:0L starters:10 finish:1/10 RaceClass:[JumpOut - Synth Barrier Trial] WinningTime:45.840"
+            },
+            {
+              "file": "R1.md",
+              "line": "F0275",
+              "fact": "Cranbourne **(TRIAL)** R13 2026-10-12 650m cond:None $0 Changgyun Ma (None) Nonekg . margin:0.00L starters:1 finish:4/1 RaceClass:[Jump Out - S6 Barrier Trial]"
+            },
+            {
+              "file": "R1.md",
+              "line": "F0261",
+              "fact": "Career:    0: 0-0-0        Last 10:                   Prize:     $0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "race": 2,
+      "ranking": [
+        2,
+        13,
+        1,
+        3,
+        11,
+        4,
+        9,
+        5,
+        6,
+        8,
+        7,
+        10
+      ],
+      "top4": [
+        2,
+        13,
+        1,
+        3
+      ],
+      "top2": [
+        2,
+        13
+      ],
+      "confidence": "low",
+      "pace_scenarios": [
+        {
+          "scenario": "Test Of Love外檔搶放，Superfabulistic守前",
+          "implication": "持續步速有利Fiorenot、Roulette King追；Superfabulistic需避免鬥快。",
+          "evidence": [
+            "R2.md:F0269",
+            "R2.md:F0718",
+            "R2.md:F0079"
+          ]
+        },
+        {
+          "scenario": "前列互讓、步速平和",
+          "implication": "二檔54公斤Superfabulistic更具威脅；Fiorenot須提早發力。",
+          "evidence": [
+            "R2.md:R0039",
+            "R2.md:R0040",
+            "R2.md:F0713"
+          ]
+        }
+      ],
+      "key_comparisons": [
+        "Fiorenot兩度直接勝He'll Rip，可靠度較高。",
+        "Superfabulistic比Roulette King輕7.5公斤，但前者班次較低、後者復出大敗；選擇現況穩定者在先。"
+      ],
+      "missing_information": [
+        "當日風、直路跑線偏差、馬匹狀態及實際出閘未提供。",
+        "Stewards 空白唔代表冇受阻；RaceL600 係全場而非個體。",
+        "現行磅按Racecard；歷史行是來源記錄負磅，未明示減磅時不假定已扣，也不對不明現役claim自行扣重。"
+      ],
+      "data_quality_flags": [
+        "Nation's Call試閘RaceL600 52.92異常，不作能力依據。",
+        "Days欄可能與日曆差一天；短休依具體日期判讀。"
+      ],
+      "runner_assessments": [
+        {
+          "number": 1,
+          "name": "Roulette King",
+          "assessment": "第三選，憑較高級舊勝績押第二次上陣反彈。",
+          "support": [
+            "Alister Clark 2000米勝；過去兩次第二仗都勝。"
+          ],
+          "risks": [
+            "復出1300米第12輸7.59；今負61.5最高。"
+          ],
+          "evidence": [
+            {
+              "file": "R2.md",
+              "line": "F0041",
+              "fact": "Caulfield R9 2026-03-21 2000m cond:Good $500000 Jamie Mott (10) 57.0kg [historical market price removed] 10th@1200m 10th@800m 10th@400m 10th@Settled. margin:0L starters:12 finish:1/12 RaceClass:[ALISTER CLARK] WinningTime:2:02.370 RaceL600:35.450 PF[Source: sportsbet_race_context L600 Delta: -0.45]"
+            },
+            {
+              "file": "R2.md",
+              "line": "F0012",
+              "fact": "1st Up:    3: 1-0-0        2nd Up:    2: 2-0-0        3rd Up:    1: 1-0-0"
+            },
+            {
+              "file": "R2.md",
+              "line": "F0016",
+              "fact": "Randwick R8 2026-10-17 1300m cond:Soft $1000000 Jamie Mott (3) 57.5kg [historical market price removed] 7th@800m 8th@400m. margin:7.59L starters:14 finish:12/14 RaceClass:[SILVER EAGLE] WinningTime:1:15.270 RaceL600:34.880 PF[Source: sportsbet_race_context L600 Delta: 0.19]"
+            },
+            {
+              "file": "R2.md",
+              "line": "R0004",
+              "fact": "Trainer: Trevor Rogers | Jockey: Jamie Mott | Weight: 61.5kg | Age: 4yoG | Rating: 87"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "name": "Fiorenot",
+          "assessment": "首選；近兩場BM84第一、第二，穩定且本場有勝績。",
+          "support": [
+            "最近兩次都先於He'll Rip，本場四戰兩勝。"
+          ],
+          "risks": [
+            "常居後列要步速配合；今60比上次59.5略增。"
+          ],
+          "evidence": [
+            {
+              "file": "R2.md",
+              "line": "F0079",
+              "fact": "Caulfield R5 2026-10-14 1440m cond:Good $130000 Jordan Childs (9) 59.5kg [historical market price removed] 8th@800m 9th@400m 8th@Settled. margin:0.75L starters:12 finish:2/12 RaceClass:[BM84] WinningTime:1:25.540 RaceL600:34.580 PF[Source: sportsbet_race_context L600 Delta: -0.69]"
+            },
+            {
+              "file": "R2.md",
+              "line": "F0084",
+              "fact": "Caulfield R10 2026-09-19 1400m cond:Good $80000 Jordan Childs (5) 57.0kg [historical market price removed] 7th@800m 6th@400m 7th@Settled. margin:0L starters:12 finish:1/12 RaceClass:[BM84] WinningTime:1:23.500 RaceL600:34.350 PF[Source: sportsbet_race_context L600 Delta: -0.92]"
+            },
+            {
+              "file": "R2.md",
+              "line": "F0072",
+              "fact": "Track:     4: 2-1-0        Distance:  1: 0-0-1        Trk/Dist:  0: 0-0-0"
+            },
+            {
+              "file": "R2.md",
+              "line": "R0007",
+              "fact": "Trainer: Tom Dabernig | Jockey: Jordan Childs | Weight: 60.0kg | Age: 6yoG | Rating: 84"
+            }
+          ]
+        },
+        {
+          "number": 3,
+          "name": "Nation's Call",
+          "assessment": "第四選；近況回勇兼1600米專長。",
+          "support": [
+            "最近1600米BM78勝、之前BM84第二。"
+          ],
+          "risks": [
+            "本場8月同類途程曾13/14；Logan Bates減磅未明，不自行扣磅。"
+          ],
+          "evidence": [
+            {
+              "file": "R2.md",
+              "line": "F0142",
+              "fact": "Cranbourne R8 2026-10-23 1600m cond:Good $60000 Luke Cartwright (7) 60.0kg [historical market price removed] 6th@1200m 6th@800m 7th@400m 5th@Settled. margin:0L starters:10 finish:1/10 RaceClass:[BM78] WinningTime:1:36.650 RaceL600:37.030 PF[Source: sportsbet_race_context L600 Delta: 0.35]"
+            },
+            {
+              "file": "R2.md",
+              "line": "F0147",
+              "fact": "Mornington R8 2026-09-26 1600m cond:Soft $130000 Luke Cartwright (2) 57.0kg [historical market price removed] 5th@1200m 5th@800m 6th@400m 5th@Settled. margin:1.75L starters:12 finish:2/12 RaceClass:[BM84] WinningTime:1:39.570 RaceL600:36.540 PF[Source: sportsbet_race_context L600 Delta: 0.16]"
+            },
+            {
+              "file": "R2.md",
+              "line": "F0162",
+              "fact": "Flemington R6 2026-08-01 1620m cond:Good $130000 Jye McNeil (12) 57.5kg [historical market price removed] 5th@1200m 6th@800m 6th@400m 5th@Settled. margin:7.36L starters:14 finish:13/14 RaceClass:[BM84] WinningTime:1:37.730 RaceL600:33.640 PF[Source: sportsbet_race_context L600 Delta: -1.266]"
+            },
+            {
+              "file": "R2.md",
+              "line": "R0010",
+              "fact": "Trainer: Robbie Griffiths | Jockey: Logan Bates | Weight: 59.5kg | Age: 7yoG | Rating: 83"
+            }
+          ]
+        },
+        {
+          "number": 4,
+          "name": "He'll Rip",
+          "assessment": "位置候補；同場比較稍遜Fiorenot。",
+          "support": [
+            "兩次BM84亞季均接近。"
+          ],
+          "risks": [
+            "11月3日剛跑，短休；一年未勝，今58.5高於上次55.5。"
+          ],
+          "evidence": [
+            {
+              "file": "R2.md",
+              "line": "F0210",
+              "fact": "Caulfield R5 2026-10-14 1440m cond:Good $130000 Ben Allen (3) 58.5kg [historical market price removed] 5th@800m 4th@400m 5th@Settled. margin:1.50L starters:12 finish:3/12 RaceClass:[BM84] WinningTime:1:25.540 RaceL600:34.580 PF[Source: sportsbet_race_context L600 Delta: -0.69]"
+            },
+            {
+              "file": "R2.md",
+              "line": "F0215",
+              "fact": "Caulfield R10 2026-09-19 1400m cond:Good $80000 Holly Durnan (11) 58.0kg [historical market price removed] 10th@800m 11th@400m 10th@Settled. margin:0.15L starters:12 finish:2/12 RaceClass:[BM84] WinningTime:1:23.500 RaceL600:34.350 PF[Source: sportsbet_race_context L600 Delta: -0.92]"
+            },
+            {
+              "file": "R2.md",
+              "line": "F0205",
+              "fact": "Flemington R10 2026-11-03 1400m cond:Good $150000 Ben Allen (8) 55.5kg [historical market price removed] 9th@800m 7th@400m 7th@Settled. margin:3.50L starters:12 finish:6/12 RaceClass:[BM90] WinningTime:1:22.090 RaceL600:34.580 PF[Source: sportsbet_race_context L600 Delta: 0.07]"
+            },
+            {
+              "file": "R2.md",
+              "line": "F0202",
+              "fact": "Season:    -               12 Month:  11: 0-3-3"
+            },
+            {
+              "file": "R2.md",
+              "line": "R0013",
+              "fact": "Trainer: Leon & Troy Corstens & Will Larkin | Jockey: Blake Shinn | Weight: 58.5kg | Age: 7yoG | Rating: 81"
+            }
+          ]
+        },
+        {
+          "number": 5,
+          "name": "Test Of Love",
+          "assessment": "可領放改善，但外檔加程要付代價。",
+          "support": [
+            "Randwick BM88領放第四輸2.32；有1600米勝績。"
+          ],
+          "risks": [
+            "十一檔，與Superfabulistic前速相撞；今58高於上次56。"
+          ],
+          "evidence": [
+            {
+              "file": "R2.md",
+              "line": "F0269",
+              "fact": "Randwick R10 2026-10-17 1400m cond:Soft $160000 Kerrin McEvoy (6) 56.0kg [historical market price removed] 1st@800m 1st@400m 1st@Settled. margin:2.32L starters:15 finish:4/15 RaceClass:[BM88] WinningTime:1:22.750 RaceL600:34.610 PF[Source: sportsbet_race_context L600 Delta: -0.5]"
+            },
+            {
+              "file": "R2.md",
+              "line": "F0262",
+              "fact": "Track:     0: 0-0-0        Distance:  3: 1-0-0        Trk/Dist:  0: 0-0-0"
+            },
+            {
+              "file": "R2.md",
+              "line": "R0015",
+              "fact": "5. Test Of Love (11)"
+            },
+            {
+              "file": "R2.md",
+              "line": "R0016",
+              "fact": "Trainer: Ben, Will & Jd Hayes | Jockey: Damian Lane | Weight: 58.0kg | Age: 6yoG | Rating: 80"
+            }
+          ]
+        },
+        {
+          "number": 6,
+          "name": "Dirty Old Town",
+          "assessment": "中後選；最近盃賽接近但班底比較仍有疑問。",
+          "support": [
+            "Gawler Cup第四輸1.45；1600米三戰一勝一季。"
+          ],
+          "risks": [
+            "外檔，近期勝仗來自BM72，今55.5高於上次54。"
+          ],
+          "evidence": [
+            {
+              "file": "R2.md",
+              "line": "F0332",
+              "fact": "Gawler R7 2026-10-23 1500m cond:Good $107500 Rose Hammond (12) 54.0kg [historical market price removed] 4th@800m 4th@400m 4th@Settled. margin:1.45L starters:15 finish:4/15 RaceClass:[GAWL CUP] WinningTime:1:29.490 RaceL600:36.830 PF[Source: sportsbet_race_context L600 Delta: 1.6]"
+            },
+            {
+              "file": "R2.md",
+              "line": "F0342",
+              "fact": "Morphettville Parks R9 2026-09-19 1400m cond:Good $55000 Jason Holder (4) 59.0kg [historical market price removed] 5th@800m 3rd@400m 5th@Settled. margin:0L starters:10 finish:1/10 RaceClass:[BM72] WinningTime:1:24.870 RaceL600:35.210 PF[Source: sportsbet_race_context L600 Delta: 0.11]"
+            },
+            {
+              "file": "R2.md",
+              "line": "F0325",
+              "fact": "Track:     0: 0-0-0        Distance:  3: 1-0-1        Trk/Dist:  0: 0-0-0"
+            },
+            {
+              "file": "R2.md",
+              "line": "R0020",
+              "fact": "Trainer: Andrew Gluyas | Jockey: Jamie Melham | Weight: 55.5kg | Age: 4yoM | Rating: 79"
+            }
+          ]
+        },
+        {
+          "number": 7,
+          "name": "Options",
+          "assessment": "後選；閹後復出有變數，未足押重。",
+          "support": [
+            "最近1000米跳閘第一，有本場勝績。"
+          ],
+          "risks": [
+            "160日未賽，前四場實戰均落敗且多大敗，十二檔。"
+          ],
+          "evidence": [
+            {
+              "file": "R2.md",
+              "line": "F0396",
+              "fact": "Flemington **(TRIAL)** R3 2026-10-23 1000m cond:None $0 Harry Coffey (None) Nonekg . margin:0L starters:6 finish:1/6 RaceClass:[Jump Out - G4 Barrier Trial] WinningTime:59.510"
+            },
+            {
+              "file": "R2.md",
+              "line": "F0389",
+              "fact": "Track:     3: 1-0-1        Distance:  2: 1-0-0        Trk/Dist:  0: 0-0-0"
+            },
+            {
+              "file": "R2.md",
+              "line": "F0394",
+              "fact": "Days:      160             Ave $:     $18,892         J/H:       0: 0-0-0"
+            },
+            {
+              "file": "R2.md",
+              "line": "F0411",
+              "fact": "Eagle Farm R7 2026-05-30 2400m cond:Soft $1000000 Tim Clark (15) 57.0kg [historical market price removed] 5th@1200m 5th@800m 6th@400m 11th@Settled. margin:15.89L starters:18 finish:15/18 RaceClass:[QLD DERBY] WinningTime:2:31.000 RaceL600:37.750 PF[Source: sportsbet_race_context L600 Delta: 1.19]"
+            },
+            {
+              "file": "R2.md",
+              "line": "R0022",
+              "fact": "7. Options (12)"
+            }
+          ]
+        },
+        {
+          "number": 8,
+          "name": "Silvasista",
+          "assessment": "後選；有質素但此次一哩復出未見充分證據。",
+          "support": [
+            "VOBIS Guineas1600米第二；St Leger勝。"
+          ],
+          "risks": [
+            "153日未跑，近三跳閘未入前二；以長途勝績不能當作今次速度。"
+          ],
+          "evidence": [
+            {
+              "file": "R2.md",
+              "line": "F0505",
+              "fact": "Caulfield R9 2026-03-14 1600m cond:Good $500000 Harry Coffey (5) 56.0kg [historical market price removed] 7th@1200m 7th@800m 6th@400m 9th@Settled. margin:2.75L starters:16 finish:2/16 RaceClass:[VOBIS GUINEAS] WinningTime:1:36.910 RaceL600:34.610 PF[Source: sportsbet_race_context L600 Delta: -1.14]"
+            },
+            {
+              "file": "R2.md",
+              "line": "F0490",
+              "fact": "Flemington R6 2026-04-25 2800m cond:Good $200000 Luke Currie (8) 56.0kg [historical market price removed] 8th@1200m 7th@800m 1st@400m 8th@Settled. margin:0L starters:17 finish:1/17 RaceClass:[VRC ST LEGER] WinningTime:2:54.620 RaceL600:36.740 PF[Source: sportsbet_race_context L600 Delta: 0.78]"
+            },
+            {
+              "file": "R2.md",
+              "line": "F0458",
+              "fact": "Days:      153             Ave $:     $33,453         J/H:       2: 1-0-0"
+            },
+            {
+              "file": "R2.md",
+              "line": "F0460",
+              "fact": "Flemington **(TRIAL)** R2 2026-10-23 1000m cond:None $0 Luke Currie (None) Nonekg . margin:0.00L starters:5 finish:4/5 RaceClass:[Jump Out - G4 Barrier Trial] WinningTime:59.910"
+            }
+          ]
+        },
+        {
+          "number": 9,
+          "name": "Grand Omaha",
+          "assessment": "降班加程可回升，列中段。",
+          "support": [
+            "1600米三戰勝亞季齊；The Coast第三。"
+          ],
+          "risks": [
+            "復出兩戰大敗，十三檔可能耗力。"
+          ],
+          "evidence": [
+            {
+              "file": "R2.md",
+              "line": "F0516",
+              "fact": "Track:     1: 0-0-0        Distance:  3: 1-1-1        Trk/Dist:  0: 0-0-0"
+            },
+            {
+              "file": "R2.md",
+              "line": "F0553",
+              "fact": "Gosford R8 2026-05-09 1600m cond:Good $500000 Regan Bayliss (9) 54.0kg [historical market price removed] 5th@1200m 5th@800m 5th@400m 5th@Settled. margin:1.35L starters:11 finish:3/11 RaceClass:[THECOAST] WinningTime:1:36.920 RaceL600:34.670 PF[Source: sportsbet_race_context L600 Delta: -0.94]"
+            },
+            {
+              "file": "R2.md",
+              "line": "F0523",
+              "fact": "Caulfield R10 2026-10-17 1400m cond:Good $300000 Patrick Moloney (2) 55.0kg [historical market price removed] 4th@800m 3rd@400m 3rd@Settled. margin:6.31L starters:11 finish:6/11 RaceClass:[TRISTARC] WinningTime:1:22.280 RaceL600:34.600 PF[Source: sportsbet_race_context L600 Delta: -0.67]"
+            },
+            {
+              "file": "R2.md",
+              "line": "F0528",
+              "fact": "Flemington R5 2026-10-03 1400m cond:Heavy $300000 Patrick Moloney (10) 55.0kg [historical market price removed] 9th@800m 11th@400m 9th@Settled. margin:9.41L starters:11 finish:10/11 RaceClass:[BLAZER] WinningTime:1:24.330 RaceL600:36.470 PF[Source: sportsbet_race_context L600 Delta: 1.96]"
+            },
+            {
+              "file": "R2.md",
+              "line": "R0029",
+              "fact": "9. Grand Omaha (13)"
+            }
+          ]
+        },
+        {
+          "number": 10,
+          "name": "Hiyaam Proud",
+          "assessment": "最低優先；內檔輕磅仍不足抵消近期弱勢。",
+          "support": [
+            "一檔54.5；歷史BM84有亞軍。"
+          ],
+          "risks": [
+            "最近BM78第12輸9.72，一哩九戰未勝。"
+          ],
+          "evidence": [
+            {
+              "file": "R2.md",
+              "line": "R0032",
+              "fact": "10. Hiyaam Proud (1)"
+            },
+            {
+              "file": "R2.md",
+              "line": "R0033",
+              "fact": "Trainer: Matt Laurie | Jockey: Craig Williams | Weight: 54.5kg | Age: 6yoG | Rating: 73"
+            },
+            {
+              "file": "R2.md",
+              "line": "F0626",
+              "fact": "Pakenham R6 2025-12-13 1600m cond:Good $100000 Teo Nugent (11) 55.5kg [historical market price removed] 10th@1200m 10th@800m 10th@400m 10th@Settled. margin:1.50L starters:11 finish:2/11 RaceClass:[BM84] WinningTime:1:36.040 RaceL600:36.300 PF[Source: sportsbet_race_context L600 Delta: 0.41]"
+            },
+            {
+              "file": "R2.md",
+              "line": "F0586",
+              "fact": "Bendigo R9 2026-10-28 1400m cond:Good $100000 Ethan Brown (9) 58.0kg [historical market price removed] 5th@800m 7th@400m 8th@Settled. margin:9.72L starters:14 finish:12/14 RaceClass:[BM78] WinningTime:1:22.880 RaceL600:35.270 PF[Source: sportsbet_race_context L600 Delta: -0.29]"
+            },
+            {
+              "file": "R2.md",
+              "line": "F0579",
+              "fact": "Track:     2: 0-0-0        Distance:  9: 0-3-0        Trk/Dist:  2: 0-0-0"
+            }
+          ]
+        },
+        {
+          "number": 11,
+          "name": "Mount Bona",
+          "assessment": "第五選；第二仗加至不敗途程有上升空間。",
+          "support": [
+            "1600米兩戰兩勝，第二仗有勝亞。"
+          ],
+          "risks": [
+            "復出BM74六駒第四輸4.55；升班不確定。"
+          ],
+          "evidence": [
+            {
+              "file": "R2.md",
+              "line": "F0642",
+              "fact": "Track:     0: 0-0-0        Distance:  2: 2-0-0        Trk/Dist:  0: 0-0-0"
+            },
+            {
+              "file": "R2.md",
+              "line": "F0645",
+              "fact": "1st Up:    3: 0-0-0        2nd Up:    2: 1-1-0        3rd Up:    2: 1-0-0"
+            },
+            {
+              "file": "R2.md",
+              "line": "F0649",
+              "fact": "Cranbourne R4 2026-10-23 1400m cond:Good $60000 Jordan Childs (5) 59.5kg [historical market price removed] 6th@800m 6th@400m 6th@Settled. margin:4.55L starters:6 finish:4/6 RaceClass:[BM74] WinningTime:1:23.690 RaceL600:35.270 PF[Source: sportsbet_race_context L600 Delta: -0.99]"
+            }
+          ]
+        },
+        {
+          "number": 13,
+          "name": "Superfabulistic",
+          "assessment": "次選；輕磅內檔與穩定近況有利。",
+          "support": [
+            "最近1600米負60.5第三輸0.91；今54及二檔。"
+          ],
+          "risks": [
+            "主要BM72往績，上升競爭；Test Of Love或搶放。"
+          ],
+          "evidence": [
+            {
+              "file": "R2.md",
+              "line": "F0713",
+              "fact": "Warwick Farm R6 2026-10-21 1600m cond:Good $60000 Rachel King (5) 60.5kg [historical market price removed] 3rd@1200m 3rd@800m 3rd@400m 3rd@Settled. margin:0.91L starters:14 finish:3/14 RaceClass:[BM72] WinningTime:1:36.060 RaceL600:35.950 PF[Source: sportsbet_race_context L600 Delta: 0.41]"
+            },
+            {
+              "file": "R2.md",
+              "line": "R0039",
+              "fact": "13. Superfabulistic (2)"
+            },
+            {
+              "file": "R2.md",
+              "line": "R0040",
+              "fact": "Trainer: Gai Waterhouse & Adrian Bott | Jockey: Rachel King | Weight: 54.0kg | Age: 5yoM | Rating: 76"
+            },
+            {
+              "file": "R2.md",
+              "line": "F0718",
+              "fact": "Kensington R3 2026-10-07 1400m cond:Soft $60000 Rachel King (6) 59.0kg [historical market price removed] 1st@800m 1st@400m 1st@Settled. margin:0.68L starters:7 finish:2/7 RaceClass:[F&M BM78] WinningTime:1:23.320 RaceL600:34.220 PF[Source: sportsbet_race_context L600 Delta: -0.95]"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "race": 3,
+      "ranking": [
+        5,
+        4,
+        3,
+        8,
+        1,
+        7,
+        6,
+        11,
+        9,
+        10
+      ],
+      "top4": [
+        5,
+        4,
+        3,
+        8
+      ],
+      "top2": [
+        5,
+        4
+      ],
+      "confidence": "low",
+      "pace_scenarios": [
+        {
+          "scenario": "Torranzino沿用近期前置，Litzdeel跟前",
+          "implication": "King Pedro可跟隨前組節省追趕距離；真正持續步速亦利Defiantly耐力。",
+          "evidence": [
+            "R3.md:F0264",
+            "R3.md:F0390",
+            "R3.md:F0201"
+          ]
+        },
+        {
+          "scenario": "步速放緩、最後短衝",
+          "implication": "Pinhole及Berkeley Square後置有位置風險；Litzdeel前置更有利，Defiantly縮程風險放大。",
+          "evidence": [
+            "R3.md:F0138",
+            "R3.md:F0075",
+            "R3.md:F0390",
+            "R3.md:F0021"
+          ]
+        }
+      ],
+      "key_comparisons": [
+        "King Pedro對Pinhole有六月及十月兩次直接先到證據，兩匹今實負同為56。",
+        "Berkeley Square最新先Litzdeel半馬位，今相對減磅較多；惟Litzdeel本場長途穩定度更高。"
+      ],
+      "missing_information": [
+        "缺當日風、跑線偏差、臨場狀態及完整分段。",
+        "Stewards空白不能當作冇受阻；RaceL600唔係個體末段。",
+        "現行磅按Racecard；歷史行是來源記錄負磅，未明示減磅時不假定已扣，也不對不明現役claim自行扣重。"
+      ],
+      "data_quality_flags": [
+        "Litzdeel F0420試閘RaceL600 14.80明顯異常，不使用。",
+        "Defiantly部分歷史主行與名次列負磅相差0.5公斤；不作精密磅值換算。"
+      ],
+      "runner_assessments": [
+        {
+          "number": 1,
+          "name": "Defiantly",
+          "assessment": "有潛在最高耐力水平，惟首次本地上陣列第五。",
+          "support": [
+            "最近2999米勝5.5馬位，再前4149米十八駒勝。"
+          ],
+          "risks": [
+            "75日未賽，2600米相對偏短，59.5最高磅，跨國班底不可直接換算。"
+          ],
+          "evidence": [
+            {
+              "file": "R3.md",
+              "line": "F0016",
+              "fact": "Deauville R2 2026-08-23 2999m cond:Good $239968 Dylan Browne McMonagle (5) 59kg [historical market price removed] . margin:0L starters:6 finish:1/6 RaceClass:[CL1] WinningTime:3:15.740"
+            },
+            {
+              "file": "R3.md",
+              "line": "F0017",
+              "fact": "1-Defiantly (59.0kg), 2-Santorini Star (58.5kg) 5.50L, 3-Double Major (59.0kg) 10.50L"
+            },
+            {
+              "file": "R3.md",
+              "line": "F0021",
+              "fact": "Goodwood R1 2026-07-31 4149m cond:Good $137943 Dylan Browne McMonagle (15) 60kg [historical market price removed] . margin:0L starters:18 finish:1/18 RaceClass:[CL2 Hcp] WinningTime:4:26.350"
+            },
+            {
+              "file": "R3.md",
+              "line": "F0014",
+              "fact": "Days:      75              Ave $:     $36,568         J/H:       3: 3-0-0"
+            },
+            {
+              "file": "R3.md",
+              "line": "R0004",
+              "fact": "Trainer: Joseph O'Brien | Jockey: Dylan Browne McMonagle | Weight: 59.5kg | Age: 5yoG | Rating: 109"
+            }
+          ]
+        },
+        {
+          "number": 3,
+          "name": "Berkeley Square",
+          "assessment": "第三選，最新反彈可信，今較同場對手磅位有利。",
+          "support": [
+            "Bendigo Cup負59.5第二、先Litzdeel半馬位，今57.5。"
+          ],
+          "risks": [
+            "此前多場不入位，可能只是短暫回勇；2600米未勝。"
+          ],
+          "evidence": [
+            {
+              "file": "R3.md",
+              "line": "F0075",
+              "fact": "Bendigo R8 2026-10-28 2400m cond:Good $500000 Declan Bates (13) 59.5kg [historical market price removed] 11th@1200m 11th@800m 10th@400m 11th@Settled. margin:0.75L starters:13 finish:2/13 RaceClass:[BDGO CUP] WinningTime:2:28.830 RaceL600:36.220 PF[Source: sportsbet_race_context L600 Delta: -0.77]"
+            },
+            {
+              "file": "R3.md",
+              "line": "F0076",
+              "fact": "1-So You Are (58.5kg), 2-Berkeley Square (59.5kg) 0.75L, 3-Litzdeel (54.5kg) 1.25L"
+            },
+            {
+              "file": "R3.md",
+              "line": "R0008",
+              "fact": "Trainer: Dan O'Sullivan | Jockey: Declan Bates | Weight: 57.5kg | Age: 7yoG | Rating: 105"
+            },
+            {
+              "file": "R3.md",
+              "line": "F0068",
+              "fact": "Track:     17: 4-1-1       Distance:  2: 0-0-1        Trk/Dist:  2: 0-0-1"
+            }
+          ]
+        },
+        {
+          "number": 4,
+          "name": "Pinhole",
+          "assessment": "次選；近勝Herbert Power，回56公斤具競爭力。",
+          "support": [
+            "2400米十三駒勝，最近MV Cup第七只輸3.41。"
+          ],
+          "risks": [
+            "兩次勝仗贏距極窄；今再加程，常後追受步速影響。"
+          ],
+          "evidence": [
+            {
+              "file": "R3.md",
+              "line": "F0143",
+              "fact": "Caulfield R4 2026-10-10 2400m cond:Good $400000 James McDonald (6) 56.0kg [historical market price removed] 8th@1200m 9th@800m 7th@400m 8th@Settled. margin:0L starters:13 finish:1/13 RaceClass:[HERBERT POWER] WinningTime:2:27.090 RaceL600:36.130 PF[Source: sportsbet_race_context L600 Delta: -0.65]"
+            },
+            {
+              "file": "R3.md",
+              "line": "F0148",
+              "fact": "Rosehill Gardens R4 2026-09-26 1900m cond:Good $160000 Damian Lane (10) 57.0kg [historical market price removed] 10th@1200m 10th@800m 8th@400m 10th@Settled. margin:0L starters:12 finish:1/12 RaceClass:[BM88] WinningTime:1:55.030 RaceL600:35.750 PF[Source: sportsbet_race_context L600 Delta: 0.47]"
+            },
+            {
+              "file": "R3.md",
+              "line": "F0138",
+              "fact": "Flemington R7 2026-10-24 2500m cond:Good $750000 James McDonald (7) 58.0kg [historical market price removed] 10th@1200m 10th@800m 11th@400m 11th@Settled. margin:3.41L starters:16 finish:7/16 RaceClass:[MV CUP] WinningTime:2:38.680 RaceL600:34.430 PF[Source: sportsbet_race_context L600 Delta: -1.438]"
+            },
+            {
+              "file": "R3.md",
+              "line": "R0011",
+              "fact": "Trainer: Chris Waller | Jockey: James McDonald | Weight: 56.0kg | Age: 5yoG | Rating: 102"
+            }
+          ]
+        },
+        {
+          "number": 5,
+          "name": "King Pedro",
+          "assessment": "首選；近期同場比較領先，長途穩定。",
+          "support": [
+            "MV Cup第四先Pinhole；Stayers Cup曾勝Pinhole近三馬位。"
+          ],
+          "risks": [
+            "十一檔，實際56公斤已含0.5超磅；2600米未試。"
+          ],
+          "evidence": [
+            {
+              "file": "R3.md",
+              "line": "F0201",
+              "fact": "Flemington R7 2026-10-24 2500m cond:Good $750000 Damian Lane (1) 57.0kg [historical market price removed] 3rd@1200m 4th@800m 4th@400m 6th@Settled. margin:2.00L starters:16 finish:4/16 RaceClass:[MV CUP] WinningTime:2:38.680 RaceL600:34.430 PF[Source: sportsbet_race_context L600 Delta: -1.438]"
+            },
+            {
+              "file": "R3.md",
+              "line": "F0226",
+              "fact": "Rosehill Gardens R6 2026-06-27 2400m cond:Soft $160000 Kerrin McEvoy (2) 54.5kg [historical market price removed] 5th@1200m 5th@800m 3rd@400m 4th@Settled. margin:0L starters:11 finish:1/11 RaceClass:[STAYERS CUP] WinningTime:2:30.920 RaceL600:36.160 PF[Source: sportsbet_race_context L600 Delta: 0.54]"
+            },
+            {
+              "file": "R3.md",
+              "line": "F0227",
+              "fact": "1-King Pedro (54.5kg), 2-Pinhole (55.5kg) 2.96L, 3-Masoun (54.5kg) 3.25L"
+            },
+            {
+              "file": "R3.md",
+              "line": "R0014",
+              "fact": "Trainer: John O'Shea & Tom Charlton | Jockey: Mark Zahra | Weight: 55.5kg (Overweight 0.5kg, Carried 56kg) | Age: 5yoG | Rating: 101"
+            },
+            {
+              "file": "R3.md",
+              "line": "F0194",
+              "fact": "Track:     1: 0-0-0        Distance:  0: 0-0-0        Trk/Dist:  0: 0-0-0"
+            }
+          ]
+        },
+        {
+          "number": 6,
+          "name": "Torranzino",
+          "assessment": "舊級數足但近期未回復，列第七。",
+          "support": [
+            "去年Geelong Cup勝及Melbourne Cup第五。"
+          ],
+          "risks": [
+            "今季三戰全敗，最近領放退第12；加程不保證翻身。"
+          ],
+          "evidence": [
+            {
+              "file": "R3.md",
+              "line": "F0299",
+              "fact": "Geelong R4 2025-10-23 2400m cond:Soft $500000 Celine Gaudray (2) 56.0kg [historical market price removed] 4th@1200m 4th@800m 3rd@400m 3rd@Settled. margin:0L starters:8 finish:1/8 RaceClass:[GEEL CUP] WinningTime:2:31.590 RaceL600:36.360 PF[Source: sportsbet_race_context L600 Delta: -0.38]"
+            },
+            {
+              "file": "R3.md",
+              "line": "F0294",
+              "fact": "Flemington R7 2025-11-04 3200m cond:Soft $10000000 Celine Gaudray (18) 51.0kg [historical market price removed] 8th@1200m 8th@800m 7th@400m 7th@Settled. margin:8.00L starters:24 finish:5/24 RaceClass:[MELB CUP] WinningTime:3:22.460 RaceL600:38.080 PF[Source: sportsbet_race_context L600 Delta: 2.12]"
+            },
+            {
+              "file": "R3.md",
+              "line": "F0264",
+              "fact": "Flemington R7 2026-10-24 2500m cond:Good $750000 Celine Gaudray (8) 57.5kg [historical market price removed] 2nd@1200m 2nd@800m 1st@400m 1st@Settled. margin:4.28L starters:16 finish:12/16 RaceClass:[MV CUP] WinningTime:2:38.680 RaceL600:34.430 PF[Source: sportsbet_race_context L600 Delta: -1.438]"
+            },
+            {
+              "file": "R3.md",
+              "line": "F0269",
+              "fact": "Caulfield R7 2026-10-10 2000m cond:Good $1000000 Celine Gaudray (4) 59.0kg [historical market price removed] 6th@1200m 6th@800m 6th@400m 6th@Settled. margin:11.50L starters:6 finish:6/6 RaceClass:[CAULFIELD STKS] WinningTime:2:00.300 RaceL600:36.510 PF[Source: sportsbet_race_context L600 Delta: 0.61]"
+            }
+          ]
+        },
+        {
+          "number": 7,
+          "name": "Valiant King",
+          "assessment": "可爭位置但勝出信念有限。",
+          "support": [
+            "Bart Cummings第三；MV Cup第八僅比Pinhole差0.06馬位。"
+          ],
+          "risks": [
+            "28戰只兩勝，最近一年八戰未勝；Litzdeel同場明顯先到。"
+          ],
+          "evidence": [
+            {
+              "file": "R3.md",
+              "line": "F0332",
+              "fact": "Flemington R7 2026-10-03 2520m cond:Heavy $350000 Ethan Brown (5) 55.5kg [historical market price removed] 7th@1200m 7th@800m 6th@400m 7th@Settled. margin:5.25L starters:13 finish:3/13 RaceClass:[BART CUMMINGS] WinningTime:2:43.650 RaceL600:36.390 PF[Source: sportsbet_race_context L600 Delta: 0.503]"
+            },
+            {
+              "file": "R3.md",
+              "line": "F0327",
+              "fact": "Flemington R7 2026-10-24 2500m cond:Good $750000 Jye McNeil (3) 57.5kg [historical market price removed] 11th@1200m 11th@800m 10th@400m 10th@Settled. margin:3.47L starters:16 finish:8/16 RaceClass:[MV CUP] WinningTime:2:38.680 RaceL600:34.430 PF[Source: sportsbet_race_context L600 Delta: -1.438]"
+            },
+            {
+              "file": "R3.md",
+              "line": "F0324",
+              "fact": "Season:    -               12 Month:  8: 0-0-1"
+            },
+            {
+              "file": "R3.md",
+              "line": "F0318",
+              "fact": "Career:    28: 2-3-3       Last 10:   0x0038          Prize:     $1,117,207"
+            }
+          ]
+        },
+        {
+          "number": 8,
+          "name": "Litzdeel",
+          "assessment": "第四選；前置位置及本場長途穩定有力。",
+          "support": [
+            "本場六戰一勝四亞，Roy Higgins2600米第二，最新Bendigo第三。"
+          ],
+          "risks": [
+            "近一年未勝；比Berkeley Square最新相對磅位變差1.5公斤。"
+          ],
+          "evidence": [
+            {
+              "file": "R3.md",
+              "line": "F0383",
+              "fact": "Track:     6: 1-4-0        Distance:  1: 0-1-0        Trk/Dist:  1: 0-1-0"
+            },
+            {
+              "file": "R3.md",
+              "line": "F0430",
+              "fact": "Flemington R7 2026-03-28 2600m cond:Soft $300000 Craig Williams (12) 54.5kg [historical market price removed] 7th@1200m 7th@800m 3rd@400m 7th@Settled. margin:0.75L starters:12 finish:2/12 RaceClass:[ROY HIGGINS] WinningTime:2:48.040 RaceL600:36.090 PF[Source: sportsbet_race_context L600 Delta: 0.13]"
+            },
+            {
+              "file": "R3.md",
+              "line": "F0390",
+              "fact": "Bendigo R8 2026-10-28 2400m cond:Good $500000 Damian Lane (8) 54.5kg [historical market price removed] 4th@1200m 4th@800m 4th@400m 2nd@Settled. margin:1.25L starters:13 finish:3/13 RaceClass:[BDGO CUP] WinningTime:2:28.830 RaceL600:36.220 PF[Source: sportsbet_race_context L600 Delta: -0.77]"
+            },
+            {
+              "file": "R3.md",
+              "line": "R0023",
+              "fact": "Trainer: Danny O'Brien | Jockey: Damian Lane | Weight: 54.0kg | Age: 5yoM | Rating: 99"
+            }
+          ]
+        },
+        {
+          "number": 9,
+          "name": "Manzor Blue",
+          "assessment": "耐力已證，但本地最近一仗未有競爭力，列後。",
+          "support": [
+            "Trentham3200米勝，Ellerslie3200米亞。"
+          ],
+          "risks": [
+            "MV Cup第13；若慢步速其後追耐力難用。"
+          ],
+          "evidence": [
+            {
+              "file": "R3.md",
+              "line": "F0478",
+              "fact": "Trentham R9 2026-01-31 3200m cond:Good $355960 Kate Hercock (17) 53.0kg [historical market price removed] 17th@1200m 16th@800m 16th@400m 17th@Settled. margin:0L starters:17 finish:1/17 RaceClass:[Open Hcp] WinningTime:3:19.910"
+            },
+            {
+              "file": "R3.md",
+              "line": "F0473",
+              "fact": "Ellerslie R7 2026-03-07 3200m cond:Good $533940 Kate Hercock (4) 53.0kg [historical market price removed] 10th@1200m 10th@800m 10th@400m 10th@Settled. margin:6.30L starters:18 finish:2/18 RaceClass:[Open Hcp] WinningTime:3:25.890"
+            },
+            {
+              "file": "R3.md",
+              "line": "F0453",
+              "fact": "Flemington R7 2026-10-24 2500m cond:Good $750000 Michael Dee (10) 55.5kg [historical market price removed] 15th@1200m 15th@800m 15th@400m 15th@Settled. margin:4.38L starters:16 finish:13/16 RaceClass:[MV CUP] WinningTime:2:38.680 RaceL600:34.430 PF[Source: sportsbet_race_context L600 Delta: -1.438]"
+            }
+          ]
+        },
+        {
+          "number": 10,
+          "name": "Newlook",
+          "assessment": "列末；需要明顯反彈兼證好地。",
+          "support": [
+            "4月2600米Chairmans勝，有相應長途能力。"
+          ],
+          "risks": [
+            "最近第七且好地五戰未入位；Bart Cummings落後Litzdeel。"
+          ],
+          "evidence": [
+            {
+              "file": "R3.md",
+              "line": "F0561",
+              "fact": "Randwick R3 2026-04-04 2600m cond:Soft $300000 Rachel King (6) 53.0kg [historical market price removed] 8th@1200m 8th@800m 7th@400m 8th@Settled. margin:0L starters:11 finish:1/11 RaceClass:[CHAIRMANS] WinningTime:2:46.030 RaceL600:36.800 PF[Source: sportsbet_race_context L600 Delta: 0.93]"
+            },
+            {
+              "file": "R3.md",
+              "line": "F0516",
+              "fact": "Randwick R4 2026-10-17 2600m cond:Soft $500000 Nash Rawiller (10) 58.5kg [historical market price removed] 9th@1200m 9th@800m 10th@400m 9th@Settled. margin:5.70L starters:10 finish:7/10 RaceClass:[ST LEGER] WinningTime:2:44.420 RaceL600:35.590 PF[Source: sportsbet_race_context L600 Delta: -0.28]"
+            },
+            {
+              "file": "R3.md",
+              "line": "F0510",
+              "fact": "Firm:      0: 0-0-0        Good:      5: 0-0-0        Soft:      12: 3-1-1"
+            },
+            {
+              "file": "R3.md",
+              "line": "F0521",
+              "fact": "Flemington R7 2026-10-03 2520m cond:Heavy $350000 Craig Newitt (9) 54.0kg [historical market price removed] 8th@1200m 8th@800m 8th@400m 8th@Settled. margin:6.00L starters:13 finish:4/13 RaceClass:[BART CUMMINGS] WinningTime:2:43.650 RaceL600:36.390 PF[Source: sportsbet_race_context L600 Delta: 0.503]"
+            }
+          ]
+        },
+        {
+          "number": 11,
+          "name": "Bella Montagna",
+          "assessment": "中後選；近期穩定入圍但贏力仍待證。",
+          "support": [
+            "Colin Stephen第三輸1.19、Newcastle Cup第三。"
+          ],
+          "risks": [
+            "好地十二戰未勝，最新2600米第五；十二檔跑法未定。"
+          ],
+          "evidence": [
+            {
+              "file": "R3.md",
+              "line": "F0584",
+              "fact": "Rosehill Gardens R3 2026-09-26 2400m cond:Good $250000 Tim Clark (3) 53.0kg [historical market price removed] 3rd@1200m 4th@800m 3rd@400m 3rd@Settled. margin:1.19L starters:6 finish:3/6 RaceClass:[COLIN STEPHEN] WinningTime:2:28.950 RaceL600:35.250 PF[Source: sportsbet_race_context L600 Delta: -0.37]"
+            },
+            {
+              "file": "R3.md",
+              "line": "F0589",
+              "fact": "Newcastle R6 2026-09-18 2300m cond:Good $300000 Regan Bayliss (3) 54.0kg [historical market price removed] 5th@1200m 5th@800m 4th@400m 5th@Settled. margin:2.82L starters:7 finish:3/7 RaceClass:[NCLE CUP] WinningTime:2:22.020 RaceL600:34.480 PF[Source: sportsbet_race_context L600 Delta: -2.27]"
+            },
+            {
+              "file": "R3.md",
+              "line": "F0573",
+              "fact": "Firm:      0: 0-0-0        Good:      12: 0-4-2       Soft:      6: 1-2-0"
+            },
+            {
+              "file": "R3.md",
+              "line": "F0579",
+              "fact": "Randwick R4 2026-10-17 2600m cond:Soft $500000 Tim Clark (6) 53.5kg [historical market price removed] 7th@1200m 7th@800m 7th@400m 6th@Settled. margin:4.65L starters:10 finish:5/10 RaceClass:[ST LEGER] WinningTime:2:44.420 RaceL600:35.590 PF[Source: sportsbet_race_context L600 Delta: -0.28]"
+            },
+            {
+              "file": "R3.md",
+              "line": "R0031",
+              "fact": "11. Bella Montagna (12)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "race": 4,
+      "ranking": [
+        6,
+        8,
+        1,
+        5,
+        9,
+        11,
+        12,
+        2,
+        17,
+        4,
+        15,
+        7,
+        10,
+        3
+      ],
+      "top4": [
+        6,
+        8,
+        1,
+        5
+      ],
+      "top2": [
+        6,
+        8
+      ],
+      "confidence": "low",
+      "pace_scenarios": [
+        {
+          "scenario": "Sir Sway與其他前置馬推快",
+          "implication": "Inkaruna、Grand Impact可跟前群；Photograph後上位置機會增加。",
+          "evidence": [
+            "R4.md:F0147",
+            "R4.md:F0331",
+            "R4.md:F0457",
+            "R4.md:F0647"
+          ]
+        },
+        {
+          "scenario": "直路分組及跑線比步速更關鍵",
+          "implication": "十七檔Inkaruna同十五檔Arkansaw Kid可能一組；未有跑線偏差資料，唔把外檔自動當蝕位。",
+          "evidence": [
+            "R4.md:R0018",
+            "R4.md:R0003",
+            "R4.md:R0002"
+          ]
+        }
+      ],
+      "key_comparisons": [
+        "Grand Impact在Rising Fast明顯先Watchme Win、Hankee Alpha、Grand Larceny、De Bergerac；保持次選。",
+        "Inkaruna直接先Grand Larceny與Watchme Win、今更輕；Arkansaw Kid本場成績好但需負59.5。"
+      ],
+      "missing_information": [
+        "缺當日風、跑線偏差、臨場狀態及完整分段。",
+        "Stewards空白不能當作冇受阻；RaceL600唔係個體末段。",
+        "現行磅按Racecard；歷史行是來源記錄負磅，未明示減磅時不假定已扣，也不對不明現役claim自行扣重。"
+      ],
+      "data_quality_flags": [
+        "Pallaton 8月11日跳閘疑似重複，不當兩次準備。",
+        "不推定Logan Bates減磅；Cripps已明示0.5超磅。"
+      ],
+      "runner_assessments": [
+        {
+          "number": 1,
+          "name": "Arkansaw Kid",
+          "assessment": "第三選，可靠直路班底但頂磅拉低勝出把握。",
+          "support": [
+            "本場1200米多次入位，Bobbie Lewis第四輸0.81。"
+          ],
+          "risks": [
+            "今59.5最高；最近第六、近一年未勝。"
+          ],
+          "evidence": [
+            {
+              "file": "R4.md",
+              "line": "F0009",
+              "fact": "Track:     11: 2-2-2       Distance:  24: 4-5-4       Trk/Dist:  9: 2-1-2"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0026",
+              "fact": "Flemington R7 2026-09-12 1200m cond:Good $300000 Mark Zahra (2) 57.5kg [historical market price removed] 4th@800m 4th@400m. margin:0.81L starters:14 finish:4/14 RaceClass:[BOBBIE LEWIS] WinningTime:1:08.980 RaceL600:32.840 PF[Source: sportsbet_race_context L600 Delta: -1.22]"
+            },
+            {
+              "file": "R4.md",
+              "line": "R0004",
+              "fact": "Trainer: Ben, Will & Jd Hayes | Jockey: Mark Zahra | Weight: 59.5kg | Age: 6yoG | Rating: 106"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0016",
+              "fact": "Flemington R5 2026-10-24 1200m cond:Good $300000 Ethan Brown (1) 58.5kg [historical market price removed] 6th@800m 8th@400m. margin:3.27L starters:8 finish:6/8 RaceClass:[MCEWEN] WinningTime:1:09.800 RaceL600:34.380 PF[Source: sportsbet_race_context L600 Delta: 0.32]"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0013",
+              "fact": "Season:    -               12 Month:  10: 0-2-4"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "name": "Grand Larceny",
+          "assessment": "舊G1入位證據強，近況轉差列第八。",
+          "support": [
+            "Goodwood第三輸0.57；三級上陣以往兩次都勝。"
+          ],
+          "risks": [
+            "最近同程第14輸6.48，今58.5比多匹輕磅馬蝕磅。"
+          ],
+          "evidence": [
+            {
+              "file": "R4.md",
+              "line": "F0104",
+              "fact": "Morphettville R8 2026-05-09 1200m cond:Soft $1000000 Ben Melham (12) 56.0kg [historical market price removed] 4th@800m 4th@400m. margin:0.57L starters:14 finish:3/14 RaceClass:[THE GOODWOOD] WinningTime:1:11.100 RaceL600:35.190 PF[Source: sportsbet_race_context L600 Delta: 0.62]"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0075",
+              "fact": "1st Up:    7: 2-0-2        2nd Up:    7: 2-2-1        3rd Up:    2: 2-0-0"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0079",
+              "fact": "Flemington R4 2026-10-31 1200m cond:Good $240000 Ben Melham (6) 59.0kg [historical market price removed] 8th@800m 8th@400m. margin:6.48L starters:19 finish:14/19 RaceClass:[RISING FAST] WinningTime:1:10.240 RaceL600:34.450 PF[Source: sportsbet_race_context L600 Delta: 0.39]"
+            },
+            {
+              "file": "R4.md",
+              "line": "R0007",
+              "fact": "Trainer: Michael, John & Wayne Hawkes | Jockey: Ben Melham | Weight: 58.5kg | Age: 6yoG | Rating: 104"
+            }
+          ]
+        },
+        {
+          "number": 3,
+          "name": "Sir Sway",
+          "assessment": "舊高峰甚佳，但近期實戰風險最高。",
+          "support": [
+            "2025 Goodwood第二；最近1200米跳閘第一。"
+          ],
+          "risks": [
+            "復出第12輸10.79，近期幾場均落敗；不能靠跳閘勝消除此疑問。"
+          ],
+          "evidence": [
+            {
+              "file": "R4.md",
+              "line": "F0177",
+              "fact": "Morphettville R8 2025-05-10 1200m cond:Good $1000000 Jake Toeroek (4) 55.5kg [historical market price removed] 3rd@800m 3rd@400m 3rd@Settled. margin:1.36L starters:13 finish:2/13 RaceClass:[THE GOODWOOD] WinningTime:1:09.720 RaceL600:33.920 PF[Source: sportsbet_race_context L600 Delta: -0.65]"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0142",
+              "fact": "Horsham **(TRIAL)** R2 2026-10-19 1200m cond:None $0 Campbell Rawiller (None) Nonekg . margin:0L starters:4 finish:1/4 RaceClass:[Jump Out - G4 Barrier Trial] WinningTime:1:14.200"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0147",
+              "fact": "Murray Bdge R7 2026-10-03 1200m cond:Soft $80000 Campbell Rawiller (7) 61.0kg [historical market price removed] 1st@800m 4th@400m. margin:10.79L starters:13 finish:12/13 RaceClass:[HCP] WinningTime:1:14.310 RaceL600:38.520 PF[Source: sportsbet_race_context L600 Delta: 3.76]"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0162",
+              "fact": "Caulfield R9 2025-10-11 1100m cond:Good $300000 Lachlan Neindorf (9) 58.5kg [historical market price removed] 1st@800m 3rd@400m 1st@Settled. margin:13.16L starters:9 finish:9/9 RaceClass:[SCHILLACI] WinningTime:1:03.140 RaceL600:34.430 PF[Source: sportsbet_race_context L600 Delta: 0.0]"
+            }
+          ]
+        },
+        {
+          "number": 4,
+          "name": "Watchme Win",
+          "assessment": "列第十；最新稍復甦，但贏力未返。",
+          "support": [
+            "Rising Fast第七輸2.41，明顯先Grand Larceny。"
+          ],
+          "risks": [
+            "本場三戰未入位、一年未勝。"
+          ],
+          "evidence": [
+            {
+              "file": "R4.md",
+              "line": "F0205",
+              "fact": "Flemington R4 2026-10-31 1200m cond:Good $240000 Ben Allen (1) 56.5kg [historical market price removed] 11th@800m 12th@400m. margin:2.41L starters:19 finish:7/19 RaceClass:[RISING FAST] WinningTime:1:10.240 RaceL600:34.450 PF[Source: sportsbet_race_context L600 Delta: 0.39]"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0198",
+              "fact": "Track:     3: 0-0-0        Distance:  11: 1-3-0       Trk/Dist:  3: 0-0-0"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0202",
+              "fact": "Season:    -               12 Month:  11: 0-3-0"
+            }
+          ]
+        },
+        {
+          "number": 5,
+          "name": "Pallaton",
+          "assessment": "第四選，近期BM100勝可抗衡。",
+          "support": [
+            "9月勝Ndola，歷史Zeditave1200米亦勝。"
+          ],
+          "risks": [
+            "最新1000米第六輸4.20；本場1200米未入位。"
+          ],
+          "evidence": [
+            {
+              "file": "R4.md",
+              "line": "F0273",
+              "fact": "Caulfield R3 2026-09-19 1100m cond:Good $150000 Jordan Childs (2) 56.0kg [historical market price removed] 5th@800m 4th@400m. margin:0L starters:9 finish:1/9 RaceClass:[BM100] WinningTime:1:02.850 RaceL600:34.320 PF[Source: sportsbet_race_context L600 Delta: -0.11]"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0274",
+              "fact": "1-Pallaton (56.0kg), 2-Ndola (59.0kg) 0.02L, 3-Bev's Nine (59.5kg) 0.77L"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0313",
+              "fact": "Caulfield R2 2026-02-21 1200m cond:Good $200000 Craig Williams (2) 56.0kg [historical market price removed] 3rd@800m 3rd@400m. margin:0L starters:7 finish:1/7 RaceClass:[ZEDITAVE] WinningTime:1:09.450 RaceL600:34.070 PF[Source: sportsbet_race_context L600 Delta: -0.77]"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0268",
+              "fact": "Caulfield R6 2026-10-17 1000m cond:Good $300000 Jordan Childs (6) 55.5kg [historical market price removed] 8th@800m 8th@400m. margin:4.20L starters:10 finish:6/10 RaceClass:[CAUL SPRINT] WinningTime:56.370 RaceL600:33.040 PF[Source: sportsbet_race_context L600 Delta: -1.11]"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0261",
+              "fact": "Track:     2: 1-0-0        Distance:  7: 1-1-0        Trk/Dist:  1: 0-0-0"
+            }
+          ]
+        },
+        {
+          "number": 6,
+          "name": "Inkaruna",
+          "assessment": "首選，近期對強手持續接近兼回54公斤。",
+          "support": [
+            "Schillaci第三先Grand Larceny、Watchme Win；How Now1200米第三。"
+          ],
+          "risks": [
+            "十七檔直路跑線未知；一星期再出，15戰只兩勝。"
+          ],
+          "evidence": [
+            {
+              "file": "R4.md",
+              "line": "F0336",
+              "fact": "Caulfield R6 2026-10-10 1100m cond:Good $300000 Craig Williams (2) 56.5kg [historical market price removed] 3rd@800m 4th@400m. margin:1.60L starters:9 finish:3/9 RaceClass:[SCHILLACI] WinningTime:1:01.970 RaceL600:33.370 PF[Source: sportsbet_race_context L600 Delta: -1.06]"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0341",
+              "fact": "Caulfield R6 2026-09-19 1200m cond:Good $200000 Damian Lane (2) 57.0kg [historical market price removed] 5th@800m 4th@400m. margin:1.10L starters:10 finish:3/10 RaceClass:[HOW NOW] WinningTime:1:08.810 RaceL600:34.420 PF[Source: sportsbet_race_context L600 Delta: -0.42]"
+            },
+            {
+              "file": "R4.md",
+              "line": "R0019",
+              "fact": "Trainer: Anthony & Sam Freedman | Jockey: Jamie Melham | Weight: 54.0kg | Age: 4yoM | Rating: 98"
+            },
+            {
+              "file": "R4.md",
+              "line": "R0018",
+              "fact": "6. Inkaruna (17)"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0331",
+              "fact": "Flemington R9 2026-10-31 1100m cond:Good $240000 Craig Williams (9) 57.0kg [historical market price removed] 4th@800m 4th@400m. margin:1.96L starters:16 finish:4/16 RaceClass:[BEGONIA BELLE] WinningTime:1:03.380 RaceL600:34.110 PF[Source: sportsbet_race_context L600 Delta: 0.47]"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0322",
+              "fact": "Career:    15: 2-3-4       Last 10:   0x4334          Prize:     $994,325"
+            }
+          ]
+        },
+        {
+          "number": 7,
+          "name": "De Bergerac",
+          "assessment": "本場老手但近況弱，列後。",
+          "support": [
+            "本場1200米十戰兩勝三亞一季。"
+          ],
+          "risks": [
+            "最近第15輸7.48；近幾仗均落敗，需大幅復甦。"
+          ],
+          "evidence": [
+            {
+              "file": "R4.md",
+              "line": "F0387",
+              "fact": "Track:     14: 3-3-2       Distance:  17: 3-4-3       Trk/Dist:  10: 2-3-1"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0394",
+              "fact": "Flemington R4 2026-10-31 1200m cond:Good $240000 Luke Cartwright (2) 54.5kg [historical market price removed] 17th@800m 17th@400m. margin:7.48L starters:19 finish:15/19 RaceClass:[RISING FAST] WinningTime:1:10.240 RaceL600:34.450 PF[Source: sportsbet_race_context L600 Delta: 0.39]"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0404",
+              "fact": "Flemington R9 2026-10-03 1200m cond:Heavy $300000 Daniel Stackhouse (5) 57.0kg [historical market price removed] 10th@800m 10th@400m. margin:4.56L starters:10 finish:6/10 RaceClass:[GILGAI] WinningTime:1:10.450 RaceL600:34.960 PF[Source: sportsbet_race_context L600 Delta: 0.9]"
+            }
+          ]
+        },
+        {
+          "number": 8,
+          "name": "Grand Impact",
+          "assessment": "次選；最新大場第四係本場最直接可靠新證據。",
+          "support": [
+            "Rising Fast十九駒第四僅輸1.35；此前BM94連亞。"
+          ],
+          "risks": [
+            "同樣七日再出，好地勝率不高，未勝本場。"
+          ],
+          "evidence": [
+            {
+              "file": "R4.md",
+              "line": "F0457",
+              "fact": "Flemington R4 2026-10-31 1200m cond:Good $240000 Michael Dee (19) 54.0kg [historical market price removed] 7th@800m 5th@400m. margin:1.35L starters:19 finish:4/19 RaceClass:[RISING FAST] WinningTime:1:10.240 RaceL600:34.450 PF[Source: sportsbet_race_context L600 Delta: 0.39]"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0472",
+              "fact": "Rosehill Gardens R10 2026-08-29 1200m cond:Good $160000 Zac Lloyd (4) 59.5kg [historical market price removed] 3rd@800m 3rd@400m. margin:0.55L starters:8 finish:2/8 RaceClass:[BM94] WinningTime:1:08.810 RaceL600:34.260 PF[Source: sportsbet_race_context L600 Delta: -0.4]"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0477",
+              "fact": "Rosehill Gardens R7 2026-08-15 1200m cond:Soft $160000 Anna Roper (4) 59.0kg [historical market price removed] 5th@800m 4th@400m. margin:0.31L starters:8 finish:2/8 RaceClass:[BM94] WinningTime:1:09.850 RaceL600:34.180 PF[Source: sportsbet_race_context L600 Delta: -0.48]"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0451",
+              "fact": "Firm:      0: 0-0-0        Good:      8: 1-1-1        Soft:      9: 3-1-0"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0450",
+              "fact": "Track:     2: 0-0-0        Distance:  13: 4-2-0       Trk/Dist:  2: 0-0-0"
+            }
+          ]
+        },
+        {
+          "number": 9,
+          "name": "Immortal Star",
+          "assessment": "第五選；復出勝且輕磅，但要跨越班次。",
+          "support": [
+            "Geelong1200米負59.5勝，今54。"
+          ],
+          "risks": [
+            "僅BM84窄勝；五月同程Straight Six第十。"
+          ],
+          "evidence": [
+            {
+              "file": "R4.md",
+              "line": "F0520",
+              "fact": "Geelong R8 2026-10-21 1200m cond:Good $75000 Ethan Brown (1) 59.5kg [historical market price removed] 4th@800m 4th@400m. margin:0L starters:9 finish:1/9 RaceClass:[BM84] WinningTime:1:11.190 RaceL600:34.180 PF[Source: sportsbet_race_context L600 Delta: -0.77]"
+            },
+            {
+              "file": "R4.md",
+              "line": "R0028",
+              "fact": "Trainer: Ciaron Maher | Jockey: Ethan Brown | Weight: 54.0kg | Age: 5yoM | Rating: 91"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0535",
+              "fact": "Flemington R8 2026-05-16 1200m cond:Good $175000 Logan Bates (10) 54.0kg [historical market price removed] 6th@800m 10th@400m. margin:5.95L starters:14 finish:10/14 RaceClass:[STRAIGHT SIX] WinningTime:1:09.360 RaceL600:33.180 PF[Source: sportsbet_race_context L600 Delta: -0.88]"
+            }
+          ]
+        },
+        {
+          "number": 10,
+          "name": "La Fracas",
+          "assessment": "列尾二；眼罩重戴未知能否反彈。",
+          "support": [
+            "1200米十二戰六勝，Hareeba曾亞。"
+          ],
+          "risks": [
+            "最近兩戰第九、第八且大敗；好地較弱，不自行假定Logan Bates額外減磅。"
+          ],
+          "evidence": [
+            {
+              "file": "R4.md",
+              "line": "F0577",
+              "fact": "Track:     5: 1-1-0        Distance:  12: 6-1-0       Trk/Dist:  3: 1-0-0"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0609",
+              "fact": "Mornington R9 2026-04-18 1200m cond:Good $200000 Beau Mertens (3) 54.0kg [historical market price removed] 9th@800m 7th@400m. margin:1.50L starters:13 finish:2/13 RaceClass:[HAREEBA STKS] WinningTime:1:10.160 RaceL600:35.420 PF[Source: sportsbet_race_context L600 Delta: 0.1]"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0584",
+              "fact": "Flemington R5 2026-10-24 1200m cond:Good $300000 Blake Shinn (5) 58.5kg [historical market price removed] 4th@800m 4th@400m. margin:6.77L starters:8 finish:8/8 RaceClass:[MCEWEN] WinningTime:1:09.800 RaceL600:34.380 PF[Source: sportsbet_race_context L600 Delta: 0.32]"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0589",
+              "fact": "Cranbourne R7 2026-10-09 1200m cond:Good $100000 Logan Bates (7) 58.0kg [historical market price removed] 3rd@800m 4th@400m. margin:5.50L starters:12 finish:9/12 RaceClass:[HCP] WinningTime:1:10.180 RaceL600:35.130 PF[Source: sportsbet_race_context L600 Delta: -0.42]"
+            },
+            {
+              "file": "R4.md",
+              "line": "R0031",
+              "fact": "Trainer: Mick Price & Michael Kent Jnr | Jockey: Logan Bates | Weight: 54.0kg | Age: 6yoG | Rating: 90"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0573",
+              "fact": "SportsbetGear: Changes: Blinkers AGAIN"
+            }
+          ]
+        },
+        {
+          "number": 11,
+          "name": "Photograph",
+          "assessment": "第六選，末段位置上升有加程可能。",
+          "support": [
+            "Begonia Belle由16位升第五輸2.16；Alinghi第三。"
+          ],
+          "risks": [
+            "1200米How Now曾明顯落後Inkaruna，好地九戰未勝。"
+          ],
+          "evidence": [
+            {
+              "file": "R4.md",
+              "line": "F0647",
+              "fact": "Flemington R9 2026-10-31 1100m cond:Good $240000 Damian Lane (11) 55.0kg [historical market price removed] 16th@800m 13th@400m. margin:2.16L starters:16 finish:5/16 RaceClass:[BEGONIA BELLE] WinningTime:1:03.380 RaceL600:34.110 PF[Source: sportsbet_race_context L600 Delta: 0.47]"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0652",
+              "fact": "Caulfield R3 2026-10-17 1100m cond:Good $200000 Mark Zahra (4) 56.0kg [historical market price removed] 8th@800m 8th@400m. margin:1.15L starters:9 finish:3/9 RaceClass:[ALINGHI] WinningTime:1:03.180 RaceL600:34.210 PF[Source: sportsbet_race_context L600 Delta: -0.22]"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0662",
+              "fact": "Caulfield R6 2026-09-19 1200m cond:Good $200000 Jamie Melham (8) 55.0kg [historical market price removed] 6th@800m 6th@400m. margin:4.35L starters:10 finish:6/10 RaceClass:[HOW NOW] WinningTime:1:08.810 RaceL600:34.420 PF[Source: sportsbet_race_context L600 Delta: -0.42]"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0641",
+              "fact": "Firm:      0: 0-0-0        Good:      9: 0-1-1        Soft:      6: 1-2-0"
+            }
+          ]
+        },
+        {
+          "number": 12,
+          "name": "Cripps",
+          "assessment": "可改善冷門；未過度提升復出者。",
+          "support": [
+            "Gold Topaz1200米勝；十戰五勝且以往復出兩勝。"
+          ],
+          "risks": [
+            "154日未跑、最近跳閘末名，今實負54.5而非54。"
+          ],
+          "evidence": [
+            {
+              "file": "R4.md",
+              "line": "F0716",
+              "fact": "Swan Hill R7 2026-06-05 1200m cond:Soft $150000 Jett Stanley (4) 54.0kg [historical market price removed] 5th@800m 4th@400m. margin:0L starters:11 finish:1/11 RaceClass:[GOLD TOPAZ] WinningTime:1:10.890 RaceL600:35.700 PF[Source: sportsbet_race_context L600 Delta: 0.94]"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0702",
+              "fact": "Career:    10: 5-1-2       Last 10:   13131x          Prize:     $216,200"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0707",
+              "fact": "1st Up:    3: 2-0-0        2nd Up:    3: 1-1-0        3rd Up:    1: 0-0-1"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0709",
+              "fact": "Days:      154             Ave $:     $21,620         J/H:       0: 0-0-0"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0711",
+              "fact": "Ballarat **(TRIAL)** R6 2026-10-13 850m cond:None $0 Rhys McLeod (None) Nonekg . margin:0.00L starters:5 finish:5/5 RaceClass:[Jump Out - G4 Barrier Trial] WinningTime:56.580"
+            },
+            {
+              "file": "R4.md",
+              "line": "R0038",
+              "fact": "Trainer: Patrick Kearney | Jockey: Billy Egan | Weight: 54.0kg (Overweight 0.5kg, Carried 54.5kg) | Age: 5yoG | Rating: 88"
+            }
+          ]
+        },
+        {
+          "number": 15,
+          "name": "Piastri",
+          "assessment": "中後選；濕地專長較明顯。",
+          "support": [
+            "本場1200米勝，9月BM84勝。"
+          ],
+          "risks": [
+            "好地五戰未入位；最新第五輸3.5。"
+          ],
+          "evidence": [
+            {
+              "file": "R4.md",
+              "line": "F0796",
+              "fact": "Flemington R7 2026-07-18 1200m cond:Soft $130000 Craig Williams (14) 54.0kg [historical market price removed] 3rd@800m 3rd@400m. margin:0L starters:14 finish:1/14 RaceClass:[BM88] WinningTime:1:10.350 RaceL600:34.410 PF[Source: sportsbet_race_context L600 Delta: 0.35]"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0781",
+              "fact": "Mornington R3 2026-09-26 1200m cond:Soft $130000 Blake Shinn (2) 58.0kg [historical market price removed] 4th@800m 4th@400m. margin:0L starters:10 finish:1/10 RaceClass:[BM84] WinningTime:1:12.050 RaceL600:35.630 PF[Source: sportsbet_race_context L600 Delta: 0.31]"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0770",
+              "fact": "Firm:      0: 0-0-0        Good:      5: 0-0-0        Soft:      13: 5-0-1"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0776",
+              "fact": "Cranbourne R7 2026-10-09 1200m cond:Good $100000 Michael Dee (2) 55.0kg [historical market price removed] 8th@800m 6th@400m. margin:3.50L starters:12 finish:5/12 RaceClass:[HCP] WinningTime:1:10.180 RaceL600:35.130 PF[Source: sportsbet_race_context L600 Delta: -0.42]"
+            }
+          ]
+        },
+        {
+          "number": 17,
+          "name": "Hankee Alpha",
+          "assessment": "中游冷門；泥濘大勝值得留意但不直接外推好地。",
+          "support": [
+            "10月本場1200米BM78勝六馬位。"
+          ],
+          "risks": [
+            "轉好地Rising Fast第十，評分78低於主力群。"
+          ],
+          "evidence": [
+            {
+              "file": "R4.md",
+              "line": "F0850",
+              "fact": "Flemington R2 2026-10-03 1200m cond:Heavy $80000 Craig Williams (11) 54.5kg [historical market price removed] 9th@800m 3rd@400m. margin:0L starters:13 finish:1/13 RaceClass:[BM78] WinningTime:1:10.630 RaceL600:35.270 PF[Source: sportsbet_race_context L600 Delta: 1.21]"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0851",
+              "fact": "1-Hankee Alpha (54.5kg), 2-Esmahli (57.5kg) 6.00L, 3-Moby Dick (60.5kg) 6.75L"
+            },
+            {
+              "file": "R4.md",
+              "line": "F0840",
+              "fact": "Flemington R4 2026-10-31 1200m cond:Good $240000 Craig Williams (4) 54.0kg [historical market price removed] 9th@800m 11th@400m. margin:4.37L starters:19 finish:10/19 RaceClass:[RISING FAST] WinningTime:1:10.240 RaceL600:34.450 PF[Source: sportsbet_race_context L600 Delta: 0.39]"
+            },
+            {
+              "file": "R4.md",
+              "line": "R0048",
+              "fact": "Trainer: Cindy Alderson | Jockey: Craig Williams | Weight: 54.0kg | Age: 5yoM | Rating: 78"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "race": 5,
+      "ranking": [
+        5,
+        4,
+        8,
+        15,
+        1,
+        7,
+        6,
+        10,
+        3,
+        13,
+        9,
+        14,
+        2,
+        11,
+        12,
+        17
+      ],
+      "top4": [
+        5,
+        4,
+        8,
+        15
+      ],
+      "top2": [
+        5,
+        4
+      ],
+      "confidence": "low",
+      "pace_scenarios": [
+        {
+          "scenario": "Sunset Park、Pillow Fight與Jenni's Meadow互爭前列",
+          "implication": "持續步速利Too Darn Discreet、Soverato及有耐力的Ocean Bay；Pillow Fight初試2000米風險較高。",
+          "evidence": [
+            "R5.md:F0079",
+            "R5.md:F0838",
+            "R5.md:F0585",
+            "R5.md:F0269"
+          ]
+        },
+        {
+          "scenario": "單一領放馬放慢、內檔馬省程",
+          "implication": "二檔Soverato與一檔Vivy Air更有利；Ocean Bay外檔若需搶位可能蝕力。",
+          "evidence": [
+            "R5.md:R0012",
+            "R5.md:R0025",
+            "R5.md:R0047"
+          ]
+        }
+      ],
+      "key_comparisons": [
+        "Tesio共同基準下，Too Darn Discreet從負60轉56、Soverato由54轉57，7公斤相對轉移值得優先；沒有套固定每公斤馬位係數。",
+        "Ocean Bay最新穩定優於Private Legacy/Jenni's Meadow，但外檔及增1公斤；Vivy Air級數強惟首次2000米。"
+      ],
+      "missing_information": [
+        "當日風、場地跑線及臨場狀態未知。",
+        "無完整個體分段及可核實受阻報告；Stewards空白不代表冇受阻。",
+        "現行磅按Racecard；歷史行是來源記錄負磅，未明示減磅時不假定已扣，也不對不明現役claim自行扣重。"
+      ],
+      "data_quality_flags": [
+        "Tesio前十差距較近，不能僅依名次認定實力分層。",
+        "Sun Gift11月4日至11月7日為三日；Days欄寫2，採日期。"
+      ],
+      "runner_assessments": [
+        {
+          "number": 1,
+          "name": "Panova",
+          "assessment": "第五選；舊2000米Oaks水平高，但近況、磅位及檔位壓低。",
+          "support": [
+            "Australasian Oaks勝及Queensland Oaks亞。"
+          ],
+          "risks": [
+            "本季三戰未入位，今59.5且十八檔；最新同場不及Vivy Air。"
+          ],
+          "evidence": [
+            {
+              "file": "R5.md",
+              "line": "F0056",
+              "fact": "Morphettville R7 2026-04-25 2000m cond:Good $1000000 James McDonald (13) 56.0kg [historical market price removed] 11th@1200m 11th@800m 7th@400m 11th@Settled. margin:0L starters:16 finish:1/16 RaceClass:[A'ASIAN Oaks] WinningTime:2:04.040 RaceL600:35.340 PF[Source: sportsbet_race_context L600 Delta: -1.9]"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0046",
+              "fact": "Eagle Farm R8 2026-06-06 2200m cond:Good $700000 Ben Melham (3) 56.5kg [historical market price removed] 12th@1200m 11th@800m 8th@400m 10th@Settled. margin:1.30L starters:18 finish:2/18 RaceClass:[QLD OAKS] WinningTime:2:18.420 RaceL600:35.380 PF[Source: sportsbet_race_context L600 Delta: -0.78]"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0016",
+              "fact": "Randwick R6 2026-10-24 1800m cond:Good $750000 Tommy Berry (8) 56.0kg [historical market price removed] 7th@1200m 7th@800m 5th@400m 7th@Settled. margin:3.97L starters:8 finish:8/8 RaceClass:[CRAVEN PLT] WinningTime:1:48.660 RaceL600:34.150 PF[Source: sportsbet_race_context L600 Delta: -1.37]"
+            },
+            {
+              "file": "R5.md",
+              "line": "R0003",
+              "fact": "1. Panova (18)"
+            },
+            {
+              "file": "R5.md",
+              "line": "R0004",
+              "fact": "Trainer: Chris Waller | Jockey: James McDonald | Weight: 59.5kg | Age: 4yoM | Rating: 101"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0458",
+              "fact": "Randwick R6 2026-10-24 1800m cond:Good $750000 Regan Bayliss (2) 57.0kg [historical market price removed] 6th@1200m 6th@800m 8th@400m 6th@Settled. margin:2.49L starters:8 finish:5/8 RaceClass:[CRAVEN PLT] WinningTime:1:48.660 RaceL600:34.150 PF[Source: sportsbet_race_context L600 Delta: -1.37]"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "name": "Sunset Park",
+          "assessment": "可影響步速，列後；磅位變差。",
+          "support": [
+            "Coongy第三輸0.75；2400米Harry White亞。"
+          ],
+          "risks": [
+            "Tesio領放第九，今58比上次55.5多；十三檔爭先耗力。"
+          ],
+          "evidence": [
+            {
+              "file": "R5.md",
+              "line": "F0084",
+              "fact": "Caulfield R7 2026-10-14 2000m cond:Good $240000 Jamie Melham (3) 54.0kg [historical market price removed] 5th@1200m 4th@800m 2nd@400m 4th@Settled. margin:0.75L starters:12 finish:3/12 RaceClass:[COONGY] WinningTime:2:03.050 RaceL600:35.350 PF[Source: sportsbet_race_context L600 Delta: -0.55]"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0089",
+              "fact": "Mornington R6 2026-09-26 2400m cond:Soft $175000 Ethan Brown (3) 56.0kg [historical market price removed] 1st@1200m 1st@800m 1st@400m 1st@Settled. margin:0.30L starters:11 finish:2/11 RaceClass:[H WHITE] WinningTime:2:34.040 RaceL600:38.030 PF[Source: sportsbet_race_context L600 Delta: 0.83]"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0079",
+              "fact": "Flemington R9 2026-10-24 2040m cond:Good $300000 Jamie Melham (10) 55.5kg [historical market price removed] 1st@1200m 1st@800m 2nd@400m 1st@Settled. margin:2.74L starters:15 finish:9/15 RaceClass:[TESIO STKS] WinningTime:2:06.900 RaceL600:35.060 PF[Source: sportsbet_race_context L600 Delta: -0.387]"
+            },
+            {
+              "file": "R5.md",
+              "line": "R0006",
+              "fact": "2. Sunset Park (13)"
+            },
+            {
+              "file": "R5.md",
+              "line": "R0007",
+              "fact": "Trainer: Michael Kent | Jockey: Jamie Melham | Weight: 58.0kg | Age: 6yoM | Rating: 93"
+            }
+          ]
+        },
+        {
+          "number": 3,
+          "name": "Machine Gun Gracie",
+          "assessment": "舊級數有力但本季欠尖銳，列第九。",
+          "support": [
+            "1900米Epona勝；Naturalism第四僅輸1.36。"
+          ],
+          "risks": [
+            "最近長途第十、第六，縮程可助但未證，今57多於上仗54.5。"
+          ],
+          "evidence": [
+            {
+              "file": "R5.md",
+              "line": "F0187",
+              "fact": "Rosehill Gardens R3 2026-03-21 1900m cond:Soft $250000 Luke Currie (12) 58.0kg [historical market price removed] 2nd@1200m 2nd@800m 2nd@400m 2nd@Settled. margin:0L starters:14 finish:1/14 RaceClass:[EPONA] WinningTime:1:58.120 RaceL600:34.570 PF[Source: sportsbet_race_context L600 Delta: -0.71]"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0152",
+              "fact": "Caulfield R8 2026-09-19 2000m cond:Good $200000 Luke Currie (9) 54.0kg [historical market price removed] 1st@1200m 1st@800m 1st@400m 1st@Settled. margin:1.36L starters:16 finish:4/16 RaceClass:[NATURALISM] WinningTime:2:02.270 RaceL600:35.150 PF[Source: sportsbet_race_context L600 Delta: -0.75]"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0147",
+              "fact": "Caulfield R4 2026-10-10 2400m cond:Good $400000 Luke Currie (12) 56.0kg [historical market price removed] 2nd@1200m 2nd@800m 2nd@400m 2nd@Settled. margin:6.36L starters:13 finish:10/13 RaceClass:[HERBERT POWER] WinningTime:2:27.090 RaceL600:36.130 PF[Source: sportsbet_race_context L600 Delta: -0.65]"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0142",
+              "fact": "Bendigo R8 2026-10-28 2400m cond:Good $500000 Luke Currie (5) 54.5kg [historical market price removed] 8th@1200m 9th@800m 9th@400m 7th@Settled. margin:5.27L starters:13 finish:6/13 RaceClass:[BDGO CUP] WinningTime:2:28.830 RaceL600:36.220 PF[Source: sportsbet_race_context L600 Delta: -0.77]"
+            },
+            {
+              "file": "R5.md",
+              "line": "R0010",
+              "fact": "Trainer: Ben, Will & Jd Hayes | Jockey: Blake Shinn | Weight: 57.0kg | Age: 5yoM | Rating: 97"
+            }
+          ]
+        },
+        {
+          "number": 4,
+          "name": "Soverato",
+          "assessment": "次選；最新本場同類距離勝最直接。",
+          "support": [
+            "Tesio十五駒勝，今二檔可慳腳程。"
+          ],
+          "risks": [
+            "由54增至57，對Too Darn Discreet相對磅差逆轉7公斤；不把上次勝視作必再勝。"
+          ],
+          "evidence": [
+            {
+              "file": "R5.md",
+              "line": "F0205",
+              "fact": "Flemington R9 2026-10-24 2040m cond:Good $300000 Damian Lane (6) 54.0kg [historical market price removed] 6th@1200m 6th@800m 6th@400m 6th@Settled. margin:0L starters:15 finish:1/15 RaceClass:[TESIO STKS] WinningTime:2:06.900 RaceL600:35.060 PF[Source: sportsbet_race_context L600 Delta: -0.387]"
+            },
+            {
+              "file": "R5.md",
+              "line": "R0012",
+              "fact": "4. Soverato (2)"
+            },
+            {
+              "file": "R5.md",
+              "line": "R0013",
+              "fact": "Trainer: Chris Waller | Jockey: Damian Lane | Weight: 57.0kg | Age: 4yoM | Rating: 95"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0269",
+              "fact": "Flemington R9 2026-10-24 2040m cond:Good $300000 Declan Bates (9) 60.0kg [historical market price removed] 9th@1200m 10th@800m 10th@400m 9th@Settled. margin:2.54L starters:15 finish:8/15 RaceClass:[TESIO STKS] WinningTime:2:06.900 RaceL600:35.060 PF[Source: sportsbet_race_context L600 Delta: -0.387]"
+            }
+          ]
+        },
+        {
+          "number": 5,
+          "name": "Too Darn Discreet",
+          "assessment": "首選；主因今次相對磅位明顯改善及2000米能力已證。",
+          "support": [
+            "Tesio負60輸2.54，今56；2000米四戰三勝，本場BM100勝Land Legend。"
+          ],
+          "risks": [
+            "最近兩場第八，首次綁舌作用未知；磅位不等於保證翻盤。"
+          ],
+          "evidence": [
+            {
+              "file": "R5.md",
+              "line": "F0269",
+              "fact": "Flemington R9 2026-10-24 2040m cond:Good $300000 Declan Bates (9) 60.0kg [historical market price removed] 9th@1200m 10th@800m 10th@400m 9th@Settled. margin:2.54L starters:15 finish:8/15 RaceClass:[TESIO STKS] WinningTime:2:06.900 RaceL600:35.060 PF[Source: sportsbet_race_context L600 Delta: -0.387]"
+            },
+            {
+              "file": "R5.md",
+              "line": "R0016",
+              "fact": "Trainer: Dan O'Sullivan | Jockey: Mark Zahra | Weight: 56.0kg | Age: 5yoM | Rating: 103"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0262",
+              "fact": "Track:     9: 3-1-0        Distance:  4: 3-0-0        Trk/Dist:  2: 1-0-0"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0294",
+              "fact": "Flemington R7 2026-04-25 2000m cond:Good $150000 Declan Bates (4) 58.5kg [historical market price removed] 5th@1200m 6th@800m 3rd@400m 5th@Settled. margin:0L starters:14 finish:1/14 RaceClass:[BM100] WinningTime:2:00.960 RaceL600:34.240 PF[Source: sportsbet_race_context L600 Delta: -1.17]"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0295",
+              "fact": "1-Too Darn Discreet (58.5kg), 2-Land Legend (61.0kg) 1.50L, 3-Plymouth (59.0kg) 2.25L"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0258",
+              "fact": "SportsbetGear: Changes: Tongue Tie FIRST TIME"
+            }
+          ]
+        },
+        {
+          "number": 6,
+          "name": "Private Legacy",
+          "assessment": "第七選，近仗差距窄，但外檔及低勝率限制。",
+          "support": [
+            "Tesio第四僅輸0.67；有2033米勝。"
+          ],
+          "risks": [
+            "今56比上次54多，十六檔；34戰三勝。"
+          ],
+          "evidence": [
+            {
+              "file": "R5.md",
+              "line": "F0332",
+              "fact": "Flemington R9 2026-10-24 2040m cond:Good $300000 Luke Nolen (3) 54.0kg [historical market price removed] 8th@1200m 8th@800m 7th@400m 8th@Settled. margin:0.67L starters:15 finish:4/15 RaceClass:[TESIO STKS] WinningTime:2:06.900 RaceL600:35.060 PF[Source: sportsbet_race_context L600 Delta: -0.387]"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0357",
+              "fact": "Morphettville R4 2026-05-09 2033m cond:Soft $120000 Ben Melham (12) 57.0kg [historical market price removed] 6th@1200m 5th@800m 2nd@400m 5th@Settled. margin:0L starters:13 finish:1/13 RaceClass:[CENTAUREA] WinningTime:2:07.030 RaceL600:35.830 PF[Source: sportsbet_race_context L600 Delta: -1.41]"
+            },
+            {
+              "file": "R5.md",
+              "line": "R0019",
+              "fact": "6. Private Legacy (16)"
+            },
+            {
+              "file": "R5.md",
+              "line": "R0020",
+              "fact": "Trainer: Gregory Hickman | Jockey: Ben Melham | Weight: 56.0kg | Age: 6yoM | Rating: 89"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0323",
+              "fact": "Career:    34: 3-5-0       Last 10:   01x474          Prize:     $512,825"
+            }
+          ]
+        },
+        {
+          "number": 7,
+          "name": "Zuleika",
+          "assessment": "第六選，回2000米有進步可能。",
+          "support": [
+            "Filante第三；2000米三戰兩勝，2100米Gold Crown勝Sun Worshipper。"
+          ],
+          "risks": [
+            "今56比最近52多；Queensland Oaks曾遠後於Panova、Soverato。"
+          ],
+          "evidence": [
+            {
+              "file": "R5.md",
+              "line": "F0395",
+              "fact": "Randwick R10 2026-10-24 1600m cond:Good $160000 Alysha Collett (3) 52.0kg [historical market price removed] 4th@1200m 4th@800m 5th@400m 4th@Settled. margin:1.36L starters:10 finish:3/10 RaceClass:[FILANTE] WinningTime:1:34.280 RaceL600:35.740 PF[Source: sportsbet_race_context L600 Delta: 0.22]"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0388",
+              "fact": "Track:     0: 0-0-0        Distance:  3: 2-0-0        Trk/Dist:  0: 0-0-0"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0410",
+              "fact": "Eagle Farm R5 2026-06-27 2100m cond:Soft $200000 Ashley Morgan (8) 54.0kg [historical market price removed] 1st@1200m 1st@800m 1st@400m 1st@Settled. margin:0L starters:9 finish:1/9 RaceClass:[TATT GOLD CROWN] WinningTime:2:11.690 RaceL600:34.960 PF[Source: sportsbet_race_context L600 Delta: -1.2]"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0415",
+              "fact": "Eagle Farm R8 2026-06-06 2200m cond:Good $700000 Ben Thompson (6) 56.5kg [historical market price removed] 11th@1200m 13th@800m 14th@400m 13th@Settled. margin:7.38L starters:18 finish:14/18 RaceClass:[QLD OAKS] WinningTime:2:18.420 RaceL600:35.380 PF[Source: sportsbet_race_context L600 Delta: -0.78]"
+            },
+            {
+              "file": "R5.md",
+              "line": "R0023",
+              "fact": "Trainer: Todd Pollard | Jockey: William Pike | Weight: 56.0kg | Age: 4yoM | Rating: 92"
+            }
+          ]
+        },
+        {
+          "number": 8,
+          "name": "Vivy Air",
+          "assessment": "第三選；輕磅加級數可爭，但2000米係真正未知。",
+          "support": [
+            "Craven Plate第五先Panova；Coolmore第三輸0.62；今一檔55。"
+          ],
+          "risks": [
+            "35戰四勝；首次2000米，內檔後追或要等位。"
+          ],
+          "evidence": [
+            {
+              "file": "R5.md",
+              "line": "F0458",
+              "fact": "Randwick R6 2026-10-24 1800m cond:Good $750000 Regan Bayliss (2) 57.0kg [historical market price removed] 6th@1200m 6th@800m 8th@400m 6th@Settled. margin:2.49L starters:8 finish:5/8 RaceClass:[CRAVEN PLT] WinningTime:1:48.660 RaceL600:34.150 PF[Source: sportsbet_race_context L600 Delta: -1.37]"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0503",
+              "fact": "Rosehill Gardens R8 2026-03-14 1500m cond:Good $1000000 Reece Jones (9) 57.0kg [historical market price removed] 12th@800m 11th@400m 12th@Settled. margin:0.62L starters:14 finish:3/14 RaceClass:[COOLMORE] WinningTime:1:28.390 RaceL600:35.070 PF[Source: sportsbet_race_context L600 Delta: 0.12]"
+            },
+            {
+              "file": "R5.md",
+              "line": "R0025",
+              "fact": "8. Vivy Air (1)"
+            },
+            {
+              "file": "R5.md",
+              "line": "R0026",
+              "fact": "Trainer: Ciaron Maher | Jockey: Ethan Brown | Weight: 55.0kg | Age: 6yoM | Rating: 105"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0451",
+              "fact": "Track:     1: 0-1-0        Distance:  0: 0-0-0        Trk/Dist:  0: 0-0-0"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0449",
+              "fact": "Career:    35: 4-9-5       Last 10:   0x8035          Prize:     $3,084,185"
+            }
+          ]
+        },
+        {
+          "number": 9,
+          "name": "You Wahng",
+          "assessment": "後選；舊2000米入位支持加程，近況未足強。",
+          "support": [
+            "JRA Plate第二輸0.52；2200米MM Trophy亞。"
+          ],
+          "risks": [
+            "本季兩場輸逾五馬位，一年未勝；眼罩重戴效果未知。"
+          ],
+          "evidence": [
+            {
+              "file": "R5.md",
+              "line": "F0552",
+              "fact": "Randwick R6 2026-04-18 2000m cond:Good $250000 Tom Sherry (1) 53.5kg [historical market price removed] 5th@1200m 5th@800m 4th@400m 5th@Settled. margin:0.52L starters:13 finish:2/13 RaceClass:[JRA PLATE] WinningTime:2:02.940 RaceL600:34.750 PF[Source: sportsbet_race_context L600 Delta: -0.97]"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0567",
+              "fact": "Gold Coast R4 2026-01-17 2200m cond:Good $1000000 Tommy Berry (9) 56.0kg [historical market price removed] 9th@1200m 9th@800m 6th@400m 9th@Settled. margin:1.30L starters:15 finish:2/15 RaceClass:[MM TROPHY] WinningTime:2:13.500 RaceL600:36.310 PF[Source: sportsbet_race_context L600 Delta: -0.39]"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0522",
+              "fact": "Randwick R1 2026-10-17 1600m cond:Soft $160000 Tommy Berry (7) 55.5kg [historical market price removed] 8th@1200m 7th@800m 7th@400m 8th@Settled. margin:5.12L starters:9 finish:4/9 RaceClass:[BIG DANCE WC] WinningTime:1:34.930 RaceL600:35.150 PF[Source: sportsbet_race_context L600 Delta: -0.37]"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0527",
+              "fact": "Randwick R5 2026-10-03 1600m cond:Soft $160000 William Stanley (16) 59.5kg [historical market price removed] 17th@1200m 17th@800m 17th@400m 17th@Settled. margin:7.88L starters:17 finish:15/17 RaceClass:[BM94] WinningTime:1:35.500 RaceL600:36.280 PF[Source: sportsbet_race_context L600 Delta: 0.76]"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0519",
+              "fact": "Season:    -               12 Month:  10: 0-2-0"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0511",
+              "fact": "SportsbetGear: Changes: Blinkers AGAIN, Winkers OFF AGAIN"
+            }
+          ]
+        },
+        {
+          "number": 10,
+          "name": "Jenni's Meadow",
+          "assessment": "第八選；加程後改善，仍偏位置馬。",
+          "support": [
+            "Tesio搶前第五僅輸0.69，2000米十戰六次入位。"
+          ],
+          "risks": [
+            "該途程未勝；今55比上次54多，與多匹前速爭位。"
+          ],
+          "evidence": [
+            {
+              "file": "R5.md",
+              "line": "F0585",
+              "fact": "Flemington R9 2026-10-24 2040m cond:Good $300000 Beau Mertens (7) 54.0kg [historical market price removed] 5th@1200m 2nd@800m 1st@400m 2nd@Settled. margin:0.69L starters:15 finish:5/15 RaceClass:[TESIO STKS] WinningTime:2:06.900 RaceL600:35.060 PF[Source: sportsbet_race_context L600 Delta: -0.387]"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0578",
+              "fact": "Track:     11: 1-1-1       Distance:  10: 0-4-2       Trk/Dist:  4: 0-1-1"
+            },
+            {
+              "file": "R5.md",
+              "line": "R0033",
+              "fact": "Trainer: Ciaron Maher | Jockey: Declan Bates | Weight: 55.0kg | Age: 5yoM | Rating: 88"
+            }
+          ]
+        },
+        {
+          "number": 11,
+          "name": "Sun Worshipper",
+          "assessment": "列後；同場差距近但長期近況不足。",
+          "support": [
+            "Tesio第六僅輸1.04；Gold Crown曾亞。"
+          ],
+          "risks": [
+            "最近六仗未入前三；37戰五勝。"
+          ],
+          "evidence": [
+            {
+              "file": "R5.md",
+              "line": "F0649",
+              "fact": "Flemington R9 2026-10-24 2040m cond:Good $300000 Luke Currie (1) 54.0kg [historical market price removed] 7th@1200m 7th@800m 8th@400m 7th@Settled. margin:1.04L starters:15 finish:6/15 RaceClass:[TESIO STKS] WinningTime:2:06.900 RaceL600:35.060 PF[Source: sportsbet_race_context L600 Delta: -0.387]"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0679",
+              "fact": "Eagle Farm R5 2026-06-27 2100m cond:Soft $200000 Ben Thompson (6) 56.5kg [historical market price removed] 9th@1200m 9th@800m 5th@400m 9th@Settled. margin:1.47L starters:9 finish:2/9 RaceClass:[TATT GOLD CROWN] WinningTime:2:11.690 RaceL600:34.960 PF[Source: sportsbet_race_context L600 Delta: -1.2]"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0640",
+              "fact": "Career:    37: 5-5-3       Last 10:   488956          Prize:     $503,125"
+            }
+          ]
+        },
+        {
+          "number": 12,
+          "name": "Sun Gift",
+          "assessment": "列尾二；專長距離但剛跑重地再出有體力疑問。",
+          "support": [
+            "2000米十三戰四勝五亞；10月2025米亞。"
+          ],
+          "risks": [
+            "11月4日重地第六輸7.6，三日再出；Tesio只第七。"
+          ],
+          "evidence": [
+            {
+              "file": "R5.md",
+              "line": "F0705",
+              "fact": "Track:     3: 1-0-0        Distance:  13: 4-5-0       Trk/Dist:  3: 1-0-0"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0722",
+              "fact": "Cranbourne R8 2026-10-09 2025m cond:Good $100000 Michael Dee (2) 59.0kg [historical market price removed] 8th@1200m 8th@800m 5th@400m 8th@Settled. margin:1.00L starters:11 finish:2/11 RaceClass:[F&M HCP] WinningTime:2:04.990 RaceL600:37.420 PF[Source: sportsbet_race_context L600 Delta: 0.665]"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0712",
+              "fact": "Kyneton R8 2026-11-04 2006m cond:Heavy $125000 Billy Egan (2) 54.0kg [historical market price removed] 6th@1200m 6th@800m 5th@400m 6th@Settled. margin:7.60L starters:8 finish:6/8 RaceClass:[KYNE CUP] WinningTime:2:11.180 RaceL600:38.670 PF[Source: sportsbet_race_context L600 Delta: 2.17]"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0717",
+              "fact": "Flemington R9 2026-10-24 2040m cond:Good $300000 Michael Dee (12) 54.0kg [historical market price removed] 12th@1200m 12th@800m 11th@400m 13th@Settled. margin:1.54L starters:15 finish:7/15 RaceClass:[TESIO STKS] WinningTime:2:06.900 RaceL600:35.060 PF[Source: sportsbet_race_context L600 Delta: -0.387]"
+            }
+          ]
+        },
+        {
+          "number": 13,
+          "name": "Perfect Ten",
+          "assessment": "中後選；內檔有利但2000米尚未證。",
+          "support": [
+            "Lady's Day Vase第三；全年八戰四勝兩亞一季。"
+          ],
+          "risks": [
+            "Tesio前置退第十，好地勝績少於軟地。"
+          ],
+          "evidence": [
+            {
+              "file": "R5.md",
+              "line": "F0780",
+              "fact": "Caulfield R3 2026-10-10 1600m cond:Good $240000 Craig Williams (5) 56.0kg [historical market price removed] 4th@1200m 4th@800m 6th@400m 3rd@Settled. margin:4.75L starters:12 finish:3/12 RaceClass:[L/DAY VASE] WinningTime:1:34.930 RaceL600:34.860 PF[Source: sportsbet_race_context L600 Delta: -0.89]"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0772",
+              "fact": "Season:    -               12 Month:  8: 4-2-1"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0775",
+              "fact": "Flemington R9 2026-10-24 2040m cond:Good $300000 Craig Williams (8) 54.0kg [historical market price removed] 2nd@1200m 3rd@800m 5th@400m 3rd@Settled. margin:3.20L starters:15 finish:10/15 RaceClass:[TESIO STKS] WinningTime:2:06.900 RaceL600:35.060 PF[Source: sportsbet_race_context L600 Delta: -0.387]"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0769",
+              "fact": "Firm:      0: 0-0-0        Good:      7: 1-1-1        Soft:      7: 4-1-2"
+            },
+            {
+              "file": "R5.md",
+              "line": "R0041",
+              "fact": "13. Perfect Ten (3)"
+            }
+          ]
+        },
+        {
+          "number": 14,
+          "name": "Pillow Fight",
+          "assessment": "後選；可能領放但加程存疑。",
+          "support": [
+            "Angst領放亞，曾先Vivy Air。"
+          ],
+          "risks": [
+            "最新1600米領放輸8.85；只勝1250米、未試2000米，今再短休。"
+          ],
+          "evidence": [
+            {
+              "file": "R5.md",
+              "line": "F0843",
+              "fact": "Randwick R3 2026-10-17 1600m cond:Soft $250000 Jamie Melham (2) 54.0kg [historical market price removed] 1st@1200m 1st@800m 1st@400m 1st@Settled. margin:0.74L starters:10 finish:2/10 RaceClass:[ANGST] WinningTime:1:35.400 RaceL600:35.300 PF[Source: sportsbet_race_context L600 Delta: -0.22]"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0838",
+              "fact": "Flemington R8 2026-10-31 1600m cond:Good $1000000 William Pike (3) 56.5kg [historical market price removed] 1st@1200m 1st@800m 1st@400m 1st@Settled. margin:8.85L starters:11 finish:6/11 RaceClass:[EMPIRE ROSE] WinningTime:1:35.060 RaceL600:34.500 PF[Source: sportsbet_race_context L600 Delta: -0.28]"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0831",
+              "fact": "Track:     2: 0-1-0        Distance:  0: 0-0-0        Trk/Dist:  0: 0-0-0"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0837",
+              "fact": "WinRange:  1250m           Turf:      12: 1-4-0       12moRec:   9: 0-4-0"
+            }
+          ]
+        },
+        {
+          "number": 15,
+          "name": "Ocean Bay",
+          "assessment": "第四選；近況持續上升、同程可靠。",
+          "support": [
+            "近六戰111213，Tesio第三僅輸0.61、2025米先Sun Gift。"
+          ],
+          "risks": [
+            "十七檔較上次二檔難跑；Soverato今增磅較多但仍有內檔優勢。"
+          ],
+          "evidence": [
+            {
+              "file": "R5.md",
+              "line": "F0892",
+              "fact": "Career:    12: 5-1-1       Last 10:   111213          Prize:     $188,793"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0901",
+              "fact": "Flemington R9 2026-10-24 2040m cond:Good $300000 Daniel Stackhouse (2) 54.0kg [historical market price removed] 4th@1200m 5th@800m 3rd@400m 5th@Settled. margin:0.61L starters:15 finish:3/15 RaceClass:[TESIO STKS] WinningTime:2:06.900 RaceL600:35.060 PF[Source: sportsbet_race_context L600 Delta: -0.387]"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0906",
+              "fact": "Cranbourne R8 2026-10-09 2025m cond:Good $100000 Daniel Stackhouse (8) 55.0kg [historical market price removed] 5th@1200m 5th@800m 3rd@400m 4th@Settled. margin:0L starters:11 finish:1/11 RaceClass:[F&M HCP] WinningTime:2:04.990 RaceL600:37.420 PF[Source: sportsbet_race_context L600 Delta: 0.665]"
+            },
+            {
+              "file": "R5.md",
+              "line": "R0047",
+              "fact": "15. Ocean Bay (17)"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0205",
+              "fact": "Flemington R9 2026-10-24 2040m cond:Good $300000 Damian Lane (6) 54.0kg [historical market price removed] 6th@1200m 6th@800m 6th@400m 6th@Settled. margin:0L starters:15 finish:1/15 RaceClass:[TESIO STKS] WinningTime:2:06.900 RaceL600:35.060 PF[Source: sportsbet_race_context L600 Delta: -0.387]"
+            }
+          ]
+        },
+        {
+          "number": 17,
+          "name": "Classic Gem",
+          "assessment": "末選；舊Oaks表現可提醒勿完全排除，但最新差距大。",
+          "support": [
+            "ATC Oaks第四僅輸1.64。"
+          ],
+          "risks": [
+            "Tesio第14、2000米四戰未入位；只一場勝。"
+          ],
+          "evidence": [
+            {
+              "file": "R5.md",
+              "line": "F1000",
+              "fact": "Randwick R5 2026-04-11 2400m cond:Good $1000000 Damian Lane (9) 56.0kg [historical market price removed] 8th@1200m 9th@800m 7th@400m 7th@Settled. margin:1.64L starters:12 finish:4/12 RaceClass:[ATC OAKS] WinningTime:2:28.620 RaceL600:36.200 PF[Source: sportsbet_race_context L600 Delta: 0.48]"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0965",
+              "fact": "Flemington R9 2026-10-24 2040m cond:Good $300000 William Pike (14) 54.0kg [historical market price removed] 15th@1200m 13th@800m 13th@400m 14th@Settled. margin:4.56L starters:15 finish:14/15 RaceClass:[TESIO STKS] WinningTime:2:06.900 RaceL600:35.060 PF[Source: sportsbet_race_context L600 Delta: -0.387]"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0958",
+              "fact": "Track:     4: 0-0-1        Distance:  4: 0-0-0        Trk/Dist:  2: 0-0-0"
+            },
+            {
+              "file": "R5.md",
+              "line": "F0956",
+              "fact": "Career:    13: 1-2-1       Last 10:   44x150          Prize:     $196,145"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "race": 6,
+      "ranking": [
+        6,
+        7,
+        4,
+        3,
+        8,
+        11,
+        9,
+        2,
+        10,
+        12
+      ],
+      "top4": [
+        6,
+        7,
+        4,
+        3
+      ],
+      "top2": [
+        6,
+        7
+      ],
+      "confidence": "medium",
+      "pace_scenarios": [
+        {
+          "scenario": "Mazu、Caballus及Charm Stone令步速持續",
+          "implication": "Tempted、Joliestar及Headwall可利用跟跑/後追；Caballus須避免與Mazu鬥快。",
+          "evidence": [
+            "R6.md:F0017",
+            "R6.md:F0143",
+            "R6.md:F0338",
+            "R6.md:F0207"
+          ]
+        },
+        {
+          "scenario": "前面節奏平和，Caballus獲順風跑線",
+          "implication": "本場同程勝績可縮小與兩匹牝馬距離；仍維持Tempted首選，因近況直接比較較強。",
+          "evidence": [
+            "R6.md:F0178",
+            "R6.md:F0207",
+            "R6.md:F0212"
+          ]
+        }
+      ],
+      "key_comparisons": [
+        "Tempted兩次近期直接勝Headwall且Everest先Joliestar，首選有同場證據。",
+        "Headwall最新先Caballus0.4馬位但輕2公斤，今同磅，加上Caballus本場兩勝，鎖Caballus在前；此為判斷而非精確磅值換算。"
+      ],
+      "missing_information": [
+        "當日風、場地跑線及臨場狀態未知。",
+        "無完整個體分段及可核實受阻報告；Stewards空白不代表冇受阻。",
+        "現行磅按Racecard；歷史行是來源記錄負磅，未明示減磅時不假定已扣，也不對不明現役claim自行扣重。"
+      ],
+      "data_quality_flags": [
+        "Geegees Mistruth F0504 NON_STANDARD -9/13，不能視為正常負名次或普通第九。"
+      ],
+      "runner_assessments": [
+        {
+          "number": 2,
+          "name": "Mazu",
+          "assessment": "第八選；可帶步速，但對今場最強者有近期落敗證據。",
+          "support": [
+            "McEwen本場領放亞僅輸0.02，The Shorts勝Joliestar。"
+          ],
+          "risks": [
+            "Premiere第十輸Tempted6.25，與Caballus同放可能耗力。"
+          ],
+          "evidence": [
+            {
+              "file": "R6.md",
+              "line": "F0017",
+              "fact": "Flemington R5 2026-10-24 1200m cond:Good $300000 Rachel King (8) 58.5kg [historical market price removed] 1st@800m 1st@400m. margin:0.02L starters:8 finish:2/8 RaceClass:[MCEWEN] WinningTime:1:09.800 RaceL600:34.380 PF[Source: sportsbet_race_context L600 Delta: 0.32]"
+            },
+            {
+              "file": "R6.md",
+              "line": "F0027",
+              "fact": "Randwick R9 2026-09-19 1100m cond:Good $1000000 Rachel King (1) 56.0kg [historical market price removed] 1st@800m 1st@400m. margin:0L starters:11 finish:1/11 RaceClass:[THE SHORTS] WinningTime:1:02.420 RaceL600:33.270 PF[Source: sportsbet_race_context L600 Delta: -1.2]"
+            },
+            {
+              "file": "R6.md",
+              "line": "F0022",
+              "fact": "Randwick R9 2026-10-03 1200m cond:Soft $1000000 Rachel King (12) 58.5kg [historical market price removed] 1st@800m 1st@400m. margin:6.25L starters:12 finish:10/12 RaceClass:[PREMIERE] WinningTime:1:09.390 RaceL600:34.260 PF[Source: sportsbet_race_context L600 Delta: -0.21]"
+            },
+            {
+              "file": "R6.md",
+              "line": "F0143",
+              "fact": "Randwick R7 2026-10-31 1300m cond:Good $3000000 Tim Clark (1) 58.5kg [historical market price removed] 1st@800m 1st@400m. margin:1.19L starters:15 finish:3/15 RaceClass:[RUSSELL BALDING] WinningTime:1:14.050 RaceL600:33.590 PF[Source: sportsbet_race_context L600 Delta: -1.1]"
+            }
+          ]
+        },
+        {
+          "number": 3,
+          "name": "Headwall",
+          "assessment": "第四選；穩定頂級接近，但磅位與短休令我揀Caballus略先。",
+          "support": [
+            "Everest第四輸0.71，最新1300米第二先Caballus。"
+          ],
+          "risks": [
+            "最新比Caballus輕2公斤、今同磅；一星期再出，1200米未勝。"
+          ],
+          "evidence": [
+            {
+              "file": "R6.md",
+              "line": "F0085",
+              "fact": "Randwick R7 2026-10-17 1200m cond:Soft $20000000 Kerrin McEvoy (6) 58.5kg [historical market price removed] 9th@800m 9th@400m. margin:0.71L starters:12 finish:4/12 RaceClass:[EVEREST] WinningTime:1:08.210 RaceL600:34.280 PF[Source: sportsbet_race_context L600 Delta: -0.19]"
+            },
+            {
+              "file": "R6.md",
+              "line": "F0080",
+              "fact": "Randwick R7 2026-10-31 1300m cond:Good $3000000 Chad Schofield (3) 56.5kg [historical market price removed] 6th@800m 9th@400m. margin:0.79L starters:15 finish:2/15 RaceClass:[RUSSELL BALDING] WinningTime:1:14.050 RaceL600:33.590 PF[Source: sportsbet_race_context L600 Delta: -1.1]"
+            },
+            {
+              "file": "R6.md",
+              "line": "F0081",
+              "fact": "1-Pericles (58.5kg), 2-Headwall (56.5kg) 0.79L, 3-Caballus (58.5kg) 1.19L"
+            },
+            {
+              "file": "R6.md",
+              "line": "R0008",
+              "fact": "Trainer: Matthew Smith | Jockey: Ethan Brown | Weight: 58.5kg | Age: 7yoG | Rating: 114"
+            },
+            {
+              "file": "R6.md",
+              "line": "R0011",
+              "fact": "Trainer: Bjorn Baker | Jockey: Blake Shinn | Weight: 58.5kg | Age: 6yoG | Rating: 113"
+            },
+            {
+              "file": "R6.md",
+              "line": "F0073",
+              "fact": "Track:     2: 0-2-0        Distance:  5: 0-3-1        Trk/Dist:  1: 0-1-0"
+            }
+          ]
+        },
+        {
+          "number": 4,
+          "name": "Caballus",
+          "assessment": "第三選；直路同程勝績及最新復甦重要。",
+          "support": [
+            "Newmarket本場1200米勝；Russell Balding領放第三輸1.19。"
+          ],
+          "risks": [
+            "今58.5比Newmarket55多；Everest及Premiere均落後Tempted。"
+          ],
+          "evidence": [
+            {
+              "file": "R6.md",
+              "line": "F0178",
+              "fact": "Flemington R9 2026-03-07 1200m cond:Good $2000000 Craig Newitt (1) 55.0kg [historical market price removed] 1st@800m 1st@400m. margin:0L starters:14 finish:1/14 RaceClass:[NEWMARKET] WinningTime:1:08.970 RaceL600:33.220 PF[Source: sportsbet_race_context L600 Delta: -0.84]"
+            },
+            {
+              "file": "R6.md",
+              "line": "F0143",
+              "fact": "Randwick R7 2026-10-31 1300m cond:Good $3000000 Tim Clark (1) 58.5kg [historical market price removed] 1st@800m 1st@400m. margin:1.19L starters:15 finish:3/15 RaceClass:[RUSSELL BALDING] WinningTime:1:14.050 RaceL600:33.590 PF[Source: sportsbet_race_context L600 Delta: -1.1]"
+            },
+            {
+              "file": "R6.md",
+              "line": "R0011",
+              "fact": "Trainer: Bjorn Baker | Jockey: Blake Shinn | Weight: 58.5kg | Age: 6yoG | Rating: 113"
+            },
+            {
+              "file": "R6.md",
+              "line": "F0148",
+              "fact": "Randwick R7 2026-10-17 1200m cond:Soft $20000000 Tim Clark (10) 58.5kg [historical market price removed] 7th@800m 8th@400m. margin:2.47L starters:12 finish:7/12 RaceClass:[EVEREST] WinningTime:1:08.210 RaceL600:34.280 PF[Source: sportsbet_race_context L600 Delta: -0.19]"
+            },
+            {
+              "file": "R6.md",
+              "line": "F0153",
+              "fact": "Randwick R9 2026-10-03 1200m cond:Soft $1000000 Jason Collett (6) 58.5kg [historical market price removed] 5th@800m 4th@400m. margin:3.86L starters:12 finish:5/12 RaceClass:[PREMIERE] WinningTime:1:09.390 RaceL600:34.260 PF[Source: sportsbet_race_context L600 Delta: -0.21]"
+            }
+          ]
+        },
+        {
+          "number": 6,
+          "name": "Tempted",
+          "assessment": "首選；近期對主要對手直接勝出證據最完整。",
+          "support": [
+            "Concorde、Premiere、Everest三連勝，近十二月六戰全勝。"
+          ],
+          "risks": [
+            "未跑Flemington，Everest贏距只0.23，首次直路及跑線仍有風險。"
+          ],
+          "evidence": [
+            {
+              "file": "R6.md",
+              "line": "F0222",
+              "fact": "Randwick R8 2026-09-05 1000m cond:Good $1000000 Chad Schofield (7) 58.0kg [historical market price removed] 8th@800m 9th@400m. margin:0L starters:12 finish:1/12 RaceClass:[CONCORDE] WinningTime:55.600 RaceL600:32.650 PF[Source: sportsbet_race_context L600 Delta: -1.09]"
+            },
+            {
+              "file": "R6.md",
+              "line": "F0212",
+              "fact": "Randwick R9 2026-10-03 1200m cond:Soft $1000000 Chad Schofield (10) 56.5kg [historical market price removed] 9th@800m 10th@400m. margin:0L starters:12 finish:1/12 RaceClass:[PREMIERE] WinningTime:1:09.390 RaceL600:34.260 PF[Source: sportsbet_race_context L600 Delta: -0.21]"
+            },
+            {
+              "file": "R6.md",
+              "line": "F0207",
+              "fact": "Randwick R7 2026-10-17 1200m cond:Soft $20000000 Chad Schofield (1) 56.5kg [historical market price removed] 5th@800m 3rd@400m. margin:0L starters:12 finish:1/12 RaceClass:[EVEREST] WinningTime:1:08.210 RaceL600:34.280 PF[Source: sportsbet_race_context L600 Delta: -0.19]"
+            },
+            {
+              "file": "R6.md",
+              "line": "F0204",
+              "fact": "Season:    -               12 Month:  6: 6-0-0"
+            },
+            {
+              "file": "R6.md",
+              "line": "F0200",
+              "fact": "Track:     0: 0-0-0        Distance:  10: 7-1-1       Trk/Dist:  0: 0-0-0"
+            }
+          ]
+        },
+        {
+          "number": 7,
+          "name": "Joliestar",
+          "assessment": "次選；高級1200米成績穩定且有本場經驗。",
+          "support": [
+            "Everest第三只輸Tempted0.58；TJ Smith勝，本場三戰全部入位。"
+          ],
+          "risks": [
+            "本季兩戰均未勝；未有證據可確定反先Tempted。"
+          ],
+          "evidence": [
+            {
+              "file": "R6.md",
+              "line": "F0270",
+              "fact": "Randwick R7 2026-10-17 1200m cond:Soft $20000000 James McDonald (5) 56.5kg [historical market price removed] 8th@800m 7th@400m. margin:0.58L starters:12 finish:3/12 RaceClass:[EVEREST] WinningTime:1:08.210 RaceL600:34.280 PF[Source: sportsbet_race_context L600 Delta: -0.19]"
+            },
+            {
+              "file": "R6.md",
+              "line": "F0310",
+              "fact": "Randwick R7 2026-04-04 1200m cond:Soft $3000000 James McDonald (5) 56.5kg [historical market price removed] 4th@800m 4th@400m. margin:0L starters:9 finish:1/9 RaceClass:[T J SMITH] WinningTime:1:09.580 RaceL600:34.260 PF[Source: sportsbet_race_context L600 Delta: -0.21]"
+            },
+            {
+              "file": "R6.md",
+              "line": "F0263",
+              "fact": "Track:     3: 1-1-1        Distance:  14: 6-0-5       Trk/Dist:  2: 1-0-1"
+            },
+            {
+              "file": "R6.md",
+              "line": "F0280",
+              "fact": "Randwick R9 2026-09-19 1100m cond:Good $1000000 James McDonald (10) 56.0kg [historical market price removed] 5th@800m 4th@400m. margin:0.32L starters:11 finish:2/11 RaceClass:[THE SHORTS] WinningTime:1:02.420 RaceL600:33.270 PF[Source: sportsbet_race_context L600 Delta: -1.2]"
+            }
+          ]
+        },
+        {
+          "number": 8,
+          "name": "Charm Stone",
+          "assessment": "第五選，近期G1入位兼可跟前。",
+          "support": [
+            "Manikato第三輸1；Sydney Stakes第四輸1.69。"
+          ],
+          "risks": [
+            "未參與Everest，跨組比較不確定；最近一年四戰未勝。"
+          ],
+          "evidence": [
+            {
+              "file": "R6.md",
+              "line": "F0338",
+              "fact": "Caulfield R8 2026-09-27 1200m cond:Good $2000000 Damian Lane (11) 56.5kg [historical market price removed] 2nd@800m 2nd@400m. margin:1.00L starters:13 finish:3/13 RaceClass:[MANIKATO] WinningTime:1:08.240 RaceL600:33.650 PF[Source: sportsbet_race_context L600 Delta: -1.19]"
+            },
+            {
+              "file": "R6.md",
+              "line": "F0333",
+              "fact": "Randwick R6 2026-10-17 1200m cond:Soft $2000000 Chad Schofield (11) 56.5kg [historical market price removed] 3rd@800m 3rd@400m. margin:1.69L starters:16 finish:4/16 RaceClass:[SYDNEY STKS] WinningTime:1:09.480 RaceL600:34.500 PF[Source: sportsbet_race_context L600 Delta: 0.03]"
+            },
+            {
+              "file": "R6.md",
+              "line": "F0330",
+              "fact": "Season:    -               12 Month:  4: 0-0-2"
+            }
+          ]
+        },
+        {
+          "number": 9,
+          "name": "Skybird",
+          "assessment": "第七選，本場可靠可爭四席。",
+          "support": [
+            "Gilgai本場勝；本場四戰兩勝一亞一季。"
+          ],
+          "risks": [
+            "Sydney Stakes第五略後Charm Stone；Gilgai負55今56.5。"
+          ],
+          "evidence": [
+            {
+              "file": "R6.md",
+              "line": "F0401",
+              "fact": "Flemington R9 2026-10-03 1200m cond:Heavy $300000 Ben Melham (2) 55.0kg [historical market price removed] 7th@800m 7th@400m. margin:0L starters:10 finish:1/10 RaceClass:[GILGAI] WinningTime:1:10.450 RaceL600:34.960 PF[Source: sportsbet_race_context L600 Delta: 0.9]"
+            },
+            {
+              "file": "R6.md",
+              "line": "F0389",
+              "fact": "Track:     4: 2-1-1        Distance:  10: 3-1-1       Trk/Dist:  2: 1-1-0"
+            },
+            {
+              "file": "R6.md",
+              "line": "F0396",
+              "fact": "Randwick R6 2026-10-17 1200m cond:Soft $2000000 Ben Melham (15) 56.5kg [historical market price removed] 14th@800m 15th@400m. margin:1.88L starters:16 finish:5/16 RaceClass:[SYDNEY STKS] WinningTime:1:09.480 RaceL600:34.500 PF[Source: sportsbet_race_context L600 Delta: 0.03]"
+            },
+            {
+              "file": "R6.md",
+              "line": "R0024",
+              "fact": "Trainer: Mitchell Freedman | Jockey: Ben Melham | Weight: 56.5kg | Age: 6yoM | Rating: 111"
+            }
+          ]
+        },
+        {
+          "number": 10,
+          "name": "Geegees Mistruth",
+          "assessment": "第九選，最新反彈仍需升級。",
+          "support": [
+            "Begonia Belle由後追亞輸0.5；Sangster曾勝Charm Stone。"
+          ],
+          "risks": [
+            "最新對手較弱，一星期再出；Manikato先前不及Charm Stone。"
+          ],
+          "evidence": [
+            {
+              "file": "R6.md",
+              "line": "F0459",
+              "fact": "Flemington R9 2026-10-31 1100m cond:Good $240000 William Pike (13) 59.0kg [historical market price removed] 11th@800m 15th@400m. margin:0.50L starters:16 finish:2/16 RaceClass:[BEGONIA BELLE] WinningTime:1:03.380 RaceL600:34.110 PF[Source: sportsbet_race_context L600 Delta: 0.47]"
+            },
+            {
+              "file": "R6.md",
+              "line": "F0484",
+              "fact": "Morphettville R8 2026-04-25 1200m cond:Good $1000000 Jordan Childs (5) 56.5kg [historical market price removed] 9th@800m 9th@400m. margin:0L starters:13 finish:1/13 RaceClass:[SANGSTER] WinningTime:1:10.030 RaceL600:34.200 PF[Source: sportsbet_race_context L600 Delta: -0.37]"
+            },
+            {
+              "file": "R6.md",
+              "line": "F0469",
+              "fact": "Caulfield R8 2026-09-27 1200m cond:Good $2000000 Blake Shinn (1) 56.5kg [historical market price removed] 7th@800m 7th@400m. margin:2.25L starters:13 finish:5/13 RaceClass:[MANIKATO] WinningTime:1:08.240 RaceL600:33.650 PF[Source: sportsbet_race_context L600 Delta: -1.19]"
+            }
+          ]
+        },
+        {
+          "number": 11,
+          "name": "Point Barrow",
+          "assessment": "第六選，上升快、1200米勝率高。",
+          "support": [
+            "How Now與Northwood Plume連勝，1200米六戰四勝。"
+          ],
+          "risks": [
+            "主要牝馬賽轉頂級開放賽；Sangster曾落後Charm Stone及Geegees Mistruth。"
+          ],
+          "evidence": [
+            {
+              "file": "R6.md",
+              "line": "F0532",
+              "fact": "Caulfield R6 2026-09-19 1200m cond:Good $200000 Mark Zahra (9) 57.0kg [historical market price removed] 9th@800m 8th@400m. margin:0L starters:10 finish:1/10 RaceClass:[HOW NOW] WinningTime:1:08.810 RaceL600:34.420 PF[Source: sportsbet_race_context L600 Delta: -0.42]"
+            },
+            {
+              "file": "R6.md",
+              "line": "F0527",
+              "fact": "Caulfield R5 2026-10-10 1200m cond:Good $240000 Mark Zahra (11) 58.0kg [historical market price removed] 11th@800m 10th@400m. margin:0L starters:11 finish:1/11 RaceClass:[NORTHWOOD PLUME] WinningTime:1:09.670 RaceL600:34.200 PF[Source: sportsbet_race_context L600 Delta: -0.64]"
+            },
+            {
+              "file": "R6.md",
+              "line": "F0515",
+              "fact": "Track:     1: 1-0-0        Distance:  6: 4-0-1        Trk/Dist:  0: 0-0-0"
+            },
+            {
+              "file": "R6.md",
+              "line": "F0552",
+              "fact": "Morphettville R8 2026-04-25 1200m cond:Good $1000000 Daniel Stackhouse (13) 54.5kg [historical market price removed] 13th@800m 12th@400m. margin:0.66L starters:13 finish:5/13 RaceClass:[SANGSTER] WinningTime:1:10.030 RaceL600:34.200 PF[Source: sportsbet_race_context L600 Delta: -0.37]"
+            }
+          ]
+        },
+        {
+          "number": 12,
+          "name": "Plaintiff",
+          "assessment": "末選；有潛力但近況及對手級數未足。",
+          "support": [
+            "PJ Bell1200米勝，Sheraco僅輸0.86。"
+          ],
+          "risks": [
+            "Premiere第九輸Tempted4.48；首次本場，最新1300米第八。"
+          ],
+          "evidence": [
+            {
+              "file": "R6.md",
+              "line": "F0616",
+              "fact": "Randwick R10 2026-04-04 1200m cond:Soft $250000 Jordan Childs (17) 55.0kg [historical market price removed] 17th@800m 16th@400m. margin:0L starters:17 finish:1/17 RaceClass:[P J BELL] WinningTime:1:10.500 RaceL600:34.440 PF[Source: sportsbet_race_context L600 Delta: -0.03]"
+            },
+            {
+              "file": "R6.md",
+              "line": "F0596",
+              "fact": "Rosehill Gardens R7 2026-09-12 1200m cond:Good $300000 Chad Schofield (8) 55.0kg [historical market price removed] 8th@800m 8th@400m. margin:0.86L starters:8 finish:4/8 RaceClass:[SHERACO] WinningTime:1:08.850 RaceL600:33.860 PF[Source: sportsbet_race_context L600 Delta: -0.8]"
+            },
+            {
+              "file": "R6.md",
+              "line": "F0591",
+              "fact": "Randwick R9 2026-10-03 1200m cond:Soft $1000000 Tim Clark (2) 56.5kg [historical market price removed] 7th@800m 5th@400m. margin:4.48L starters:12 finish:9/12 RaceClass:[PREMIERE] WinningTime:1:09.390 RaceL600:34.260 PF[Source: sportsbet_race_context L600 Delta: -0.21]"
+            },
+            {
+              "file": "R6.md",
+              "line": "F0579",
+              "fact": "Track:     0: 0-0-0        Distance:  5: 3-0-0        Trk/Dist:  0: 0-0-0"
+            },
+            {
+              "file": "R6.md",
+              "line": "F0586",
+              "fact": "Randwick R8 2026-10-17 1300m cond:Soft $1000000 Chad Schofield (9) 54.5kg [historical market price removed] 8th@800m 7th@400m. margin:4.05L starters:14 finish:8/14 RaceClass:[SILVER EAGLE] WinningTime:1:15.270 RaceL600:34.880 PF[Source: sportsbet_race_context L600 Delta: 0.19]"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "race": 7,
+      "ranking": [
+        8,
+        2,
+        1,
+        3,
+        4,
+        5,
+        9,
+        7
+      ],
+      "top4": [
+        8,
+        2,
+        1,
+        3
+      ],
+      "top2": [
+        8,
+        2
+      ],
+      "confidence": "medium",
+      "pace_scenarios": [
+        {
+          "scenario": "Lindermann領放，Autumn Glow跟前",
+          "implication": "三檔Lindermann掌速有利，但二檔Autumn Glow可貼近；後追馬怕慢步速。",
+          "evidence": [
+            "R7.md:F0080",
+            "R7.md:R0007",
+            "R7.md:R0023",
+            "R7.md:F0393"
+          ]
+        },
+        {
+          "scenario": "Autumn Glow提早施壓",
+          "implication": "Tom Kitten、Buckaroo追勢更有發揮；首選有領放及跟前兩種勝法。",
+          "evidence": [
+            "R7.md:F0398",
+            "R7.md:F0393",
+            "R7.md:F0017",
+            "R7.md:F0143"
+          ]
+        }
+      ],
+      "key_comparisons": [
+        "Autumn Glow近期一哩勝Ceolwulf及Aeliana，較Lindermann有利；承認Lindermann曾2000米先到。",
+        "Lindermann最新直接勝Tom Kitten，因此排先；Tom Kitten本場一哩勝保第三。"
+      ],
+      "missing_information": [
+        "當日風、跑線及臨場狀態未知；缺個體分段及可核實受阻資料。",
+        "現行磅按Racecard；歷史行是來源記錄負磅，未明示減磅時不假定已扣，也不對不明現役claim自行扣重。"
+      ],
+      "data_quality_flags": [
+        "Pounding Grafton Cup -3/11屬NON_STANDARD，不按季軍計。",
+        "El Soleado F0370標800米卻帶1600米時間與15位/10駒，疑串欄，不用作能力證據。"
+      ],
+      "runner_assessments": [
+        {
+          "number": 1,
+          "name": "Tom Kitten",
+          "assessment": "第三選；近況回勇，本場一哩有頂級勝績。",
+          "support": [
+            "Craven Plate亞、Epsom季；All-Star Mile同場同程勝。"
+          ],
+          "risks": [
+            "最近同磅被Lindermann擊敗0.97；眼罩重戴未證有助。"
+          ],
+          "evidence": [
+            {
+              "file": "R7.md",
+              "line": "F0017",
+              "fact": "Randwick R6 2026-10-24 1800m cond:Good $750000 Kerrin McEvoy (5) 59.0kg [historical market price removed] 5th@1200m 5th@800m 3rd@400m 5th@Settled. margin:0.97L starters:8 finish:2/8 RaceClass:[CRAVEN PLT] WinningTime:1:48.660 RaceL600:34.150 PF[Source: sportsbet_race_context L600 Delta: -1.37]"
+            },
+            {
+              "file": "R7.md",
+              "line": "F0022",
+              "fact": "Randwick R8 2026-10-03 1600m cond:Soft $1500000 Adam Hyeronimus (4) 57.5kg [historical market price removed] 6th@1200m 7th@800m 6th@400m 6th@Settled. margin:2.76L starters:16 finish:3/16 RaceClass:[EPSOM] WinningTime:1:35.220 RaceL600:35.600 PF[Source: sportsbet_race_context L600 Delta: 0.08]"
+            },
+            {
+              "file": "R7.md",
+              "line": "F0052",
+              "fact": "Flemington R7 2026-03-07 1600m cond:Good $2000000 Craig Williams (6) 59.0kg [historical market price removed] 3rd@1200m 3rd@800m 3rd@400m 3rd@Settled. margin:0L starters:9 finish:1/9 RaceClass:[ALL-STAR MILE] WinningTime:1:33.730 RaceL600:35.460 PF[Source: sportsbet_race_context L600 Delta: 0.68]"
+            },
+            {
+              "file": "R7.md",
+              "line": "F0006",
+              "fact": "SportsbetGear: Changes: Blinkers AGAIN"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "name": "Lindermann",
+          "assessment": "次選；狀態佳且可掌步速。",
+          "support": [
+            "Craven Plate領放勝Tom Kitten；Chelmsford1600米勝Ceolwulf。"
+          ],
+          "risks": [
+            "Underwood曾大敗；近期1400米對Autumn Glow大敗。"
+          ],
+          "evidence": [
+            {
+              "file": "R7.md",
+              "line": "F0080",
+              "fact": "Randwick R6 2026-10-24 1800m cond:Good $750000 Nash Rawiller (6) 59.0kg [historical market price removed] 1st@1200m 1st@800m 1st@400m 1st@Settled. margin:0L starters:8 finish:1/8 RaceClass:[CRAVEN PLT] WinningTime:1:48.660 RaceL600:34.150 PF[Source: sportsbet_race_context L600 Delta: -1.37]"
+            },
+            {
+              "file": "R7.md",
+              "line": "F0095",
+              "fact": "Randwick R9 2026-09-05 1600m cond:Good $300000 Nash Rawiller (8) 59.0kg [historical market price removed] 1st@1200m 1st@800m 1st@400m 1st@Settled. margin:0L starters:9 finish:1/9 RaceClass:[CHELMSFORD] WinningTime:1:35.600 RaceL600:33.440 PF[Source: sportsbet_race_context L600 Delta: -2.08]"
+            },
+            {
+              "file": "R7.md",
+              "line": "F0090",
+              "fact": "Caulfield R7 2026-09-19 1800m cond:Good $1000000 Blake Shinn (1) 59.0kg [historical market price removed] 1st@1200m 1st@800m 1st@400m 1st@Settled. margin:8.56L starters:8 finish:8/8 RaceClass:[UNDERWOOD] WinningTime:1:47.150 RaceL600:35.060 PF[Source: sportsbet_race_context L600 Delta: -0.84]"
+            },
+            {
+              "file": "R7.md",
+              "line": "F0100",
+              "fact": "Randwick R9 2026-08-22 1400m cond:Soft $1000000 Hugh Bowman (10) 59.0kg [historical market price removed] 2nd@800m 2nd@400m 2nd@Settled. margin:7.38L starters:11 finish:9/11 RaceClass:[WINX STKS] WinningTime:1:21.030 RaceL600:34.100 PF[Source: sportsbet_race_context L600 Delta: -1.01]"
+            },
+            {
+              "file": "R7.md",
+              "line": "F0101",
+              "fact": "1-Autumn Glow (57.0kg), 2-Sheza Alibi (56.5kg) 1.39L, 3-Gringotts (59.0kg) 3.05L"
+            }
+          ]
+        },
+        {
+          "number": 3,
+          "name": "Buckaroo",
+          "assessment": "第四選；最新本場一哩亞較次線馬可靠。",
+          "support": [
+            "Crystal Mile第二只輸0.5；Futurity曾亞。"
+          ],
+          "risks": [
+            "一年未勝；最新57今59，Turnbull大敗原因未知。"
+          ],
+          "evidence": [
+            {
+              "file": "R7.md",
+              "line": "F0143",
+              "fact": "Flemington R6 2026-10-24 1600m cond:Good $400000 James McDonald (3) 57.0kg [historical market price removed] 6th@1200m 7th@800m 7th@400m 6th@Settled. margin:0.50L starters:11 finish:2/11 RaceClass:[CRYSTL MILE] WinningTime:1:36.450 RaceL600:34.140 PF[Source: sportsbet_race_context L600 Delta: -0.64]"
+            },
+            {
+              "file": "R7.md",
+              "line": "F0188",
+              "fact": "Caulfield R7 2026-02-21 1400m cond:Good $750000 Jye McNeil (4) 59.0kg [historical market price removed] 7th@800m 7th@400m 7th@Settled. margin:0.75L starters:8 finish:2/8 RaceClass:[FUTURITY STAKES] WinningTime:1:22.610 RaceL600:34.640 PF[Source: sportsbet_race_context L600 Delta: -0.63]"
+            },
+            {
+              "file": "R7.md",
+              "line": "F0140",
+              "fact": "Season:    -               12 Month:  6: 0-2-0"
+            },
+            {
+              "file": "R7.md",
+              "line": "R0011",
+              "fact": "Trainer: Chris Waller | Jockey: Ben Melham | Weight: 59.0kg | Age: 8yoG | Rating: 113"
+            },
+            {
+              "file": "R7.md",
+              "line": "F0148",
+              "fact": "Flemington R8 2026-10-03 2000m cond:Heavy $750000 Jye McNeil (8) 55.0kg [historical market price removed] 10th@1200m 10th@800m 11th@400m 10th@Settled. margin:28.81L starters:13 finish:12/13 RaceClass:[TURNBULL] WinningTime:2:04.440 RaceL600:37.360 PF[Source: sportsbet_race_context L600 Delta: 1.95]"
+            }
+          ]
+        },
+        {
+          "number": 4,
+          "name": "Sepals",
+          "assessment": "第五選；一流1400米表現，一哩仍待證。",
+          "support": [
+            "Rupert Clarke及Stradbroke均第二。"
+          ],
+          "risks": [
+            "最新第15輸12.83；一哩兩戰未入位，蹄鐵變化效果未知。"
+          ],
+          "evidence": [
+            {
+              "file": "R7.md",
+              "line": "F0217",
+              "fact": "Caulfield R9 2026-09-19 1400m cond:Good $1000000 Ethan Brown (5) 56.5kg [historical market price removed] 4th@800m 4th@400m 4th@Settled. margin:0.75L starters:16 finish:2/16 RaceClass:[RUP CLARKE] WinningTime:1:21.290 RaceL600:34.120 PF[Source: sportsbet_race_context L600 Delta: -1.15]"
+            },
+            {
+              "file": "R7.md",
+              "line": "F0232",
+              "fact": "Eagle Farm R8 2026-06-13 1400m cond:Heavy $3000000 Tim Clark (17) 55.0kg [historical market price removed] 11th@800m 11th@400m 11th@Settled. margin:1.08L starters:18 finish:2/18 RaceClass:[STRADBROKE] WinningTime:1:23.810 RaceL600:36.090 PF[Source: sportsbet_race_context L600 Delta: 1.02]"
+            },
+            {
+              "file": "R7.md",
+              "line": "F0212",
+              "fact": "Rosehill Gardens R8 2026-10-10 1400m cond:Good $1500000 Jamie Mott (8) 58.0kg [historical market price removed] 15th@800m 12th@400m 15th@Settled. margin:12.83L starters:15 finish:15/15 RaceClass:[ALAN BROWN] WinningTime:1:22.240 RaceL600:34.600 PF[Source: sportsbet_race_context L600 Delta: -0.29]"
+            },
+            {
+              "file": "R7.md",
+              "line": "F0200",
+              "fact": "Track:     3: 1-0-0        Distance:  2: 0-0-0        Trk/Dist:  1: 0-0-0"
+            },
+            {
+              "file": "R7.md",
+              "line": "F0196",
+              "fact": "SportsbetGear: Changes: Standard Race Tips (Front) FIRST TIME, Standard Race Tips (Hind) FIRST TIME"
+            }
+          ]
+        },
+        {
+          "number": 5,
+          "name": "Pounding",
+          "assessment": "第六選；可爭位置但等磅較難。",
+          "support": [
+            "Coongy第四僅輸0.85；Feehan第三。"
+          ],
+          "risks": [
+            "一年十二戰未勝，Feehan只有六駒。"
+          ],
+          "evidence": [
+            {
+              "file": "R7.md",
+              "line": "F0270",
+              "fact": "Caulfield R7 2026-10-14 2000m cond:Good $240000 Luke Nolen (12) 59.0kg [historical market price removed] 12th@1200m 12th@800m 12th@400m 12th@Settled. margin:0.85L starters:12 finish:4/12 RaceClass:[COONGY] WinningTime:2:03.050 RaceL600:35.350 PF[Source: sportsbet_race_context L600 Delta: -0.55]"
+            },
+            {
+              "file": "R7.md",
+              "line": "F0275",
+              "fact": "Caulfield R5 2026-09-27 1600m cond:Good $500000 Luke Nolen (5) 59.0kg [historical market price removed] 6th@1200m 6th@800m 6th@400m 6th@Settled. margin:3.25L starters:6 finish:3/6 RaceClass:[FEEHAN] WinningTime:1:35.320 RaceL600:34.770 PF[Source: sportsbet_race_context L600 Delta: -0.98]"
+            },
+            {
+              "file": "R7.md",
+              "line": "F0267",
+              "fact": "Season:    -               12 Month:  12: 0-5-1"
+            }
+          ]
+        },
+        {
+          "number": 7,
+          "name": "El Soleado",
+          "assessment": "末選；本場往績好，但現況及等磅級數不足。",
+          "support": [
+            "本場1600米五戰勝及兩季。"
+          ],
+          "risks": [
+            "最近BM84第八，之前亦大敗；評分85與115級同負59。"
+          ],
+          "evidence": [
+            {
+              "file": "R7.md",
+              "line": "F0328",
+              "fact": "Track:     11: 2-1-3       Distance:  7: 2-0-3        Trk/Dist:  5: 1-0-2"
+            },
+            {
+              "file": "R7.md",
+              "line": "F0335",
+              "fact": "Geelong R8 2026-10-21 1200m cond:Good $75000 Liana Wood (8) 61.5kg [historical market price removed] 8th@800m 8th@400m. margin:4.85L starters:9 finish:8/9 RaceClass:[BM84] WinningTime:1:11.190 RaceL600:34.180 PF[Source: sportsbet_race_context L600 Delta: -0.77]"
+            },
+            {
+              "file": "R7.md",
+              "line": "F0360",
+              "fact": "Caulfield R8 2026-06-27 1400m cond:Soft $150000 Patrick Moloney (4) 54.0kg [historical market price removed] 10th@800m 11th@400m 11th@Settled. margin:23.98L starters:14 finish:13/14 RaceClass:[HCP] WinningTime:1:25.170 RaceL600:36.260 PF[Source: sportsbet_race_context L600 Delta: 0.99]"
+            },
+            {
+              "file": "R7.md",
+              "line": "F0365",
+              "fact": "Flemington R9 2026-06-06 1200m cond:Heavy $130000 Molly Bourke (5) 64.0kg [historical market price removed] 6th@800m 9th@400m. margin:18.31L starters:11 finish:11/11 RaceClass:[BM84] WinningTime:1:11.640 RaceL600:34.810 PF[Source: sportsbet_race_context L600 Delta: 0.75]"
+            },
+            {
+              "file": "R7.md",
+              "line": "R0021",
+              "fact": "Trainer: Jack Laing | Jockey: Blake Shinn | Weight: 59.0kg | Age: 7yoG | Rating: 85"
+            },
+            {
+              "file": "R7.md",
+              "line": "R0004",
+              "fact": "Trainer: Anthony & Sam Freedman | Jockey: Mark Zahra | Weight: 59.0kg | Age: 6yoG | Rating: 115"
+            }
+          ]
+        },
+        {
+          "number": 8,
+          "name": "Autumn Glow",
+          "assessment": "首選；一哩高級持續勝績最完整。",
+          "support": [
+            "1600米四戰全勝；King Charles勝Ceolwulf2.24，十五戰十四勝。"
+          ],
+          "risks": [
+            "首次本場；本年2000米曾被Lindermann先到，不視為不可敗。"
+          ],
+          "evidence": [
+            {
+              "file": "R7.md",
+              "line": "F0386",
+              "fact": "Track:     0: 0-0-0        Distance:  4: 4-0-0        Trk/Dist:  0: 0-0-0"
+            },
+            {
+              "file": "R7.md",
+              "line": "F0393",
+              "fact": "Randwick R9 2026-10-17 1609m cond:Soft $5000000 James McDonald (4) 57.0kg [historical market price removed] 3rd@1200m 3rd@800m 3rd@400m 3rd@Settled. margin:0L starters:5 finish:1/5 RaceClass:[KING CHARLESIII] WinningTime:1:35.280 RaceL600:34.880 PF[Source: sportsbet_race_context L600 Delta: -0.64]"
+            },
+            {
+              "file": "R7.md",
+              "line": "F0394",
+              "fact": "1-Autumn Glow (57.0kg), 2-Ceolwulf (59.0kg) 2.24L, 3-Just Folk (59.0kg) 9.45L"
+            },
+            {
+              "file": "R7.md",
+              "line": "F0384",
+              "fact": "Career:    15: 14-0-1      Last 10:   13x111          Prize:     $12,821,600"
+            },
+            {
+              "file": "R7.md",
+              "line": "F0418",
+              "fact": "Randwick R9 2026-04-11 2000m cond:Good $5000000 James McDonald (2) 57.0kg [historical market price removed] 5th@1200m 5th@800m 3rd@400m 5th@Settled. margin:2.45L starters:7 finish:3/7 RaceClass:[QUEEN ELIZ] WinningTime:2:00.590 RaceL600:36.330 PF[Source: sportsbet_race_context L600 Delta: 0.61]"
+            }
+          ]
+        },
+        {
+          "number": 9,
+          "name": "Within The Law",
+          "assessment": "尾二；一哩曾亞，近況不足撐升班。",
+          "support": [
+            "1600米五戰三亞，Silver Eagle第五僅輸0.93。"
+          ],
+          "risks": [
+            "Golden Eagle第14輸6.29，七日再出；勝績只至1200米。"
+          ],
+          "evidence": [
+            {
+              "file": "R7.md",
+              "line": "F0449",
+              "fact": "Track:     1: 1-0-0        Distance:  5: 0-3-0        Trk/Dist:  0: 0-0-0"
+            },
+            {
+              "file": "R7.md",
+              "line": "F0461",
+              "fact": "Randwick R8 2026-10-17 1300m cond:Soft $1000000 Jason Collett (7) 55.5kg [historical market price removed] 9th@800m 11th@400m. margin:0.93L starters:14 finish:5/14 RaceClass:[SILVER EAGLE] WinningTime:1:15.270 RaceL600:34.880 PF[Source: sportsbet_race_context L600 Delta: 0.19]"
+            },
+            {
+              "file": "R7.md",
+              "line": "F0456",
+              "fact": "Randwick R8 2026-10-31 1500m cond:Good $10000000 Rachel King (2) 55.5kg [historical market price removed] 12th@800m 10th@400m 12th@Settled. margin:6.29L starters:16 finish:14/16 RaceClass:[GOLDEN EAGLE] WinningTime:1:26.640 RaceL600:34.420 PF[Source: sportsbet_race_context L600 Delta: -1.1]"
+            },
+            {
+              "file": "R7.md",
+              "line": "F0455",
+              "fact": "WinRange:  1000m - 1200m   Turf:      20: 3-5-2       12moRec:   7: 0-1-1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "race": 8,
+      "ranking": [
+        1,
+        5,
+        10,
+        3,
+        11,
+        2,
+        6,
+        4,
+        9,
+        7
+      ],
+      "top4": [
+        1,
+        5,
+        10,
+        3
+      ],
+      "top2": [
+        1,
+        5
+      ],
+      "confidence": "medium",
+      "pace_scenarios": [
+        {
+          "scenario": "Land Legend與Light Infantry Man爭放",
+          "implication": "持續步速利Cosmic Crusader、Birdman、Aeliana；兩匹前仗同場大退。",
+          "evidence": [
+            "R8.md:F0332",
+            "R8.md:F0079",
+            "R8.md:F0016",
+            "R8.md:F0269",
+            "R8.md:F0522"
+          ]
+        },
+        {
+          "scenario": "前速互讓、Sir Delius眼罩後更主動",
+          "implication": "前組保力；外檔後追Cosmic Crusader需早找位，內檔Birdman/Aeliana有利。",
+          "evidence": [
+            "R8.md:F0143",
+            "R8.md:F0132",
+            "R8.md:R0003",
+            "R8.md:R0016",
+            "R8.md:R0029"
+          ]
+        }
+      ],
+      "key_comparisons": [
+        "維持Cox Plate首三Cosmic Crusader、Birdman、Aeliana；Birdman在Underwood曾勝首選，差距可逆。",
+        "Sir Delius舊高峰足挑戰，但首次眼罩未有實證，未因此升首三。"
+      ],
+      "missing_information": [
+        "當日風、跑線、馬匹恢復及個體分段未知；Stewards空白不代表冇受阻。",
+        "現行磅按Racecard；歷史行是來源記錄負磅，未明示減磅時不假定已扣，也不對不明現役claim自行扣重。"
+      ],
+      "data_quality_flags": [
+        "Attrition試閘RaceL600 14.80異常，不使用。",
+        "Omni Man F0479之1609米時間1:14.17異常，不作時間比較。",
+        "Cox Plate標Flemington，忠於凍結輸入，不用外部常識改場地或推定彎位。"
+      ],
+      "runner_assessments": [
+        {
+          "number": 1,
+          "name": "Cosmic Crusader",
+          "assessment": "首選；兩次近期本場2000米同組勝最強。",
+          "support": [
+            "Cox Plate勝Birdman與Aeliana；Turnbull勝，本場兩戰兩勝。"
+          ],
+          "risks": [
+            "十一檔後追怕慢步速，最近賽程密，恢復程度未知。"
+          ],
+          "evidence": [
+            {
+              "file": "R8.md",
+              "line": "F0016",
+              "fact": "Flemington R8 2026-10-24 2040m cond:Good $6000000 William Pike (8) 59.0kg [historical market price removed] 10th@1200m 11th@800m 11th@400m 10th@Settled. margin:0L starters:12 finish:1/12 RaceClass:[COX PLATE] WinningTime:2:03.300 RaceL600:35.950 PF[Source: sportsbet_race_context L600 Delta: 0.503]"
+            },
+            {
+              "file": "R8.md",
+              "line": "F0017",
+              "fact": "1-Cosmic Crusader (59.0kg), 2-Birdman (59.0kg) 0.75L, 3-Aeliana (57.0kg) 0.95L"
+            },
+            {
+              "file": "R8.md",
+              "line": "F0026",
+              "fact": "Flemington R8 2026-10-03 2000m cond:Heavy $750000 William Pike (4) 58.0kg [historical market price removed] 5th@1200m 5th@800m 3rd@400m 5th@Settled. margin:0L starters:13 finish:1/13 RaceClass:[TURNBULL] WinningTime:2:04.440 RaceL600:37.360 PF[Source: sportsbet_race_context L600 Delta: 1.95]"
+            },
+            {
+              "file": "R8.md",
+              "line": "F0009",
+              "fact": "Track:     2: 2-0-0        Distance:  2: 2-0-0        Trk/Dist:  2: 2-0-0"
+            },
+            {
+              "file": "R8.md",
+              "line": "R0003",
+              "fact": "1. Cosmic Crusader (11)"
+            },
+            {
+              "file": "R8.md",
+              "line": "F0021",
+              "fact": "Caulfield R9 2026-10-17 2400m cond:Good $6545000 William Pike (14) 56.0kg [historical market price removed] 5th@1200m 8th@800m 5th@400m 4th@Settled. margin:1.40L starters:18 finish:4/18 RaceClass:[CAUL CUP] WinningTime:2:28.210 RaceL600:35.080 PF[Source: sportsbet_race_context L600 Delta: -1.7]"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "name": "Light Infantry Man",
+          "assessment": "第六選；本場2000米級數有，最新大敗需解釋。",
+          "support": [
+            "Australian Cup同程勝、Turnbull第二先Aeliana。"
+          ],
+          "risks": [
+            "Cox Plate前置退第11輸13.8；與Land Legend同放或耗力。"
+          ],
+          "evidence": [
+            {
+              "file": "R8.md",
+              "line": "F0119",
+              "fact": "Flemington R8 2026-03-28 2000m cond:Soft $2000000 Harry Coffey (9) 59.0kg [historical market price removed] 3rd@1200m 4th@800m 3rd@400m 3rd@Settled. margin:0L starters:12 finish:1/12 RaceClass:[AUST CUP] WinningTime:2:03.450 RaceL600:39.310 PF[Source: sportsbet_race_context L600 Delta: 3.9]"
+            },
+            {
+              "file": "R8.md",
+              "line": "F0084",
+              "fact": "Flemington R8 2026-10-03 2000m cond:Heavy $750000 Harry Coffey (3) 58.0kg [historical market price removed] 1st@1200m 1st@800m 1st@400m 1st@Settled. margin:1.75L starters:13 finish:2/13 RaceClass:[TURNBULL] WinningTime:2:04.440 RaceL600:37.360 PF[Source: sportsbet_race_context L600 Delta: 1.95]"
+            },
+            {
+              "file": "R8.md",
+              "line": "F0079",
+              "fact": "Flemington R8 2026-10-24 2040m cond:Good $6000000 Harry Coffey (11) 59.0kg [historical market price removed] 2nd@1200m 2nd@800m 2nd@400m 1st@Settled. margin:13.80L starters:12 finish:11/12 RaceClass:[COX PLATE] WinningTime:2:03.300 RaceL600:35.950 PF[Source: sportsbet_race_context L600 Delta: 0.503]"
+            },
+            {
+              "file": "R8.md",
+              "line": "F0332",
+              "fact": "Flemington R8 2026-10-24 2040m cond:Good $6000000 Ethan Brown (12) 59.0kg [historical market price removed] 1st@1200m 1st@800m 1st@400m 3rd@Settled. margin:18.80L starters:12 finish:12/12 RaceClass:[COX PLATE] WinningTime:2:03.300 RaceL600:35.950 PF[Source: sportsbet_race_context L600 Delta: 0.503]"
+            }
+          ]
+        },
+        {
+          "number": 3,
+          "name": "Sir Delius",
+          "assessment": "第四選；2000米高峰強，但近況遜首三。",
+          "support": [
+            "Queen Elizabeth勝Lindermann及Autumn Glow，2000米六戰三勝。"
+          ],
+          "risks": [
+            "本季第四、第四、第六，首次眼罩不保證提升。"
+          ],
+          "evidence": [
+            {
+              "file": "R8.md",
+              "line": "F0173",
+              "fact": "Randwick R9 2026-04-11 2000m cond:Good $5000000 Craig Williams (3) 59.0kg [historical market price removed] 3rd@1200m 3rd@800m 2nd@400m 3rd@Settled. margin:0L starters:7 finish:1/7 RaceClass:[QUEEN ELIZ] WinningTime:2:00.590 RaceL600:36.330 PF[Source: sportsbet_race_context L600 Delta: 0.61]"
+            },
+            {
+              "file": "R8.md",
+              "line": "F0136",
+              "fact": "Track:     4: 1-0-0        Distance:  6: 3-0-1        Trk/Dist:  3: 1-0-0"
+            },
+            {
+              "file": "R8.md",
+              "line": "F0143",
+              "fact": "Flemington R8 2026-10-24 2040m cond:Good $6000000 Craig Williams (5) 59.0kg [historical market price removed] 3rd@1200m 3rd@800m 3rd@400m 4th@Settled. margin:4.95L starters:12 finish:6/12 RaceClass:[COX PLATE] WinningTime:2:03.300 RaceL600:35.950 PF[Source: sportsbet_race_context L600 Delta: 0.503]"
+            },
+            {
+              "file": "R8.md",
+              "line": "F0148",
+              "fact": "Flemington R8 2026-10-03 2000m cond:Heavy $750000 Craig Williams (9) 59.0kg [historical market price removed] 2nd@1200m 2nd@800m 2nd@400m 2nd@Settled. margin:3.50L starters:13 finish:4/13 RaceClass:[TURNBULL] WinningTime:2:04.440 RaceL600:37.360 PF[Source: sportsbet_race_context L600 Delta: 1.95]"
+            },
+            {
+              "file": "R8.md",
+              "line": "F0153",
+              "fact": "Flemington R8 2026-09-12 1600m cond:Good $750000 Craig Williams (7) 59.0kg [historical market price removed] 3rd@1200m 5th@800m 5th@400m 3rd@Settled. margin:3.90L starters:10 finish:4/10 RaceClass:[MAKYBE DIVA] WinningTime:1:35.340 RaceL600:33.090 PF[Source: sportsbet_race_context L600 Delta: -1.69]"
+            },
+            {
+              "file": "R8.md",
+              "line": "F0132",
+              "fact": "SportsbetGear: Changes: Blinkers FIRST TIME"
+            }
+          ]
+        },
+        {
+          "number": 4,
+          "name": "Attrition",
+          "assessment": "第八選；1900米勝有反證，但本場2000米較弱。",
+          "support": [
+            "Hill Stakes勝Lindermann；Underwood第三。"
+          ],
+          "risks": [
+            "Cox Plate第九輸10.3；2000米四戰未入位。"
+          ],
+          "evidence": [
+            {
+              "file": "R8.md",
+              "line": "F0211",
+              "fact": "Rosehill Gardens R7 2026-10-10 1900m cond:Good $2000000 Jamie Mott (3) 59.0kg [historical market price removed] 3rd@1200m 3rd@800m 4th@400m 3rd@Settled. margin:0L starters:8 finish:1/8 RaceClass:[HILL STKS] WinningTime:1:55.890 RaceL600:33.770 PF[Source: sportsbet_race_context L600 Delta: -1.51]"
+            },
+            {
+              "file": "R8.md",
+              "line": "F0216",
+              "fact": "Caulfield R7 2026-09-19 1800m cond:Good $1000000 Jamie Mott (6) 59.0kg [historical market price removed] 3rd@1200m 3rd@800m 4th@400m 2nd@Settled. margin:4.00L starters:8 finish:3/8 RaceClass:[UNDERWOOD] WinningTime:1:47.150 RaceL600:35.060 PF[Source: sportsbet_race_context L600 Delta: -0.84]"
+            },
+            {
+              "file": "R8.md",
+              "line": "F0206",
+              "fact": "Flemington R8 2026-10-24 2040m cond:Good $6000000 Jamie Mott (4) 59.0kg [historical market price removed] 6th@1200m 6th@800m 5th@400m 5th@Settled. margin:10.30L starters:12 finish:9/12 RaceClass:[COX PLATE] WinningTime:2:03.300 RaceL600:35.950 PF[Source: sportsbet_race_context L600 Delta: 0.503]"
+            },
+            {
+              "file": "R8.md",
+              "line": "F0199",
+              "fact": "Track:     7: 0-2-0        Distance:  4: 0-0-0        Trk/Dist:  3: 0-0-0"
+            }
+          ]
+        },
+        {
+          "number": 5,
+          "name": "Birdman",
+          "assessment": "次選；同組近況穩定，一檔可慳程。",
+          "support": [
+            "Cox Plate亞輸0.75；Underwood勝Cosmic Crusader；Doomben Cup勝。"
+          ],
+          "risks": [
+            "Caulfield Stakes被Land Legend先到；內檔或需等位。"
+          ],
+          "evidence": [
+            {
+              "file": "R8.md",
+              "line": "F0269",
+              "fact": "Flemington R8 2026-10-24 2040m cond:Good $6000000 Ben Melham (1) 59.0kg [historical market price removed] 8th@1200m 7th@800m 7th@400m 9th@Settled. margin:0.75L starters:12 finish:2/12 RaceClass:[COX PLATE] WinningTime:2:03.300 RaceL600:35.950 PF[Source: sportsbet_race_context L600 Delta: 0.503]"
+            },
+            {
+              "file": "R8.md",
+              "line": "F0279",
+              "fact": "Caulfield R7 2026-09-19 1800m cond:Good $1000000 Ben Melham (4) 59.0kg [historical market price removed] 6th@1200m 6th@800m 5th@400m 6th@Settled. margin:0L starters:8 finish:1/8 RaceClass:[UNDERWOOD] WinningTime:1:47.150 RaceL600:35.060 PF[Source: sportsbet_race_context L600 Delta: -0.84]"
+            },
+            {
+              "file": "R8.md",
+              "line": "F0304",
+              "fact": "Doomben R8 2026-05-23 2000m cond:Good $1000000 James McDonald (5) 59.0kg [historical market price removed] 5th@1200m 6th@800m 5th@400m 5th@Settled. margin:0L starters:7 finish:1/7 RaceClass:[DOOMBEN CUP] WinningTime:2:02.230 RaceL600:37.030 PF[Source: sportsbet_race_context L600 Delta: 1.05]"
+            },
+            {
+              "file": "R8.md",
+              "line": "F0274",
+              "fact": "Caulfield R7 2026-10-10 2000m cond:Good $1000000 Ben Melham (2) 59.0kg [historical market price removed] 3rd@1200m 3rd@800m 3rd@400m 3rd@Settled. margin:1.40L starters:6 finish:3/6 RaceClass:[CAULFIELD STKS] WinningTime:2:00.300 RaceL600:36.510 PF[Source: sportsbet_race_context L600 Delta: 0.61]"
+            },
+            {
+              "file": "R8.md",
+              "line": "R0016",
+              "fact": "5. Birdman (1)"
+            }
+          ]
+        },
+        {
+          "number": 6,
+          "name": "Land Legend",
+          "assessment": "第七選；高峰可勝但波動很大。",
+          "support": [
+            "Caulfield Stakes領放勝Birdman。"
+          ],
+          "risks": [
+            "Cox Plate領放退包尾輸18.8，本場七戰未勝。"
+          ],
+          "evidence": [
+            {
+              "file": "R8.md",
+              "line": "F0337",
+              "fact": "Caulfield R7 2026-10-10 2000m cond:Good $1000000 Ethan Brown (1) 59.0kg [historical market price removed] 1st@1200m 1st@800m 1st@400m 1st@Settled. margin:0L starters:6 finish:1/6 RaceClass:[CAULFIELD STKS] WinningTime:2:00.300 RaceL600:36.510 PF[Source: sportsbet_race_context L600 Delta: 0.61]"
+            },
+            {
+              "file": "R8.md",
+              "line": "F0338",
+              "fact": "1-Land Legend (59.0kg), 2-Sheza Alibi (56.0kg) 0.15L, 3-Birdman (59.0kg) 1.40L"
+            },
+            {
+              "file": "R8.md",
+              "line": "F0332",
+              "fact": "Flemington R8 2026-10-24 2040m cond:Good $6000000 Ethan Brown (12) 59.0kg [historical market price removed] 1st@1200m 1st@800m 1st@400m 3rd@Settled. margin:18.80L starters:12 finish:12/12 RaceClass:[COX PLATE] WinningTime:2:03.300 RaceL600:35.950 PF[Source: sportsbet_race_context L600 Delta: 0.503]"
+            },
+            {
+              "file": "R8.md",
+              "line": "F0325",
+              "fact": "Track:     7: 0-1-0        Distance:  10: 3-1-0       Trk/Dist:  3: 0-1-0"
+            }
+          ]
+        },
+        {
+          "number": 7,
+          "name": "Von Hauke",
+          "assessment": "末選；加程及等磅級數雙重疑問。",
+          "support": [
+            "Stradbroke第三、Golden Mile勝。"
+          ],
+          "risks": [
+            "未試2000米，最近一哩第十、第十一，勝績只至1600米。"
+          ],
+          "evidence": [
+            {
+              "file": "R8.md",
+              "line": "F0425",
+              "fact": "Eagle Farm R8 2026-06-13 1400m cond:Heavy $3000000 Harry Coffey (16) 53.0kg [historical market price removed] 17th@800m 18th@400m 18th@Settled. margin:1.90L starters:18 finish:3/18 RaceClass:[STRADBROKE] WinningTime:1:23.810 RaceL600:36.090 PF[Source: sportsbet_race_context L600 Delta: 1.02]"
+            },
+            {
+              "file": "R8.md",
+              "line": "F0440",
+              "fact": "Bendigo R9 2026-05-02 1600m cond:Good $200000 Harry Coffey (5) 60.0kg [historical market price removed] 9th@1200m 10th@800m 10th@400m 9th@Settled. margin:0L starters:12 finish:1/12 RaceClass:[GOLDEN MILE] WinningTime:1:33.800 RaceL600:34.520 PF[Source: sportsbet_race_context L600 Delta: -1.76]"
+            },
+            {
+              "file": "R8.md",
+              "line": "F0388",
+              "fact": "Track:     7: 1-1-1        Distance:  0: 0-0-0        Trk/Dist:  0: 0-0-0"
+            },
+            {
+              "file": "R8.md",
+              "line": "F0395",
+              "fact": "Flemington R6 2026-10-24 1600m cond:Good $400000 Ethan Brown (9) 58.5kg [historical market price removed] 11th@1200m 11th@800m 11th@400m 11th@Settled. margin:5.78L starters:11 finish:10/11 RaceClass:[CRYSTL MILE] WinningTime:1:36.450 RaceL600:34.140 PF[Source: sportsbet_race_context L600 Delta: -0.64]"
+            },
+            {
+              "file": "R8.md",
+              "line": "F0400",
+              "fact": "Caulfield R9 2026-10-10 1600m cond:Good $1000000 Harry Coffey (11) 56.5kg [historical market price removed] 12th@1200m 13th@800m 14th@400m 14th@Settled. margin:3.21L starters:15 finish:11/15 RaceClass:[TOORAK HCP] WinningTime:1:34.500 RaceL600:35.830 PF[Source: sportsbet_race_context L600 Delta: 0.08]"
+            },
+            {
+              "file": "R8.md",
+              "line": "F0394",
+              "fact": "WinRange:  1200m - 1600m   Turf:      32: 5-4-3       12moRec:   8: 1-0-1"
+            }
+          ]
+        },
+        {
+          "number": 9,
+          "name": "Omni Man",
+          "assessment": "尾二；本地初跑有進步，今等磅跳升難度大。",
+          "support": [
+            "Geelong Cup第三輸2，歐洲長途有經驗。"
+          ],
+          "risks": [
+            "上次54今59、2400縮2000，缺本地WFA爭勝證據。"
+          ],
+          "evidence": [
+            {
+              "file": "R8.md",
+              "line": "F0459",
+              "fact": "Geelong R7 2026-10-21 2400m cond:Good $500000 Beau Mertens (12) 54.0kg [historical market price removed] 10th@1200m 10th@800m 7th@400m 10th@Settled. margin:2.00L starters:13 finish:3/13 RaceClass:[GEEL CUP] WinningTime:2:27.970 RaceL600:35.820 PF[Source: sportsbet_race_context L600 Delta: -0.92]"
+            },
+            {
+              "file": "R8.md",
+              "line": "R0027",
+              "fact": "Trainer: Joseph O'Brien | Jockey: Dylan Browne McMonagle | Weight: 59.0kg | Age: 5yoG | Rating: 99"
+            },
+            {
+              "file": "R8.md",
+              "line": "F0474",
+              "fact": "Ascot R3 2026-06-19 2406m cond:Good $220707 Dylan Browne McMonagle (4) 61kg [historical market price removed] . margin:7.50L starters:19 finish:5/19 RaceClass:[CL2 Hcp] WinningTime:2:28.540"
+            }
+          ]
+        },
+        {
+          "number": 10,
+          "name": "Aeliana",
+          "assessment": "第三選；本場連季、內檔利慳程。",
+          "support": [
+            "Cox Plate第三輸0.95，Turnbull第三，Ranvet2000米勝。"
+          ],
+          "risks": [
+            "最近兩次都被Cosmic Crusader先到，今對其磅位無新優勢。"
+          ],
+          "evidence": [
+            {
+              "file": "R8.md",
+              "line": "F0522",
+              "fact": "Flemington R8 2026-10-24 2040m cond:Good $6000000 James McDonald (10) 57.0kg [historical market price removed] 9th@1200m 9th@800m 8th@400m 8th@Settled. margin:0.95L starters:12 finish:3/12 RaceClass:[COX PLATE] WinningTime:2:03.300 RaceL600:35.950 PF[Source: sportsbet_race_context L600 Delta: 0.503]"
+            },
+            {
+              "file": "R8.md",
+              "line": "F0527",
+              "fact": "Flemington R8 2026-10-03 2000m cond:Heavy $750000 Damian Lane (2) 57.0kg [historical market price removed] 4th@1200m 4th@800m 5th@400m 4th@Settled. margin:2.75L starters:13 finish:3/13 RaceClass:[TURNBULL] WinningTime:2:04.440 RaceL600:37.360 PF[Source: sportsbet_race_context L600 Delta: 1.95]"
+            },
+            {
+              "file": "R8.md",
+              "line": "F0557",
+              "fact": "Rosehill Gardens R5 2026-03-21 2000m cond:Soft $1000000 James McDonald (3) 57.0kg [historical market price removed] 4th@1200m 4th@800m 4th@400m 4th@Settled. margin:0L starters:5 finish:1/5 RaceClass:[RANVET] WinningTime:2:02.850 RaceL600:35.300 PF[Source: sportsbet_race_context L600 Delta: 0.02]"
+            },
+            {
+              "file": "R8.md",
+              "line": "R0030",
+              "fact": "Trainer: Chris Waller | Jockey: James McDonald | Weight: 57.0kg | Age: 5yoM | Rating: 117"
+            },
+            {
+              "file": "R8.md",
+              "line": "R0004",
+              "fact": "Trainer: Andrea Leek | Jockey: William Pike | Weight: 59.0kg | Age: 6yoG | Rating: 118"
+            }
+          ]
+        },
+        {
+          "number": 11,
+          "name": "Treasurethe Moment",
+          "assessment": "第五選；縮2000米可改善，眼罩不作自動加分。",
+          "support": [
+            "本場五戰三勝；2000米五戰兩勝一亞一季；Caulfield Cup第七輸3.96。"
+          ],
+          "risks": [
+            "最新2000米第五輸4.5不及Birdman，首次眼罩反應未知。"
+          ],
+          "evidence": [
+            {
+              "file": "R8.md",
+              "line": "F0579",
+              "fact": "Track:     5: 3-0-0        Distance:  5: 2-1-1        Trk/Dist:  1: 1-0-0"
+            },
+            {
+              "file": "R8.md",
+              "line": "F0586",
+              "fact": "Caulfield R9 2026-10-17 2400m cond:Good $6545000 Daniel Stackhouse (4) 55.5kg [historical market price removed] 10th@1200m 13th@800m 11th@400m 8th@Settled. margin:3.96L starters:18 finish:7/18 RaceClass:[CAUL CUP] WinningTime:2:28.210 RaceL600:35.080 PF[Source: sportsbet_race_context L600 Delta: -1.7]"
+            },
+            {
+              "file": "R8.md",
+              "line": "F0591",
+              "fact": "Caulfield R7 2026-10-10 2000m cond:Good $1000000 Daniel Stackhouse (3) 57.0kg [historical market price removed] 5th@1200m 5th@800m 5th@400m 5th@Settled. margin:4.50L starters:6 finish:5/6 RaceClass:[CAULFIELD STKS] WinningTime:2:00.300 RaceL600:36.510 PF[Source: sportsbet_race_context L600 Delta: 0.61]"
+            },
+            {
+              "file": "R8.md",
+              "line": "F0575",
+              "fact": "SportsbetGear: Changes: Blinkers FIRST TIME, Winkers OFF FIRST TIME"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "race": 9,
+      "ranking": [
+        6,
+        10,
+        2,
+        19,
+        16,
+        8,
+        1,
+        5,
+        7,
+        14,
+        12,
+        9,
+        18,
+        17
+      ],
+      "top4": [
+        6,
+        10,
+        2,
+        19
+      ],
+      "top2": [
+        6,
+        10
+      ],
+      "confidence": "low",
+      "pace_scenarios": [
+        {
+          "scenario": "Educated、Tres Magnifique及Esmahli推步速",
+          "implication": "Royal Rendezvous、Verdoux、Electric Elvis可追；Educated需能跟跑避免硬鬥。",
+          "evidence": [
+            "R9.md:F0208",
+            "R9.md:F0462",
+            "R9.md:F0079",
+            "R9.md:F0590",
+            "R9.md:F0016"
+          ]
+        },
+        {
+          "scenario": "直路分組、外側掩護較佳",
+          "implication": "Tres Magnifique、Esmahli、Lawborough或同組受惠，但未知偏差，不預先加分。",
+          "evidence": [
+            "R9.md:R0028",
+            "R9.md:R0006",
+            "R9.md:R0051",
+            "R9.md:R0002"
+          ]
+        }
+      ],
+      "key_comparisons": [
+        "Educated與Electric Elvis最近只差0.2、今兩者各增1公斤；取Educated好地三勝及本場勝，承認實力可能接近。",
+        "Tres Magnifique十月十四日先Lawborough、Verdoux、King Tut；今Lawborough增3、Tres增1，維持次選。",
+        "Salaria53公斤有利，但低班窄勝不足直接升過首四。"
+      ],
+      "missing_information": [
+        "當日風、跑線及臨場狀態未知；缺完整個體分段及受阻記錄。",
+        "歷史負磅未必標明已扣減磅，不能全作淨負磅精準比較。",
+        "現行磅按Racecard；歷史行是來源記錄負磅，未明示減磅時不假定已扣，也不對不明現役claim自行扣重。"
+      ],
+      "data_quality_flags": [
+        "Torsheen F0145寫6/6而F0146列第二，不據此判跳閘強弱。",
+        "Torsheen及Royal Rendezvous一月廿一日往績各重複，不計兩場。",
+        "只採card明示現役減磅：Verdoux61、Esmahli59、Royal Rendezvous53.5。"
+      ],
+      "runner_assessments": [
+        {
+          "number": 1,
+          "name": "Verdoux",
+          "assessment": "第七選；本場追近有價值，但今高磅。",
+          "support": [
+            "Rising Fast十九駒第五輸1.7；1100米三勝。"
+          ],
+          "risks": [
+            "今減3實負61，仍比上次54多7公斤，短休及後追跑線有變數。"
+          ],
+          "evidence": [
+            {
+              "file": "R9.md",
+              "line": "F0016",
+              "fact": "Flemington R4 2026-10-31 1200m cond:Good $240000 Declan Bates (7) 54.0kg [historical market price removed] 16th@800m 19th@400m. margin:1.70L starters:19 finish:5/19 RaceClass:[RISING FAST] WinningTime:1:10.240 RaceL600:34.450 PF[Source: sportsbet_race_context L600 Delta: 0.39]"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0009",
+              "fact": "Track:     3: 1-0-0        Distance:  10: 3-2-1       Trk/Dist:  2: 1-0-0"
+            },
+            {
+              "file": "R9.md",
+              "line": "R0004",
+              "fact": "Trainer: Leon & Troy Corstens & Will Larkin | Jockey: Holly Durnan | Weight: 64.0kg (Claim 3kg, Carried 61kg) | Age: 6yoG | Rating: 84"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "name": "Esmahli",
+          "assessment": "第三選；穩定上升、減磅明確。",
+          "support": [
+            "BM70勝，本季221，BM78近亞；今減2實負59。"
+          ],
+          "risks": [
+            "最近勝係低班，本場重地亞輸六馬位，十四檔跑線未知。"
+          ],
+          "evidence": [
+            {
+              "file": "R9.md",
+              "line": "F0079",
+              "fact": "Cranbourne R7 2026-10-23 1200m cond:Good $60000 Nadia Daniels (3) 61.5kg [historical market price removed] 2nd@800m 1st@400m. margin:0L starters:9 finish:1/9 RaceClass:[BM70] WinningTime:1:10.260 RaceL600:35.230 PF[Source: sportsbet_race_context L600 Delta: -0.32]"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0070",
+              "fact": "Career:    8: 4-2-1        Last 10:   17x221          Prize:     $194,050"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0089",
+              "fact": "Caulfield Heath R6 2026-09-16 1000m cond:Good $50000 Michael Dee (9) 59.5kg [historical market price removed] 8th@800m 7th@400m. margin:0.35L starters:10 finish:2/10 RaceClass:[BM78] WinningTime:57.750 RaceL600:34.220 PF[Source: sportsbet_race_context L600 Delta: 0.07]"
+            },
+            {
+              "file": "R9.md",
+              "line": "R0007",
+              "fact": "Trainer: Ben, Will & Jd Hayes | Jockey: Jackson Radley | Weight: 61.0kg (Claim 2kg, Carried 59kg) | Age: 4yoG | Rating: 78"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0084",
+              "fact": "Flemington R2 2026-10-03 1200m cond:Heavy $80000 Michael Dee (9) 57.5kg [historical market price removed] 7th@800m 8th@400m. margin:6.00L starters:13 finish:2/13 RaceClass:[BM78] WinningTime:1:10.630 RaceL600:35.270 PF[Source: sportsbet_race_context L600 Delta: 1.21]"
+            },
+            {
+              "file": "R9.md",
+              "line": "R0006",
+              "fact": "2. Esmahli (14)"
+            }
+          ]
+        },
+        {
+          "number": 5,
+          "name": "Torsheen",
+          "assessment": "第八選；舊級數足，但復出縮程變數大。",
+          "support": [
+            "Typhoon Tracy亞，Mornington1200米勝。"
+          ],
+          "risks": [
+            "195日未跑、首次1100米/本場；跳閘名次矛盾，多件裝備移除效果未知。"
+          ],
+          "evidence": [
+            {
+              "file": "R9.md",
+              "line": "F0170",
+              "fact": "Caulfield R6 2026-03-21 1200m cond:Good $200000 Teo Nugent (2) 56.0kg [historical market price removed] 2nd@800m 2nd@400m. margin:1.00L starters:9 finish:2/9 RaceClass:[TYPHOON TRACY] WinningTime:1:09.200 RaceL600:34.070 PF[Source: sportsbet_race_context L600 Delta: -0.77]"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0160",
+              "fact": "Mornington R4 2026-04-18 1200m cond:Good $150000 Luke Cartwright (10) 59.5kg [historical market price removed] 9th@800m 7th@400m. margin:0L starters:10 finish:1/10 RaceClass:[3YF HCP] WinningTime:1:10.430 RaceL600:35.600 PF[Source: sportsbet_race_context L600 Delta: 0.28]"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0143",
+              "fact": "Days:      195             Ave $:     $18,465         J/H:       0: 0-0-0"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0138",
+              "fact": "Track:     0: 0-0-0        Distance:  0: 0-0-0        Trk/Dist:  0: 0-0-0"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0145",
+              "fact": "Mornington **(TRIAL)** R1 2026-10-21 900m cond:None $0 Jamie Mott (None) Nonekg . margin:0.00L starters:6 finish:6/6 RaceClass:[Jump Out - G4 Barrier Trial] WinningTime:53.770"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0146",
+              "fact": "1-Choir Point (Nonekg), 2-Torsheen (Nonekg) 0.00L, 3-Efferato (Nonekg) 0.00L"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0134",
+              "fact": "SportsbetGear: Changes: Cross-over Nose Band OFF FIRST TIME, Tongue Tie OFF FIRST TIME, Winkers OFF FIRST TIME"
+            }
+          ]
+        },
+        {
+          "number": 6,
+          "name": "Educated",
+          "assessment": "首選；好地不敗、同程持續接近、直接比較佳。",
+          "support": [
+            "Seymour勝Electric Elvis與Fission；好地三戰三勝，本場1100米勝。"
+          ],
+          "risks": [
+            "今59.5比上次58.5增1公斤，爭先或耗力；不額外推定Celine Gaudray減磅。"
+          ],
+          "evidence": [
+            {
+              "file": "R9.md",
+              "line": "F0208",
+              "fact": "Seymour R8 2026-10-11 1100m cond:Soft $40000 Celine Gaudray (12) 58.5kg [historical market price removed] 2nd@800m 1st@400m. margin:0L starters:14 finish:1/14 RaceClass:[BM74] WinningTime:1:03.730 RaceL600:34.840 PF[Source: sportsbet_race_context L600 Delta: 0.17]"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0209",
+              "fact": "1-Educated (58.5kg), 2-Electric Elvis (57.5kg) 0.20L, 3-Fission (60.0kg) 2.95L"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0202",
+              "fact": "Firm:      0: 0-0-0        Good:      3: 3-0-0        Soft:      3: 1-2-0"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0243",
+              "fact": "Flemington R6 2026-02-28 1100m cond:Good $150000 Celine Gaudray (1) 55.5kg [historical market price removed] 3rd@800m 7th@400m. margin:0L starters:11 finish:1/11 RaceClass:[3YF HCP] WinningTime:1:03.330 RaceL600:34.100 PF[Source: sportsbet_race_context L600 Delta: 0.46]"
+            },
+            {
+              "file": "R9.md",
+              "line": "R0016",
+              "fact": "Trainer: Ciaron Maher | Jockey: Celine Gaudray | Weight: 59.5kg | Age: 4yoM | Rating: 79"
+            }
+          ]
+        },
+        {
+          "number": 7,
+          "name": "Rohesia",
+          "assessment": "第九選；跳閘準備好，但1100米待證。",
+          "support": [
+            "最新本場800米跳閘勝，Nitschke1400米勝。"
+          ],
+          "risks": [
+            "188日未賽、未試1100米，勝績由1212米起。"
+          ],
+          "evidence": [
+            {
+              "file": "R9.md",
+              "line": "F0272",
+              "fact": "Flemington **(TRIAL)** R6 2026-10-23 800m cond:None $0 Daniel Stackhouse (None) Nonekg . margin:0L starters:6 finish:1/6 RaceClass:[Jump Out - G4 Barrier Trial] WinningTime:46.060"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0292",
+              "fact": "Morphettville Parks R7 2026-04-18 1400m cond:Good $120000 Kayla Crowther (3) 54.0kg [historical market price removed] 7th@800m 7th@400m 7th@Settled. margin:0L starters:11 finish:1/11 RaceClass:[NITSCHKE] WinningTime:1:24.050 RaceL600:35.120 PF[Source: sportsbet_race_context L600 Delta: 0.02]"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0270",
+              "fact": "Days:      188             Ave $:     $26,099         J/H:       3: 0-1-0"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0265",
+              "fact": "Track:     2: 0-0-1        Distance:  0: 0-0-0        Trk/Dist:  0: 0-0-0"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0271",
+              "fact": "WinRange:  1212m - 1400m   Turf:      13: 3-3-2       12moRec:   7: 2-1-0"
+            }
+          ]
+        },
+        {
+          "number": 8,
+          "name": "Electric Elvis",
+          "assessment": "第六選；好狀態但好地贏力未證。",
+          "support": [
+            "近六場121221，最新1100米僅負Educated0.2。"
+          ],
+          "risks": [
+            "好地七戰未勝，初跑本場，十六檔跑線未知。"
+          ],
+          "evidence": [
+            {
+              "file": "R9.md",
+              "line": "F0326",
+              "fact": "Career:    17: 4-7-3       Last 10:   121221          Prize:     $132,105"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0340",
+              "fact": "Seymour R8 2026-10-11 1100m cond:Soft $40000 Ben Allen (9) 57.5kg [historical market price removed] 12th@800m 10th@400m. margin:0.20L starters:14 finish:2/14 RaceClass:[BM74] WinningTime:1:03.730 RaceL600:34.840 PF[Source: sportsbet_race_context L600 Delta: 0.17]"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0329",
+              "fact": "Firm:      0: 0-0-0        Good:      7: 0-3-3        Soft:      4: 2-2-0"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0328",
+              "fact": "Track:     0: 0-0-0        Distance:  1: 0-1-0        Trk/Dist:  0: 0-0-0"
+            },
+            {
+              "file": "R9.md",
+              "line": "R0022",
+              "fact": "8. Electric Elvis (16)"
+            }
+          ]
+        },
+        {
+          "number": 9,
+          "name": "King Tut",
+          "assessment": "第十二選；跳閘多勝未化成實戰。",
+          "support": [
+            "近期三次跳閘勝，舊BM70勝及BM84接近。"
+          ],
+          "risks": [
+            "復出BM78第九輸2.72，後於Tres Magnifique、Lawborough、Verdoux；初跑本場。"
+          ],
+          "evidence": [
+            {
+              "file": "R9.md",
+              "line": "F0403",
+              "fact": "Cranbourne **(TRIAL)** R8 2026-10-05 760m cond:None $0 Thomas Stockdale (None) Nonekg . margin:0L starters:11 finish:1/11 RaceClass:[JumpOut - Synth Barrier Trial] WinningTime:46.090"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0408",
+              "fact": "Cranbourne **(TRIAL)** R11 2026-09-21 1000m cond:None $0 Thomas Stockdale (None) Nonekg . margin:0L starters:11 finish:1/11 RaceClass:[Jump Out - G4 Barrier Trial] WinningTime:59.400"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0413",
+              "fact": "Cranbourne **(TRIAL)** R4 2026-09-07 760m cond:None $0 Thomas Stockdale (None) Nonekg . margin:0L starters:7 finish:1/7 RaceClass:[JumpOut - Synth Barrier Trial] WinningTime:46.010"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0428",
+              "fact": "Caulfield R2 2026-04-11 1200m cond:Good $80000 Thomas Stockdale (9) 59.0kg [historical market price removed] 9th@800m 7th@400m. margin:0L starters:12 finish:1/12 RaceClass:[BM70] WinningTime:1:11.080 RaceL600:34.670 PF[Source: sportsbet_race_context L600 Delta: -0.17]"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0423",
+              "fact": "Bendigo R6 2026-05-02 1300m cond:Good $130000 Declan Bates (9) 55.0kg [historical market price removed] 8th@800m 8th@400m. margin:0.91L starters:11 finish:5/11 RaceClass:[BM84] WinningTime:1:16.230 RaceL600:33.210 PF[Source: sportsbet_race_context L600 Delta: -2.15]"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0398",
+              "fact": "Caulfield R8 2026-10-14 1100m cond:Good $130000 Thomas Stockdale (11) 58.0kg [historical market price removed] 11th@800m 13th@400m. margin:2.72L starters:13 finish:9/13 RaceClass:[BM78] WinningTime:1:03.170 RaceL600:33.870 PF[Source: sportsbet_race_context L600 Delta: -0.56]"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0391",
+              "fact": "Track:     0: 0-0-0        Distance:  1: 0-0-0        Trk/Dist:  0: 0-0-0"
+            }
+          ]
+        },
+        {
+          "number": 10,
+          "name": "Tres Magnifique",
+          "assessment": "次選；較高班持續入位、同組比較好。",
+          "support": [
+            "BM88及BM84亞；1100米第三先Lawborough、Verdoux、King Tut。"
+          ],
+          "risks": [
+            "今58.5增1，十九檔；1100米未勝、首次口銜反應未知。"
+          ],
+          "evidence": [
+            {
+              "file": "R9.md",
+              "line": "F0472",
+              "fact": "Sandown Hillside R3 2026-09-05 1000m cond:Soft $150000 Craig Williams (4) 53.0kg [historical market price removed] 3rd@800m 3rd@400m. margin:0.40L starters:8 finish:2/8 RaceClass:[BM88] WinningTime:58.190 RaceL600:34.090 PF[Source: sportsbet_race_context L600 Delta: 1.08]"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0467",
+              "fact": "Mornington R4 2026-09-26 1000m cond:Soft $130000 Jamie Melham (1) 54.5kg [historical market price removed] 2nd@800m 1st@400m. margin:1.25L starters:11 finish:2/11 RaceClass:[BM84] WinningTime:59.400 RaceL600:35.090 PF[Source: sportsbet_race_context L600 Delta: 0.53]"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0462",
+              "fact": "Caulfield R8 2026-10-14 1100m cond:Good $130000 Craig Williams (6) 57.5kg [historical market price removed] 3rd@800m 3rd@400m. margin:0.45L starters:13 finish:3/13 RaceClass:[BM78] WinningTime:1:03.170 RaceL600:33.870 PF[Source: sportsbet_race_context L600 Delta: -0.56]"
+            },
+            {
+              "file": "R9.md",
+              "line": "R0029",
+              "fact": "Trainer: Trent Busuttin & Natalie Young | Jockey: Craig Williams | Weight: 58.5kg | Age: 4yoM | Rating: 77"
+            },
+            {
+              "file": "R9.md",
+              "line": "R0028",
+              "fact": "10. Tres Magnifique (19)"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0455",
+              "fact": "Track:     1: 0-0-0        Distance:  3: 0-0-1        Trk/Dist:  1: 0-0-0"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0451",
+              "fact": "SportsbetGear: Changes: Lugging Bit FIRST TIME"
+            }
+          ]
+        },
+        {
+          "number": 12,
+          "name": "It's A Yes",
+          "assessment": "第十一選；低班近勝配輕磅可偷位。",
+          "support": [
+            "Hamilton BM70及Geelong BM66之1100米勝，今56。"
+          ],
+          "risks": [
+            "本場兩戰未入位，對手比最近更強。"
+          ],
+          "evidence": [
+            {
+              "file": "R9.md",
+              "line": "F0526",
+              "fact": "Hamilton R6 2026-10-10 1100m cond:Soft $40000 Will Gordon (11) 57.0kg [historical market price removed] 11th@800m 11th@400m. margin:0L starters:11 finish:1/11 RaceClass:[BM70] WinningTime:1:04.760 RaceL600:34.380 PF[Source: sportsbet_race_context L600 Delta: -0.04]"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0541",
+              "fact": "Geelong R6 2026-09-11 1100m cond:Good $35000 Jamie Mott (9) 57.0kg [historical market price removed] 6th@800m 7th@400m. margin:0L starters:9 finish:1/9 RaceClass:[BM66] WinningTime:1:04.050 RaceL600:33.480 PF[Source: sportsbet_race_context L600 Delta: -1.12]"
+            },
+            {
+              "file": "R9.md",
+              "line": "R0034",
+              "fact": "Trainer: Lindsey Smith | Jockey: Jamie Mott | Weight: 56.0kg | Age: 5yoG | Rating: 68"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0519",
+              "fact": "Track:     2: 0-0-0        Distance:  8: 3-0-0        Trk/Dist:  2: 0-0-0"
+            }
+          ]
+        },
+        {
+          "number": 14,
+          "name": "Royal Rendezvous",
+          "assessment": "第十選；輕磅上升但直路未試。",
+          "support": [
+            "好地1100米BM66勝，今減1.5實負53.5。"
+          ],
+          "risks": [
+            "二十檔、初跑本場；前次CL1亞輸3.25，班底薄。"
+          ],
+          "evidence": [
+            {
+              "file": "R9.md",
+              "line": "F0590",
+              "fact": "Geelong R2 2026-10-21 1100m cond:Good $50000 Blake Shinn (13) 58.0kg [historical market price removed] 11th@800m 11th@400m. margin:0L starters:13 finish:1/13 RaceClass:[BM66] WinningTime:1:04.440 RaceL600:35.040 PF[Source: sportsbet_race_context L600 Delta: 0.44]"
+            },
+            {
+              "file": "R9.md",
+              "line": "R0038",
+              "fact": "Trainer: Mark Walker | Jockey: Logan Bates | Weight: 55.0kg (Claim 1.5kg, Carried 53.5kg) | Age: 4yoG | Rating: 66"
+            },
+            {
+              "file": "R9.md",
+              "line": "R0037",
+              "fact": "14. Royal Rendezvous (20)"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0583",
+              "fact": "Track:     0: 0-0-0        Distance:  3: 1-1-0        Trk/Dist:  0: 0-0-0"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0595",
+              "fact": "Kilmore R5 2026-09-28 1100m cond:Good $27000 Lachlan Neindorf (6) 60.0kg [historical market price removed] 8th@800m 8th@400m. margin:3.25L starters:9 finish:2/9 RaceClass:[CL1] WinningTime:1:03.250 RaceL600:34.130 PF[Source: sportsbet_race_context L600 Delta: -0.29]"
+            }
+          ]
+        },
+        {
+          "number": 16,
+          "name": "Salaria",
+          "assessment": "第五選；53公斤與進步空間可爭四席。",
+          "support": [
+            "連勝1100米處女及復出1000米BM62，六戰五次前三。"
+          ],
+          "risks": [
+            "最新僅贏0.02、低班；初跑本場及首次單邊眼罩，升班未證。"
+          ],
+          "evidence": [
+            {
+              "file": "R9.md",
+              "line": "F0670",
+              "fact": "Pakenham R3 2026-05-15 1100m cond:Soft $45000 Jye McNeil (7) 57.0kg [historical market price removed] 5th@800m 2nd@400m. margin:0L starters:9 finish:1/9 RaceClass:[3YF MDN-SW] WinningTime:1:03.480 RaceL600:33.840 PF[Source: sportsbet_race_context L600 Delta: -0.73]"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0655",
+              "fact": "Warrnambool R8 2026-10-15 1000m cond:Good $35000 Beau Mertens (1) 58.0kg [historical market price removed] 4th@800m 3rd@400m. margin:0L starters:8 finish:1/8 RaceClass:[BM62] WinningTime:57.470 RaceL600:34.120 PF[Source: sportsbet_race_context L600 Delta: -1.54]"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0656",
+              "fact": "1-Salaria (58.0kg), 2-Kid Dynamite (61.0kg) 0.02L, 3-Midnight Devil (60.5kg) 0.22L"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0646",
+              "fact": "Career:    6: 2-1-2        Last 10:   x321x1          Prize:     $73,330"
+            },
+            {
+              "file": "R9.md",
+              "line": "R0042",
+              "fact": "Trainer: Alex Rae | Jockey: Jamie Melham | Weight: 53.0kg | Age: 4yoM | Rating: 66"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0648",
+              "fact": "Track:     0: 0-0-0        Distance:  2: 1-0-0        Trk/Dist:  0: 0-0-0"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0644",
+              "fact": "SportsbetGear: Changes: Winkers FIRST TIME"
+            }
+          ]
+        },
+        {
+          "number": 17,
+          "name": "Fission",
+          "assessment": "末選；舊本場勝有，但直接近況比較落後。",
+          "support": [
+            "Seymour1100米第三，一月本場1200米勝。"
+          ],
+          "risks": [
+            "最近被Lawborough擊敗2.55，1100米六戰未勝。"
+          ],
+          "evidence": [
+            {
+              "file": "R9.md",
+              "line": "F0723",
+              "fact": "Seymour R8 2026-10-11 1100m cond:Soft $40000 Jamie Mott (14) 60.0kg [historical market price removed] 13th@800m 13th@400m. margin:2.95L starters:14 finish:3/14 RaceClass:[BM74] WinningTime:1:03.730 RaceL600:34.840 PF[Source: sportsbet_race_context L600 Delta: 0.17]"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0763",
+              "fact": "Flemington R9 2026-01-10 1200m cond:Good $130000 Luke Cartwright (9) 59.5kg [historical market price removed] 9th@800m 8th@400m. margin:0L starters:12 finish:1/12 RaceClass:[BM74] WinningTime:1:11.290 RaceL600:34.610 PF[Source: sportsbet_race_context L600 Delta: 0.55]"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0718",
+              "fact": "Bendigo R6 2026-10-28 1100m cond:Good $75000 Luke Currie (7) 58.0kg [historical market price removed] 7th@800m 8th@400m. margin:2.55L starters:9 finish:6/9 RaceClass:[BM78] WinningTime:1:04.020 RaceL600:34.180 PF[Source: sportsbet_race_context L600 Delta: -0.7]"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0711",
+              "fact": "Track:     9: 1-0-1        Distance:  6: 0-1-1        Trk/Dist:  1: 0-0-0"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0709",
+              "fact": "Career:    41: 5-5-8       Last 10:   688x36          Prize:     $600,900"
+            }
+          ]
+        },
+        {
+          "number": 18,
+          "name": "Brave Design",
+          "assessment": "尾二；閹後復出或變，但未夠可信排前。",
+          "support": [
+            "最近900米跳閘勝，本場曾亞季。"
+          ],
+          "risks": [
+            "153日未跑，前季三場未入位；只一勝、閹馬效果未知。"
+          ],
+          "evidence": [
+            {
+              "file": "R9.md",
+              "line": "F0782",
+              "fact": "Geelong **(TRIAL)** R1 2026-10-28 900m cond:None $0 Damien Thornton (5) Nonekg . margin:0L starters:6 finish:1/6 RaceClass:[Jump Out - S5 Barrier Trial] WinningTime:55.710"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0775",
+              "fact": "Track:     4: 0-1-1        Distance:  2: 0-0-1        Trk/Dist:  1: 0-0-1"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0780",
+              "fact": "Days:      153             Ave $:     $28,611         J/H:       0: 0-0-0"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0779",
+              "fact": "Season:    -               12 Month:  3: 0-0-0"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0773",
+              "fact": "Career:    9: 1-2-1        Last 10:   4x806x          Prize:     $257,500"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0771",
+              "fact": "SportsbetGear: Changes: Gelded"
+            }
+          ]
+        },
+        {
+          "number": 19,
+          "name": "Lawborough",
+          "assessment": "第四選；最新好地同程勝，但今磅位上升。",
+          "support": [
+            "Bendigo BM78勝一馬位先Fission；好地五戰三勝。"
+          ],
+          "risks": [
+            "今58比上次55增3；前次同組後於Tres Magnifique。"
+          ],
+          "evidence": [
+            {
+              "file": "R9.md",
+              "line": "F0845",
+              "fact": "Bendigo R6 2026-10-28 1100m cond:Good $75000 Damian Lane (2) 55.0kg [historical market price removed] 4th@800m 4th@400m. margin:0L starters:9 finish:1/9 RaceClass:[BM78] WinningTime:1:04.020 RaceL600:34.180 PF[Source: sportsbet_race_context L600 Delta: -0.7]"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0846",
+              "fact": "1-Lawborough (55.0kg), 2-Interest Point (55.5kg) 1.00L, 3-Miewa (58.5kg) 1.50L"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0839",
+              "fact": "Firm:      0: 0-0-0        Good:      5: 3-0-0        Soft:      2: 0-1-0"
+            },
+            {
+              "file": "R9.md",
+              "line": "R0052",
+              "fact": "Trainer: Simon Zahra | Jockey: Jye McNeil | Weight: 58.0kg | Age: 4yoG | Rating: 72"
+            },
+            {
+              "file": "R9.md",
+              "line": "F0850",
+              "fact": "Caulfield R8 2026-10-14 1100m cond:Good $130000 Damian Lane (8) 55.0kg [historical market price removed] 8th@800m 11th@400m. margin:0.81L starters:13 finish:5/13 RaceClass:[BM78] WinningTime:1:03.170 RaceL600:33.870 PF[Source: sportsbet_race_context L600 Delta: -0.56]"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "analysis_limitations": [
+    "只以凍結R1至R9及protocol作證據，未讀旺財排序、今日賽果或外部來源。",
+    "回顧式input-blind診斷，非當時公開預測；單日不能證明LLM預測優越。",
+    "沒有認出今日任何賽果；無法排除未察覺的預訓練知識。",
+    "質性排序，沒有執行評分引擎或重建旺財；未定義投注與價格，不計ROI。",
+    "信心描述整場排序可辨識程度；R7首選突出不代表全序確定。",
+    "全日採輸入Good 4、Weather Unknown、rail空白，不假定全日跑線不變。"
+  ],
+  "total_active_runners": 105
+}

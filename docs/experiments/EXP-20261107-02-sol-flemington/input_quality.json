@@ -1,0 +1,188 @@
+[
+  {
+    "race": 1,
+    "active_ids": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      7,
+      8,
+      9,
+      10,
+      11,
+      13
+    ],
+    "active_count": 11,
+    "history_rows": 25,
+    "comment_fields": 75,
+    "nonempty_comments": 0
+  },
+  {
+    "race": 2,
+    "active_ids": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      13
+    ],
+    "active_count": 12,
+    "history_rows": 120,
+    "comment_fields": 360,
+    "nonempty_comments": 0
+  },
+  {
+    "race": 3,
+    "active_ids": [
+      1,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "active_count": 10,
+    "history_rows": 99,
+    "comment_fields": 297,
+    "nonempty_comments": 0
+  },
+  {
+    "race": 4,
+    "active_ids": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      15,
+      17
+    ],
+    "active_count": 14,
+    "history_rows": 140,
+    "comment_fields": 420,
+    "nonempty_comments": 0
+  },
+  {
+    "race": 5,
+    "active_ids": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      17
+    ],
+    "active_count": 16,
+    "history_rows": 160,
+    "comment_fields": 480,
+    "nonempty_comments": 0
+  },
+  {
+    "race": 6,
+    "active_ids": [
+      2,
+      3,
+      4,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "active_count": 10,
+    "history_rows": 100,
+    "comment_fields": 300,
+    "nonempty_comments": 0
+  },
+  {
+    "race": 7,
+    "active_ids": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      7,
+      8,
+      9
+    ],
+    "active_count": 8,
+    "history_rows": 79,
+    "comment_fields": 237,
+    "nonempty_comments": 0
+  },
+  {
+    "race": 8,
+    "active_ids": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      9,
+      10,
+      11
+    ],
+    "active_count": 10,
+    "history_rows": 100,
+    "comment_fields": 300,
+    "nonempty_comments": 0
+  },
+  {
+    "race": 9,
+    "active_ids": [
+      1,
+      2,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      12,
+      14,
+      16,
+      17,
+      18,
+      19
+    ],
+    "active_count": 14,
+    "history_rows": 140,
+    "comment_fields": 420,
+    "nonempty_comments": 0
+  }
+]

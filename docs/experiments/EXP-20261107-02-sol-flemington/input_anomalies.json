@@ -1,0 +1,62 @@
+[
+  {
+    "file": "R1.md",
+    "line": "F0098",
+    "horse": [
+      4,
+      "Soldi"
+    ],
+    "issues": [
+      "duplicate_event_key_in_same_horse"
+    ],
+    "raw": "F0098: Flemington **(TRIAL)** R3 2026-09-24 800m cond:None $0 Blake Shinn (None) Nonekg . margin:0.00L starters:6 finish:2/6 RaceClass:[Jump Out - G4 Barrier Trial] WinningTime:46.470"
+  },
+  {
+    "file": "R1.md",
+    "line": "F0275",
+    "horse": [
+      13,
+      "Rusty Pearl"
+    ],
+    "issues": [
+      "finish_outside_declared_field"
+    ],
+    "raw": "F0275: Cranbourne **(TRIAL)** R13 2026-10-12 650m cond:None $0 Changgyun Ma (None) Nonekg . margin:0.00L starters:1 finish:4/1 RaceClass:[Jump Out - S6 Barrier Trial]"
+  },
+  {
+    "file": "R2.md",
+    "line": "F0167",
+    "horse": [
+      3,
+      "Nation's Call"
+    ],
+    "issues": [
+      "L600_screening_flag_not_verified_error"
+    ],
+    "raw": "F0167: Caulfield Heath **(TRIAL)** R1 2026-07-16 1400m cond:Soft $0 Jye McNeil (None) Nonekg . margin:0L starters:8 finish:1/8 RaceClass:[3UP CL1-OPN TRL Barrier Trial] WinningTime:1:27.250 RaceL600:52.920 PF[Source: sportsbet_race_context L600 Delta: 17.65]"
+  },
+  {
+    "file": "R3.md",
+    "line": "F0420",
+    "horse": [
+      8,
+      "Litzdeel"
+    ],
+    "issues": [
+      "L600_screening_flag_not_verified_error"
+    ],
+    "raw": "F0420: Caulfield Heath **(TRIAL)** R2 2026-07-16 800m cond:Soft $0 Blake Shinn (None) Nonekg . margin:2.00L starters:7 finish:5/7 RaceClass:[4UP CL3-OPN-TRL Barrier Trial] WinningTime:49.530 RaceL600:14.800 PF[Source: sportsbet_race_context L600 Delta: -19.35]"
+  },
+  {
+    "file": "R8.md",
+    "line": "F0236",
+    "horse": [
+      4,
+      "Attrition"
+    ],
+    "issues": [
+      "L600_screening_flag_not_verified_error"
+    ],
+    "raw": "F0236: Caulfield Heath **(TRIAL)** R2 2026-07-16 800m cond:Soft $0 Dean Yendall (None) Nonekg . margin:0.80L starters:7 finish:3/7 RaceClass:[4UP CL3-OPN-TRL Barrier Trial] WinningTime:49.530 RaceL600:14.800 PF[Source: sportsbet_race_context L600 Delta: -19.35]"
+  }
+]

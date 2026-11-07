@@ -1,0 +1,150 @@
+{
+  "meeting": "2026-11-07 Flemington Race 1-9",
+  "snapshot_id": "20261107T104800.164664+1100-2986e926e468",
+  "snapshot_created_at": "2026-11-07T10:48:00.164664+11:00",
+  "snapshot_signature": "2986e926e4684f6d01b5eb63d997887ee81abbd8a696b29722400e830a7790fb",
+  "manifest_sha256": "f47f863f8b967c860cb241d850385bcb1c0c605b54ebc12c3aa8447804c5408e",
+  "all_inputs_before_first_scheduled_start": true,
+  "first_start_sydney": "2026-11-07T12:40:00+11:00",
+  "files": [
+    {
+      "race": 1,
+      "kind": "Racecard",
+      "source_name": "11-07 Race 1 Racecard.md",
+      "source_sha256": "055f29f689f0090deb4e1d7f94d949b3f680ab5e0bedce7dfd2bb5634de0011d",
+      "history_run_dates_checked": 0
+    },
+    {
+      "race": 1,
+      "kind": "Formguide",
+      "source_name": "11-07 Race 1 Formguide.md",
+      "source_sha256": "00e11c998236cbf10978c70faaca74ca732a58a845eb02df87c9a49cf81954ae",
+      "history_run_dates_checked": 25
+    },
+    {
+      "race": 2,
+      "kind": "Racecard",
+      "source_name": "11-07 Race 2 Racecard.md",
+      "source_sha256": "0de82a32f47fed040ff9161cafc94405538afcde62458bf48346ff2a1519f22f",
+      "history_run_dates_checked": 0
+    },
+    {
+      "race": 2,
+      "kind": "Formguide",
+      "source_name": "11-07 Race 2 Formguide.md",
+      "source_sha256": "40b434b01acd107c5f956acc14406803191964696e3e4f5988af8411d7063454",
+      "history_run_dates_checked": 120
+    },
+    {
+      "race": 3,
+      "kind": "Racecard",
+      "source_name": "11-07 Race 3 Racecard.md",
+      "source_sha256": "9874af160a304a03321647030d13adf2407f12267964ed4b3077a2c6f30fc25f",
+      "history_run_dates_checked": 0
+    },
+    {
+      "race": 3,
+      "kind": "Formguide",
+      "source_name": "11-07 Race 3 Formguide.md",
+      "source_sha256": "8faa4b91cdc7be5c77283cf3f69cfe29e60e4a141d6174c5868e5c8ef3b9040d",
+      "history_run_dates_checked": 99
+    },
+    {
+      "race": 4,
+      "kind": "Racecard",
+      "source_name": "11-07 Race 4 Racecard.md",
+      "source_sha256": "c25006a2faed4d32b88eada7308b20267d2c746db2835fa68060c74d94d1f82e",
+      "history_run_dates_checked": 0
+    },
+    {
+      "race": 4,
+      "kind": "Formguide",
+      "source_name": "11-07 Race 4 Formguide.md",
+      "source_sha256": "5de0054cf4593448aed7205e38b0528bf4f366783d6cc5120c566b0d7451b7ab",
+      "history_run_dates_checked": 140
+    },
+    {
+      "race": 5,
+      "kind": "Racecard",
+      "source_name": "11-07 Race 5 Racecard.md",
+      "source_sha256": "52bc88020e0b87075de8f9af30d864a71fc8f54e101ba7aff0bfa5f728c6072d",
+      "history_run_dates_checked": 0
+    },
+    {
+      "race": 5,
+      "kind": "Formguide",
+      "source_name": "11-07 Race 5 Formguide.md",
+      "source_sha256": "5754f0074c08d16c296bcaae1249b7673213e7128dcef8aaa4d06cc0a9a1f8c3",
+      "history_run_dates_checked": 160
+    },
+    {
+      "race": 6,
+      "kind": "Racecard",
+      "source_name": "11-07 Race 6 Racecard.md",
+      "source_sha256": "d72f0b698fff8f5384a742157d5df58cec4a7b9abed9cc759a5ee31a477c4668",
+      "history_run_dates_checked": 0
+    },
+    {
+      "race": 6,
+      "kind": "Formguide",
+      "source_name": "11-07 Race 6 Formguide.md",
+      "source_sha256": "ba854712896168573598dcf075571e3ae55ac97e3ecb2d888111e548388c53b4",
+      "history_run_dates_checked": 100
+    },
+    {
+      "race": 7,
+      "kind": "Racecard",
+      "source_name": "11-07 Race 7 Racecard.md",
+      "source_sha256": "a784c4367a704f064da165e8fee1dee4240044e17b7d9018b3c582ac3830e7e8",
+      "history_run_dates_checked": 0
+    },
+    {
+      "race": 7,
+      "kind": "Formguide",
+      "source_name": "11-07 Race 7 Formguide.md",
+      "source_sha256": "4a6d1aba623084bdad7f6c56795c6f3f1aaf16ec3810438b58300aa51a31c8e7",
+      "history_run_dates_checked": 79
+    },
+    {
+      "race": 8,
+      "kind": "Racecard",
+      "source_name": "11-07 Race 8 Racecard.md",
+      "source_sha256": "b062724ac3f3f50e8fb3a5113f8c7951e23d783474e5a234acf48742f1bfe3f6",
+      "history_run_dates_checked": 0
+    },
+    {
+      "race": 8,
+      "kind": "Formguide",
+      "source_name": "11-07 Race 8 Formguide.md",
+      "source_sha256": "69fd27fdf04056027cf7fb2ad7ebc75ef608a3872d561963ce74762bc802f201",
+      "history_run_dates_checked": 100
+    },
+    {
+      "race": 9,
+      "kind": "Racecard",
+      "source_name": "11-07 Race 9 Racecard.md",
+      "source_sha256": "c12dd298f5fd4fee1c74026b7a0c5fc423102f0854d471d42740b5651a66b7fb",
+      "history_run_dates_checked": 0
+    },
+    {
+      "race": 9,
+      "kind": "Formguide",
+      "source_name": "11-07 Race 9 Formguide.md",
+      "source_sha256": "5f5dba70585b71b92ab0cb2181190a64bd91834800293198c1890dedf4f1c31b",
+      "history_run_dates_checked": 140
+    }
+  ],
+  "input_sha256": {
+    "R1.md": "ff10143d6a709551f3bfb37d451cc7b55c3e0fe8b9030ecdbb8cb044bbd0e42a",
+    "R2.md": "0b8fb5f90c3094956de21e4a7d25df127091d1edaf529fd1ec278e07cac5c80a",
+    "R3.md": "d07d80a3b2c4fc7fe7b5c84dde0125ab39c7c0f276729563a5a50d12640af036",
+    "R4.md": "d21d9f07bcfbf4e7d7126261441c014efc6b6f724440f547ddc68a7e9aca21a6",
+    "R5.md": "3f9a4c68cd5f9937ea2334ba0e627678ecb15be25d453881599604885e2f874d",
+    "R6.md": "663be18ee1c0f5c71bb5fbe18d45eed69537c5832d668ce296476f6a7164a48b",
+    "R7.md": "f7022bf90ca8ef6c5f27372699973f781d62c827d953edda13712daa017efc0b",
+    "R8.md": "f2ba5f75b54cd3161ed554b14350e9fe013ae412c8343a09b00a5530aef897d9",
+    "R9.md": "9905c5a5edef5faa19f815eb0766ffd8b4d1d6ed82dc76d5e4e244cc8ff767bc"
+  },
+  "market_removed": true,
+  "known_limit": "Retrospective input-blind analysis; model pretraining/recognition cannot be excluded. Parent manifest inspection exposed Wong Choi recommendations; independent Sol receives no parent history."
+}

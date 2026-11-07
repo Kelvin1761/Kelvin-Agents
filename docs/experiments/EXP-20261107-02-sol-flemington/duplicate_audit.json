@@ -1,0 +1,76 @@
+{
+  "screen": "brand-prefix normalization only; preserve course layouts; repeated keys are suspected duplicates pending source identity audit",
+  "cases": [
+    {
+      "file": "R1.md",
+      "horse": {
+        "number": 4,
+        "name": "Soldi"
+      },
+      "canonical_key": [
+        "flemington **(trial)**",
+        "3",
+        "2026-09-24",
+        "800"
+      ],
+      "lines": [
+        "F0093",
+        "F0098"
+      ],
+      "raw": [
+        "F0093: Flemington **(TRIAL)** R3 2026-09-24 800m cond:None $0 Blake Shinn (None) Nonekg . starters:8 finish:2/8 RaceClass:[Jump Out - G4 Barrier Trial] WinningTime:46.470",
+        "F0098: Flemington **(TRIAL)** R3 2026-09-24 800m cond:None $0 Blake Shinn (None) Nonekg . margin:0.00L starters:6 finish:2/6 RaceClass:[Jump Out - G4 Barrier Trial] WinningTime:46.470"
+      ],
+      "formal": false
+    },
+    {
+      "file": "R9.md",
+      "horse": {
+        "number": 5,
+        "name": "Torsheen"
+      },
+      "canonical_key": [
+        "sandown hillside",
+        "6",
+        "2026-01-21",
+        "1300"
+      ],
+      "lines": [
+        "F0185",
+        "F0190"
+      ],
+      "raw": [
+        "F0185: Sportsbet Sandown Hillside R6 2026-01-21 1300m cond:Good $35000 Teo Nugent (3) 59.0kg 4th@800m 3rd@400m. margin:1.25L starters:7 finish:2/7 RaceClass:[3Y BM64] WinningTime:1:18.090 RaceL600:35.690 PF[Source: sportsbet_race_context L600 Delta: 1.12]",
+        "F0190: Sandown Hillside R6 2026-01-21 1300m cond:Good $35000 Teo Nugent (3) 59.0kg [historical market price removed] 4th@800m 3rd@400m. margin:1.25L starters:7 finish:2/7 RaceClass:[3Y BM64] WinningTime:1:18.090 RaceL600:35.690 PF[Source: sportsbet_race_context L600 Delta: 1.12]"
+      ],
+      "formal": true
+    },
+    {
+      "file": "R9.md",
+      "horse": {
+        "number": 14,
+        "name": "Royal Rendezvous"
+      },
+      "canonical_key": [
+        "sandown hillside",
+        "6",
+        "2026-01-21",
+        "1300"
+      ],
+      "lines": [
+        "F0625",
+        "F0630"
+      ],
+      "raw": [
+        "F0625: Sportsbet Sandown Hillside R6 2026-01-21 1300m cond:Good $35000 Damian Lane (4) 59.5kg 1st@800m 1st@400m. margin:2.21L starters:7 finish:5/7 RaceClass:[3Y BM64] WinningTime:1:18.090 RaceL600:35.690 PF[Source: sportsbet_race_context L600 Delta: 1.12]",
+        "F0630: Sandown Hillside R6 2026-01-21 1300m cond:Good $35000 Damian Lane (4) 59.5kg [historical market price removed] 1st@800m 1st@400m. margin:2.21L starters:7 finish:5/7 RaceClass:[3Y BM64] WinningTime:1:18.090 RaceL600:35.690 PF[Source: sportsbet_race_context L600 Delta: 1.12]"
+      ],
+      "formal": true
+    }
+  ],
+  "confirmed_downstream": {
+    "R9 #5 Torsheen": "Jan21 duplicated PF; not among six form-quality runs",
+    "R9 #14 Royal Rendezvous": "Jan21 duplicated PF AND form-quality runs 5 and 6"
+  },
+  "ranking_impact_measured": false
+}

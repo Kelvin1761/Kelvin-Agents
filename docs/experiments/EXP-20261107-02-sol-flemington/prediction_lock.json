@@ -1,0 +1,20 @@
+{
+  "locked_at_utc": "2026-11-07T11:41:47.188307+00:00",
+  "configured_model": "gpt-6.1-sol",
+  "agent_task": "/root/sol_flemington_blind",
+  "fresh_context": true,
+  "recognised_outcomes_reported": false,
+  "outputs": {
+    "Sol_Predictions.json": "50c061150afdca6c5f555dd9564656a93e7b52d2eeb5af3da3f476145d7af0a4",
+    "Sol_Analysis.md": "1b936331fa8033ccbd25370978d2f8c6ea01a628969dfc74cfd06b0d834dbb1b"
+  },
+  "validation": {
+    "races": 9,
+    "runners": 105,
+    "references_checked": 466,
+    "issues": []
+  },
+  "outcomes_read_before_lock": false,
+  "parent_wc_exposure_disclosed_in_protocol": true,
+  "private_copy": "/private/tmp/au-sol-flemington-locked"
+}

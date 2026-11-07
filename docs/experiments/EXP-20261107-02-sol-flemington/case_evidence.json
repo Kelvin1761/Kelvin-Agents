@@ -1,0 +1,3210 @@
+{
+ "snapshot": "20261107T104800.164664+1100-2986e926e468",
+ "full_attribution_sha256": "2acc8f3a094f4200b73744fcb96194ca84e8c896e2cb1512a09a58eb5186804a",
+ "source_sha256": {
+  "Race_1_Logic.json": "60546e27c9f4cfc631928c49fad326cafca29ec79bae4d6e87bb2e08ed67ca32",
+  "Race_2_Logic.json": "16efee9062b3d73f844e8523c6e876f9e63c479334e29c961219d250b7c323e4",
+  "Race_3_Logic.json": "9b12bcc2906c2962a1f9a5625024b7c4d8a7b9aef71a2358b6bccab5b6d78ee6",
+  "Race_4_Logic.json": "6ff6b743e1b8c3f25f6a0516a4549e1b1a85b0b5009aafdaea173f439b050e19",
+  "Race_5_Logic.json": "10eebfd8742f2d6fde0c2dc43f405c5ab21a8cddb0ff5c0ed0972ef78af5cbb9",
+  "Race_6_Logic.json": "42b84757514e98f6471c22620ae96a48097149342b5f8e61d0b6af3ea8171388",
+  "Race_7_Logic.json": "f8f10d46b3546a7a4ff9bea615b14c7ac8d8d321cd97bce60bc6a1b21a37ac34",
+  "Race_8_Logic.json": "1632a6d95ca101f89bb48eef8b7828d79f5b58cfc438a8e3628bd406988be916",
+  "Race_9_Logic.json": "f5be906900d953336953f47d76c66a4f3c1b2a9be234eab5d957f82afb3df219"
+ },
+ "cases": [
+  {
+   "race": 1,
+   "horses": [
+    {
+     "number": 1,
+     "name": "Public Affairs",
+     "rank": 4,
+     "ability_score": 63.5865,
+     "matrix_scores": {
+      "stability": 60.0,
+      "pace_perf": 60.0,
+      "race_shape": 60.0,
+      "jockey_trainer": 64.98,
+      "class_weight": 58.39,
+      "track": 60.0,
+      "form_line": 60.0,
+      "preparation": 60.0
+     },
+     "feature_scores": {
+      "form_score": 60.0,
+      "trial_score": 80.0,
+      "sectional_score": 60.0,
+      "pace_map_score": 60.0,
+      "jockey_score": 71.969393,
+      "trainer_score": 57.375955,
+      "jockey_horse_fit_score": 64.57,
+      "class_score": 57.7,
+      "rating_score": 58.192857,
+      "weight_score": 60.0,
+      "distance_score": 50.0,
+      "track_score": 60.0,
+      "formline_score": 60.0,
+      "consistency_score": 60.0,
+      "performance_quality_score": 60.0,
+      "health_score": 60.0,
+      "confidence_score": 66.0,
+      "pace_figure_score": 60.0,
+      "preparation_score": 60.0,
+      "form_quality_score": 60.0,
+      "trial_speed_score": 60.0
+     },
+     "contributions": [
+      {
+       "key": "stability",
+       "label": "狀態與穩定性",
+       "score": 60.0,
+       "weight": 0.3356801031107793,
+       "contribution": 0.0,
+       "band": "➖"
+      },
+      {
+       "key": "pace_perf",
+       "label": "速度考驗背景",
+       "score": 60.0,
+       "weight": 0.08792517389716135,
+       "contribution": 0.0,
+       "band": "➖"
+      },
+      {
+       "key": "jockey_trainer",
+       "label": "騎練訊號",
+       "score": 64.98,
+       "weight": 0.8417176483031119,
+       "contribution": 4.19,
+       "band": "➖"
+      },
+      {
+       "key": "class_weight",
+       "label": "官方評分對位",
+       "score": 58.39,
+       "weight": 0.37591890388052396,
+       "contribution": -0.61,
+       "band": "➖"
+      },
+      {
+       "key": "track",
+       "label": "場地與地況適性",
+       "score": 60.0,
+       "weight": 0.09599163637133952,
+       "contribution": 0.0,
+       "band": "➖"
+      },
+      {
+       "key": "preparation",
+       "label": "試閘備戰",
+       "score": 60.0,
+       "weight": 0.18651970492137235,
+       "contribution": 0.0,
+       "band": "➖"
+      }
+     ],
+     "proven_class": {
+      "raw": null,
+      "field_count": 0,
+      "field_mean": 0.0,
+      "field_stdev": 0.0,
+      "z_score": null,
+      "weight": 0.5,
+      "adjustment": 0.0,
+      "state": "missing_neutral"
+     },
+     "trial_speed": {
+      "raw": null,
+      "field_count": 3,
+      "mean": 0.8,
+      "stdev": 0.92,
+      "applies": true,
+      "final": 60.0
+     },
+     "pace": {
+      "value": null,
+      "mean": null,
+      "stdev": null,
+      "z": null,
+      "runs": 0,
+      "final": 60.0,
+      "state": "no_pf",
+      "source": "unknown",
+      "trial_runs": 0,
+      "formal_runs": 0,
+      "run_dates": [],
+      "basis": "race"
+     },
+     "form_quality_summary": {
+      "raw": null,
+      "run_count": 0,
+      "field_count": 0,
+      "field_mean": null,
+      "field_stdev": 0.0,
+      "final": 60.0,
+      "fallback": "form_and_quality_composite"
+     }
+    },
+    {
+     "number": 3,
+     "name": "The Chancer",
+     "rank": 3,
+     "ability_score": 66.065,
+     "matrix_scores": {
+      "stability": 60.0,
+      "pace_perf": 60.0,
+      "race_shape": 60.0,
+      "jockey_trainer": 67.55,
+      "class_weight": 58.39,
+      "track": 60.0,
+      "form_line": 60.0,
+      "preparation": 61.69
+     },
+     "feature_scores": {
+      "form_score": 60.0,
+      "trial_score": 80.0,
+      "sectional_score": 60.0,
+      "pace_map_score": 60.0,
+      "jockey_score": 71.213378,
+      "trainer_score": 67.2548,
+      "jockey_horse_fit_score": 64.57,
+      "class_score": 57.7,
+      "rating_score": 58.192857,
+      "weight_score": 60.0,
+      "distance_score": 50.0,
+      "track_score": 60.0,
+      "formline_score": 60.0,
+      "consistency_score": 60.0,
+      "performance_quality_score": 60.0,
+      "health_score": 60.0,
+      "confidence_score": 66.0,
+      "pace_figure_score": 60.0,
+      "preparation_score": 63.38,
+      "form_quality_score": 60.0,
+      "trial_speed_score": 60.0
+     },
+     "contributions": [
+      {
+       "key": "stability",
+       "label": "狀態與穩定性",
+       "score": 60.0,
+       "weight": 0.3356801031107793,
+       "contribution": 0.0,
+       "band": "➖"
+      },
+      {
+       "key": "pace_perf",
+       "label": "速度考驗背景",
+       "score": 60.0,
+       "weight": 0.08792517389716135,
+       "contribution": 0.0,
+       "band": "➖"
+      },
+      {
+       "key": "jockey_trainer",
+       "label": "騎練訊號",
+       "score": 67.55,
+       "weight": 0.8417176483031119,
+       "contribution": 6.35,
+       "band": "➖"
+      },
+      {
+       "key": "class_weight",
+       "label": "官方評分對位",
+       "score": 58.39,
+       "weight": 0.37591890388052396,
+       "contribution": -0.61,
+       "band": "➖"
+      },
+      {
+       "key": "track",
+       "label": "場地與地況適性",
+       "score": 60.0,
+       "weight": 0.09599163637133952,
+       "contribution": 0.0,
+       "band": "➖"
+      },
+      {
+       "key": "preparation",
+       "label": "試閘備戰",
+       "score": 61.69,
+       "weight": 0.18651970492137235,
+       "contribution": 0.32,
+       "band": "➖"
+      }
+     ],
+     "proven_class": {
+      "raw": null,
+      "field_count": 0,
+      "field_mean": 0.0,
+      "field_stdev": 0.0,
+      "z_score": null,
+      "weight": 0.5,
+      "adjustment": 0.0,
+      "state": "missing_neutral"
+     },
+     "trial_speed": {
+      "raw": null,
+      "field_count": 3,
+      "mean": 0.8,
+      "stdev": 0.92,
+      "applies": true,
+      "final": 60.0
+     },
+     "pace": {
+      "value": null,
+      "mean": null,
+      "stdev": null,
+      "z": null,
+      "runs": 0,
+      "final": 60.0,
+      "state": "no_pf",
+      "source": "unknown",
+      "trial_runs": 0,
+      "formal_runs": 0,
+      "run_dates": [],
+      "basis": "race"
+     },
+     "form_quality_summary": {
+      "raw": null,
+      "run_count": 0,
+      "field_count": 0,
+      "field_mean": null,
+      "field_stdev": 0.0,
+      "final": 60.0,
+      "fallback": "form_and_quality_composite"
+     }
+    },
+    {
+     "number": 7,
+     "name": "Goddess Kay",
+     "rank": 6,
+     "ability_score": 61.6634,
+     "matrix_scores": {
+      "stability": 60.0,
+      "pace_perf": 60.0,
+      "race_shape": 60.0,
+      "jockey_trainer": 62.21,
+      "class_weight": 58.39,
+      "track": 60.0,
+      "form_line": 60.0,
+      "preparation": 62.19
+     },
+     "feature_scores": {
+      "form_score": 60.0,
+      "trial_score": 82.0,
+      "sectional_score": 60.0,
+      "pace_map_score": 60.0,
+      "jockey_score": 67.10843,
+      "trainer_score": 53.33952,
+      "jockey_horse_fit_score": 64.57,
+      "class_score": 57.7,
+      "rating_score": 58.192857,
+      "weight_score": 60.0,
+      "distance_score": 50.0,
+      "track_score": 60.0,
+      "formline_score": 60.0,
+      "consistency_score": 60.0,
+      "performance_quality_score": 60.0,
+      "health_score": 60.0,
+      "confidence_score": 66.0,
+      "pace_figure_score": 60.0,
+      "preparation_score": 64.38,
+      "form_quality_score": 60.0,
+      "trial_speed_score": 60.0
+     },
+     "contributions": [
+      {
+       "key": "stability",
+       "label": "狀態與穩定性",
+       "score": 60.0,
+       "weight": 0.3356801031107793,
+       "contribution": 0.0,
+       "band": "➖"
+      },
+      {
+       "key": "pace_perf",
+       "label": "速度考驗背景",
+       "score": 60.0,
+       "weight": 0.08792517389716135,
+       "contribution": 0.0,
+       "band": "➖"
+      },
+      {
+       "key": "jockey_trainer",
+       "label": "騎練訊號",
+       "score": 62.21,
+       "weight": 0.8417176483031119,
+       "contribution": 1.86,
+       "band": "➖"
+      },
+      {
+       "key": "class_weight",
+       "label": "官方評分對位",
+       "score": 58.39,
+       "weight": 0.37591890388052396,
+       "contribution": -0.61,
+       "band": "➖"
+      },
+      {
+       "key": "track",
+       "label": "場地與地況適性",
+       "score": 60.0,
+       "weight": 0.09599163637133952,
+       "contribution": 0.0,
+       "band": "➖"
+      },
+      {
+       "key": "preparation",
+       "label": "試閘備戰",
+       "score": 62.19,
+       "weight": 0.18651970492137235,
+       "contribution": 0.41,
+       "band": "➖"
+      }
+     ],
+     "proven_class": {
+      "raw": null,
+      "field_count": 0,
+      "field_mean": 0.0,
+      "field_stdev": 0.0,
+      "z_score": null,
+      "weight": 0.5,
+      "adjustment": 0.0,
+      "state": "missing_neutral"
+     },
+     "trial_speed": {
+      "raw": null,
+      "field_count": 3,
+      "mean": 0.8,
+      "stdev": 0.92,
+      "applies": true,
+      "final": 60.0
+     },
+     "pace": {
+      "value": null,
+      "mean": null,
+      "stdev": null,
+      "z": null,
+      "runs": 0,
+      "final": 60.0,
+      "state": "no_pf",
+      "source": "unknown",
+      "trial_runs": 0,
+      "formal_runs": 0,
+      "run_dates": [],
+      "basis": "race"
+     },
+     "form_quality_summary": {
+      "raw": null,
+      "run_count": 0,
+      "field_count": 0,
+      "field_mean": null,
+      "field_stdev": 0.0,
+      "final": 60.0,
+      "fallback": "form_and_quality_composite"
+     }
+    }
+   ]
+  },
+  {
+   "race": 3,
+   "horses": [
+    {
+     "number": 4,
+     "name": "Pinhole",
+     "rank": 1,
+     "ability_score": 78.3802,
+     "matrix_scores": {
+      "stability": 84.23,
+      "pace_perf": 65.27,
+      "race_shape": 59.75,
+      "jockey_trainer": 70.38,
+      "class_weight": 62.11,
+      "track": 59.19,
+      "form_line": 87.6,
+      "preparation": 60.0
+     },
+     "feature_scores": {
+      "form_score": 78.934077,
+      "trial_score": 60.0,
+      "sectional_score": 86.19,
+      "pace_map_score": 59.7515,
+      "jockey_score": 83.318153,
+      "trainer_score": 62.713292,
+      "jockey_horse_fit_score": 64.81,
+      "class_score": 62.1,
+      "rating_score": 62.567155,
+      "weight_score": 60.0,
+      "distance_score": 62.0,
+      "track_score": 59.19,
+      "formline_score": 87.6,
+      "consistency_score": 100.0,
+      "performance_quality_score": 80.000119,
+      "health_score": 61.0,
+      "confidence_score": 88.0,
+      "pace_figure_score": 65.265228,
+      "preparation_score": 60.0,
+      "form_quality_score": 84.228688,
+      "trial_speed_score": 60.0
+     },
+     "contributions": [
+      {
+       "key": "stability",
+       "label": "狀態與穩定性",
+       "score": 84.23,
+       "weight": 0.3356801031107793,
+       "contribution": 8.13,
+       "band": "✅"
+      },
+      {
+       "key": "pace_perf",
+       "label": "速度考驗背景",
+       "score": 65.27,
+       "weight": 0.08792517389716135,
+       "contribution": 0.46,
+       "band": "➖"
+      },
+      {
+       "key": "jockey_trainer",
+       "label": "騎練訊號",
+       "score": 70.38,
+       "weight": 0.8417176483031119,
+       "contribution": 8.74,
+       "band": "✅"
+      },
+      {
+       "key": "class_weight",
+       "label": "官方評分對位",
+       "score": 62.11,
+       "weight": 0.37591890388052396,
+       "contribution": 0.79,
+       "band": "➖"
+      },
+      {
+       "key": "track",
+       "label": "場地與地況適性",
+       "score": 59.19,
+       "weight": 0.09599163637133952,
+       "contribution": -0.08,
+       "band": "➖"
+      },
+      {
+       "key": "preparation",
+       "label": "試閘備戰",
+       "score": 60.0,
+       "weight": 0.18651970492137235,
+       "contribution": 0.0,
+       "band": "➖"
+      }
+     ],
+     "proven_class": {
+      "raw": 28.1532,
+      "field_count": 8,
+      "field_mean": 19.8143,
+      "field_stdev": 7.1974,
+      "z_score": 1.1586,
+      "weight": 0.5,
+      "adjustment": 0.5793,
+      "state": "observed_field_relative"
+     },
+     "trial_speed": {
+      "raw": null,
+      "field_count": 0,
+      "mean": null,
+      "stdev": 0.0,
+      "applies": false,
+      "final": 60.0
+     },
+     "pace": {
+      "value": -0.06,
+      "mean": 0.1,
+      "stdev": 0.62,
+      "z": -0.26,
+      "runs": 8,
+      "final": 65.3,
+      "state": "ok",
+      "source": "sportsbet_race_context",
+      "trial_runs": 0,
+      "formal_runs": 8,
+      "run_dates": [
+       "2026-10-24",
+       "2026-10-10",
+       "2026-09-26",
+       "2026-09-05",
+       "2026-06-27",
+       "2026-06-10",
+       "2026-05-23",
+       "2026-05-09"
+      ],
+      "basis": "own"
+     },
+     "form_quality_summary": {
+      "raw": 1.550029,
+      "run_count": 6,
+      "field_count": 10,
+      "field_mean": 1.0004598,
+      "field_stdev": 0.45365163958434007,
+      "z": 1.2114,
+      "final": 84.23
+     }
+    },
+    {
+     "number": 5,
+     "name": "King Pedro",
+     "rank": 2,
+     "ability_score": 77.6045,
+     "matrix_scores": {
+      "stability": 90.18,
+      "pace_perf": 91.08,
+      "race_shape": 58.26,
+      "jockey_trainer": 67.41,
+      "class_weight": 61.26,
+      "track": 59.19,
+      "form_line": 98.7,
+      "preparation": 60.0
+     },
+     "feature_scores": {
+      "form_score": 79.209181,
+      "trial_score": 60.0,
+      "sectional_score": 86.19,
+      "pace_map_score": 58.2607,
+      "jockey_score": 66.191919,
+      "trainer_score": 81.38675,
+      "jockey_horse_fit_score": 58.0,
+      "class_score": 62.1,
+      "rating_score": 61.3447,
+      "weight_score": 60.0,
+      "distance_score": 62.0,
+      "track_score": 59.19,
+      "formline_score": 98.7,
+      "consistency_score": 100.0,
+      "performance_quality_score": 87.486704,
+      "health_score": 61.0,
+      "confidence_score": 86.0,
+      "pace_figure_score": 91.083225,
+      "preparation_score": 60.0,
+      "form_quality_score": 90.183742,
+      "trial_speed_score": 60.0
+     },
+     "contributions": [
+      {
+       "key": "stability",
+       "label": "狀態與穩定性",
+       "score": 90.18,
+       "weight": 0.3356801031107793,
+       "contribution": 10.13,
+       "band": "✅✅"
+      },
+      {
+       "key": "pace_perf",
+       "label": "速度考驗背景",
+       "score": 91.08,
+       "weight": 0.08792517389716135,
+       "contribution": 2.73,
+       "band": "✅✅"
+      },
+      {
+       "key": "jockey_trainer",
+       "label": "騎練訊號",
+       "score": 67.41,
+       "weight": 0.8417176483031119,
+       "contribution": 6.24,
+       "band": "➖"
+      },
+      {
+       "key": "class_weight",
+       "label": "官方評分對位",
+       "score": 61.26,
+       "weight": 0.37591890388052396,
+       "contribution": 0.47,
+       "band": "➖"
+      },
+      {
+       "key": "track",
+       "label": "場地與地況適性",
+       "score": 59.19,
+       "weight": 0.09599163637133952,
+       "contribution": -0.08,
+       "band": "➖"
+      },
+      {
+       "key": "preparation",
+       "label": "試閘備戰",
+       "score": 60.0,
+       "weight": 0.18651970492137235,
+       "contribution": 0.0,
+       "band": "➖"
+      }
+     ],
+     "proven_class": {
+      "raw": 17.6153,
+      "field_count": 8,
+      "field_mean": 19.8143,
+      "field_stdev": 7.1974,
+      "z_score": -0.3055,
+      "weight": 0.5,
+      "adjustment": -0.1528,
+      "state": "observed_field_relative"
+     },
+     "trial_speed": {
+      "raw": null,
+      "field_count": 0,
+      "mean": null,
+      "stdev": 0.0,
+      "applies": false,
+      "final": 60.0
+     },
+     "pace": {
+      "value": -0.85,
+      "mean": 0.1,
+      "stdev": 0.62,
+      "z": -1.55,
+      "runs": 7,
+      "final": 91.1,
+      "state": "ok",
+      "source": "sportsbet_race_context",
+      "trial_runs": 0,
+      "formal_runs": 7,
+      "run_dates": [
+       "2026-10-24",
+       "2026-10-10",
+       "2026-07-16",
+       "2026-06-27",
+       "2026-06-13",
+       "2026-05-09",
+       "2026-04-25"
+      ],
+      "basis": "own"
+     },
+     "form_quality_summary": {
+      "raw": 1.685105,
+      "run_count": 6,
+      "field_count": 10,
+      "field_mean": 1.0004598,
+      "field_stdev": 0.45365163958434007,
+      "z": 1.5092,
+      "final": 90.18
+     }
+    }
+   ]
+  },
+  {
+   "race": 4,
+   "horses": [
+    {
+     "number": 2,
+     "name": "Grand Larceny",
+     "rank": 1,
+     "ability_score": 74.3371,
+     "matrix_scores": {
+      "stability": 75.68,
+      "pace_perf": 61.68,
+      "race_shape": 60.0,
+      "jockey_trainer": 66.76,
+      "class_weight": 65.88,
+      "track": 67.4,
+      "form_line": 100.0,
+      "preparation": 61.69
+     },
+     "feature_scores": {
+      "form_score": 63.05006,
+      "trial_score": 60.0,
+      "sectional_score": 67.75,
+      "pace_map_score": 60.0,
+      "jockey_score": 71.213378,
+      "trainer_score": 63.743034,
+      "jockey_horse_fit_score": 65.12,
+      "class_score": 60.0,
+      "rating_score": 68.406439,
+      "weight_score": 60.0,
+      "distance_score": 62.0,
+      "track_score": 67.4,
+      "formline_score": 100.0,
+      "consistency_score": 77.32,
+      "performance_quality_score": 68.153536,
+      "health_score": 60.0,
+      "confidence_score": 85.0,
+      "pace_figure_score": 61.679911,
+      "preparation_score": 63.38,
+      "form_quality_score": 75.678932,
+      "trial_speed_score": 60.0
+     },
+     "contributions": [
+      {
+       "key": "stability",
+       "label": "狀態與穩定性",
+       "score": 75.68,
+       "weight": 0.3356801031107793,
+       "contribution": 5.26,
+       "band": "✅"
+      },
+      {
+       "key": "pace_perf",
+       "label": "速度考驗背景",
+       "score": 61.68,
+       "weight": 0.08792517389716135,
+       "contribution": 0.15,
+       "band": "➖"
+      },
+      {
+       "key": "jockey_trainer",
+       "label": "騎練訊號",
+       "score": 66.76,
+       "weight": 0.8417176483031119,
+       "contribution": 5.69,
+       "band": "➖"
+      },
+      {
+       "key": "class_weight",
+       "label": "官方評分對位",
+       "score": 65.88,
+       "weight": 0.37591890388052396,
+       "contribution": 2.21,
+       "band": "➖"
+      },
+      {
+       "key": "track",
+       "label": "場地與地況適性",
+       "score": 67.4,
+       "weight": 0.09599163637133952,
+       "contribution": 0.71,
+       "band": "➖"
+      },
+      {
+       "key": "preparation",
+       "label": "試閘備戰",
+       "score": 61.69,
+       "weight": 0.18651970492137235,
+       "contribution": 0.32,
+       "band": "➖"
+      }
+     ],
+     "proven_class": {
+      "raw": null,
+      "field_count": 9,
+      "field_mean": 18.2417,
+      "field_stdev": 10.5511,
+      "z_score": null,
+      "weight": 0.5,
+      "adjustment": 0.0,
+      "state": "missing_neutral"
+     },
+     "trial_speed": {
+      "raw": null,
+      "field_count": 0,
+      "mean": null,
+      "stdev": 0.0,
+      "applies": false,
+      "final": 60.0
+     },
+     "pace": {
+      "value": 0.59,
+      "mean": 0.63,
+      "stdev": 0.52,
+      "z": -0.08,
+      "runs": 4,
+      "final": 61.7,
+      "state": "ok",
+      "source": "sportsbet_race_context",
+      "trial_runs": 0,
+      "formal_runs": 4,
+      "run_dates": [
+       "2026-10-31",
+       "2026-10-10",
+       "2026-05-09",
+       "2026-04-25"
+      ],
+      "basis": "own"
+     },
+     "form_quality_summary": {
+      "raw": 0.975806,
+      "run_count": 4,
+      "field_count": 14,
+      "field_mean": 0.6805206428571429,
+      "field_stdev": 0.376665139900645,
+      "z": 0.7839,
+      "final": 75.68
+     }
+    },
+    {
+     "number": 4,
+     "name": "Watchme Win",
+     "rank": 10,
+     "ability_score": 60.5728,
+     "matrix_scores": {
+      "stability": 47.08,
+      "pace_perf": 62.6,
+      "race_shape": 60.0,
+      "jockey_trainer": 64.75,
+      "class_weight": 62.98,
+      "track": 51.19,
+      "form_line": 98.5,
+      "preparation": 62.19
+     },
+     "feature_scores": {
+      "form_score": 54.285714,
+      "trial_score": 60.0,
+      "sectional_score": 80.09,
+      "pace_map_score": 60.0,
+      "jockey_score": 72.55357,
+      "trainer_score": 61.974081,
+      "jockey_horse_fit_score": 60.0,
+      "class_score": 60.0,
+      "rating_score": 64.26242,
+      "weight_score": 60.0,
+      "distance_score": 60.0,
+      "track_score": 51.19,
+      "formline_score": 98.5,
+      "consistency_score": 59.9,
+      "performance_quality_score": 58.222833,
+      "health_score": 60.0,
+      "confidence_score": 83.0,
+      "pace_figure_score": 62.599211,
+      "preparation_score": 64.38,
+      "form_quality_score": 47.076073,
+      "trial_speed_score": 60.0
+     },
+     "contributions": [
+      {
+       "key": "stability",
+       "label": "狀態與穩定性",
+       "score": 47.08,
+       "weight": 0.3356801031107793,
+       "contribution": -4.34,
+       "band": "❌"
+      },
+      {
+       "key": "pace_perf",
+       "label": "速度考驗背景",
+       "score": 62.6,
+       "weight": 0.08792517389716135,
+       "contribution": 0.23,
+       "band": "➖"
+      },
+      {
+       "key": "jockey_trainer",
+       "label": "騎練訊號",
+       "score": 64.75,
+       "weight": 0.8417176483031119,
+       "contribution": 4.0,
+       "band": "➖"
+      },
+      {
+       "key": "class_weight",
+       "label": "官方評分對位",
+       "score": 62.98,
+       "weight": 0.37591890388052396,
+       "contribution": 1.12,
+       "band": "➖"
+      },
+      {
+       "key": "track",
+       "label": "場地與地況適性",
+       "score": 51.19,
+       "weight": 0.09599163637133952,
+       "contribution": -0.85,
+       "band": "❌"
+      },
+      {
+       "key": "preparation",
+       "label": "試閘備戰",
+       "score": 62.19,
+       "weight": 0.18651970492137235,
+       "contribution": 0.41,
+       "band": "➖"
+      }
+     ],
+     "proven_class": {
+      "raw": null,
+      "field_count": 9,
+      "field_mean": 18.2417,
+      "field_stdev": 10.5511,
+      "z_score": null,
+      "weight": 0.5,
+      "adjustment": 0.0,
+      "state": "missing_neutral"
+     },
+     "trial_speed": {
+      "raw": null,
+      "field_count": 0,
+      "mean": null,
+      "stdev": 0.0,
+      "applies": false,
+      "final": 60.0
+     },
+     "pace": {
+      "value": 0.56,
+      "mean": 0.63,
+      "stdev": 0.52,
+      "z": -0.13,
+      "runs": 8,
+      "final": 62.6,
+      "state": "ok",
+      "source": "sportsbet_race_context",
+      "trial_runs": 0,
+      "formal_runs": 8,
+      "run_dates": [
+       "2026-10-31",
+       "2026-10-10",
+       "2026-09-12",
+       "2026-07-25",
+       "2026-07-11",
+       "2026-05-09",
+       "2026-04-25",
+       "2026-04-11"
+      ],
+      "basis": "own"
+     },
+     "form_quality_summary": {
+      "raw": 0.437121,
+      "run_count": 6,
+      "field_count": 14,
+      "field_mean": 0.6805206428571429,
+      "field_stdev": 0.376665139900645,
+      "z": -0.6462,
+      "final": 47.08
+     }
+    },
+    {
+     "number": 11,
+     "name": "Photograph",
+     "rank": 7,
+     "ability_score": 65.799,
+     "matrix_scores": {
+      "stability": 79.9,
+      "pace_perf": 73.44,
+      "race_shape": 60.0,
+      "jockey_trainer": 59.18,
+      "class_weight": 57.76,
+      "track": 51.19,
+      "form_line": 99.5,
+      "preparation": 61.69
+     },
+     "feature_scores": {
+      "form_score": 63.571429,
+      "trial_score": 60.0,
+      "sectional_score": 86.19,
+      "pace_map_score": 60.0,
+      "jockey_score": 56.719339,
+      "trainer_score": 60.971353,
+      "jockey_horse_fit_score": 60.0,
+      "class_score": 60.0,
+      "rating_score": 56.803185,
+      "weight_score": 60.0,
+      "distance_score": 64.0,
+      "track_score": 51.19,
+      "formline_score": 99.5,
+      "consistency_score": 86.18,
+      "performance_quality_score": 72.952183,
+      "health_score": 60.0,
+      "confidence_score": 86.0,
+      "pace_figure_score": 73.439291,
+      "preparation_score": 63.38,
+      "form_quality_score": 79.895409,
+      "trial_speed_score": 60.0
+     },
+     "contributions": [
+      {
+       "key": "stability",
+       "label": "狀態與穩定性",
+       "score": 79.9,
+       "weight": 0.3356801031107793,
+       "contribution": 6.68,
+       "band": "✅"
+      },
+      {
+       "key": "pace_perf",
+       "label": "速度考驗背景",
+       "score": 73.44,
+       "weight": 0.08792517389716135,
+       "contribution": 1.18,
+       "band": "✅"
+      },
+      {
+       "key": "jockey_trainer",
+       "label": "騎練訊號",
+       "score": 59.18,
+       "weight": 0.8417176483031119,
+       "contribution": -0.69,
+       "band": "➖"
+      },
+      {
+       "key": "class_weight",
+       "label": "官方評分對位",
+       "score": 57.76,
+       "weight": 0.37591890388052396,
+       "contribution": -0.84,
+       "band": "➖"
+      },
+      {
+       "key": "track",
+       "label": "場地與地況適性",
+       "score": 51.19,
+       "weight": 0.09599163637133952,
+       "contribution": -0.85,
+       "band": "❌"
+      },
+      {
+       "key": "preparation",
+       "label": "試閘備戰",
+       "score": 61.69,
+       "weight": 0.18651970492137235,
+       "contribution": 0.32,
+       "band": "➖"
+      }
+     ],
+     "proven_class": {
+      "raw": null,
+      "field_count": 9,
+      "field_mean": 18.2417,
+      "field_stdev": 10.5511,
+      "z_score": null,
+      "weight": 0.5,
+      "adjustment": 0.0,
+      "state": "missing_neutral"
+     },
+     "trial_speed": {
+      "raw": null,
+      "field_count": 0,
+      "mean": null,
+      "stdev": 0.0,
+      "applies": false,
+      "final": 60.0
+     },
+     "pace": {
+      "value": 0.28,
+      "mean": 0.63,
+      "stdev": 0.52,
+      "z": -0.67,
+      "runs": 5,
+      "final": 73.4,
+      "state": "ok",
+      "source": "sportsbet_race_context",
+      "trial_runs": 0,
+      "formal_runs": 5,
+      "run_dates": [
+       "2026-10-31",
+       "2026-10-17",
+       "2026-09-19",
+       "2026-08-29",
+       "2026-03-14"
+      ],
+      "basis": "own"
+     },
+     "form_quality_summary": {
+      "raw": 1.055216,
+      "run_count": 5,
+      "field_count": 14,
+      "field_mean": 0.6805206428571429,
+      "field_stdev": 0.376665139900645,
+      "z": 0.9948,
+      "final": 79.9
+     }
+    }
+   ]
+  },
+  {
+   "race": 5,
+   "horses": [
+    {
+     "number": 4,
+     "name": "Soverato",
+     "rank": 1,
+     "ability_score": 81.3862,
+     "matrix_scores": {
+      "stability": 95.68,
+      "pace_perf": 67.65,
+      "race_shape": 62.01,
+      "jockey_trainer": 65.84,
+      "class_weight": 61.98,
+      "track": 67.4,
+      "form_line": 93.0,
+      "preparation": 60.0
+     },
+     "feature_scores": {
+      "form_score": 74.732205,
+      "trial_score": 60.0,
+      "sectional_score": 86.19,
+      "pace_map_score": 62.0127,
+      "jockey_score": 69.686954,
+      "trainer_score": 62.713292,
+      "jockey_horse_fit_score": 64.81,
+      "class_score": 60.0,
+      "rating_score": 62.828427,
+      "weight_score": 60.0,
+      "distance_score": 61.0,
+      "track_score": 67.4,
+      "formline_score": 93.0,
+      "consistency_score": 83.02,
+      "performance_quality_score": 83.576416,
+      "health_score": 61.0,
+      "confidence_score": 88.0,
+      "pace_figure_score": 67.652653,
+      "preparation_score": 60.0,
+      "form_quality_score": 95.677828,
+      "trial_speed_score": 60.0
+     },
+     "contributions": [
+      {
+       "key": "stability",
+       "label": "狀態與穩定性",
+       "score": 95.68,
+       "weight": 0.3356801031107793,
+       "contribution": 11.98,
+       "band": "✅✅"
+      },
+      {
+       "key": "pace_perf",
+       "label": "速度考驗背景",
+       "score": 67.65,
+       "weight": 0.08792517389716135,
+       "contribution": 0.67,
+       "band": "➖"
+      },
+      {
+       "key": "jockey_trainer",
+       "label": "騎練訊號",
+       "score": 65.84,
+       "weight": 0.8417176483031119,
+       "contribution": 4.92,
+       "band": "➖"
+      },
+      {
+       "key": "class_weight",
+       "label": "官方評分對位",
+       "score": 61.98,
+       "weight": 0.37591890388052396,
+       "contribution": 0.74,
+       "band": "➖"
+      },
+      {
+       "key": "track",
+       "label": "場地與地況適性",
+       "score": 67.4,
+       "weight": 0.09599163637133952,
+       "contribution": 0.71,
+       "band": "➖"
+      },
+      {
+       "key": "preparation",
+       "label": "試閘備戰",
+       "score": 60.0,
+       "weight": 0.18651970492137235,
+       "contribution": 0.0,
+       "band": "➖"
+      }
+     ],
+     "proven_class": {
+      "raw": 20.25,
+      "field_count": 14,
+      "field_mean": 12.173,
+      "field_stdev": 6.334,
+      "z_score": 1.2752,
+      "weight": 0.5,
+      "adjustment": 0.6376,
+      "state": "observed_field_relative"
+     },
+     "trial_speed": {
+      "raw": null,
+      "field_count": 0,
+      "mean": null,
+      "stdev": 0.0,
+      "applies": false,
+      "final": 60.0
+     },
+     "pace": {
+      "value": 0.07,
+      "mean": 0.28,
+      "stdev": 0.55,
+      "z": -0.38,
+      "runs": 7,
+      "final": 67.7,
+      "state": "ok",
+      "source": "sportsbet_race_context",
+      "trial_runs": 0,
+      "formal_runs": 7,
+      "run_dates": [
+       "2026-10-24",
+       "2026-10-03",
+       "2026-09-19",
+       "2026-06-06",
+       "2026-05-23",
+       "2026-04-11",
+       "2026-04-04"
+      ],
+      "basis": "own"
+     },
+     "form_quality_summary": {
+      "raw": 1.287897,
+      "run_count": 6,
+      "field_count": 16,
+      "field_mean": 0.6988181875,
+      "field_stdev": 0.33022122704469253,
+      "z": 1.7839,
+      "final": 95.68
+     }
+    },
+    {
+     "number": 5,
+     "name": "Too Darn Discreet",
+     "rank": 2,
+     "ability_score": 71.5514,
+     "matrix_scores": {
+      "stability": 85.55,
+      "pace_perf": 88.33,
+      "race_shape": 60.46,
+      "jockey_trainer": 54.98,
+      "class_weight": 66.51,
+      "track": 69.0,
+      "form_line": 100.0,
+      "preparation": 60.0
+     },
+     "feature_scores": {
+      "form_score": 69.796971,
+      "trial_score": 60.0,
+      "sectional_score": 80.09,
+      "pace_map_score": 60.4645,
+      "jockey_score": 66.191919,
+      "trainer_score": 37.877586,
+      "jockey_horse_fit_score": 58.0,
+      "class_score": 60.0,
+      "rating_score": 69.293403,
+      "weight_score": 60.0,
+      "distance_score": 66.0,
+      "track_score": 69.0,
+      "formline_score": 100.0,
+      "consistency_score": 85.48,
+      "performance_quality_score": 89.515116,
+      "health_score": 61.0,
+      "confidence_score": 86.0,
+      "pace_figure_score": 88.326645,
+      "preparation_score": 60.0,
+      "form_quality_score": 85.551465,
+      "trial_speed_score": 60.0
+     },
+     "contributions": [
+      {
+       "key": "stability",
+       "label": "狀態與穩定性",
+       "score": 85.55,
+       "weight": 0.3356801031107793,
+       "contribution": 8.58,
+       "band": "✅✅"
+      },
+      {
+       "key": "pace_perf",
+       "label": "速度考驗背景",
+       "score": 88.33,
+       "weight": 0.08792517389716135,
+       "contribution": 2.49,
+       "band": "✅✅"
+      },
+      {
+       "key": "jockey_trainer",
+       "label": "騎練訊號",
+       "score": 54.98,
+       "weight": 0.8417176483031119,
+       "contribution": -4.23,
+       "band": "❌"
+      },
+      {
+       "key": "class_weight",
+       "label": "官方評分對位",
+       "score": 66.51,
+       "weight": 0.37591890388052396,
+       "contribution": 2.45,
+       "band": "➖"
+      },
+      {
+       "key": "track",
+       "label": "場地與地況適性",
+       "score": 69.0,
+       "weight": 0.09599163637133952,
+       "contribution": 0.86,
+       "band": "➖"
+      },
+      {
+       "key": "preparation",
+       "label": "試閘備戰",
+       "score": 60.0,
+       "weight": 0.18651970492137235,
+       "contribution": 0.0,
+       "band": "➖"
+      }
+     ],
+     "proven_class": {
+      "raw": 24.0,
+      "field_count": 14,
+      "field_mean": 12.173,
+      "field_stdev": 6.334,
+      "z_score": 1.8672,
+      "weight": 0.5,
+      "adjustment": 0.9336,
+      "state": "observed_field_relative"
+     },
+     "trial_speed": {
+      "raw": null,
+      "field_count": 0,
+      "mean": null,
+      "stdev": 0.0,
+      "applies": false,
+      "final": 60.0
+     },
+     "pace": {
+      "value": -0.5,
+      "mean": 0.28,
+      "stdev": 0.55,
+      "z": -1.42,
+      "runs": 9,
+      "final": 88.3,
+      "state": "ok",
+      "source": "sportsbet_race_context",
+      "trial_runs": 0,
+      "formal_runs": 9,
+      "run_dates": [
+       "2026-10-24",
+       "2026-10-10",
+       "2026-09-27",
+       "2026-09-12",
+       "2026-04-25",
+       "2026-04-03",
+       "2026-03-21",
+       "2026-03-07",
+       "2026-02-14"
+      ],
+      "basis": "own"
+     },
+     "form_quality_summary": {
+      "raw": 1.1207,
+      "run_count": 6,
+      "field_count": 16,
+      "field_mean": 0.6988181875,
+      "field_stdev": 0.33022122704469253,
+      "z": 1.2776,
+      "final": 85.55
+     }
+    },
+    {
+     "number": 12,
+     "name": "Sun Gift",
+     "rank": 15,
+     "ability_score": 48.6323,
+     "matrix_scores": {
+      "stability": 37.45,
+      "pace_perf": 27.65,
+      "race_shape": 60.77,
+      "jockey_trainer": 59.15,
+      "class_weight": 54.63,
+      "track": 67.4,
+      "form_line": 100.0,
+      "preparation": 61.69
+     },
+     "feature_scores": {
+      "form_score": 55.522954,
+      "trial_score": 60.0,
+      "sectional_score": 67.75,
+      "pace_map_score": 60.7741,
+      "jockey_score": 52.400269,
+      "trainer_score": 64.621675,
+      "jockey_horse_fit_score": 60.96,
+      "class_score": 60.0,
+      "rating_score": 52.322841,
+      "weight_score": 60.0,
+      "distance_score": 63.0,
+      "track_score": 67.4,
+      "formline_score": 100.0,
+      "consistency_score": 67.06,
+      "performance_quality_score": 32.561322,
+      "health_score": 60.0,
+      "confidence_score": 85.0,
+      "pace_figure_score": 27.65139,
+      "preparation_score": 63.38,
+      "form_quality_score": 37.44735,
+      "trial_speed_score": 60.0
+     },
+     "contributions": [
+      {
+       "key": "stability",
+       "label": "狀態與穩定性",
+       "score": 37.45,
+       "weight": 0.3356801031107793,
+       "contribution": -7.57,
+       "band": "❌❌"
+      },
+      {
+       "key": "pace_perf",
+       "label": "速度考驗背景",
+       "score": 27.65,
+       "weight": 0.08792517389716135,
+       "contribution": -2.84,
+       "band": "❌❌"
+      },
+      {
+       "key": "jockey_trainer",
+       "label": "騎練訊號",
+       "score": 59.15,
+       "weight": 0.8417176483031119,
+       "contribution": -0.72,
+       "band": "➖"
+      },
+      {
+       "key": "class_weight",
+       "label": "官方評分對位",
+       "score": 54.63,
+       "weight": 0.37591890388052396,
+       "contribution": -2.02,
+       "band": "❌"
+      },
+      {
+       "key": "track",
+       "label": "場地與地況適性",
+       "score": 67.4,
+       "weight": 0.09599163637133952,
+       "contribution": 0.71,
+       "band": "➖"
+      },
+      {
+       "key": "preparation",
+       "label": "試閘備戰",
+       "score": 61.69,
+       "weight": 0.18651970492137235,
+       "contribution": 0.32,
+       "band": "➖"
+      }
+     ],
+     "proven_class": {
+      "raw": 11.9301,
+      "field_count": 14,
+      "field_mean": 12.173,
+      "field_stdev": 6.334,
+      "z_score": -0.0384,
+      "weight": 0.5,
+      "adjustment": -0.0192,
+      "state": "observed_field_relative"
+     },
+     "trial_speed": {
+      "raw": null,
+      "field_count": 0,
+      "mean": null,
+      "stdev": 0.0,
+      "applies": false,
+      "final": 60.0
+     },
+     "pace": {
+      "value": 1.17,
+      "mean": 0.28,
+      "stdev": 0.55,
+      "z": 1.62,
+      "runs": 7,
+      "final": 27.7,
+      "state": "ok",
+      "source": "sportsbet_race_context",
+      "trial_runs": 0,
+      "formal_runs": 7,
+      "run_dates": [
+       "2026-11-04",
+       "2026-10-24",
+       "2026-10-09",
+       "2026-09-26",
+       "2026-04-25",
+       "2026-03-21",
+       "2026-02-21"
+      ],
+      "basis": "own"
+     },
+     "form_quality_summary": {
+      "raw": 0.32645,
+      "run_count": 6,
+      "field_count": 16,
+      "field_mean": 0.6988181875,
+      "field_stdev": 0.33022122704469253,
+      "z": -1.1276,
+      "final": 37.45
+     }
+    }
+   ]
+  },
+  {
+   "race": 6,
+   "horses": [
+    {
+     "number": 6,
+     "name": "Tempted",
+     "rank": 2,
+     "ability_score": 81.2277,
+     "matrix_scores": {
+      "stability": 93.72,
+      "pace_perf": 81.7,
+      "race_shape": 60.0,
+      "jockey_trainer": 66.76,
+      "class_weight": 65.06,
+      "track": 60.0,
+      "form_line": 93.9,
+      "preparation": 62.19
+     },
+     "feature_scores": {
+      "form_score": 97.604636,
+      "trial_score": 60.0,
+      "sectional_score": 86.19,
+      "pace_map_score": 60.0,
+      "jockey_score": 64.744433,
+      "trainer_score": 67.686034,
+      "jockey_horse_fit_score": 67.83,
+      "class_score": 62.1,
+      "rating_score": 66.777721,
+      "weight_score": 60.0,
+      "distance_score": 66.0,
+      "track_score": 60.0,
+      "formline_score": 93.9,
+      "consistency_score": 100.0,
+      "performance_quality_score": 86.11838,
+      "health_score": 61.0,
+      "confidence_score": 85.0,
+      "pace_figure_score": 81.701249,
+      "preparation_score": 64.38,
+      "form_quality_score": 93.7192,
+      "trial_speed_score": 60.0
+     },
+     "contributions": [
+      {
+       "key": "stability",
+       "label": "狀態與穩定性",
+       "score": 93.72,
+       "weight": 0.3356801031107793,
+       "contribution": 11.32,
+       "band": "✅✅"
+      },
+      {
+       "key": "pace_perf",
+       "label": "速度考驗背景",
+       "score": 81.7,
+       "weight": 0.08792517389716135,
+       "contribution": 1.91,
+       "band": "✅"
+      },
+      {
+       "key": "jockey_trainer",
+       "label": "騎練訊號",
+       "score": 66.76,
+       "weight": 0.8417176483031119,
+       "contribution": 5.69,
+       "band": "➖"
+      },
+      {
+       "key": "class_weight",
+       "label": "官方評分對位",
+       "score": 65.06,
+       "weight": 0.37591890388052396,
+       "contribution": 1.9,
+       "band": "➖"
+      },
+      {
+       "key": "track",
+       "label": "場地與地況適性",
+       "score": 60.0,
+       "weight": 0.09599163637133952,
+       "contribution": 0.0,
+       "band": "➖"
+      },
+      {
+       "key": "preparation",
+       "label": "試閘備戰",
+       "score": 62.19,
+       "weight": 0.18651970492137235,
+       "contribution": 0.41,
+       "band": "➖"
+      }
+     ],
+     "proven_class": {
+      "raw": null,
+      "field_count": 2,
+      "field_mean": 10.6667,
+      "field_stdev": 0.0,
+      "z_score": null,
+      "weight": 0.5,
+      "adjustment": 0.0,
+      "state": "missing_neutral"
+     },
+     "trial_speed": {
+      "raw": null,
+      "field_count": 0,
+      "mean": null,
+      "stdev": 0.0,
+      "applies": false,
+      "final": 60.0
+     },
+     "pace": {
+      "value": -0.58,
+      "mean": -0.19,
+      "stdev": 0.36,
+      "z": -1.09,
+      "runs": 6,
+      "final": 81.7,
+      "state": "ok",
+      "source": "sportsbet_race_context",
+      "trial_runs": 0,
+      "formal_runs": 6,
+      "run_dates": [
+       "2026-10-17",
+       "2026-10-03",
+       "2026-09-05",
+       "2026-04-11",
+       "2026-02-28",
+       "2026-02-07"
+      ],
+      "basis": "own"
+     },
+     "form_quality_summary": {
+      "raw": 3.266651,
+      "run_count": 6,
+      "field_count": 10,
+      "field_mean": 1.973618,
+      "field_stdev": 0.7669416818012957,
+      "z": 1.686,
+      "final": 93.72
+     }
+    },
+    {
+     "number": 7,
+     "name": "Joliestar",
+     "rank": 1,
+     "ability_score": 83.5917,
+     "matrix_scores": {
+      "stability": 88.43,
+      "pace_perf": 75.59,
+      "race_shape": 60.0,
+      "jockey_trainer": 71.29,
+      "class_weight": 65.06,
+      "track": 69.0,
+      "form_line": 100.0,
+      "preparation": 62.19
+     },
+     "feature_scores": {
+      "form_score": 87.699466,
+      "trial_score": 60.0,
+      "sectional_score": 80.09,
+      "pace_map_score": 60.0,
+      "jockey_score": 83.318153,
+      "trainer_score": 62.713292,
+      "jockey_horse_fit_score": 67.21,
+      "class_score": 62.1,
+      "rating_score": 66.777721,
+      "weight_score": 60.0,
+      "distance_score": 64.0,
+      "track_score": 69.0,
+      "formline_score": 100.0,
+      "consistency_score": 100.0,
+      "performance_quality_score": 87.473093,
+      "health_score": 61.0,
+      "confidence_score": 85.0,
+      "pace_figure_score": 75.587431,
+      "preparation_score": 64.38,
+      "form_quality_score": 88.42795,
+      "trial_speed_score": 60.0
+     },
+     "contributions": [
+      {
+       "key": "stability",
+       "label": "狀態與穩定性",
+       "score": 88.43,
+       "weight": 0.3356801031107793,
+       "contribution": 9.54,
+       "band": "✅✅"
+      },
+      {
+       "key": "pace_perf",
+       "label": "速度考驗背景",
+       "score": 75.59,
+       "weight": 0.08792517389716135,
+       "contribution": 1.37,
+       "band": "✅"
+      },
+      {
+       "key": "jockey_trainer",
+       "label": "騎練訊號",
+       "score": 71.29,
+       "weight": 0.8417176483031119,
+       "contribution": 9.5,
+       "band": "✅"
+      },
+      {
+       "key": "class_weight",
+       "label": "官方評分對位",
+       "score": 65.06,
+       "weight": 0.37591890388052396,
+       "contribution": 1.9,
+       "band": "➖"
+      },
+      {
+       "key": "track",
+       "label": "場地與地況適性",
+       "score": 69.0,
+       "weight": 0.09599163637133952,
+       "contribution": 0.86,
+       "band": "➖"
+      },
+      {
+       "key": "preparation",
+       "label": "試閘備戰",
+       "score": 62.19,
+       "weight": 0.18651970492137235,
+       "contribution": 0.41,
+       "band": "➖"
+      }
+     ],
+     "proven_class": {
+      "raw": 5.3333,
+      "field_count": 2,
+      "field_mean": 10.6667,
+      "field_stdev": 0.0,
+      "z_score": null,
+      "weight": 0.5,
+      "adjustment": 0.0,
+      "state": "missing_neutral"
+     },
+     "trial_speed": {
+      "raw": null,
+      "field_count": 0,
+      "mean": null,
+      "stdev": 0.0,
+      "applies": false,
+      "final": 60.0
+     },
+     "pace": {
+      "value": -0.47,
+      "mean": -0.19,
+      "stdev": 0.36,
+      "z": -0.78,
+      "runs": 3,
+      "final": 75.6,
+      "state": "ok",
+      "source": "sportsbet_race_context",
+      "trial_runs": 0,
+      "formal_runs": 3,
+      "run_dates": [
+       "2026-10-17",
+       "2026-09-19",
+       "2026-04-04"
+      ],
+      "basis": "own"
+     },
+     "form_quality_summary": {
+      "raw": 3.063747,
+      "run_count": 4,
+      "field_count": 10,
+      "field_mean": 1.973618,
+      "field_stdev": 0.7669416818012957,
+      "z": 1.4214,
+      "final": 88.43
+     }
+    },
+    {
+     "number": 9,
+     "name": "Skybird",
+     "rank": 9,
+     "ability_score": 56.3903,
+     "matrix_scores": {
+      "stability": 45.83,
+      "pace_perf": 19.33,
+      "race_shape": 60.0,
+      "jockey_trainer": 64.21,
+      "class_weight": 60.0,
+      "track": 69.0,
+      "form_line": 99.5,
+      "preparation": 61.69
+     },
+     "feature_scores": {
+      "form_score": 65.182631,
+      "trial_score": 60.0,
+      "sectional_score": 80.09,
+      "pace_map_score": 60.0,
+      "jockey_score": 71.213378,
+      "trainer_score": 56.106714,
+      "jockey_horse_fit_score": 64.16,
+      "class_score": 60.0,
+      "rating_score": 60.0,
+      "weight_score": 60.0,
+      "distance_score": 64.0,
+      "track_score": 69.0,
+      "formline_score": 99.5,
+      "consistency_score": 75.46,
+      "performance_quality_score": 47.790535,
+      "health_score": 61.0,
+      "confidence_score": 88.0,
+      "pace_figure_score": 19.329088,
+      "preparation_score": 63.38,
+      "form_quality_score": 45.82771,
+      "trial_speed_score": 60.0
+     },
+     "contributions": [
+      {
+       "key": "stability",
+       "label": "狀態與穩定性",
+       "score": 45.83,
+       "weight": 0.3356801031107793,
+       "contribution": -4.76,
+       "band": "❌"
+      },
+      {
+       "key": "pace_perf",
+       "label": "速度考驗背景",
+       "score": 19.33,
+       "weight": 0.08792517389716135,
+       "contribution": -3.58,
+       "band": "❌❌"
+      },
+      {
+       "key": "jockey_trainer",
+       "label": "騎練訊號",
+       "score": 64.21,
+       "weight": 0.8417176483031119,
+       "contribution": 3.54,
+       "band": "➖"
+      },
+      {
+       "key": "class_weight",
+       "label": "官方評分對位",
+       "score": 60.0,
+       "weight": 0.37591890388052396,
+       "contribution": 0.0,
+       "band": "➖"
+      },
+      {
+       "key": "track",
+       "label": "場地與地況適性",
+       "score": 69.0,
+       "weight": 0.09599163637133952,
+       "contribution": 0.86,
+       "band": "➖"
+      },
+      {
+       "key": "preparation",
+       "label": "試閘備戰",
+       "score": 61.69,
+       "weight": 0.18651970492137235,
+       "contribution": 0.32,
+       "band": "➖"
+      }
+     ],
+     "proven_class": {
+      "raw": null,
+      "field_count": 2,
+      "field_mean": 10.6667,
+      "field_stdev": 0.0,
+      "z_score": null,
+      "weight": 0.5,
+      "adjustment": 0.0,
+      "state": "missing_neutral"
+     },
+     "trial_speed": {
+      "raw": null,
+      "field_count": 0,
+      "mean": null,
+      "stdev": 0.0,
+      "applies": false,
+      "final": 60.0
+     },
+     "pace": {
+      "value": 0.54,
+      "mean": -0.19,
+      "stdev": 0.36,
+      "z": 2.03,
+      "runs": 7,
+      "final": 19.3,
+      "state": "ok",
+      "source": "sportsbet_race_context",
+      "trial_runs": 0,
+      "formal_runs": 7,
+      "run_dates": [
+       "2026-10-17",
+       "2026-10-03",
+       "2026-09-05",
+       "2026-05-30",
+       "2026-05-16",
+       "2026-04-25",
+       "2026-04-04"
+      ],
+      "basis": "own"
+     },
+     "form_quality_summary": {
+      "raw": 1.430152,
+      "run_count": 6,
+      "field_count": 10,
+      "field_mean": 1.973618,
+      "field_stdev": 0.7669416818012957,
+      "z": -0.7086,
+      "final": 45.83
+     }
+    },
+    {
+     "number": 11,
+     "name": "Point Barrow",
+     "rank": 7,
+     "ability_score": 60.9209,
+     "matrix_scores": {
+      "stability": 45.47,
+      "pace_perf": 64.76,
+      "race_shape": 60.0,
+      "jockey_trainer": 66.88,
+      "class_weight": 55.93,
+      "track": 67.4,
+      "form_line": 100.0,
+      "preparation": 62.19
+     },
+     "feature_scores": {
+      "form_score": 71.867065,
+      "trial_score": 60.0,
+      "sectional_score": 86.19,
+      "pace_map_score": 60.0,
+      "jockey_score": 66.191919,
+      "trainer_score": 68.071802,
+      "jockey_horse_fit_score": 66.59,
+      "class_score": 60.0,
+      "rating_score": 54.190525,
+      "weight_score": 60.0,
+      "distance_score": 64.0,
+      "track_score": 67.4,
+      "formline_score": 100.0,
+      "consistency_score": 91.19,
+      "performance_quality_score": 42.290591,
+      "health_score": 61.0,
+      "confidence_score": 88.0,
+      "pace_figure_score": 64.762047,
+      "preparation_score": 64.38,
+      "form_quality_score": 45.468074,
+      "trial_speed_score": 60.0
+     },
+     "contributions": [
+      {
+       "key": "stability",
+       "label": "狀態與穩定性",
+       "score": 45.47,
+       "weight": 0.3356801031107793,
+       "contribution": -4.88,
+       "band": "❌"
+      },
+      {
+       "key": "pace_perf",
+       "label": "速度考驗背景",
+       "score": 64.76,
+       "weight": 0.08792517389716135,
+       "contribution": 0.42,
+       "band": "➖"
+      },
+      {
+       "key": "jockey_trainer",
+       "label": "騎練訊號",
+       "score": 66.88,
+       "weight": 0.8417176483031119,
+       "contribution": 5.79,
+       "band": "➖"
+      },
+      {
+       "key": "class_weight",
+       "label": "官方評分對位",
+       "score": 55.93,
+       "weight": 0.37591890388052396,
+       "contribution": -1.53,
+       "band": "➖"
+      },
+      {
+       "key": "track",
+       "label": "場地與地況適性",
+       "score": 67.4,
+       "weight": 0.09599163637133952,
+       "contribution": 0.71,
+       "band": "➖"
+      },
+      {
+       "key": "preparation",
+       "label": "試閘備戰",
+       "score": 62.19,
+       "weight": 0.18651970492137235,
+       "contribution": 0.41,
+       "band": "➖"
+      }
+     ],
+     "proven_class": {
+      "raw": null,
+      "field_count": 2,
+      "field_mean": 10.6667,
+      "field_stdev": 0.0,
+      "z_score": null,
+      "weight": 0.5,
+      "adjustment": 0.0,
+      "state": "missing_neutral"
+     },
+     "trial_speed": {
+      "raw": null,
+      "field_count": 0,
+      "mean": null,
+      "stdev": 0.0,
+      "applies": false,
+      "final": 60.0
+     },
+     "pace": {
+      "value": -0.28,
+      "mean": -0.19,
+      "stdev": 0.36,
+      "z": -0.24,
+      "runs": 6,
+      "final": 64.8,
+      "state": "ok",
+      "source": "sportsbet_race_context",
+      "trial_runs": 0,
+      "formal_runs": 6,
+      "run_dates": [
+       "2026-10-10",
+       "2026-09-19",
+       "2026-09-05",
+       "2026-04-25",
+       "2026-03-21",
+       "2026-02-21"
+      ],
+      "basis": "own"
+     },
+     "form_quality_summary": {
+      "raw": 1.416361,
+      "run_count": 6,
+      "field_count": 10,
+      "field_mean": 1.973618,
+      "field_stdev": 0.7669416818012957,
+      "z": -0.7266,
+      "final": 45.47
+     }
+    },
+    {
+     "number": 12,
+     "name": "Plaintiff",
+     "rank": 10,
+     "ability_score": 49.0993,
+     "matrix_scores": {
+      "stability": 32.79,
+      "pace_perf": 34.7,
+      "race_shape": 60.0,
+      "jockey_trainer": 63.81,
+      "class_weight": 51.6,
+      "track": 60.0,
+      "form_line": 99.7,
+      "preparation": 62.19
+     },
+     "feature_scores": {
+      "form_score": 51.204666,
+      "trial_score": 60.0,
+      "sectional_score": 86.19,
+      "pace_map_score": 60.0,
+      "jockey_score": 65.703348,
+      "trainer_score": 63.041662,
+      "jockey_horse_fit_score": 62.74,
+      "class_score": 60.0,
+      "rating_score": 48.0,
+      "weight_score": 60.0,
+      "distance_score": 62.0,
+      "track_score": 60.0,
+      "formline_score": 99.7,
+      "consistency_score": 71.92,
+      "performance_quality_score": 33.92789,
+      "health_score": 61.0,
+      "confidence_score": 88.0,
+      "pace_figure_score": 34.697768,
+      "preparation_score": 64.38,
+      "form_quality_score": 32.785258,
+      "trial_speed_score": 60.0
+     },
+     "contributions": [
+      {
+       "key": "stability",
+       "label": "狀態與穩定性",
+       "score": 32.79,
+       "weight": 0.3356801031107793,
+       "contribution": -9.13,
+       "band": "❌❌"
+      },
+      {
+       "key": "pace_perf",
+       "label": "速度考驗背景",
+       "score": 34.7,
+       "weight": 0.08792517389716135,
+       "contribution": -2.22,
+       "band": "❌❌"
+      },
+      {
+       "key": "jockey_trainer",
+       "label": "騎練訊號",
+       "score": 63.81,
+       "weight": 0.8417176483031119,
+       "contribution": 3.21,
+       "band": "➖"
+      },
+      {
+       "key": "class_weight",
+       "label": "官方評分對位",
+       "score": 51.6,
+       "weight": 0.37591890388052396,
+       "contribution": -3.16,
+       "band": "❌"
+      },
+      {
+       "key": "track",
+       "label": "場地與地況適性",
+       "score": 60.0,
+       "weight": 0.09599163637133952,
+       "contribution": 0.0,
+       "band": "➖"
+      },
+      {
+       "key": "preparation",
+       "label": "試閘備戰",
+       "score": 62.19,
+       "weight": 0.18651970492137235,
+       "contribution": 0.41,
+       "band": "➖"
+      }
+     ],
+     "proven_class": {
+      "raw": 16.0,
+      "field_count": 2,
+      "field_mean": 10.6667,
+      "field_stdev": 0.0,
+      "z_score": null,
+      "weight": 0.5,
+      "adjustment": 0.0,
+      "state": "missing_neutral"
+     },
+     "trial_speed": {
+      "raw": null,
+      "field_count": 0,
+      "mean": null,
+      "stdev": 0.0,
+      "applies": false,
+      "final": 60.0
+     },
+     "pace": {
+      "value": 0.26,
+      "mean": -0.19,
+      "stdev": 0.36,
+      "z": 1.27,
+      "runs": 6,
+      "final": 34.7,
+      "state": "ok",
+      "source": "sportsbet_race_context",
+      "trial_runs": 0,
+      "formal_runs": 6,
+      "run_dates": [
+       "2026-10-17",
+       "2026-10-03",
+       "2026-09-12",
+       "2026-04-18",
+       "2026-04-04",
+       "2025-12-20"
+      ],
+      "basis": "own"
+     },
+     "form_quality_summary": {
+      "raw": 0.930012,
+      "run_count": 6,
+      "field_count": 10,
+      "field_mean": 1.973618,
+      "field_stdev": 0.7669416818012957,
+      "z": -1.3607,
+      "final": 32.79
+     }
+    }
+   ]
+  },
+  {
+   "race": 7,
+   "horses": [
+    {
+     "number": 3,
+     "name": "Buckaroo",
+     "rank": 6,
+     "ability_score": 59.8254,
+     "matrix_scores": {
+      "stability": 52.2,
+      "pace_perf": 43.12,
+      "race_shape": 59.07,
+      "jockey_trainer": 63.75,
+      "class_weight": 62.24,
+      "track": 69.0,
+      "form_line": 100.0,
+      "preparation": 60.0
+     },
+     "feature_scores": {
+      "form_score": 57.556383,
+      "trial_score": 60.0,
+      "sectional_score": 67.75,
+      "pace_map_score": 59.0655,
+      "jockey_score": 71.213378,
+      "trainer_score": 62.713292,
+      "jockey_horse_fit_score": 58.0,
+      "class_score": 60.0,
+      "rating_score": 63.193226,
+      "weight_score": 60.0,
+      "distance_score": 61.0,
+      "track_score": 69.0,
+      "formline_score": 100.0,
+      "consistency_score": 69.46,
+      "performance_quality_score": 46.297263,
+      "health_score": 61.0,
+      "confidence_score": 83.0,
+      "pace_figure_score": 43.116178,
+      "preparation_score": 60.0,
+      "form_quality_score": 52.202829,
+      "trial_speed_score": 60.0
+     },
+     "contributions": [
+      {
+       "key": "stability",
+       "label": "狀態與穩定性",
+       "score": 52.2,
+       "weight": 0.3356801031107793,
+       "contribution": -2.62,
+       "band": "❌"
+      },
+      {
+       "key": "pace_perf",
+       "label": "速度考驗背景",
+       "score": 43.12,
+       "weight": 0.08792517389716135,
+       "contribution": -1.48,
+       "band": "❌"
+      },
+      {
+       "key": "jockey_trainer",
+       "label": "騎練訊號",
+       "score": 63.75,
+       "weight": 0.8417176483031119,
+       "contribution": 3.16,
+       "band": "➖"
+      },
+      {
+       "key": "class_weight",
+       "label": "官方評分對位",
+       "score": 62.24,
+       "weight": 0.37591890388052396,
+       "contribution": 0.84,
+       "band": "➖"
+      },
+      {
+       "key": "track",
+       "label": "場地與地況適性",
+       "score": 69.0,
+       "weight": 0.09599163637133952,
+       "contribution": 0.86,
+       "band": "➖"
+      },
+      {
+       "key": "preparation",
+       "label": "試閘備戰",
+       "score": 60.0,
+       "weight": 0.18651970492137235,
+       "contribution": 0.0,
+       "band": "➖"
+      }
+     ],
+     "proven_class": {
+      "raw": null,
+      "field_count": 2,
+      "field_mean": 18.2294,
+      "field_stdev": 0.0,
+      "z_score": null,
+      "weight": 0.5,
+      "adjustment": 0.0,
+      "state": "missing_neutral"
+     },
+     "trial_speed": {
+      "raw": null,
+      "field_count": 0,
+      "mean": null,
+      "stdev": 0.0,
+      "applies": false,
+      "final": 60.0
+     },
+     "pace": {
+      "value": 1.29,
+      "mean": 0.4,
+      "stdev": 1.05,
+      "z": 0.84,
+      "runs": 6,
+      "final": 43.1,
+      "state": "ok",
+      "source": "sportsbet_race_context",
+      "trial_runs": 0,
+      "formal_runs": 6,
+      "run_dates": [
+       "2026-10-24",
+       "2026-10-03",
+       "2026-09-19",
+       "2026-08-29",
+       "2026-03-14",
+       "2026-02-21"
+      ],
+      "basis": "own"
+     },
+     "form_quality_summary": {
+      "raw": 0.912623,
+      "run_count": 6,
+      "field_count": 8,
+      "field_mean": 1.2692943749999999,
+      "field_stdev": 0.9148738313084402,
+      "z": -0.3899,
+      "final": 52.2
+     }
+    },
+    {
+     "number": 5,
+     "name": "Pounding",
+     "rank": 4,
+     "ability_score": 63.7326,
+     "matrix_scores": {
+      "stability": 57.24,
+      "pace_perf": 73.85,
+      "race_shape": 62.18,
+      "jockey_trainer": 61.72,
+      "class_weight": 57.29,
+      "track": 69.0,
+      "form_line": 84.6,
+      "preparation": 60.0
+     },
+     "feature_scores": {
+      "form_score": 57.384669,
+      "trial_score": 60.0,
+      "sectional_score": 86.19,
+      "pace_map_score": 62.1804,
+      "jockey_score": 52.982543,
+      "trainer_score": 64.17638,
+      "jockey_horse_fit_score": 67.52,
+      "class_score": 60.0,
+      "rating_score": 56.127364,
+      "weight_score": 60.0,
+      "distance_score": 61.0,
+      "track_score": 69.0,
+      "formline_score": 84.6,
+      "consistency_score": 88.18,
+      "performance_quality_score": 66.613644,
+      "health_score": 61.0,
+      "confidence_score": 85.0,
+      "pace_figure_score": 73.854547,
+      "preparation_score": 60.0,
+      "form_quality_score": 57.241416,
+      "trial_speed_score": 60.0
+     },
+     "contributions": [
+      {
+       "key": "stability",
+       "label": "狀態與穩定性",
+       "score": 57.24,
+       "weight": 0.3356801031107793,
+       "contribution": -0.93,
+       "band": "➖"
+      },
+      {
+       "key": "pace_perf",
+       "label": "速度考驗背景",
+       "score": 73.85,
+       "weight": 0.08792517389716135,
+       "contribution": 1.22,
+       "band": "✅"
+      },
+      {
+       "key": "jockey_trainer",
+       "label": "騎練訊號",
+       "score": 61.72,
+       "weight": 0.8417176483031119,
+       "contribution": 1.45,
+       "band": "➖"
+      },
+      {
+       "key": "class_weight",
+       "label": "官方評分對位",
+       "score": 57.29,
+       "weight": 0.37591890388052396,
+       "contribution": -1.02,
+       "band": "➖"
+      },
+      {
+       "key": "track",
+       "label": "場地與地況適性",
+       "score": 69.0,
+       "weight": 0.09599163637133952,
+       "contribution": 0.86,
+       "band": "➖"
+      },
+      {
+       "key": "preparation",
+       "label": "試閘備戰",
+       "score": 60.0,
+       "weight": 0.18651970492137235,
+       "contribution": 0.0,
+       "band": "➖"
+      }
+     ],
+     "proven_class": {
+      "raw": 32.0,
+      "field_count": 2,
+      "field_mean": 18.2294,
+      "field_stdev": 0.0,
+      "z_score": null,
+      "weight": 0.5,
+      "adjustment": 0.0,
+      "state": "missing_neutral"
+     },
+     "trial_speed": {
+      "raw": null,
+      "field_count": 0,
+      "mean": null,
+      "stdev": 0.0,
+      "applies": false,
+      "final": 60.0
+     },
+     "pace": {
+      "value": -0.33,
+      "mean": 0.4,
+      "stdev": 1.05,
+      "z": -0.69,
+      "runs": 9,
+      "final": 73.9,
+      "state": "ok",
+      "source": "sportsbet_race_context",
+      "trial_runs": 0,
+      "formal_runs": 9,
+      "run_dates": [
+       "2026-10-14",
+       "2026-09-27",
+       "2026-06-27",
+       "2026-06-13",
+       "2026-05-16",
+       "2026-05-09",
+       "2026-04-18",
+       "2026-04-04",
+       "2026-03-22"
+      ],
+      "basis": "own"
+     },
+     "form_quality_summary": {
+      "raw": 1.371825,
+      "run_count": 6,
+      "field_count": 8,
+      "field_mean": 1.2692943749999999,
+      "field_stdev": 0.9148738313084402,
+      "z": 0.1121,
+      "final": 62.24,
+      "trip_change": {
+       "today": 1600,
+       "last": 2000.0,
+       "delta": -5.0
+      }
+     }
+    }
+   ]
+  },
+  {
+   "race": 9,
+   "horses": [
+    {
+     "number": 5,
+     "name": "Torsheen",
+     "rank": 1,
+     "ability_score": 79.7231,
+     "matrix_scores": {
+      "stability": 92.81,
+      "pace_perf": 85.64,
+      "race_shape": 60.0,
+      "jockey_trainer": 65.35,
+      "class_weight": 64.89,
+      "track": 60.0,
+      "form_line": 100.0,
+      "preparation": 60.0
+     },
+     "feature_scores": {
+      "form_score": 75.357159,
+      "trial_score": 60.0,
+      "sectional_score": 67.75,
+      "pace_map_score": 60.0,
+      "jockey_score": 66.191919,
+      "trainer_score": 68.071802,
+      "jockey_horse_fit_score": 62.57,
+      "class_score": 62.1,
+      "rating_score": 66.539243,
+      "weight_score": 60.0,
+      "distance_score": 57.0,
+      "track_score": 60.0,
+      "formline_score": 100.0,
+      "consistency_score": 88.18,
+      "performance_quality_score": 83.623346,
+      "health_score": 59.0,
+      "confidence_score": 85.0,
+      "pace_figure_score": 85.635753,
+      "preparation_score": 60.0,
+      "form_quality_score": 92.81379,
+      "trial_speed_score": 60.0
+     },
+     "contributions": [
+      {
+       "key": "stability",
+       "label": "狀態與穩定性",
+       "score": 92.81,
+       "weight": 0.3356801031107793,
+       "contribution": 11.01,
+       "band": "✅✅"
+      },
+      {
+       "key": "pace_perf",
+       "label": "速度考驗背景",
+       "score": 85.64,
+       "weight": 0.08792517389716135,
+       "contribution": 2.25,
+       "band": "✅✅"
+      },
+      {
+       "key": "jockey_trainer",
+       "label": "騎練訊號",
+       "score": 65.35,
+       "weight": 0.8417176483031119,
+       "contribution": 4.5,
+       "band": "➖"
+      },
+      {
+       "key": "class_weight",
+       "label": "官方評分對位",
+       "score": 64.89,
+       "weight": 0.37591890388052396,
+       "contribution": 1.84,
+       "band": "➖"
+      },
+      {
+       "key": "track",
+       "label": "場地與地況適性",
+       "score": 60.0,
+       "weight": 0.09599163637133952,
+       "contribution": 0.0,
+       "band": "➖"
+      },
+      {
+       "key": "preparation",
+       "label": "試閘備戰",
+       "score": 60.0,
+       "weight": 0.18651970492137235,
+       "contribution": 0.0,
+       "band": "➖"
+      }
+     ],
+     "proven_class": {
+      "raw": 12.5758,
+      "field_count": 14,
+      "field_mean": 11.4173,
+      "field_stdev": 5.0972,
+      "z_score": 0.2273,
+      "weight": 0.5,
+      "adjustment": 0.1136,
+      "state": "observed_field_relative"
+     },
+     "trial_speed": {
+      "raw": null,
+      "field_count": 0,
+      "mean": null,
+      "stdev": 0.0,
+      "applies": false,
+      "final": 60.0
+     },
+     "pace": {
+      "value": -0.16,
+      "mean": 0.39,
+      "stdev": 0.43,
+      "z": -1.28,
+      "runs": 8,
+      "final": 85.6,
+      "state": "ok",
+      "source": "sportsbet_race_context",
+      "trial_runs": 0,
+      "formal_runs": 8,
+      "run_dates": [
+       "2026-04-25",
+       "2026-04-18",
+       "2026-04-04",
+       "2026-03-21",
+       "2026-03-04",
+       "2026-02-18",
+       "2026-01-21",
+       "2026-01-21"
+      ],
+      "basis": "own"
+     },
+     "form_quality_summary": {
+      "raw": 1.12948,
+      "run_count": 6,
+      "field_count": 14,
+      "field_mean": 0.6091887142857143,
+      "field_stdev": 0.31711745641693545,
+      "z": 1.6407,
+      "final": 92.81,
+      "runs": [
+       {
+        "date": "2026-04-25",
+        "finish_pos": 6,
+        "starters": 15,
+        "prize": 250000.0,
+        "distance": 1200,
+        "value": 0.959975,
+        "z_place": 0.4477,
+        "z_prize": 1.4722,
+        "z_prize_raw": 2.2902,
+        "weight": 1.0
+       },
+       {
+        "date": "2026-04-18",
+        "finish_pos": 1,
+        "starters": 10,
+        "prize": 150000.0,
+        "distance": 1200,
+        "value": 1.615585,
+        "z_place": 1.567,
+        "z_prize": 1.6642,
+        "z_prize_raw": 1.6642,
+        "weight": 0.8
+       },
+       {
+        "date": "2026-04-04",
+        "finish_pos": 5,
+        "starters": 12,
+        "prize": 150000.0,
+        "distance": 1200,
+        "value": 0.743194,
+        "z_place": 0.4274,
+        "z_prize": 1.059,
+        "z_prize_raw": 1.6642,
+        "weight": 0.6
+       },
+       {
+        "date": "2026-03-21",
+        "finish_pos": 2,
+        "starters": 9,
+        "prize": 200000.0,
+        "distance": 1200,
+        "value": 1.46993,
+        "z_place": 1.1752,
+        "z_prize": 1.7646,
+        "z_prize_raw": 2.0167,
+        "weight": 0.4
+       },
+       {
+        "date": "2026-03-04",
+        "finish_pos": 1,
+        "starters": 6,
+        "prize": 55000.0,
+        "distance": 1200,
+        "value": 1.000863,
+        "z_place": 1.567,
+        "z_prize": 0.4347,
+        "z_prize_raw": 0.4347,
+        "weight": 0.3
+       },
+       {
+        "date": "2026-02-18",
+        "finish_pos": 2,
+        "starters": 7,
+        "prize": 55000.0,
+        "distance": 1200,
+        "value": 0.703471,
+        "z_place": 1.0447,
+        "z_prize": 0.3623,
+        "z_prize_raw": 0.4347,
+        "weight": 0.2
+       }
+      ]
+     }
+    },
+    {
+     "number": 6,
+     "name": "Educated",
+     "rank": 3,
+     "ability_score": 71.9663,
+     "matrix_scores": {
+      "stability": 75.92,
+      "pace_perf": 64.2,
+      "race_shape": 60.0,
+      "jockey_trainer": 63.69,
+      "class_weight": 63.78,
+      "track": 67.4,
+      "form_line": 100.0,
+      "preparation": 62.19
+     },
+     "feature_scores": {
+      "form_score": 78.808169,
+      "trial_score": 60.0,
+      "sectional_score": 67.75,
+      "pace_map_score": 60.0,
+      "jockey_score": 56.601666,
+      "trainer_score": 67.686034,
+      "jockey_horse_fit_score": 66.9,
+      "class_score": 60.0,
+      "rating_score": 65.394875,
+      "weight_score": 57.0,
+      "distance_score": 64.0,
+      "track_score": 67.4,
+      "formline_score": 100.0,
+      "consistency_score": 99.04,
+      "performance_quality_score": 76.287021,
+      "health_score": 61.0,
+      "confidence_score": 85.0,
+      "pace_figure_score": 64.199243,
+      "preparation_score": 64.38,
+      "form_quality_score": 75.923456,
+      "trial_speed_score": 60.0
+     },
+     "contributions": [
+      {
+       "key": "stability",
+       "label": "狀態與穩定性",
+       "score": 75.92,
+       "weight": 0.3356801031107793,
+       "contribution": 5.34,
+       "band": "✅"
+      },
+      {
+       "key": "pace_perf",
+       "label": "速度考驗背景",
+       "score": 64.2,
+       "weight": 0.08792517389716135,
+       "contribution": 0.37,
+       "band": "➖"
+      },
+      {
+       "key": "jockey_trainer",
+       "label": "騎練訊號",
+       "score": 63.69,
+       "weight": 0.8417176483031119,
+       "contribution": 3.11,
+       "band": "➖"
+      },
+      {
+       "key": "class_weight",
+       "label": "官方評分對位",
+       "score": 63.78,
+       "weight": 0.37591890388052396,
+       "contribution": 1.42,
+       "band": "➖"
+      },
+      {
+       "key": "track",
+       "label": "場地與地況適性",
+       "score": 67.4,
+       "weight": 0.09599163637133952,
+       "contribution": 0.71,
+       "band": "➖"
+      },
+      {
+       "key": "preparation",
+       "label": "試閘備戰",
+       "score": 62.19,
+       "weight": 0.18651970492137235,
+       "contribution": 0.41,
+       "band": "➖"
+      }
+     ],
+     "proven_class": {
+      "raw": 17.6085,
+      "field_count": 14,
+      "field_mean": 11.4173,
+      "field_stdev": 5.0972,
+      "z_score": 1.2146,
+      "weight": 0.5,
+      "adjustment": 0.6073,
+      "state": "observed_field_relative"
+     },
+     "trial_speed": {
+      "raw": null,
+      "field_count": 0,
+      "mean": null,
+      "stdev": 0.0,
+      "applies": false,
+      "final": 60.0
+     },
+     "pace": {
+      "value": 0.3,
+      "mean": 0.39,
+      "stdev": 0.43,
+      "z": -0.21,
+      "runs": 6,
+      "final": 64.2,
+      "state": "ok",
+      "source": "sportsbet_race_context",
+      "trial_runs": 0,
+      "formal_runs": 6,
+      "run_dates": [
+       "2026-10-11",
+       "2026-09-02",
+       "2026-08-15",
+       "2026-03-28",
+       "2026-02-28",
+       "2026-01-30"
+      ],
+      "basis": "own"
+     },
+     "form_quality_summary": {
+      "raw": 0.861669,
+      "run_count": 6,
+      "field_count": 14,
+      "field_mean": 0.6091887142857143,
+      "field_stdev": 0.31711745641693545,
+      "z": 0.7962,
+      "final": 75.92
+     }
+    },
+    {
+     "number": 14,
+     "name": "Royal Rendezvous",
+     "rank": 13,
+     "ability_score": 51.5271,
+     "matrix_scores": {
+      "stability": 45.15,
+      "pace_perf": 48.7,
+      "race_shape": 60.0,
+      "jockey_trainer": 60.17,
+      "class_weight": 53.36,
+      "track": 60.0,
+      "form_line": 89.2,
+      "preparation": 61.69
+     },
+     "feature_scores": {
+      "form_score": 72.703,
+      "trial_score": 60.0,
+      "sectional_score": 67.75,
+      "pace_map_score": 60.0,
+      "jockey_score": 56.302861,
+      "trainer_score": 64.915994,
+      "jockey_horse_fit_score": 60.0,
+      "class_score": 60.0,
+      "rating_score": 50.518098,
+      "weight_score": 60.0,
+      "distance_score": 66.0,
+      "track_score": 60.0,
+      "formline_score": 89.2,
+      "consistency_score": 85.18,
+      "performance_quality_score": 39.238001,
+      "health_score": 61.0,
+      "confidence_score": 83.0,
+      "pace_figure_score": 48.696874,
+      "preparation_score": 63.38,
+      "form_quality_score": 45.147856,
+      "trial_speed_score": 60.0
+     },
+     "contributions": [
+      {
+       "key": "stability",
+       "label": "狀態與穩定性",
+       "score": 45.15,
+       "weight": 0.3356801031107793,
+       "contribution": -4.98,
+       "band": "❌"
+      },
+      {
+       "key": "pace_perf",
+       "label": "速度考驗背景",
+       "score": 48.7,
+       "weight": 0.08792517389716135,
+       "contribution": -0.99,
+       "band": "❌"
+      },
+      {
+       "key": "jockey_trainer",
+       "label": "騎練訊號",
+       "score": 60.17,
+       "weight": 0.8417176483031119,
+       "contribution": 0.14,
+       "band": "➖"
+      },
+      {
+       "key": "class_weight",
+       "label": "官方評分對位",
+       "score": 53.36,
+       "weight": 0.37591890388052396,
+       "contribution": -2.5,
+       "band": "❌"
+      },
+      {
+       "key": "track",
+       "label": "場地與地況適性",
+       "score": 60.0,
+       "weight": 0.09599163637133952,
+       "contribution": 0.0,
+       "band": "➖"
+      },
+      {
+       "key": "preparation",
+       "label": "試閘備戰",
+       "score": 61.69,
+       "weight": 0.18651970492137235,
+       "contribution": 0.32,
+       "band": "➖"
+      }
+     ],
+     "proven_class": {
+      "raw": 6.7612,
+      "field_count": 14,
+      "field_mean": 11.4173,
+      "field_stdev": 5.0972,
+      "z_score": -0.9135,
+      "weight": 0.5,
+      "adjustment": -0.4567,
+      "state": "observed_field_relative"
+     },
+     "trial_speed": {
+      "raw": null,
+      "field_count": 0,
+      "mean": null,
+      "stdev": 0.0,
+      "applies": false,
+      "final": 60.0
+     },
+     "pace": {
+      "value": 0.64,
+      "mean": 0.39,
+      "stdev": 0.43,
+      "z": 0.57,
+      "runs": 7,
+      "final": 48.7,
+      "state": "ok",
+      "source": "sportsbet_race_context",
+      "trial_runs": 0,
+      "formal_runs": 7,
+      "run_dates": [
+       "2026-10-21",
+       "2026-09-28",
+       "2026-08-21",
+       "2026-02-05",
+       "2026-01-21",
+       "2026-01-21",
+       "2026-01-03"
+      ],
+      "basis": "own"
+     },
+     "form_quality_summary": {
+      "raw": 0.373695,
+      "run_count": 6,
+      "field_count": 14,
+      "field_mean": 0.6091887142857143,
+      "field_stdev": 0.31711745641693545,
+      "z": -0.7426,
+      "final": 45.15,
+      "runs": [
+       {
+        "date": "2026-10-21",
+        "finish_pos": 1,
+        "starters": 13,
+        "prize": 50000.0,
+        "distance": 1100,
+        "value": 0.942467,
+        "z_place": 1.567,
+        "z_prize": 0.318,
+        "z_prize_raw": 0.318,
+        "weight": 1.0
+       },
+       {
+        "date": "2026-09-28",
+        "finish_pos": 2,
+        "starters": 9,
+        "prize": 27000.0,
+        "distance": 1100,
+        "value": 0.369059,
+        "z_place": 1.1752,
+        "z_prize": -0.4371,
+        "z_prize_raw": -0.4371,
+        "weight": 0.8
+       },
+       {
+        "date": "2026-08-21",
+        "finish_pos": 5,
+        "starters": 8,
+        "prize": 35000.0,
+        "distance": 1000,
+        "value": -0.171483,
+        "z_place": -0.2239,
+        "z_prize": -0.1191,
+        "z_prize_raw": -0.1191,
+        "weight": 0.6
+       },
+       {
+        "date": "2026-02-05",
+        "finish_pos": 2,
+        "starters": 11,
+        "prize": 40000.0,
+        "distance": 1200,
+        "value": 0.646824,
+        "z_place": 1.2536,
+        "z_prize": 0.0401,
+        "z_prize_raw": 0.0445,
+        "weight": 0.4
+       },
+       {
+        "date": "2026-01-21",
+        "finish_pos": 5,
+        "starters": 7,
+        "prize": 35000.0,
+        "distance": 1300,
+        "value": -0.320719,
+        "z_place": -0.5223,
+        "z_prize": -0.1191,
+        "z_prize_raw": -0.1191,
+        "weight": 0.3
+       },
+       {
+        "date": "2026-01-21",
+        "finish_pos": 5,
+        "starters": 7,
+        "prize": 35000.0,
+        "distance": 1300,
+        "value": -0.320719,
+        "z_place": -0.5223,
+        "z_prize": -0.1191,
+        "z_prize_raw": -0.1191,
+        "weight": 0.2
+       }
+      ]
+     }
+    },
+    {
+     "number": 19,
+     "name": "Lawborough",
+     "rank": 7,
+     "ability_score": 62.0627,
+     "matrix_scores": {
+      "stability": 68.17,
+      "pace_perf": 76.07,
+      "race_shape": 60.0,
+      "jockey_trainer": 57.62,
+      "class_weight": 58.17,
+      "track": 59.19,
+      "form_line": 79.0,
+      "preparation": 61.69
+     },
+     "feature_scores": {
+      "form_score": 73.723714,
+      "trial_score": 60.0,
+      "sectional_score": 60.0,
+      "pace_map_score": 60.0,
+      "jockey_score": 56.719339,
+      "trainer_score": 54.219767,
+      "jockey_horse_fit_score": 60.96,
+      "class_score": 60.0,
+      "rating_score": 57.384303,
+      "weight_score": 57.0,
+      "distance_score": 66.0,
+      "track_score": 59.19,
+      "formline_score": 79.0,
+      "consistency_score": 77.62,
+      "performance_quality_score": 81.346259,
+      "health_score": 60.0,
+      "confidence_score": 85.0,
+      "pace_figure_score": 76.067525,
+      "preparation_score": 63.38,
+      "form_quality_score": 68.173456,
+      "trial_speed_score": 60.0
+     },
+     "contributions": [
+      {
+       "key": "stability",
+       "label": "狀態與穩定性",
+       "score": 68.17,
+       "weight": 0.3356801031107793,
+       "contribution": 2.74,
+       "band": "➖"
+      },
+      {
+       "key": "pace_perf",
+       "label": "速度考驗背景",
+       "score": 76.07,
+       "weight": 0.08792517389716135,
+       "contribution": 1.41,
+       "band": "✅"
+      },
+      {
+       "key": "jockey_trainer",
+       "label": "騎練訊號",
+       "score": 57.62,
+       "weight": 0.8417176483031119,
+       "contribution": -2.0,
+       "band": "➖"
+      },
+      {
+       "key": "class_weight",
+       "label": "官方評分對位",
+       "score": 58.17,
+       "weight": 0.37591890388052396,
+       "contribution": -0.69,
+       "band": "➖"
+      },
+      {
+       "key": "track",
+       "label": "場地與地況適性",
+       "score": 59.19,
+       "weight": 0.09599163637133952,
+       "contribution": -0.08,
+       "band": "➖"
+      },
+      {
+       "key": "preparation",
+       "label": "試閘備戰",
+       "score": 61.69,
+       "weight": 0.18651970492137235,
+       "contribution": 0.32,
+       "band": "➖"
+      }
+     ],
+     "proven_class": {
+      "raw": 15.0976,
+      "field_count": 14,
+      "field_mean": 11.4173,
+      "field_stdev": 5.0972,
+      "z_score": 0.722,
+      "weight": 0.5,
+      "adjustment": 0.361,
+      "state": "observed_field_relative"
+     },
+     "trial_speed": {
+      "raw": null,
+      "field_count": 0,
+      "mean": null,
+      "stdev": 0.0,
+      "applies": false,
+      "final": 60.0
+     },
+     "pace": {
+      "value": 0.04,
+      "mean": 0.39,
+      "stdev": 0.43,
+      "z": -0.8,
+      "runs": 7,
+      "final": 76.1,
+      "state": "ok",
+      "source": "sportsbet_race_context",
+      "trial_runs": 0,
+      "formal_runs": 7,
+      "run_dates": [
+       "2026-10-28",
+       "2026-10-14",
+       "2026-09-26",
+       "2026-09-06",
+       "2026-04-25",
+       "2026-03-28",
+       "2026-03-13"
+      ],
+      "basis": "own"
+     },
+     "form_quality_summary": {
+      "raw": 0.738786,
+      "run_count": 6,
+      "field_count": 14,
+      "field_mean": 0.6091887142857143,
+      "field_stdev": 0.31711745641693545,
+      "z": 0.4087,
+      "final": 68.17
+     }
+    }
+   ]
+  }
+ ]
+}
