@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import stat
 import tempfile
 import re
 import subprocess
@@ -229,6 +230,10 @@ def create_installation_intent(
         raise ReleaseError("installation eligibility changed during intent preparation")
     payload["content_hash"] = _hash(payload)
     folder = state_root.expanduser().absolute() / "installation-intents"
+    return _append_installation_record(folder, payload)
+
+
+def _append_installation_record(folder: Path, payload: dict) -> dict:
     if any(path.is_symlink() for path in (folder, *folder.parents)):
         raise ReleaseError("installation intent directory is symlinked")
     folder.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -252,3 +257,96 @@ def create_installation_intent(
     finally:
         temporary.unlink(missing_ok=True)
     return {**payload, "path": str(destination)}
+
+
+def _strict_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ReleaseError("duplicate installation intent field")
+        result[key] = value
+    return result
+
+
+def load_installation_intent(repo: Path, state_root: Path, *, intent_hash: str,
+                             production_roots: Mapping[str, Path]) -> dict:
+    if not re.fullmatch("[0-9a-f]{64}", intent_hash):
+        raise ReleaseError("full installation intent hash is required")
+    path = state_root / "installation-intents" / (intent_hash + ".json")
+    if any(parent.is_symlink() for parent in path.parents):
+        raise ReleaseError("symlinked installation intent directory")
+    descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    with os.fdopen(descriptor, "rb") as handle:
+        metadata = os.fstat(handle.fileno())
+        if (not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != os.getuid()
+                or stat.S_IMODE(metadata.st_mode) != 0o600 or metadata.st_size > 65536):
+            raise ReleaseError("unsafe installation intent file")
+        raw = handle.read(65537)
+    value = json.loads(raw, object_pairs_hook=_strict_object)
+    fields = {"schema_version", "created_at", "actor", "source_commit", "target_commit",
+              "source_release_id", "target_release_id", "manifest_hashes", "production_roots",
+              "rollback_commit", "installers", "status", "installation_authorized",
+              "fresh_full_gate_required", "independent_approval_required", "content_hash"}
+    if (not isinstance(value, dict) or set(value) != fields
+            or value["content_hash"] != intent_hash
+            or _hash({k: v for k, v in value.items() if k != "content_hash"}) != intent_hash
+            or value["schema_version"] != "wong-choi-installation-intent/v1"
+            or value["status"] != "pending_fresh_gate"
+            or value["installation_authorized"] is not False
+            or value["fresh_full_gate_required"] is not True
+            or value["independent_approval_required"] is not True
+            or value["installers"] != [INSTALLER]
+            or not isinstance(value["actor"], str) or not value["actor"].strip()):
+        raise ReleaseError("installation intent binding is invalid")
+    stamp = datetime.fromisoformat(value["created_at"])
+    if stamp.tzinfo is None or stamp.utcoffset() is None:
+        raise ReleaseError("installation intent time must be timezone-aware")
+    preview = preview_installation_reconciliation(
+        repo, state_root, source_commit=value["source_commit"], target_commit=value["target_commit"],
+        production_roots=production_roots)
+    if preview["status"] != "eligible_for_fresh_gate":
+        raise ReleaseError(preview.get("error", "installation eligibility blocked"))
+    roots = {domain: str(Path(root).expanduser().resolve())
+             for domain, root in sorted(production_roots.items())}
+    manifests = {commit: hashlib.sha256(
+        (state_root / "releases" / (commit + ".json")).read_bytes()).hexdigest()
+        for commit in (value["source_commit"], value["target_commit"])}
+    if (value["production_roots"] != roots or value["manifest_hashes"] != manifests
+            or value["rollback_commit"] != value["target_commit"]
+            or value["source_release_id"] != preview["source_release_id"]
+            or value["target_release_id"] != preview["target_release_id"]):
+        raise ReleaseError("installation intent differs from current verified evidence")
+    return value
+
+
+def gate_installation_intent(repo: Path, state_root: Path, *, intent_hash: str,
+                             production_roots: Mapping[str, Path]) -> dict:
+    from .release_approval import _run_gate_in_clean_clone
+    from .release_automation import _queued_release_lock
+    from .release_gate import GateReceipt
+
+    intent = load_installation_intent(repo, state_root, intent_hash=intent_hash,
+                                      production_roots=production_roots)
+    manifest = {"commit": intent["target_commit"], "release_id": "installation:" + intent_hash,
+                "message": "forward installation full gate"}
+    with _queued_release_lock(state_root, manifest=manifest):
+        intent = load_installation_intent(repo, state_root, intent_hash=intent_hash,
+                                          production_roots=production_roots)
+        receipt = _run_gate_in_clean_clone(repo, intent["target_commit"], "full")
+        if (not isinstance(receipt, GateReceipt) or receipt.commit != intent["target_commit"]
+                or receipt.check != "full"):
+            raise ReleaseError("fresh full installation gate receipt is invalid")
+        if load_installation_intent(repo, state_root, intent_hash=intent_hash,
+                                    production_roots=production_roots) != intent:
+            raise ReleaseError("installation intent changed during the full gate")
+        result = {
+            "schema_version": "wong-choi-installation-gate/v1",
+            "intent_hash": intent_hash, "target_commit": receipt.commit,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "status": "full_gate_observed", "installation_authorized": False,
+            "independent_approval_required": True,
+            "elapsed_seconds": receipt.elapsed_seconds, "log": receipt.log,
+        }
+        result["content_hash"] = _hash(result)
+        return _append_installation_record(
+            state_root / "installation-gates" / intent_hash, result)

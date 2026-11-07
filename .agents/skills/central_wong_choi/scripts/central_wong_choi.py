@@ -187,6 +187,9 @@ def build_parser() -> argparse.ArgumentParser:
     intent.add_argument("--target-commit", required=True)
     intent.add_argument("--actor", required=True)
     intent.add_argument("--json", action="store_true")
+    installation_gate = sub.add_parser("reconcile-installation-gate")
+    installation_gate.add_argument("--intent", required=True)
+    installation_gate.add_argument("--json", action="store_true")
     bootstrap = sub.add_parser("bootstrap-models")
     bootstrap.add_argument("--commit", required=True)
     bootstrap.add_argument("--actor", required=True)
@@ -220,6 +223,18 @@ def main(argv: Sequence[str] | None = None) -> int:
                 target_commit=args.target_commit, production_roots=production_roots(),
                 actor=args.actor)
         except (ReleaseError, OSError, ValueError) as exc:
+            print(json.dumps({"status": "blocked", "error": str(exc)}, ensure_ascii=False))
+            return 1
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
+    if args.command == "reconcile-installation-gate":
+        from shared_wong_choi.installation_reconciliation import gate_installation_intent
+        from shared_wong_choi.release_automation import production_roots
+
+        try:
+            result = gate_installation_intent(
+                repo, state_root, intent_hash=args.intent, production_roots=production_roots())
+        except (ReleaseError, OSError, ValueError, TypeError) as exc:
             print(json.dumps({"status": "blocked", "error": str(exc)}, ensure_ascii=False))
             return 1
         print(json.dumps(result, ensure_ascii=False, indent=2))

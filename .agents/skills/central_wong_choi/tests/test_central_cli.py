@@ -152,3 +152,23 @@ def test_installation_intent_dispatch_does_not_enter_approval_or_activation(tmp_
     ]) == 0
     assert captured["actor"] == "fixture"
     assert captured["target_commit"] == "b" * 40
+
+
+def test_installation_gate_dispatch_remains_separate_from_approval(tmp_path, monkeypatch):
+    from shared_wong_choi import installation_reconciliation, release_automation
+
+    captured = {}
+    def gate(repo, state_root, **kwargs):
+        captured.update(kwargs)
+        return {"status": "full_gate_observed", "installation_authorized": False}
+    def forbidden(*args, **kwargs):
+        raise AssertionError("installation gate entered approval or activation")
+    monkeypatch.setattr(installation_reconciliation, "gate_installation_intent", gate)
+    monkeypatch.setattr(release_automation, "production_roots", lambda: {"au": tmp_path})
+    monkeypatch.setattr(cli, "approve_release", forbidden)
+    monkeypatch.setattr(cli, "activate_release", forbidden)
+    assert cli.main([
+        "--repo", str(tmp_path), "--state-root", str(tmp_path / "state"),
+        "reconcile-installation-gate", "--intent", "a" * 64, "--json",
+    ]) == 0
+    assert captured["intent_hash"] == "a" * 64

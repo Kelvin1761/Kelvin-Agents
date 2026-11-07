@@ -263,3 +263,79 @@ def test_intent_rejects_symlinked_destination(history, tmp_path):
             production_roots={domain: production for domain in reconciliation.DOMAINS},
             actor="test")
     assert list(elsewhere.iterdir()) == []
+
+
+def intent_arguments(history):
+    root, production, state, source, target = history
+    roots = {domain: production for domain in reconciliation.DOMAINS}
+    intent = reconciliation.create_installation_intent(
+        root, state, source_commit=source, target_commit=target,
+        production_roots=roots, actor="fixture")
+    return root, state, roots, intent
+
+
+def test_installation_gate_uses_clean_full_gate_and_records_no_authority(history, monkeypatch):
+    import time
+    from shared_wong_choi import release_approval
+    from shared_wong_choi.release_gate import GateReceipt
+    root, state, roots, intent = intent_arguments(history)
+    calls = []
+    def gate(repo, commit, check):
+        calls.append((repo, commit, check))
+        return GateReceipt(commit, check, "fixture", time.monotonic(), 0.1, "fixture.log")
+    monkeypatch.setattr(release_approval, "_run_gate_in_clean_clone", gate)
+    result = reconciliation.gate_installation_intent(
+        root, state, intent_hash=intent["content_hash"], production_roots=roots)
+    assert calls == [(root, intent["target_commit"], "full")]
+    assert result["status"] == "full_gate_observed"
+    assert result["installation_authorized"] is False
+    assert result["independent_approval_required"] is True
+    assert Path(result["path"]).is_file()
+    assert json.loads(Path(intent["path"]).read_text())["status"] == "pending_fresh_gate"
+
+
+def test_changed_manifest_bytes_block_before_gate(history, monkeypatch):
+    from shared_wong_choi import release_approval
+    root, state, roots, intent = intent_arguments(history)
+    manifest = state / "releases" / (intent["target_commit"] + ".json")
+    manifest.write_bytes(manifest.read_bytes() + b"\n")
+    def forbidden(*args):
+        pytest.fail("stale intent invoked a gate")
+    monkeypatch.setattr(release_approval, "_run_gate_in_clean_clone", forbidden)
+    with pytest.raises(reconciliation.ReleaseError):
+        reconciliation.gate_installation_intent(
+            root, state, intent_hash=intent["content_hash"], production_roots=roots)
+    assert not (state / "installation-gates").exists()
+
+
+def test_serialized_gate_receipt_cannot_satisfy_installation_gate(history, monkeypatch):
+    from shared_wong_choi import release_approval
+    root, state, roots, intent = intent_arguments(history)
+    monkeypatch.setattr(release_approval, "_run_gate_in_clean_clone",
+                        lambda *args: {"commit": intent["target_commit"], "check": "full"})
+    with pytest.raises(reconciliation.ReleaseError):
+        reconciliation.gate_installation_intent(
+            root, state, intent_hash=intent["content_hash"], production_roots=roots)
+    assert not (state / "installation-gates").exists()
+
+
+@pytest.mark.parametrize("damage", ["symlink", "extra-field", "duplicate-field", "bad-mode"])
+def test_damaged_intent_is_rejected(history, tmp_path, damage):
+    root, state, roots, intent = intent_arguments(history)
+    path = Path(intent["path"])
+    if damage == "symlink":
+        other = tmp_path / "foreign"
+        other.write_bytes(path.read_bytes())
+        path.unlink()
+        path.symlink_to(other)
+    elif damage == "extra-field":
+        value = json.loads(path.read_text())
+        value["approved"] = True
+        path.write_text(json.dumps(value))
+    elif damage == "duplicate-field":
+        path.write_text('{"actor":"duplicate",' + path.read_text().lstrip()[1:])
+    else:
+        path.chmod(0o666)
+    with pytest.raises((reconciliation.ReleaseError, OSError)):
+        reconciliation.load_installation_intent(
+            root, state, intent_hash=intent["content_hash"], production_roots=roots)
