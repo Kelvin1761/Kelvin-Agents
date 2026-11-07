@@ -156,14 +156,24 @@ def analyse(match_date: str, *, today: str) -> dict:
     return payload
 
 
-def publish(match_date: str, label: str, *, main: bool) -> list[dict]:
+def publish(match_date: str, label: str, *, main: bool, payload: dict | None = None) -> list[dict]:
+    """Record 精選, deploy the dashboard, then send Telegram (in that order)."""
     from tennis_wc.publish.telegram import publish_featured
 
+    deployed = []
+
+    def deploy() -> None:
+        deployed.append(True)
+        publish_dashboard(match_date, payload)
+
     try:
-        return publish_featured(match_date, label, main=main)
+        return publish_featured(match_date, label, main=main, before_send=deploy)
     except Exception as exc:  # noqa: BLE001 - never mask the run outcome
         log(f"精選 {label} failed: {exc}")
         return []
+    finally:
+        if not deployed:
+            deploy()
 
 
 def publish_dashboard(match_date: str, payload: dict | None) -> None:
@@ -194,8 +204,7 @@ def night(today: date, label: str) -> int:
     except Exception as exc:  # noqa: BLE001 - still publish what was priced
         failure = f"{type(exc).__name__}: {exc}"
         log(f"NIGHT {label}: analysis failed: {failure}")
-    added = publish(target, label, main=main and failure is None)
-    publish_dashboard(target, payload)
+    added = publish(target, label, main=main and failure is None, payload=payload)
     if failure and main:
         notify(f"⚠️ Tennis 21:00 精選抓盤失敗（{target}）：{failure[:300]}\n"
                f"已記錄 {len(added)} 注；23:00 同明朝 09:00 會再試。")
@@ -210,8 +219,7 @@ def card(today: date) -> None:
         preflight()
         payload = analyse(today.isoformat(), today=today.isoformat())
     finally:
-        publish(today.isoformat(), "09:00", main=False)
-        publish_dashboard(today.isoformat(), payload)
+        publish(today.isoformat(), "09:00", main=False, payload=payload)
 
 
 def daily(today: date) -> None:

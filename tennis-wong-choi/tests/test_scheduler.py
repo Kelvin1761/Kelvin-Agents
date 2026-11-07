@@ -39,7 +39,7 @@ def _stub_analysis(monkeypatch, payload):
 def test_card_success_prints_control_json_and_tops_up(monkeypatch, capsys):
     _stub_analysis(monkeypatch, _payload())
     published = []
-    monkeypatch.setattr(scheduler, "publish", lambda d, label, main: published.append((d, label, main)) or [])
+    monkeypatch.setattr(scheduler, "publish", lambda d, label, main, payload=None: published.append((d, label, main)) or [])
     code = scheduler.main(["--refresh-today", "--today", "2026-11-07", "--control-json"])
     out = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
     assert code == 0 and out == {"status": "succeeded", "mode": "card", "target_date": "2026-11-07", "exit_code": 0}
@@ -49,7 +49,7 @@ def test_card_success_prints_control_json_and_tops_up(monkeypatch, capsys):
 def test_card_tops_up_even_when_the_board_is_broken(monkeypatch, capsys, isolated):
     _stub_analysis(monkeypatch, _payload(severity="error", priced=0))
     published = []
-    monkeypatch.setattr(scheduler, "publish", lambda d, label, main: published.append(label) or [])
+    monkeypatch.setattr(scheduler, "publish", lambda d, label, main, payload=None: published.append(label) or [])
     code = scheduler.main(["--refresh-today", "--today", "2026-11-07", "--control-json"])
     assert code == 70 and published == ["09:00"]
     assert isolated and "出唔到咭" in isolated[0][1]
@@ -92,7 +92,7 @@ def test_night_prices_tomorrow_and_sends_the_main_card(monkeypatch):
     seen = {}
     monkeypatch.setattr(scheduler, "preflight", lambda: None)
     monkeypatch.setattr(scheduler, "analyse", lambda d, today: seen.setdefault("analysed", (d, today)))
-    monkeypatch.setattr(scheduler, "publish", lambda d, label, main: seen.setdefault("published", (d, label, main)) or [])
+    monkeypatch.setattr(scheduler, "publish", lambda d, label, main, payload=None: seen.setdefault("published", (d, label, main)) or [])
     assert scheduler.main(["--night", "21:00", "--today", "2026-11-06"]) == 0
     assert seen == {"analysed": ("2026-11-07", "2026-11-06"), "published": ("2026-11-07", "21:00", True)}
 
@@ -104,7 +104,7 @@ def test_night_failure_still_records_picks_and_alerts_primary(monkeypatch, isola
     calls = []
     monkeypatch.setattr(scheduler, "preflight", lambda: None)
     monkeypatch.setattr(scheduler, "analyse", broken)
-    monkeypatch.setattr(scheduler, "publish", lambda d, label, main: calls.append(main) or [])
+    monkeypatch.setattr(scheduler, "publish", lambda d, label, main, payload=None: calls.append(main) or [])
     assert scheduler.main(["--night", "21:00", "--today", "2026-11-06"]) == 1
     assert calls == [False], "no main card on a failed pass, but picks still recorded"
     assert isolated[0][0] == "primary" and "抓盤失敗" in isolated[0][1]
@@ -114,7 +114,7 @@ def test_night_23_is_a_top_up_without_alert(monkeypatch, isolated):
     calls = []
     monkeypatch.setattr(scheduler, "preflight", lambda: None)
     monkeypatch.setattr(scheduler, "analyse", lambda d, today: (_ for _ in ()).throw(RuntimeError("x")))
-    monkeypatch.setattr(scheduler, "publish", lambda d, label, main: calls.append((label, main)) or [])
+    monkeypatch.setattr(scheduler, "publish", lambda d, label, main, payload=None: calls.append((label, main)) or [])
     scheduler.main(["--night", "23:00", "--today", "2026-11-06"])
     assert calls == [("23:00", False)] and isolated == []
 
@@ -143,20 +143,37 @@ def test_the_dashboard_is_deployed_after_the_picks_are_recorded(monkeypatch):
     order = []
     monkeypatch.setattr(scheduler, "preflight", lambda: None)
     monkeypatch.setattr(scheduler, "analyse", lambda d, today: order.append("analyse") or {"readiness": {}})
-    monkeypatch.setattr(scheduler, "publish", lambda d, label, main: order.append("picks") or [])
+    from tennis_wc.publish import telegram
+    monkeypatch.setattr(telegram, "notify", lambda text, audience="primary": order.append("telegram") or True)
+    monkeypatch.setenv("TENNIS_NOTIFY_BETS", "1")
+
+    def fake_publish_featured(d, label, *, main, before_send=None):
+        order.append("picks")
+        before_send()
+        telegram.notify("card", audience="content")
+        return []
+
+    monkeypatch.setattr(telegram, "publish_featured", fake_publish_featured)
     monkeypatch.setattr(run, "publish_day", lambda d, payload: order.append("deploy") or {})
     scheduler.main(["--night", "21:00", "--today", "2026-11-06"])
     scheduler.main(["--refresh-today", "--today", "2026-11-07"])
-    assert order == ["analyse", "picks", "deploy", "analyse", "picks", "deploy"]
+    assert order == ["analyse", "picks", "deploy", "telegram", "analyse", "picks", "deploy", "telegram"]
 
 
 def test_a_failed_analysis_records_picks_but_does_not_deploy(monkeypatch):
     from tennis_wc import run
+    from tennis_wc.publish import telegram
 
     order = []
     monkeypatch.setattr(scheduler, "preflight", lambda: None)
     monkeypatch.setattr(scheduler, "analyse", lambda d, today: (_ for _ in ()).throw(RuntimeError("down")))
-    monkeypatch.setattr(scheduler, "publish", lambda d, label, main: order.append("picks") or [])
+
+    def fake_publish_featured(d, label, *, main, before_send=None):
+        order.append("picks")
+        before_send()
+        return []
+
+    monkeypatch.setattr(telegram, "publish_featured", fake_publish_featured)
     monkeypatch.setattr(run, "publish_day", lambda d, payload: order.append("deploy") or {})
     scheduler.main(["--night", "23:00", "--today", "2026-11-06"])
     assert order == ["picks"]
