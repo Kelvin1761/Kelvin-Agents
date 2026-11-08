@@ -192,3 +192,23 @@ def test_forward_executor_dispatch_never_calls_historical_approval_or_activation
                      "--actor", "fixture", "--json"]) == 1
     assert calls == [{"intent_hash": "a" * 64, "production_roots": {"au": tmp_path},
                       "actor": "fixture"}]
+
+
+
+def test_installation_review_request_dispatch_cannot_approve_or_activate(tmp_path, monkeypatch):
+    from shared_wong_choi import installation_reconciliation, release_automation
+    calls = []
+    monkeypatch.setattr(release_automation, 'production_roots', lambda: {'au': tmp_path})
+    monkeypatch.setattr(installation_reconciliation, 'create_installation_review_request',
+                        lambda *args, **kwargs: calls.append(kwargs) or {
+                            'status': 'pending_independent_review', 'gate_authorized': False,
+                            'installation_authorized': False})
+    def forbidden(*args, **kwargs):
+        raise AssertionError('review request entered approval/activation')
+    monkeypatch.setattr(cli, 'approve_release', forbidden)
+    monkeypatch.setattr(cli, 'activate_release', forbidden)
+    assert cli.main(['--repo', str(tmp_path), '--state-root', str(tmp_path/'state'),
+                     'reconcile-installation-review-request', '--source-commit', 'a'*40,
+                     '--target-commit', 'b'*40, '--actor', 'fixture', '--json']) == 0
+    assert calls[0]['source_commit'] == 'a'*40
+    assert calls[0]['target_commit'] == 'b'*40

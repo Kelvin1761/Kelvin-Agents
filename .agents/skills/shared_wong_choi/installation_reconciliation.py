@@ -129,11 +129,11 @@ def _provenance(state: Path, commit: str, *, failed: bool) -> dict:
     return manifest
 
 
-def preview_installation_reconciliation(
+def _observe_installation_reconciliation(
     repo: Path, state_root: Path, *, source_commit: str, target_commit: str,
-    production_roots: Mapping[str, Path],
+    production_roots: Mapping[str, Path], review_request: bool = False,
 ) -> dict:
-    """Check eligibility without writing state, fetching, gating or installing."""
+    """Observe structural provenance; pending review never grants gate eligibility."""
     result = {"schema_version": "wong-choi-installation-preview/v1",
               "source_commit": source_commit, "target_commit": target_commit,
               "status": "blocked", "activation": "not_started",
@@ -152,8 +152,6 @@ def preview_installation_reconciliation(
         source = _provenance(state_root, source_commit, failed=True)
         changes = changed_installation_dependencies(repo, source_commit, target_commit)
         result["changed_dependencies"] = changes
-        if changes:
-            raise ReleaseError("installer/dependency bytes changed; independent review required")
         target = _provenance(state_root, target_commit, failed=False)
         for manifest in (source, target):
             branch = manifest.get("branch")
@@ -180,14 +178,124 @@ def preview_installation_reconciliation(
         # Recheck remote state at the end of this read-only observation window.
         if _remote(repo, "refs/heads/main") != target_commit:
             raise ReleaseError("main moved during preview")
-        result.update(status="eligible_for_fresh_gate", installers=[INSTALLER],
-                      source_release_id=source["release_id"], target_release_id=target["release_id"])
+        if changes and not review_request:
+            raise ReleaseError("installer/dependency bytes changed; independent review required")
+        result.update(status="pending_independent_review" if review_request else "eligible_for_fresh_gate",
+                      installers=[INSTALLER], source_release_id=source["release_id"],
+                      target_release_id=target["release_id"])
     except ReleaseError as exc:
         result["error"] = str(exc)
     except (OSError, ValueError, TypeError, KeyError, AttributeError, subprocess.SubprocessError) as exc:
         result["error"] = f"preview probe failed closed: {type(exc).__name__}"
     return result
 
+
+
+def preview_installation_reconciliation(
+    repo: Path, state_root: Path, *, source_commit: str, target_commit: str,
+    production_roots: Mapping[str, Path],
+) -> dict:
+    """Read-only strict eligibility. Changed dependencies remain blocked."""
+    return _observe_installation_reconciliation(
+        repo, state_root, source_commit=source_commit, target_commit=target_commit,
+        production_roots=production_roots)
+
+
+def _review_git_bytes(repo: Path, *args: str) -> bytes:
+    result = subprocess.run(['git', *args], cwd=repo, capture_output=True, timeout=60, check=False)
+    if result.returncode:
+        raise ReleaseError('cannot read immutable installation review material')
+    return result.stdout
+
+
+def installation_review_material(repo: Path, source: str, target: str) -> dict:
+    """Exact Git path identity, object modes and binary bytes for changed runtime inputs."""
+    if not all(_SHA.fullmatch(value) for value in (source, target)):
+        raise ReleaseError('immutable review source/target SHAs are required')
+    raw = _review_git_bytes(repo, 'diff', '--raw', '--no-renames', '--no-abbrev', '-z', source, target, '--')
+    parts = raw.split(b'\0')
+    if parts[-1] != b'' or (len(parts) - 1) % 2:
+        raise ReleaseError('invalid raw review diff')
+    inventory = []
+    for index in range(0, len(parts) - 1, 2):
+        header, path_bytes = parts[index:index + 2]
+        path = path_bytes.decode('utf-8', errors='strict')
+        if not path or path.startswith('/') or '..' in Path(path).parts:
+            raise ReleaseError('invalid review path identity')
+        if not _dependency(path):
+            continue
+        fields = header.decode('ascii').split()
+        if (len(fields) != 5 or not fields[0].startswith(':') or fields[4] not in {'A','M','D','T'}):
+            raise ReleaseError('unsupported runtime dependency change')
+        old_mode, new_mode, old_object, new_object, change = fields
+        old_mode = old_mode[1:]
+        def object_info(mode, oid):
+            if mode == '000000' and oid == '0' * 40:
+                return None
+            if mode not in {'100644', '100755', '120000'} or not _SHA.fullmatch(oid):
+                raise ReleaseError('unsupported dependency object mode or identity')
+            size = int(_review_git_bytes(repo, 'cat-file', '-s', oid))
+            if not 0 <= size <= 16 * 1024 * 1024:
+                raise ReleaseError('runtime dependency exceeds bounded review material limit')
+            data = _review_git_bytes(repo, 'cat-file', 'blob', oid)
+            if len(data) != size:
+                raise ReleaseError('dependency object size changed')
+            return {'mode': mode, 'object_id': oid, 'bytes': size,
+                    'sha256': hashlib.sha256(data).hexdigest()}
+        inventory.append({'path': path, 'change': change,
+                          'before': object_info(old_mode, old_object),
+                          'after': object_info(new_mode, new_object)})
+    inventory.sort(key=lambda item: item['path'])
+    expected = changed_installation_dependencies(repo, source, target)
+    if [item['path'] for item in inventory] != expected:
+        raise ReleaseError('review inventory differs from conservative dependency scope')
+    patch = (_review_git_bytes(repo, '--literal-pathspecs', 'diff', '--binary', '--full-index', '--no-ext-diff',
+                              '--no-textconv', '--no-renames', source, target, '--', *expected)
+             if expected else b'')
+    return {'source_tree': _review_git_bytes(repo, 'rev-parse', source + '^{tree}').decode().strip(),
+            'target_tree': _review_git_bytes(repo, 'rev-parse', target + '^{tree}').decode().strip(),
+            'dependencies': inventory, 'inventory_hash': _hash({'dependencies': inventory}),
+            'patch_sha256': hashlib.sha256(patch).hexdigest(), 'patch_bytes': len(patch)}
+
+
+def create_installation_review_request(
+    repo: Path, state_root: Path, *, source_commit: str, target_commit: str,
+    production_roots: Mapping[str, Path], actor: str,
+) -> dict:
+    """Append nonauthorizing pending review material; never create an execution intent."""
+    if not isinstance(actor, str) or not actor.strip():
+        raise ReleaseError('installation review requester is required')
+    options = dict(source_commit=source_commit, target_commit=target_commit,
+                   production_roots=production_roots, review_request=True)
+    observation = _observe_installation_reconciliation(repo, state_root, **options)
+    if observation['status'] != 'pending_independent_review':
+        raise ReleaseError(observation.get('error', 'installation review request blocked'))
+    def intent_binding():
+        return {'source_commit': source_commit, 'target_commit': target_commit,
+                'source_release_id': observation['source_release_id'],
+                'target_release_id': observation['target_release_id'],
+                'manifest_hashes': {commit: hashlib.sha256(
+                    _load_release(state_root / 'releases', commit)[0].read_bytes()).hexdigest()
+                    for commit in (source_commit, target_commit)},
+                'production_roots': {domain: str(Path(root).expanduser().resolve())
+                                     for domain, root in sorted(production_roots.items())},
+                'rollback_commit': target_commit, 'installers': [INSTALLER]}
+    binding = intent_binding()
+    material = installation_review_material(repo, source_commit, target_commit)
+    value = {'schema_version': 'wong-choi-installation-review-request/v1',
+             'created_at': datetime.now(timezone.utc).isoformat(), 'actor': actor.strip(),
+             'status': 'pending_independent_review', 'intent_binding': binding,
+             'intent_binding_hash': _hash(binding), 'material': material,
+             'installation_authorized': False, 'gate_authorized': False,
+             'assessment_authenticated': False, 'execution_intent_created': False}
+    # Reobserve refs, event provenance, roots, manifests and all exact review
+    # bytes immediately before create-only publication. Never silently retarget.
+    if (_observe_installation_reconciliation(repo, state_root, **options) != observation
+            or installation_review_material(repo, source_commit, target_commit) != material
+            or intent_binding() != binding):
+        raise ReleaseError('installation review bindings changed during preparation')
+    value['content_hash'] = _hash(value)
+    return _append_installation_record(state_root / 'installation-review-requests', value)
 
 def create_installation_intent(
     repo: Path, state_root: Path, *, source_commit: str, target_commit: str,

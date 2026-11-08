@@ -555,3 +555,55 @@ bound-bootstrap failure68.11s, acceptance failure62.72s, outer success29.84s.
 Cancellation, native ownership and restore regressions passed. This remains
 focused fixture evidence, not a full source/immutable gate or production-native
 acceptance. The final source was unchanged throughout that selection.
+
+
+## November 8 pending review request — no authority granted
+
+Central now exposes `reconcile-installation-review-request` with explicit source
+SHA, target SHA and requester. A shared internal observer still requires the
+owned failed source, current remote main, ancestry, canonical source and target
+approval/deployment provenance, exact remote release branches and four explicit
+clean production roots. Changed dependencies can reach only
+`pending_independent_review` in this request path after those checks pass. Public
+strict preview continues to block changes; gate-ready intent creation and native
+execution are not enabled by this pending state. Target provenance is never
+waived merely to obtain a request.
+
+The create-only private request binds pending intent material and its digest:
+source/target/release IDs, raw canonical manifest byte hashes, all roots,
+rollback target and installer allowlist. This is not an execution intent and is
+stored separately. Material includes immutable source/target tree IDs, NUL-safe
+raw Git dependency paths, AMDT change kinds, old/new modes, blob identities,
+exact binary-byte SHA256/size, inventory digest and binary full-index patch
+digest. Added/deleted/mode-only changes are represented explicitly. Unsupported
+object modes and oversized individual blobs block preparation. Binary bytes are
+read as bytes, not decoded text. No gate, native runner, approval or notification
+is invoked. There is no assessment publication or approval CLI.
+
+The reviewer found that Git pathspec magic could select different patch inputs.
+An actual fixture named `:(exclude)shadow.py` with a decoy reproduced a missing
+patch digest (1 failed/1 passed); global `--literal-pathspecs` fixes the path
+identity. Bracketed and newline filenames remain covered. A separate interleaving
+fixture reproduced manifest bytes changing during material collection. Manifest
+bindings are now captured before material generation and compared last after the
+second material observation. Requests reobserve refs/provenance/roots and exact
+material before publication; this is observation, not an atomic remote-state CAS
+or permission to execute later without fresh validation.
+
+All request authority fields remain false: installation, gate, authenticated
+assessment and execution-intent creation. Request hashes are rejected as
+execution intent selectors. `_require_installation_review` remains unconditional.
+Future assessment/trusted-publication integration must strictly reload and
+recompute these bindings, preserve blocked/unresolved per-delta decisions and
+never turn a caller-supplied actor, pasted transcript or ordinary hash into
+review authority. Foreign cadence/model scope and target provenance holds remain.
+
+Final reconciliation plus Central CLI selection: **65 passed in31.71s**, log
+`/private/tmp/stage5-review-request-green.log`. The same authorized read-only
+reviewer confirmed the narrow pathspec and manifest-ordering corrections with no
+further required correction in this scope; tests were not independently run.
+No live request/intent, gate, installation, release, merge, activation, Telegram,
+model/data/history or production configuration writes occurred. This remains
+unfinished nonmain workflow engineering, not Stage5 or installation acceptance.
+
+Final quick and diff checks passed; scoring goldens unchanged. No full source or immutable release gate was run for this unfinished checkpoint.

@@ -182,6 +182,11 @@ def build_parser() -> argparse.ArgumentParser:
     reconciliation.add_argument("--source-commit", required=True)
     reconciliation.add_argument("--target-commit", required=True)
     reconciliation.add_argument("--json", action="store_true")
+    review_request = sub.add_parser("reconcile-installation-review-request")
+    review_request.add_argument("--source-commit", required=True)
+    review_request.add_argument("--target-commit", required=True)
+    review_request.add_argument("--actor", required=True)
+    review_request.add_argument("--json", action="store_true")
     intent = sub.add_parser("reconcile-installation-intent")
     intent.add_argument("--source-commit", required=True)
     intent.add_argument("--target-commit", required=True)
@@ -217,6 +222,19 @@ def main(argv: Sequence[str] | None = None) -> int:
             target_commit=args.target_commit, production_roots=production_roots())
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0 if result["status"] == "eligible_for_fresh_gate" else 1
+    if args.command == "reconcile-installation-review-request":
+        from shared_wong_choi.installation_reconciliation import create_installation_review_request
+        from shared_wong_choi.release_automation import production_roots
+
+        try:
+            result = create_installation_review_request(
+                repo, state_root, source_commit=args.source_commit, target_commit=args.target_commit,
+                production_roots=production_roots(), actor=args.actor)
+        except (ReleaseError, OSError, ValueError, TypeError) as exc:
+            print(json.dumps({"status": "blocked", "error": str(exc)}, ensure_ascii=False))
+            return 1
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
     if args.command == "reconcile-installation-intent":
         from shared_wong_choi.installation_reconciliation import create_installation_intent
         from shared_wong_choi.release_automation import production_roots

@@ -20,7 +20,7 @@ def git(root, *args):
 
 
 @pytest.fixture
-def history(tmp_path, monkeypatch):
+def history(tmp_path, monkeypatch, request):
     remote = tmp_path / "remote.git"
     git(tmp_path, "init", "--bare", str(remote))
     root = tmp_path / "source"
@@ -36,7 +36,14 @@ def history(tmp_path, monkeypatch):
     git(root, "branch", "-M", "main")
     git(root, "branch", "own-source")
     (root / "README.md").write_text("new docs\n")
-    git(root, "add", "README.md")
+    for relative, data in getattr(request, 'param', {}).items():
+        path = root / relative
+        if data is None:
+            path.unlink()
+        else:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(data)
+    git(root, "add", ".")
     git(root, "commit", "-m", "target")
     target = git(root, "rev-parse", "HEAD")
     git(root, "branch", "target-release")
@@ -549,3 +556,111 @@ def test_executor_acceptance_failure_restores_without_claiming_verified(executor
                (state / "installation-attempts" / intent["content_hash"]).glob("*.json")]
     assert not any(r["status"] == "installed_verified" for r in records)
     assert calls[-1] == ("--restore", 300)
+
+
+
+def review_request(history):
+    root, production, state, source, target = history
+    return reconciliation.create_installation_review_request(
+        root, state, source_commit=source, target_commit=target,
+        production_roots={domain: production for domain in reconciliation.DOMAINS}, actor='fixture')
+
+
+@pytest.mark.parametrize('history', [{
+    reconciliation.INSTALLER: b'#!/bin/zsh\nexit 75\n',
+    '.agents/skills/shared_wong_choi/file with\nnewline.bin': b'\0\xff\x80native-bytes',
+}], indirect=True)
+def test_review_request_exposes_changed_bytes_without_gate_or_intent_authority(history, monkeypatch):
+    from shared_wong_choi import release_approval, release_activation
+    root, _, state, source, target = history
+    before = {p: p.read_bytes() for p in state.rglob('*.json')}
+    def forbidden(*args, **kwargs):
+        pytest.fail('review request entered gate/native path')
+    monkeypatch.setattr(release_approval, '_run_gate_in_clean_clone', forbidden)
+    monkeypatch.setattr(release_activation, '_run_installer', forbidden)
+    result = review_request(history)
+    assert result['status'] == 'pending_independent_review'
+    assert result['installation_authorized'] is False
+    assert result['gate_authorized'] is False
+    assert result['execution_intent_created'] is False
+    assert result['assessment_authenticated'] is False
+    assert result['intent_binding_hash'] == reconciliation._hash(result['intent_binding'])
+    entries = {entry['path']: entry for entry in result['material']['dependencies']}
+    assert entries[reconciliation.INSTALLER]['change'] == 'M'
+    binary = entries['.agents/skills/shared_wong_choi/file with\nnewline.bin']
+    assert binary['before'] is None
+    assert binary['after']['sha256'] == reconciliation.hashlib.sha256(b'\0\xff\x80native-bytes').hexdigest()
+    assert result['material']['patch_bytes'] > 0
+    assert {p: p.read_bytes() for p in before} == before
+    assert not (state / 'installation-intents').exists()
+    assert preview(history)['status'] == 'blocked'
+    assert 'independent review required' in preview(history)['error']
+    with pytest.raises((reconciliation.ReleaseError, OSError)):
+        reconciliation.load_installation_intent(root, state, intent_hash=result['content_hash'],
+            production_roots={domain: history[1] for domain in reconciliation.DOMAINS})
+
+
+@pytest.mark.parametrize('history', [{reconciliation.INSTALLER: b'#!/bin/zsh\nexit 75\n'}], indirect=True)
+def test_review_request_cannot_waive_target_deployment_provenance(history):
+    root, _, state, _, target = history
+    path, manifest = reconciliation._load_release(state / 'releases', target)
+    events = ReleaseEventStore(state / 'release-events')
+    events.append(release_id=manifest['release_id'], commit=target,
+                  event_type='activation_failed', actor='fixture', detail={})
+    with pytest.raises(reconciliation.ReleaseError, match='successful deployment provenance'):
+        review_request(history)
+    assert not (state / 'installation-review-requests').exists()
+
+
+def test_review_request_rechecks_manifest_bytes_before_publication(history, monkeypatch):
+    root, _, state, _, target = history
+    original = reconciliation.installation_review_material
+    def changed(*args):
+        material = original(*args)
+        path, _ = reconciliation._load_release(state / 'releases', target)
+        path.write_bytes(path.read_bytes() + b'\n')
+        return material
+    monkeypatch.setattr(reconciliation, 'installation_review_material', changed)
+    with pytest.raises(reconciliation.ReleaseError, match='bindings changed'):
+        review_request(history)
+    assert not (state / 'installation-review-requests').exists()
+
+
+def test_review_inventory_captures_mode_only_change_and_deletion(history):
+    root, _, _, source, target = history
+    (root / reconciliation.INSTALLER).chmod(0o755)
+    git(root, 'add', reconciliation.INSTALLER)
+    git(root, 'commit', '-m', 'fixture executable mode')
+    changed = git(root, 'rev-parse', 'HEAD')
+    entry = reconciliation.installation_review_material(root, source, changed)['dependencies'][0]
+    assert entry['before']['mode'] == '100644'
+    assert entry['after']['mode'] == '100755'
+    assert entry['before']['sha256'] == entry['after']['sha256']
+    (root / reconciliation.INSTALLER).unlink()
+    git(root, 'add', reconciliation.INSTALLER)
+    git(root, 'commit', '-m', 'fixture delete')
+    entry = reconciliation.installation_review_material(root, source, git(root, 'rev-parse', 'HEAD'))['dependencies'][0]
+    assert entry['change'] == 'D' and entry['after'] is None
+
+
+def test_review_request_does_not_claim_authenticated_assessment_or_execution(history):
+    result = review_request(history)
+    assert result['material']['dependencies'] == []
+    assert result['material']['patch_bytes'] == 0
+    assert result['material']['source_tree'] != result['material']['target_tree']
+    with pytest.raises(reconciliation.ReleaseError, match='native execution disabled'):
+        reconciliation._require_installation_review(result)
+
+
+
+@pytest.mark.parametrize('history', [{
+    '.agents/skills/shared_wong_choi/module[ab].py': b'literal inventoried bytes\n',
+    '.agents/skills/shared_wong_choi/modulea.py': b'decoy inventoried bytes\n',
+}, {':(exclude)shadow.py': b'literal pathspec magic\n', 'shadow.py': b'decoy\n'}], indirect=True)
+def test_review_patch_digest_uses_literal_git_path_identity(history):
+    root, _, _, source, target = history
+    material = reconciliation.installation_review_material(root, source, target)
+    paths = [entry['path'] for entry in material['dependencies']]
+    expected = reconciliation._review_git_bytes(root, '--literal-pathspecs', 'diff', '--binary',
+        '--full-index', '--no-ext-diff', '--no-textconv', '--no-renames', source, target, '--', *paths)
+    assert material['patch_sha256'] == reconciliation.hashlib.sha256(expected).hexdigest()
