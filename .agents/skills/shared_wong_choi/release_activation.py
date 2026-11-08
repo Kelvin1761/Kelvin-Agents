@@ -26,7 +26,7 @@ EXPECTED_MUTABLE_PATHS = frozenset(
 )
 
 
-def _run_installer(repo: Path, *args: str, timeout: float) -> subprocess.CompletedProcess[str]:
+def _run_installer(repo: Path, *args: str, timeout: float, lease_fd: int | None = None) -> subprocess.CompletedProcess[str]:
     """Stop the owned process group before rollback; keep bounded diagnostics."""
     def output(handle) -> str:
         size = handle.seek(0, os.SEEK_END)
@@ -39,9 +39,14 @@ def _run_installer(repo: Path, *args: str, timeout: float) -> subprocess.Complet
             raw += handle.read(1000)
         return raw.decode("utf-8", errors="replace")
 
+    inherited = {}
+    if lease_fd is not None:
+        from .runtime_cutover_lease import FD_ENV, _validate, lease_path
+        _validate(lease_fd, lease_path())
+        inherited = {"env": {**os.environ, FD_ENV: str(lease_fd)}, "pass_fds": (lease_fd,)}
     with tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr:
         process = subprocess.Popen(list(args), cwd=repo, stdout=stdout, stderr=stderr,
-                                   start_new_session=True)
+                                   start_new_session=True, **inherited)
         expired = False
         try:
             process.wait(timeout=timeout)

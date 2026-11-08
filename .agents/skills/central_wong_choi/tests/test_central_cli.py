@@ -172,3 +172,23 @@ def test_installation_gate_dispatch_remains_separate_from_approval(tmp_path, mon
         "reconcile-installation-gate", "--intent", "a" * 64, "--json",
     ]) == 0
     assert captured["intent_hash"] == "a" * 64
+
+
+
+def test_forward_executor_dispatch_never_calls_historical_approval_or_activation(tmp_path, monkeypatch):
+    from shared_wong_choi import installation_reconciliation, release_automation
+    calls = []
+    monkeypatch.setattr(release_automation, "production_roots", lambda: {"au": tmp_path})
+    def disabled(*args, **kwargs):
+        calls.append(kwargs)
+        raise cli.ReleaseError("native execution disabled")
+    monkeypatch.setattr(installation_reconciliation, "execute_installation_intent", disabled)
+    def forbidden(*args, **kwargs):
+        raise AssertionError("forward executor entered historical release path")
+    monkeypatch.setattr(cli, "approve_release", forbidden)
+    monkeypatch.setattr(cli, "activate_release", forbidden)
+    assert cli.main(["--repo", str(tmp_path), "--state-root", str(tmp_path / "state"),
+                     "reconcile-installation-execute", "--intent", "a" * 64,
+                     "--actor", "fixture", "--json"]) == 1
+    assert calls == [{"intent_hash": "a" * 64, "production_roots": {"au": tmp_path},
+                      "actor": "fixture"}]

@@ -5,6 +5,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from urllib.parse import quote
 
 import pytest
 
@@ -53,7 +54,7 @@ def history(tmp_path, monkeypatch):
                     "gate": {"commit": commit, "check": "full"},
                     "activation_plan": {"installers": [reconciliation.INSTALLER],
                                         "production_sync_domains": list(reconciliation.DOMAINS)}}
-        (state / "releases" / (commit + ".json")).write_text(json.dumps(manifest))
+        (state / "releases" / (quote(manifest["release_id"], safe="._-") + ".json")).write_text(json.dumps(manifest))
         approval = events.append(release_id=manifest["release_id"], commit=commit,
                                  event_type="approval_granted", actor="test")
         events.append(release_id=manifest["release_id"], commit=commit,
@@ -143,7 +144,7 @@ def test_moved_or_unowned_state_is_blocked(history, change):
 @pytest.mark.parametrize("defect", ["main-membership-only", "bad-link", "no-deployment", "model", "not-full"])
 def test_target_requires_real_linked_provenance(history, defect):
     _, _, state, _, target = history
-    manifest_path = state / "releases" / (target + ".json")
+    manifest_path = reconciliation._load_release(state / "releases", target)[0]
     manifest = json.loads(manifest_path.read_text())
     folder = state / "release-events" / ("release%3A" + target)
     if defect == "main-membership-only":
@@ -297,7 +298,7 @@ def test_installation_gate_uses_clean_full_gate_and_records_no_authority(history
 def test_changed_manifest_bytes_block_before_gate(history, monkeypatch):
     from shared_wong_choi import release_approval
     root, state, roots, intent = intent_arguments(history)
-    manifest = state / "releases" / (intent["target_commit"] + ".json")
+    manifest = reconciliation._load_release(state / "releases", intent["target_commit"])[0]
     manifest.write_bytes(manifest.read_bytes() + b"\n")
     def forbidden(*args):
         pytest.fail("stale intent invoked a gate")
@@ -339,3 +340,195 @@ def test_damaged_intent_is_rejected(history, tmp_path, damage):
     with pytest.raises((reconciliation.ReleaseError, OSError)):
         reconciliation.load_installation_intent(
             root, state, intent_hash=intent["content_hash"], production_roots=roots)
+
+
+@pytest.fixture
+def executor(history, monkeypatch):
+    import time
+    from shared_wong_choi import release_approval, release_activation, deployment_verify
+    from shared_wong_choi.release_gate import GateReceipt
+    root, state, roots, intent = intent_arguments(history)
+    monkeypatch.setenv("WONGCHOI_CONTROL_STATE_ROOT", str(state))
+    monkeypatch.setattr(reconciliation, "__file__",
+                        str(root / ".agents/skills/shared_wong_choi/installation_reconciliation.py"))
+    # Orchestration fixture only: there is no production review authorization.
+    monkeypatch.setattr(reconciliation, "_require_installation_review", lambda intent: None)
+    monkeypatch.setattr(GateReceipt, "reusable", lambda self, *args: True)
+    calls = []
+    def gate(repo, commit, check):
+        calls.append(check)
+        return GateReceipt(commit, check, "fixture", time.monotonic(), 0.1, "fixture.log")
+    monkeypatch.setattr(release_approval, "_run_gate_in_clean_clone", gate)
+    def native(repo, *args, timeout, lease_fd=None):
+        from shared_wong_choi.runtime_cutover_lease import _validate, lease_path, _try_lock
+        import fcntl, os
+        _validate(lease_fd, lease_path())
+        probe = os.open(lease_path(), os.O_RDWR)
+        try:
+            assert not _try_lock(probe, fcntl.LOCK_SH)
+        finally:
+            os.close(probe)
+        mode = args[2]
+        calls.append((mode, timeout))
+        if mode == "--snapshot":
+            Path(args[3]).mkdir()
+            (Path(args[3]) / "evidence").write_text("retain")
+        return subprocess.CompletedProcess(args, 0, "isolated native observer", "")
+    monkeypatch.setattr(release_activation, "_run_installer", native)
+    monkeypatch.setattr(deployment_verify, "verify_deployment", lambda *args: {
+        "safe_to_activate": True, "status": "aligned", "target_commit": intent["target_commit"]})
+    return root, state, roots, intent, calls, native
+
+
+def execute(executor):
+    root, state, roots, intent, _, _ = executor
+    return reconciliation.execute_installation_intent(
+        root, state, intent_hash=intent["content_hash"], production_roots=roots, actor="fixture")
+
+
+def test_executor_holds_kernel_lease_and_uses_same_snapshot_without_git_reset(executor):
+    root, state, roots, intent, calls, _ = executor
+    manifests = {p: p.read_bytes() for p in (state / "releases").iterdir()}
+    result = execute(executor)
+    assert result["status"] == "installed_pending_acceptance"
+    assert result["native_acceptance_verified"] is False
+    assert calls == ["full", "quick", ("--snapshot", 120),
+                     ("--install-from-snapshot", 300), ("--status", 60)]
+    assert git(root, "rev-parse", "HEAD") == intent["target_commit"]
+    assert git(next(iter(roots.values())), "rev-parse", "HEAD") == intent["target_commit"]
+    assert manifests == {p: p.read_bytes() for p in manifests}
+    assert (Path(result["snapshot"]) / "evidence").read_text() == "retain"
+    before = list(calls)
+    with pytest.raises(reconciliation.ReleaseError, match="already claimed"):
+        execute(executor)
+    assert calls == before
+
+
+def test_executor_failed_install_restores_same_snapshot_and_preserves_claim(executor, monkeypatch):
+    from shared_wong_choi import release_activation
+    root, state, roots, intent, calls, native = executor
+    snapshots = []
+    def failing(repo, *args, **kwargs):
+        mode = args[2]
+        if mode in {"--install-from-snapshot", "--restore"}:
+            snapshots.append(args[3])
+        result = native(repo, *args, **kwargs)
+        if mode == "--install-from-snapshot":
+            return subprocess.CompletedProcess(args, 124, "owned timeout", "")
+        return result
+    monkeypatch.setattr(release_activation, "_run_installer", failing)
+    with pytest.raises(reconciliation.ReleaseError, match="recovery restored"):
+        execute(executor)
+    assert len(snapshots) == 2 and snapshots[0] == snapshots[1]
+    attempt = state / "installation-attempts" / intent["content_hash"]
+    records = [json.loads(p.read_text()) for p in attempt.glob("*.json")]
+    assert records[-1] if records else False
+    assert any(r["status"] == "failed" and r["recovery"] == "restored" for r in records)
+    assert (Path(snapshots[0]) / "evidence").is_file()
+    assert ("--restore", 300) in calls
+
+
+def test_executor_serialized_gate_cannot_reach_native(executor, monkeypatch):
+    from shared_wong_choi import release_approval
+    monkeypatch.setattr(release_approval, "_run_gate_in_clean_clone", lambda *args: {})
+    with pytest.raises(reconciliation.ReleaseError, match="full installation receipt"):
+        execute(executor)
+    assert executor[4] == []
+    assert not (executor[1] / "installation-attempts").exists()
+
+
+def test_executor_rechecks_evidence_after_independent_approval(executor, monkeypatch):
+    from shared_wong_choi import release_approval
+    root, state, _, intent, calls, _ = executor
+    original = release_approval._run_gate_in_clean_clone
+    def changed(*args):
+        result = original(*args)
+        if args[-1] == "quick":
+            path, _ = reconciliation._load_release(state / "releases", intent["target_commit"])
+            path.write_bytes(path.read_bytes() + b"\n")
+        return result
+    monkeypatch.setattr(release_approval, "_run_gate_in_clean_clone", changed)
+    with pytest.raises(reconciliation.ReleaseError):
+        execute(executor)
+    assert calls == ["full", "quick"]
+    assert not (state / "installation-attempts").exists()
+
+
+def test_executor_restore_exception_retains_unresolved_claim(executor, monkeypatch):
+    from shared_wong_choi import release_activation
+    _, state, _, intent, _, native = executor
+    def failing(repo, *args, **kwargs):
+        if args[2] == "--restore":
+            raise OSError("owned restore spawn failed")
+        result = native(repo, *args, **kwargs)
+        return subprocess.CompletedProcess(args, 1 if args[2] == "--install-from-snapshot" else 0,
+                                           result.stdout, result.stderr)
+    monkeypatch.setattr(release_activation, "_run_installer", failing)
+    with pytest.raises(reconciliation.ReleaseError, match="recovery blocked"):
+        execute(executor)
+    attempt = state / "installation-attempts" / intent["content_hash"]
+    assert (attempt / "native-snapshot/evidence").is_file()
+    assert any(json.loads(p.read_text()).get("recovery_error") == "OSError: owned restore spawn failed"
+               for p in attempt.glob("*.json"))
+
+
+def test_native_runner_preserves_actual_exclusive_descriptor(tmp_path, monkeypatch):
+    from shared_wong_choi.release_activation import _run_installer
+    from shared_wong_choi.runtime_cutover_lease import cutover_lease
+    monkeypatch.setenv("WONGCHOI_CONTROL_STATE_ROOT", str(tmp_path / "control"))
+    module_root = Path(reconciliation.__file__).resolve().parents[1]
+    program = ("import sys; sys.path.insert(0, sys.argv[1]); "
+               "from shared_wong_choi.runtime_cutover_lease import inherited_lease,lease_path; "
+               "inherited_lease('exclusive',lease_path()); print('exclusive verified')")
+    with cutover_lease("exclusive") as fd:
+        result = _run_installer(tmp_path, sys.executable, "-c", program, str(module_root),
+                                timeout=10, lease_fd=fd)
+    assert result.returncode == 0, result.stderr
+    assert "exclusive verified" in result.stdout
+
+
+def test_live_executor_is_disabled_without_exact_source_review(history, monkeypatch):
+    root, state, roots, intent = intent_arguments(history)
+    monkeypatch.setenv("WONGCHOI_CONTROL_STATE_ROOT", str(state))
+    monkeypatch.setattr(reconciliation, "__file__",
+                        str(root / ".agents/skills/shared_wong_choi/installation_reconciliation.py"))
+    with pytest.raises(reconciliation.ReleaseError, match="native execution disabled"):
+        reconciliation.execute_installation_intent(root, state, intent_hash=intent["content_hash"],
+                                                   production_roots=roots, actor="fixture")
+    assert not (state / "installation-attempts").exists()
+
+
+def test_executor_expired_receipt_after_snapshot_blocks_before_install(executor, monkeypatch):
+    from shared_wong_choi import release_activation
+    from shared_wong_choi.release_gate import GateReceipt
+    _, state, _, intent, calls, native = executor
+    expired = [False]
+    monkeypatch.setattr(GateReceipt, "reusable", lambda *args: not expired[0])
+    def snapshot(repo, *args, **kwargs):
+        result = native(repo, *args, **kwargs)
+        if args[2] == "--snapshot":
+            expired[0] = True
+        return result
+    monkeypatch.setattr(release_activation, "_run_installer", snapshot)
+    with pytest.raises(reconciliation.ReleaseError, match="recovery not_needed"):
+        execute(executor)
+    assert calls == ["full", "quick", ("--snapshot", 120)]
+    attempt = state / "installation-attempts" / intent["content_hash"]
+    assert (attempt / "native-snapshot/evidence").is_file()
+
+
+def test_executor_remote_outage_does_not_prevent_owned_native_restore(executor, monkeypatch):
+    from shared_wong_choi import release_activation
+    _, _, _, _, calls, native = executor
+    def failing(repo, *args, **kwargs):
+        result = native(repo, *args, **kwargs)
+        if args[2] == "--install-from-snapshot":
+            def unavailable(*args, **kwargs):
+                raise reconciliation.ReleaseError("remote unavailable")
+            monkeypatch.setattr(reconciliation, "_remote", unavailable)
+            return subprocess.CompletedProcess(args, 124, "owned timeout", "")
+        return result
+    monkeypatch.setattr(release_activation, "_run_installer", failing)
+    with pytest.raises(reconciliation.ReleaseError, match="recovery restored"):
+        execute(executor)
+    assert calls[-1] == ("--restore", 300)

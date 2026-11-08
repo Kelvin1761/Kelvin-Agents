@@ -204,7 +204,7 @@ def create_installation_intent(
     # Hash the immutable manifests as well as binding their release IDs. A later
     # gate/executor must reobserve eligibility and compare these exact bytes.
     manifests = {
-        commit: hashlib.sha256((state_root / "releases" / (commit + ".json")).read_bytes()).hexdigest()
+        commit: hashlib.sha256(_load_release(state_root / "releases", commit)[0].read_bytes()).hexdigest()
         for commit in (source_commit, target_commit)
     }
     payload = {
@@ -309,7 +309,7 @@ def load_installation_intent(repo: Path, state_root: Path, *, intent_hash: str,
     roots = {domain: str(Path(root).expanduser().resolve())
              for domain, root in sorted(production_roots.items())}
     manifests = {commit: hashlib.sha256(
-        (state_root / "releases" / (commit + ".json")).read_bytes()).hexdigest()
+        _load_release(state_root / "releases", commit)[0].read_bytes()).hexdigest()
         for commit in (value["source_commit"], value["target_commit"])}
     if (value["production_roots"] != roots or value["manifest_hashes"] != manifests
             or value["rollback_commit"] != value["target_commit"]
@@ -350,3 +350,181 @@ def gate_installation_intent(repo: Path, state_root: Path, *, intent_hash: str,
         result["content_hash"] = _hash(result)
         return _append_installation_record(
             state_root / "installation-gates" / intent_hash, result)
+
+
+def _require_installation_review(intent: dict) -> None:
+    # Exact-source review binding is not implemented yet. No actor text, saved
+    # gate record or historical approval may enable the native executor.
+    raise ReleaseError("exact-source installation review binding unavailable; native execution disabled")
+
+
+def execute_installation_intent(repo: Path, state_root: Path, *, intent_hash: str,
+                                production_roots: Mapping[str, Path], actor: str) -> dict:
+    """Fresh in-process gates and one claimed native attempt; never sync/reset Git.
+
+    A saved gate observation grants no authority. Existing preview provenance and
+    dependency review blocks apply at every recheck. Attempts are never replayed,
+    including after interruption or a failed outcome append.
+    """
+    from .deployment_verify import verify_deployment
+    from .release_activation import _run_installer, _command_failure
+    from .release_approval import _run_gate_in_clean_clone
+    from .release_automation import _queued_release_lock
+    from .release_gate import GateReceipt
+    from .runtime_cutover_lease import cutover_lease, lease_path
+
+    if not isinstance(actor, str) or not actor.strip():
+        raise ReleaseError("installation executor actor is required")
+    if repo.expanduser().resolve() != Path(__file__).resolve().parents[3]:
+        raise ReleaseError("executor must run from its own exact approved checkout")
+    # These native overrides are useful for isolated installer tests, never for
+    # production acceptance through this controller.
+    overrides = {key for key in os.environ if key in {
+        "WC_RUNTIME_NO_PROBE", "WC_ALLOW_AU_BOT_UNLOADED", "WC_LAUNCHCTL_BIN",
+        "WC_LAUNCH_AGENTS_DIR", "WC_RUNTIME_CUTOVER_FD",
+        "WC_RUNTIME_INSTALL_SNAPSHOT", "WC_RUNTIME_EXPECTED_COMMIT"}}
+    if overrides:
+        raise ReleaseError("native executor overrides are forbidden: " + ", ".join(sorted(overrides)))
+    if lease_path().parent.resolve() != state_root.expanduser().resolve():
+        raise ReleaseError("executor and runtime cutover control roots differ")
+    intent = load_installation_intent(repo, state_root, intent_hash=intent_hash,
+                                      production_roots=production_roots)
+    _require_installation_review(intent)
+    target = intent["target_commit"]
+    serial = {"commit": target, "release_id": "installation:" + intent_hash,
+              "message": "forward installation execution"}
+
+    def recheck():
+        if load_installation_intent(repo, state_root, intent_hash=intent_hash,
+                                    production_roots=production_roots) != intent:
+            raise ReleaseError("installation intent/evidence changed")
+        # The controller itself must run from the approved immutable source.
+        if _run(repo, "git", "rev-parse", "HEAD").stdout.strip() != target:
+            raise ReleaseError("executor source is not the exact approved target")
+        status = _run(repo, "git", "status", "--porcelain", "-z",
+                      "--untracked-files=all", check=False)
+        if status.returncode != 0 or status.stdout:
+            raise ReleaseError("executor source is not clean")
+
+    with _queued_release_lock(state_root, manifest=serial):
+        recheck()
+        attempts = state_root / "installation-attempts"
+        if any(path.is_symlink() for path in (attempts, *attempts.parents)):
+            raise ReleaseError("unsafe installation attempt directory")
+        attempt = attempts / intent_hash
+        if attempt.exists() or attempt.is_symlink():
+            raise ReleaseError("installation attempt already claimed; automatic replay forbidden")
+        full = _run_gate_in_clean_clone(repo, target, "full")
+        if not isinstance(full, GateReceipt) or not full.reusable(repo, target, "full"):
+            raise ReleaseError("fresh full installation receipt is invalid")
+        recheck()
+        approval = _run_gate_in_clean_clone(repo, target, "quick")
+        if (not isinstance(approval, GateReceipt) or approval.commit != target
+                or approval.check != "quick" or approval.environment != full.environment
+                or not full.reusable(repo, target, "full")
+                or not approval.reusable(repo, target, "quick")):
+            raise ReleaseError("independent clean installation approval is invalid")
+        recheck()
+        def receipts_current():
+            if not full.reusable(repo, target, "full") or not approval.reusable(repo, target, "quick"):
+                raise ReleaseError("installation gate/approval freshness expired")
+
+        def recovery_source_current():
+            # Recovery is local and ownership-bound; a remote outage or moved
+            # main cannot revoke recovery of this attempt's native writes.
+            production = next(iter(production_roots.values())).expanduser().resolve()
+            if _run(production, "git", "rev-parse", "HEAD").stdout.strip() != target:
+                raise ReleaseError("recovery installer checkout moved")
+            status = _run(production, "git", "status", "--porcelain", "-z",
+                          "--untracked-files=all", "--no-renames", check=False)
+            dirty = {entry[3:] for entry in status.stdout.split("\0") if entry}
+            if status.returncode or dirty - EXPECTED_MUTABLE_PATHS:
+                raise ReleaseError("recovery native source changed or unverified")
+
+        # Continuous cooperative exclusion across snapshot/install/status/restore.
+        with cutover_lease("exclusive") as fd:
+            recheck()
+            receipts_current()
+            _require_installation_review(intent)
+            attempts.mkdir(mode=0o700, parents=True, exist_ok=True)
+            attempt.mkdir(mode=0o700)  # Atomic one-attempt claim, never removed.
+            parent = os.open(attempts, os.O_RDONLY)
+            try:
+                os.fsync(parent)
+            finally:
+                os.close(parent)
+
+            def record(status, **detail):
+                value = {"schema_version": "wong-choi-installation-attempt/v1",
+                         "intent_hash": intent_hash, "target_commit": target,
+                         "rollback_commit": target, "actor": actor.strip(),
+                         "created_at": datetime.now(timezone.utc).isoformat(),
+                         "status": status, **detail}
+                value["content_hash"] = _hash(value)
+                return _append_installation_record(attempt, value)
+
+            record("approval_observed", full_log=full.log, approval_log=approval.log)
+            production = next(iter(production_roots.values())).expanduser().resolve()
+            installer = production / INSTALLER
+            snapshot = attempt / "native-snapshot"
+            mutation_started = False
+            try:
+                recheck()
+                result = _run_installer(production, "/bin/zsh", str(installer),
+                                        "--snapshot", str(snapshot), timeout=120, lease_fd=fd)
+                if result.returncode:
+                    raise _command_failure("forward installation snapshot failed", result)
+                record("snapshot_captured", snapshot=str(snapshot))
+                recheck()  # Detect changes between the outer observation and install.
+                receipts_current()
+                _require_installation_review(intent)
+                record("installation_started", snapshot=str(snapshot))
+                mutation_started = True
+                result = _run_installer(
+                    production, "/bin/zsh", str(installer), "--install-from-snapshot",
+                    str(snapshot), "--expected-commit", target, timeout=300, lease_fd=fd)
+                if result.returncode:
+                    raise _command_failure("forward installation failed", result)
+                recheck()
+                result = _run_installer(production, "/bin/zsh", str(installer),
+                                        "--status", timeout=60, lease_fd=fd)
+                if result.returncode:
+                    raise _command_failure("forward installed/loaded verification failed", result)
+                # Compare all required files to a detached exact-SHA source.
+                with tempfile.TemporaryDirectory(prefix="wc-forward-verify-") as raw:
+                    clean = Path(raw) / "source"
+                    _run(repo, "git", "clone", "--shared", "--no-checkout", str(repo), str(clean))
+                    _run(clean, "git", "checkout", "--detach", target)
+                    verification = []
+                    for domain in DOMAINS:
+                        checked = verify_deployment(clean, Path(production_roots[domain]), domain)
+                        if not checked["safe_to_activate"] or checked["target_commit"] != target:
+                            raise ReleaseError("forward required-file verification failed: " + domain)
+                        verification.append({"domain": domain, "status": checked["status"],
+                                             "target_commit": target})
+                recheck()
+                # Calendar and native acceptance still require separate evidence;
+                # installed/loaded alone must not be projected as workflow success.
+                return record("installed_pending_acceptance", verification=verification,
+                              snapshot=str(snapshot), native_acceptance_verified=False)
+            except BaseException as exc:
+                recovery = "not_needed"
+                error = None
+                if mutation_started:
+                    recovery = "blocked"
+                    try:
+                        # Do not execute a foreign replacement installer on rollback.
+                        recovery_source_current()
+                        restored = _run_installer(production, "/bin/zsh", str(installer),
+                                                  "--restore", str(snapshot), timeout=300, lease_fd=fd)
+                        if restored.returncode:
+                            raise _command_failure("forward native restore failed", restored)
+                        recovery = "restored"
+                    except BaseException as restore_exc:
+                        error = f"{type(restore_exc).__name__}: {restore_exc}"
+                try:
+                    record("failed", error=f"{type(exc).__name__}: {exc}", recovery=recovery,
+                           recovery_error=error, snapshot=str(snapshot), evidence_retained=True)
+                except BaseException as append_exc:
+                    raise ReleaseError(f"forward outcome unavailable; attempt/evidence retained at {attempt}") from append_exc
+                raise ReleaseError(f"forward installation failed; recovery {recovery}; evidence retained at {attempt}") from exc

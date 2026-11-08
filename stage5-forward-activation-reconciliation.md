@@ -14,8 +14,10 @@ Implement and test a new Central controller reconciliation action, then release
 it through existing engineering gates.
 This is a new activation-target workflow, not permission inferred from the
 previous immutable approval. Do not alter an existing manifest or run a manual
-installer. A read-only eligibility preview is now under test. The intent/gate/
-installation executor is not implemented or released; no production action is done.
+installer. Read-only preview and append-only intent/full-gate observation commands
+are implemented in nonmain source. The native executor is wired but explicitly
+disabled until exact-source review authorization is implemented; it is not
+released or accepted and no production action is done.
 
 ## Required invariants
 
@@ -445,3 +447,47 @@ retains its read-only behavior. Fresh gate, independent approval, append-only
 execution outcomes and the native executor remain required before this workflow
 can install anything. Current changed-dependency and target-provenance holds
 continue to apply.
+
+
+## November 8 native executor integration — disabled source WIP
+
+The same previously authorized independent reviewer resumed and identified a
+production integration defect: intent manifest hashing assumed commit filenames,
+while real releases use encoded release-ID filenames. The fixture now uses the
+actual naming convention; the pre-fix test failed with FileNotFoundError. Both
+hash sites now resolve the exact manifest through `_load_release`; 38 tests
+passed after that repair.
+
+Central exposes `reconcile-installation-execute --intent HASH --actor TEXT`.
+The actual executor holds one serial release lock through fresh clean immutable
+full and independent quick gates, then one kernel EX cutover lease through native
+snapshot/install/status/recovery. `_run_installer` explicitly passes the verified
+lease FD and environment marker. A real child interpreter verifies inherited EX;
+separate orchestration fixtures use isolated repositories and fake native actions.
+A durable per-intent directory claims the attempt before native work. Claimed
+attempts cannot replay, including after interruption or unavailable outcome
+storage. Snapshot120/install300/status60/restore300 deadlines are unchanged.
+Native recovery never syncs/resets Git or rewrites historical release events,
+and retains snapshots/outcomes. Recovery validates local exact-target source and
+native journal ownership without requiring remote availability. Both live gate
+receipts are checked again under EX before the claim and after snapshot, before
+installation begins. This is cooperative exclusion, not POSIX conditional CAS
+against nonparticipants.
+
+**Native execution is explicitly disabled:** `_require_installation_review`
+raises before gates/claim/native calls because exact-source immutable review
+binding is not implemented. Actor text, historical approvals and saved gate JSON
+cannot bypass this guard. Orchestration tests explicitly replace this disabled
+guard; they are not runtime authority. Even the positive orchestration outcome
+is `installed_pending_acceptance` with native acceptance false. Exact target
+provenance/dependency review, process-boundary limitations, independent final
+source review and separate calendar/native-receipt acceptance remain mandatory.
+No live intent, installer, job/configuration, model/data/history mutation,
+release/merge/activation or full immutable gate was run for this checkpoint.
+
+Final affected reconciliation/activation/Central CLI selection: **76 passed in
+54.59s**, log `/private/tmp/stage5-forward-executor-final.log`. Quick checks and
+`git diff --check` passed; scoring goldens unchanged. The same authorized reviewer
+confirmed the narrow recovery/freshness/disabled-authority corrections by source
+inspection, with no further must-fix for this disabled WIP; this is not independent
+execution verification or installation approval. No full source gate was run.
