@@ -491,3 +491,67 @@ Final affected reconciliation/activation/Central CLI selection: **76 passed in
 confirmed the narrow recovery/freshness/disabled-authority corrections by source
 inspection, with no further must-fix for this disabled WIP; this is not independent
 execution verification or installation approval. No full source gate was run.
+
+
+## November 8 native acceptance integration — authority still disabled
+
+Actual research receipt publication now adds installation attempt ID, plan hash
+and source SHA before hashing and create-only publication whenever running under
+the verified native installation journal. Normal unbound research runs retain
+existing behavior. A new plan timestamp requires acceptance receipts to postdate
+preparation; timestamp alone is not accepted as attempt identity.
+
+The bound research installer records `.native-acceptance.json` through the
+existing journal. Both recording and verification invoke the authoritative
+native read-only status wrapper directly, preserving the kernel EX descriptor.
+No caller-supplied `verified` report is accepted. The verifier returns the SHA256
+of bytes read by its own receipt descriptor. Journal checks compare that hash,
+full parsed receipt and installation identity to the plan and immutable proof.
+This detects the reviewed A/B/A substitution case. Receipt paths must be
+canonical absolute paths inside the existing Central run root, without `..` or
+symlink components. Proofs are create-only, private and retained with the outer
+snapshot; mismatched, stale, cross-attempt or changed receipts block acceptance.
+
+Unified `--acceptance-status SNAPSHOT` rechecks that receipt, actual installed
+calendar, loaded runtime and receipt continuity. The actual forward executor now
+calls that boundary after the four-domain exact-SHA required-file checks. Its
+positive *isolated orchestration fixture* may project `installed_verified` only
+after this boundary succeeds; failed acceptance uses the existing owned native
+recovery and never writes a success outcome. This is source engineering and
+fixture evidence, not production acceptance, scheduled firing or SLA evidence.
+
+The same authorized read-only reviewer initially identified caller-report
+trust, receipt-read continuity and missing native run identity. All three were
+corrected, and that reviewer found no further must-fix in this narrow source
+scope. Reported tests were not independently run by the reviewer.
+
+**Review authority remains unavailable and native execution remains disabled.**
+The reviewer inspected existing release events, evidence stores and approval
+code: hashes, actor text, local mode600 files and clean gates do not independently
+authenticate a reviewer assessment. Existing authenticated Telegram identifies a
+human command, not the independent review result. Do not manufacture a key,
+credential, actor allowlist or caller-pasted transcript as a trust boundary.
+Pending review request/assessment interfaces must bind exact intent/source/
+target tree/manifests/roots and per-dependency deltas, preserve explicit blocked
+and unresolved decisions, and remain nonauthorizing until a real trusted
+publication boundary exists. Owned hardening review must not bless foreign NBA
+cadence; existing target deployment provenance remains independently mandatory.
+`_require_installation_review` still unconditionally blocks native execution.
+
+Focused journal/reconciliation/native research status tests: 108 passed in40.23s
+(`/private/tmp/stage5-native-acceptance-continuity.log`). Actual outer-cutover
+fixture using real journal/native publication/status code and fake launchctl:
+1 passed in31.12s (`/private/tmp/stage5-native-acceptance-bound-run.log`), including
+receipt-byte tampering rejection before native calls. Separate unit binding tests
+explicitly mock native outcomes; they do not provide authority. Quick checks,
+modified shell syntax and diff checks passed; scoring goldens unchanged. No full
+source/immutable release gate, live review/intent, installation, job/configuration,
+DB/history/model mutation, merge or activation was performed.
+
+Final actual installer plus snapshot-recovery selection: **72 passed in370.81s**,
+log `/private/tmp/stage5-native-acceptance-installer-recovery.log`. All7 isolated
+full-cutover cases ran through the existing controller deadline300; slowest
+bound-bootstrap failure68.11s, acceptance failure62.72s, outer success29.84s.
+Cancellation, native ownership and restore regressions passed. This remains
+focused fixture evidence, not a full source/immutable gate or production-native
+acceptance. The final source was unchanged throughout that selection.

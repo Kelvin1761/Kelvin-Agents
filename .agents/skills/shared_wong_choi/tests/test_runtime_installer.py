@@ -461,6 +461,20 @@ raise SystemExit(0 if accepted else 1)
         plan = json.loads((outer / ".write-ownership/plan.json").read_text())
         assert plan["snapshot_root"] == str(outer.resolve())
         assert len(list((outer / ".write-ownership").glob("*.begin.json"))) == 21
+        acceptance_proof = json.loads((outer / ".native-acceptance.json").read_text())
+        assert acceptance_proof["attempt_id"] == plan["attempt_id"]
+        assert acceptance_proof["commit"] == expected_commit
+        verified = subprocess.run(["/bin/zsh", str(isolated_installer), "--acceptance-status", str(outer)],
+                                  env=env, text=True, capture_output=True, timeout=60)
+        assert verified.returncode == 0, verified.stdout + verified.stderr
+        # Receipt-byte changes invalidate acceptance without changing native jobs.
+        receipt_path = Path(acceptance_proof["receipt_path"])
+        receipt_path.write_bytes(receipt_path.read_bytes() + b"\n")
+        before_calls = (tmp_path / "native-calls.jsonl").read_bytes()
+        rejected = subprocess.run(["/bin/zsh", str(isolated_installer), "--acceptance-status", str(outer)],
+                                  env=env, text=True, capture_output=True, timeout=60)
+        assert rejected.returncode != 0
+        assert (tmp_path / "native-calls.jsonl").read_bytes() == before_calls
         assert not list((tmp_path / "control/activation-recovery").glob("wc-native-attempt-*"))
     assert (home / ".wongchoi_tennis_db").read_text(encoding="utf-8").strip() == str(
         runtime / "tennis_wc.db"

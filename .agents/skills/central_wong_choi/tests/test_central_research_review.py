@@ -178,6 +178,8 @@ def test_status_accepts_bound_success_receipt(tmp_path: Path) -> None:
     result = review_runtime_status(**roots, now=NOW, receipt_path=path)
     assert result["status"] == "verified"
     assert result["receipt"]["status"] == "succeeded"
+    import hashlib
+    assert result["receipt_sha256"] == hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 @pytest.mark.parametrize("mutation", [

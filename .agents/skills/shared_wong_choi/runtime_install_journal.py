@@ -11,6 +11,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
@@ -31,7 +32,7 @@ class OwnershipError(RuntimeError):
 
 
 def _exclusive():
-    inherited_lease('exclusive', lease_path())
+    return inherited_lease('exclusive', lease_path())
 
 
 def _safe_root(path: Path, *, private=False):
@@ -42,19 +43,19 @@ def _safe_root(path: Path, *, private=False):
         raise OwnershipError('ownership directory is not private')
 
 
-def _bytes(path: Path, *, private=False) -> bytes:
+def _bytes(path: Path, *, private=False, limit=MAX_PLIST_BYTES) -> bytes:
     fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
     with os.fdopen(fd, 'rb') as handle:
         before = os.fstat(handle.fileno())
-        if (not stat.S_ISREG(before.st_mode) or before.st_size > MAX_PLIST_BYTES
+        if (not stat.S_ISREG(before.st_mode) or before.st_size > limit
                 or (private and (before.st_uid != os.getuid() or before.st_nlink != 1
                                  or stat.S_IMODE(before.st_mode) != 0o600))):
             raise OwnershipError('unsafe proof file')
-        data = handle.read(MAX_PLIST_BYTES + 1)
+        data = handle.read(limit + 1)
         after = os.fstat(handle.fileno())
         named = path.lstat()
     identity = lambda s: (s.st_dev, s.st_ino, s.st_mode, s.st_size, s.st_mtime_ns, s.st_ctime_ns)
-    if (len(data) > MAX_PLIST_BYTES or identity(before) != identity(after)
+    if (len(data) > limit or identity(before) != identity(after)
             or identity(after) != identity(named)):
         raise OwnershipError('proof changed while reading')
     return data
@@ -148,6 +149,7 @@ def prepare(snapshot: Path, agents: Path, *, domain: str, launchctl: str, commit
     root = snapshot / DIRECTORY
     root.mkdir(mode=0o700)  # Existing records are never rewritten or adopted.
     body = {'schema_version': SCHEMA, 'attempt_id': uuid4().hex, 'commit': commit,
+            'prepared_at': datetime.now(timezone.utc).isoformat(),
             'snapshot_root': str(snapshot.resolve()), 'agents_root': str(agents.resolve()),
             'domain': domain, 'before_hash': _digest(before), 'candidates': candidates,
             'pointer': pointer}
@@ -164,7 +166,7 @@ def _context(snapshot: Path, agents: Path, domain: str):
     plan = _load(root / 'plan.json')
     before = load_observation(snapshot, agents, domain=domain, labels=tuple(sorted(LABELS)))
     if (set(plan) != {'schema_version', 'attempt_id', 'commit', 'snapshot_root',
-                      'agents_root', 'domain', 'before_hash', 'candidates', 'pointer'}
+                      'agents_root', 'domain', 'before_hash', 'candidates', 'pointer', 'prepared_at'}
             or plan['schema_version'] != SCHEMA
             or not re.fullmatch('[0-9a-f]{32}', plan['attempt_id'])
             or not re.fullmatch('[0-9a-f]{40}', plan['commit'])
@@ -173,6 +175,7 @@ def _context(snapshot: Path, agents: Path, domain: str):
             or plan['before_hash'] != _digest(before) or plan['pointer'] != _pointer(snapshot)
             or plan['candidates'] != _candidate_states(snapshot / 'candidates')):
         raise OwnershipError('ownership plan binding mismatch')
+    _aware_time(plan['prepared_at'])
     allowed = {'plan.json'} | {label + '.begin.json' for label in LABELS | {POINTER}}
     if any(p.name not in allowed for p in root.iterdir()):
         raise OwnershipError('unknown ownership record')
@@ -352,10 +355,109 @@ def verify_recovery(snapshot: Path, agents: Path, *, domain: str, launchctl: str
     return changed
 
 
+
+def _aware_time(value):
+    stamp = datetime.fromisoformat(value)
+    if stamp.tzinfo is None or stamp.utcoffset() is None:
+        raise OwnershipError('acceptance time must be timezone-aware')
+    return stamp
+
+
+def _receipt_payload(path: Path):
+    if any(parent.is_symlink() for parent in path.parents):
+        raise OwnershipError('symlinked acceptance receipt root')
+    if not path.is_absolute() or '..' in path.parts or path != path.resolve():
+        raise OwnershipError('noncanonical acceptance receipt path')
+    path.relative_to(lease_path().parent.resolve() / 'runs' / 'central')
+    raw = _bytes(path, limit=1024 * 1024)
+    value = json.loads(raw, object_pairs_hook=_pairs)
+    if (not isinstance(value, dict) or value.get('content_hash') != _digest(
+            {key: item for key, item in value.items() if key != 'content_hash'})
+            or value.get('run_log') != str(path) or value.get('status') != 'succeeded'
+            or value.get('schema_version') != 'wong-choi-central-research-review-run/v1'):
+        raise OwnershipError('native acceptance receipt is invalid')
+    return raw, value
+
+
+def installation_binding(snapshot: Path, agents: Path, *, domain: str):
+    _, plan, _ = _context(snapshot, agents, domain)
+    return {'attempt_id': plan['attempt_id'], 'plan_hash': _digest(plan), 'commit': plan['commit']}
+
+
+def _native_status(receipt: Path):
+    repo = Path(__file__).resolve().parents[3]
+    checked = subprocess.run(
+        ['/bin/zsh', str(repo / '.agents/skills/central_wong_choi/scripts/run_central_research_review.sh'),
+         '--status', '--receipt', str(receipt)], text=True, capture_output=True,
+        timeout=60, check=False, pass_fds=(_exclusive(),))
+    if checked.returncode or len(checked.stdout.encode()) > 2 * 1024 * 1024:
+        raise OwnershipError('authoritative native acceptance verification failed')
+    value = json.loads(checked.stdout, object_pairs_hook=_pairs)
+    if not isinstance(value, dict) or value.get('status') != 'verified':
+        raise OwnershipError('authoritative native acceptance is not verified')
+    return value
+
+
+def record_acceptance(snapshot: Path, agents: Path, *, domain: str, receipt: Path):
+    """Bind the actual native verifier's successful report to this install plan.
+
+    Hashes are evidence identity, never permission to install or run research.
+    Invoke the existing authoritative native status verifier here, never accept
+    a caller-supplied JSON claim that verification happened.
+    """
+    _, plan, _ = _context(snapshot, agents, domain)
+    receipt = receipt.absolute()
+    raw, payload = _receipt_payload(receipt)
+    checked = _native_status(receipt)
+    started = _aware_time(payload.get('started_at'))
+    now = datetime.now(timezone.utc)
+    if (not isinstance(checked, dict) or checked.get('status') != 'verified'
+            or checked.get('receipt') != payload
+            or checked.get('receipt_sha256') != hashlib.sha256(raw).hexdigest()
+            or payload.get('installation_binding') != installation_binding(snapshot, agents, domain=domain)
+            or checked.get('receipt_stale')
+            or not _aware_time(plan['prepared_at']) <= started <= now
+            or now.timestamp() - started.timestamp() > 36 * 3600
+            or set(checked.get('domains', {})) != {'au', 'hkjc', 'nba', 'tennis'}
+            or any(item.get('status') != 'verified' for item in checked['domains'].values())):
+        raise OwnershipError('native acceptance report does not verify this fresh receipt')
+    body = {'schema_version': 'wong-choi-runtime-acceptance/v1',
+            'attempt_id': plan['attempt_id'], 'plan_hash': _digest(plan),
+            'commit': plan['commit'], 'snapshot_root': str(snapshot.resolve()),
+            'receipt_path': str(receipt), 'receipt_sha256': hashlib.sha256(raw).hexdigest(),
+            'receipt_content_hash': payload['content_hash'],
+            'recorded_at': now.isoformat()}
+    _append(snapshot / '.native-acceptance.json', body)
+    return body
+
+
+def verify_acceptance(snapshot: Path, agents: Path, *, domain: str):
+    _, plan, _ = _context(snapshot, agents, domain)
+    proof = _load(snapshot / '.native-acceptance.json')
+    fields = {'schema_version', 'attempt_id', 'plan_hash', 'commit', 'snapshot_root',
+              'receipt_path', 'receipt_sha256', 'receipt_content_hash', 'recorded_at'}
+    if (set(proof) != fields or proof['schema_version'] != 'wong-choi-runtime-acceptance/v1'
+            or proof['attempt_id'] != plan['attempt_id'] or proof['plan_hash'] != _digest(plan)
+            or proof['commit'] != plan['commit'] or proof['snapshot_root'] != str(snapshot.resolve())):
+        raise OwnershipError('native acceptance belongs to another attempt')
+    raw, payload = _receipt_payload(Path(proof['receipt_path']))
+    checked = _native_status(Path(proof['receipt_path']))
+    now = datetime.now(timezone.utc)
+    started = _aware_time(payload.get('started_at'))
+    if (checked.get('receipt_sha256') != hashlib.sha256(raw).hexdigest()
+            or checked.get('receipt') != payload
+            or payload.get('installation_binding') != installation_binding(snapshot, agents, domain=domain)
+            or hashlib.sha256(raw).hexdigest() != proof['receipt_sha256']
+            or payload['content_hash'] != proof['receipt_content_hash']
+            or not _aware_time(plan['prepared_at']) <= started <= _aware_time(proof['recorded_at']) <= now
+            or now.timestamp() - started.timestamp() > 36 * 3600):
+        raise OwnershipError('native acceptance receipt changed or expired')
+    return proof
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--mode', choices=('prepare', 'begin-job', 'publish-job',
-                        'begin-pointer', 'publish-pointer', 'restore-job', 'verify-job', 'verify-unchanged', 'verify-recovery'), required=True)
+                        'begin-pointer', 'publish-pointer', 'restore-job', 'verify-job', 'verify-unchanged', 'verify-recovery', 'record-acceptance', 'verify-acceptance'), required=True)
     parser.add_argument('--snapshot', type=Path, required=True)
     parser.add_argument('--agents', type=Path, required=True)
     parser.add_argument('--domain', required=True)
@@ -364,6 +466,7 @@ def main(argv=None):
     parser.add_argument('--repo', type=Path)
     parser.add_argument('--expected-commit')
     parser.add_argument('--label')
+    parser.add_argument('--receipt', type=Path)
     args = parser.parse_args(argv)
     binding = {'domain': args.domain}
     try:
@@ -399,6 +502,10 @@ def main(argv=None):
             verify_job(args.snapshot, args.agents, **binding, launchctl=args.launchctl, label=args.label)
         elif args.mode == 'verify-unchanged':
             verify_unchanged(args.snapshot, args.agents, **binding, launchctl=args.launchctl)
+        elif args.mode == 'record-acceptance':
+            record_acceptance(args.snapshot, args.agents, **binding, receipt=args.receipt)
+        elif args.mode == 'verify-acceptance':
+            print(json.dumps(verify_acceptance(args.snapshot, args.agents, **binding)))
         elif args.mode == 'begin-pointer':
             begin_pointer(args.snapshot, args.agents, **binding)
         elif args.mode == 'publish-pointer':

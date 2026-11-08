@@ -8,7 +8,11 @@ wc_runtime_journal() {
     --launchctl "${WC_LAUNCHCTL_BIN:-launchctl}" --domain "gui/$(id -u)")
   _wc_journal_args+=(--repo "$_wc_repo")
   [ -z "${WC_RUNTIME_EXPECTED_COMMIT:-}" ] || _wc_journal_args+=(--expected-commit "$WC_RUNTIME_EXPECTED_COMMIT")
-  [ -z "$_wc_label" ] || _wc_journal_args+=(--label "$_wc_label")
-  [ -z "$_wc_commit" ] || _wc_journal_args+=(--commit "$_wc_commit")
+  [ -z "$_wc_label" ] || [ "$_wc_mode" = "record-acceptance" ] || _wc_journal_args+=(--label "$_wc_label")
+  if [ "$_wc_mode" = "record-acceptance" ]; then
+    _wc_journal_args+=(--receipt "$_wc_label")
+  else
+    [ -z "$_wc_commit" ] || _wc_journal_args+=(--commit "$_wc_commit")
+  fi
   /usr/bin/python3 "$_wc_repo/.agents/skills/shared_wong_choi/runtime_install_journal.py" "${_wc_journal_args[@]}"
 }

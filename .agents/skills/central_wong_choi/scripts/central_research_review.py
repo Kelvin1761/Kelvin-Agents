@@ -445,8 +445,26 @@ def initialize_review_state(
     }
 
 
+def _installation_binding():
+    snapshot = os.environ.get("WC_RUNTIME_INSTALL_SNAPSHOT")
+    if not snapshot:
+        return None
+    from shared_wong_choi.runtime_install_journal import installation_binding
+    value = installation_binding(Path(snapshot),
+        Path(os.environ.get("WC_LAUNCH_AGENTS_DIR") or Path.home() / "Library/LaunchAgents"),
+        domain="gui/" + str(os.getuid()))
+    if value["commit"] != os.environ.get("WC_RUNTIME_EXPECTED_COMMIT"):
+        raise ValueError("native receipt installation source mismatch")
+    return value
+
+
 def _write_run(path: Path, payload: Mapping[str, Any]) -> dict[str, Any]:
     body = dict(payload)
+    binding = _installation_binding()
+    if binding is not None:
+        if "installation_binding" in body and body["installation_binding"] != binding:
+            raise ValueError("native receipt installation attempt mismatch")
+        body["installation_binding"] = binding
     body["content_hash"] = _hash(body)
     encoded = (
         json.dumps(body, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
@@ -724,7 +742,11 @@ def review_runtime_status(
                     raise ValueError("receipt attempt history mismatch")
         if payload.get("status") != _overall_status(domains):
             raise ValueError("receipt overall status mismatch")
+        binding = _installation_binding()
+        if binding is not None and payload.get("installation_binding") != binding:
+            raise ValueError("receipt belongs to a different installation attempt")
         result["receipt"] = payload
+        result["receipt_sha256"] = hashlib.sha256(raw).hexdigest()
         result["receipt_age_seconds"] = (clock - started).total_seconds()
         if result["receipt_age_seconds"] > 36 * 3600:
             result["receipt_stale"] = True

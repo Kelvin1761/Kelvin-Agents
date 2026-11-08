@@ -92,7 +92,7 @@ cleanup() {
   [ -z "$STAGED" ] || rm -f "$STAGED"
   # Retain snapshot on failure for manual recovery.
   if [ "$COMPLETE" -eq 1 ]; then
-    rm -f "$TEMP_DIR/previous.plist" "$TEMP_DIR/candidate.plist" "$TEMP_DIR/pass.json"
+    rm -f "$TEMP_DIR/previous.plist" "$TEMP_DIR/candidate.plist" "$TEMP_DIR/pass.json" "$TEMP_DIR/acceptance-status.json"
     rmdir "$TEMP_DIR"
   else
     print -u2 -- "research installation failed; recovery evidence: $TEMP_DIR"
@@ -108,7 +108,10 @@ export WC_PRIMARY_REPO_ROOT="$PROJECT_ROOT" WC_TENNIS_RUNTIME_ROOT="$TENNIS_ROOT
 /bin/zsh "$SCRIPT_DIR/run_central_research_review.sh" --initialize
 /bin/zsh "$SCRIPT_DIR/run_central_research_review.sh" > "$TEMP_DIR/pass.json"
 RECEIPT="$(/usr/bin/python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["run_log"])' "$TEMP_DIR/pass.json")"
-/bin/zsh "$SCRIPT_DIR/run_central_research_review.sh" --status --receipt "$RECEIPT"
+/bin/zsh "$SCRIPT_DIR/run_central_research_review.sh" --status --receipt "$RECEIPT" > "$TEMP_DIR/acceptance-status.json"
+if [ -n "${WC_RUNTIME_INSTALL_SNAPSHOT:-}" ]; then
+  wc_runtime_journal "$WC_RUNTIME_INSTALL_SNAPSHOT" record-acceptance "$RECEIPT"
+fi
 # plistlib handles XML escaping in paths, including external disks with spaces.
 render_candidate "$TEMP_DIR/candidate.plist"
 plutil -lint "$TEMP_DIR/candidate.plist"

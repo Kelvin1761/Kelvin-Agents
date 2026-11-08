@@ -390,10 +390,10 @@ def test_executor_holds_kernel_lease_and_uses_same_snapshot_without_git_reset(ex
     root, state, roots, intent, calls, _ = executor
     manifests = {p: p.read_bytes() for p in (state / "releases").iterdir()}
     result = execute(executor)
-    assert result["status"] == "installed_pending_acceptance"
-    assert result["native_acceptance_verified"] is False
+    assert result["status"] == "installed_verified"
+    assert result["native_acceptance_verified"] is True
     assert calls == ["full", "quick", ("--snapshot", 120),
-                     ("--install-from-snapshot", 300), ("--status", 60)]
+                     ("--install-from-snapshot", 300), ("--status", 60), ("--acceptance-status", 60)]
     assert git(root, "rev-parse", "HEAD") == intent["target_commit"]
     assert git(next(iter(roots.values())), "rev-parse", "HEAD") == intent["target_commit"]
     assert manifests == {p: p.read_bytes() for p in manifests}
@@ -531,4 +531,21 @@ def test_executor_remote_outage_does_not_prevent_owned_native_restore(executor, 
     monkeypatch.setattr(release_activation, "_run_installer", failing)
     with pytest.raises(reconciliation.ReleaseError, match="recovery restored"):
         execute(executor)
+    assert calls[-1] == ("--restore", 300)
+
+
+
+def test_executor_acceptance_failure_restores_without_claiming_verified(executor, monkeypatch):
+    from shared_wong_choi import release_activation
+    _, state, _, intent, calls, native = executor
+    def rejected(repo, *args, **kwargs):
+        result = native(repo, *args, **kwargs)
+        return subprocess.CompletedProcess(args, 1 if args[2] == "--acceptance-status" else 0,
+                                           result.stdout, "owned missing receipt")
+    monkeypatch.setattr(release_activation, "_run_installer", rejected)
+    with pytest.raises(reconciliation.ReleaseError, match="recovery restored"):
+        execute(executor)
+    records = [json.loads(p.read_text()) for p in
+               (state / "installation-attempts" / intent["content_hash"]).glob("*.json")]
+    assert not any(r["status"] == "installed_verified" for r in records)
     assert calls[-1] == ("--restore", 300)

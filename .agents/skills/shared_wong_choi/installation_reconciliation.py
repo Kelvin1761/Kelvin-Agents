@@ -503,10 +503,13 @@ def execute_installation_intent(repo: Path, state_root: Path, *, intent_hash: st
                         verification.append({"domain": domain, "status": checked["status"],
                                              "target_commit": target})
                 recheck()
-                # Calendar and native acceptance still require separate evidence;
-                # installed/loaded alone must not be projected as workflow success.
-                return record("installed_pending_acceptance", verification=verification,
-                              snapshot=str(snapshot), native_acceptance_verified=False)
+                accepted = _run_installer(production, "/bin/zsh", str(installer),
+                                         "--acceptance-status", str(snapshot), timeout=60, lease_fd=fd)
+                if accepted.returncode:
+                    raise _command_failure("forward calendar/native receipt acceptance failed", accepted)
+                recheck()
+                return record("installed_verified", verification=verification,
+                              snapshot=str(snapshot), native_acceptance_verified=True)
             except BaseException as exc:
                 recovery = "not_needed"
                 error = None

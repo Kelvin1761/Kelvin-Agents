@@ -231,3 +231,121 @@ def test_checkout_advance_after_plan_blocks_actual_publisher_cli(prepared):
     assert result.returncode != 0
     assert target.read_bytes() == before
     assert not list(agents.glob('.wc-owned-publication-*'))
+
+
+
+def native_receipt(prepared, tmp_path, monkeypatch):
+    from datetime import datetime, timezone
+    snapshot, agents, domain, plan = prepared
+    path = journal.lease_path().parent / 'runs/central/fixture/receipt.json'
+    path.parent.mkdir(parents=True)
+    body = {'schema_version': 'wong-choi-central-research-review-run/v1',
+            'status': 'succeeded', 'run_log': str(path),
+            'started_at': datetime.now(timezone.utc).isoformat(),
+            'installation_binding': journal.installation_binding(snapshot, agents, domain=domain),
+            'model_promotion_allowed': False, 'telegram_delivery_confirmed': False,
+            'evaluation_release_id': 'fixture-contract', 'evaluation_release_commit': '2'*40,
+            'domains': {d: {'disposition': 'succeeded', 'status': 'fixture',
+                           'model_promotion_allowed': False, 'telegram_delivery_confirmed': False}
+                        for d in ('au','hkjc','nba','tennis')}}
+    payload = {**body, 'content_hash': journal._digest(body)}
+    path.write_text(json.dumps(payload))
+    report = tmp_path / 'native-status.json'
+    report.write_text(json.dumps({'status': 'verified', 'receipt': payload,
+                                 'receipt_sha256': journal.hashlib.sha256(path.read_bytes()).hexdigest(),
+                                 'domains': {d: {'status': 'verified'} for d in ('au','hkjc','nba','tennis')}}))
+    # These unit cases isolate binding checks. The actual native validator is
+    # exercised separately by the full-cutover fixture with real status code.
+    monkeypatch.setattr(journal, '_native_status', lambda receipt: json.loads(report.read_text()))
+    return path, report
+
+
+def test_native_receipt_is_bound_to_exact_install_attempt(prepared, tmp_path, monkeypatch):
+    snapshot, agents, domain, plan = prepared
+    receipt, report = native_receipt(prepared, tmp_path, monkeypatch)
+    proof = journal.record_acceptance(snapshot, agents, domain=domain, receipt=receipt)
+    assert proof['attempt_id'] == plan['attempt_id']
+    assert journal.verify_acceptance(snapshot, agents, domain=domain) == proof
+    with pytest.raises(FileExistsError):
+        journal.record_acceptance(snapshot, agents, domain=domain, receipt=receipt)
+
+
+@pytest.mark.parametrize('damage', ['bytes', 'stale-before-plan', 'blocked-report', 'different-report',
+                                  'missing-domain', 'symlink', 'foreign-root'])
+def test_native_receipt_negative_evidence_blocks_acceptance(prepared, tmp_path, damage, monkeypatch):
+    snapshot, agents, domain, plan = prepared
+    receipt, report = native_receipt(prepared, tmp_path, monkeypatch)
+    if damage == 'bytes':
+        journal.record_acceptance(snapshot, agents, domain=domain, receipt=receipt)
+        receipt.write_bytes(receipt.read_bytes() + b'\n')
+        with pytest.raises(journal.OwnershipError):
+            journal.verify_acceptance(snapshot, agents, domain=domain)
+        return
+    if damage == 'symlink':
+        other = receipt.with_name('other.json')
+        receipt.rename(other)
+        receipt.symlink_to(other)
+    elif damage == 'foreign-root':
+        other = tmp_path / 'foreign.json'
+        other.write_bytes(receipt.read_bytes())
+        receipt = other
+    else:
+        checked = json.loads(report.read_text())
+        if damage == 'blocked-report':
+            checked['status'] = 'blocked'
+        elif damage == 'different-report':
+            checked['receipt']['status'] = 'failed'
+        elif damage == 'missing-domain':
+            checked['domains'].pop('nba')
+        else:
+            value = json.loads(receipt.read_text())
+            value['started_at'] = '2020-01-01T00:00:00+00:00'
+            value['content_hash'] = journal._digest({k:v for k,v in value.items() if k != 'content_hash'})
+            receipt.write_text(json.dumps(value))
+            checked['receipt'] = value
+        report.write_text(json.dumps(checked))
+    with pytest.raises((journal.OwnershipError, OSError, ValueError)):
+        journal.record_acceptance(snapshot, agents, domain=domain, receipt=receipt)
+    assert not (snapshot / '.native-acceptance.json').exists()
+
+
+def test_native_receipt_from_another_attempt_is_rejected(prepared, tmp_path, monkeypatch):
+    snapshot, agents, domain, plan = prepared
+    receipt, report = native_receipt(prepared, tmp_path, monkeypatch)
+    journal.record_acceptance(snapshot, agents, domain=domain, receipt=receipt)
+    path = snapshot / '.native-acceptance.json'
+    path.unlink()
+    body = {**plan, 'schema_version': 'wong-choi-runtime-acceptance/v1', 'attempt_id': 'f'*32}
+    journal._append(path, body)
+    with pytest.raises(journal.OwnershipError):
+        journal.verify_acceptance(snapshot, agents, domain=domain)
+
+
+
+def test_native_validation_read_hash_prevents_aba_substitution(prepared, tmp_path, monkeypatch):
+    snapshot, agents, domain, _ = prepared
+    receipt, report = native_receipt(prepared, tmp_path, monkeypatch)
+    original = receipt.read_bytes()
+    checked = json.loads(report.read_text())
+    # Simulate native verifier reading a different valid serialization B, then
+    # another actor restoring A before journal inspection. Its own-read hash is B.
+    checked['receipt_sha256'] = journal.hashlib.sha256(original + b'\n').hexdigest()
+    monkeypatch.setattr(journal, '_native_status', lambda path: checked)
+    with pytest.raises(journal.OwnershipError):
+        journal.record_acceptance(snapshot, agents, domain=domain, receipt=receipt)
+    assert not (snapshot / '.native-acceptance.json').exists()
+
+
+def test_fresh_receipt_from_another_installation_is_rejected(prepared, tmp_path, monkeypatch):
+    snapshot, agents, domain, _ = prepared
+    receipt, report = native_receipt(prepared, tmp_path, monkeypatch)
+    value = json.loads(receipt.read_text())
+    value['installation_binding']['attempt_id'] = 'f'*32
+    value['content_hash'] = journal._digest({k:v for k,v in value.items() if k != 'content_hash'})
+    receipt.write_text(json.dumps(value))
+    checked = json.loads(report.read_text())
+    checked['receipt'] = value
+    checked['receipt_sha256'] = journal.hashlib.sha256(receipt.read_bytes()).hexdigest()
+    report.write_text(json.dumps(checked))
+    with pytest.raises(journal.OwnershipError):
+        journal.record_acceptance(snapshot, agents, domain=domain, receipt=receipt)

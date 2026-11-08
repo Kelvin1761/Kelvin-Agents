@@ -292,12 +292,23 @@ case "${1:-}" in
     restore_runtime "$2"
     exit $?
     ;;
+  --acceptance-status)
+    [ "$#" -eq 2 ] && [ -n "$2" ] || exit 2
+    . "$PROJECT_ROOT/.agents/skills/shared_wong_choi/runtime_install_journal.sh"
+    acceptance="$(wc_runtime_journal "$2" verify-acceptance)" || exit 1
+    /usr/bin/python3 "$PROJECT_ROOT/.agents/skills/central_wong_choi/scripts/verify_research_calendar.py" \
+      --template "$PROJECT_ROOT/.agents/skills/central_wong_choi/launchd/com.antigravity.central-wong-choi.research-review.plist.template" \
+      --installed "$AGENTS_DIR/com.antigravity.central-wong-choi.research-review.plist"
+    wc_runtime_journal "$2" verify-acceptance >/dev/null
+    status_runtime
+    exit $?
+    ;;
   --status)
     status_runtime
     exit $?
     ;;
   "") ;;
-  *) print -u2 -- "usage: $0 [--install-from-snapshot DIR --expected-commit SHA|--render-only DIR|--snapshot DIR|--restore DIR|--status]"; exit 2 ;;
+  *) print -u2 -- "usage: $0 [--install-from-snapshot DIR --expected-commit SHA|--render-only DIR|--snapshot DIR|--restore DIR|--acceptance-status DIR|--status]"; exit 2 ;;
 esac
 
 if [ -n "$EXPECTED_COMMIT" ]; then
