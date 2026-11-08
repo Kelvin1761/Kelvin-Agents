@@ -2178,6 +2178,25 @@ test("race pattern labels the HKJC track segment as 場地", () => {
 });
 
 
+test("Tennis 今日投注 shows only the newest card once tomorrow's 精選 are out",()=>{
+  const shift=n=>{const d=new Date(new Intl.DateTimeFormat('en-CA',{timeZone:'Australia/Sydney'}).format(new Date())+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);};
+  const row=(id,day,kind,event)=>({id,day,event_name:event,selection:'A',market:'first_set_winner',kind,state:'pending',odds:1.9,legs:[]});
+  const yesterday=[row('f0',shift(-1),'featured','Yday Alpha vs Beta')];
+  const today=[row('f1',shift(0),'featured','Today Gamma vs Delta'),row('p1',shift(0),'prop','Today Paper vs Prop')];
+  const tomorrow=[row('f2',shift(1),'featured','Tmrw Epsilon vs Zeta'),row('p2',shift(1),'prop','Tmrw Paper vs Prop')];
+  const load=records=>{const api=loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,sports_feed:{sports:{tennis:{tracking:{status:'valid',records}}}}});api.setSportsTabForTest('history');return api;};
+  let api=load([...yesterday,...today]);
+  let html=api.renderSportsWorkspace('tennis');
+  assert.match(html,/Today Gamma</);assert.doesNotMatch(html,/Yday Alpha/);
+  assert.equal(api.tennisSelectRows(true).map(r=>r.id).join(),'f1,p1');
+  api=load([...yesterday,...today,...tomorrow]);
+  html=api.renderSportsWorkspace('tennis');
+  assert.match(html,/Tmrw Epsilon</);assert.doesNotMatch(html,/Today Gamma/);
+  assert.equal(api.tennisSelectRows(true).map(r=>r.id).join(),'f2,p2');
+  api.setSportsTabForTest('archive');
+  assert.match(api.renderSportsWorkspace('tennis'),/Today Gamma</);
+});
+
 test('Tennis tracks all saved rows with pagination and search, including old and future dates',()=>{
   const records=Array.from({length:65},(_,i)=>({id:'tennis:prop:'+i,day:i===64?'2099-01-01':'2020-01-01',event_name:'Player '+i+' vs B',selection:'Over 3.5',market:'aces',kind:'prop',state:'pending',point_in_time:false,odds:2,legs:[]}));
   const api=loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,sports_feed:{sports:{tennis:{tracking:{status:'valid',records}}}}});
