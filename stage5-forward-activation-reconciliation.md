@@ -607,3 +607,57 @@ model/data/history or production configuration writes occurred. This remains
 unfinished nonmain workflow engineering, not Stage5 or installation acceptance.
 
 Final quick and diff checks passed; scoring goldens unchanged. No full source or immutable release gate was run for this unfinished checkpoint.
+
+
+## November 9 strict reload and unverified assessment intake
+
+Central now exposes `reconcile-installation-assessment --request HASH
+--assessment-file FILE --actor TEXT` and the read-only
+`reconcile-installation-assessment-status --request HASH`. The intake is a store
+for claims, not authenticated reviewer publication. It grants no gate or
+installation authority, never creates an execution intent and does not alter
+`_require_installation_review`.
+
+Request loading rejects duplicate/extra fields, symlink aliases, hardlinks,
+wrong ownership/mode, oversized files, changed read identities and invalid
+hash/schema/time/false-authority fields. It reobserves current structural source
+and target deployment provenance/refs/roots, recomputes canonical manifest bytes,
+exact dependency material and pending intent binding, then rereads the request.
+Loading is read-only and cannot waive dependency or target provenance holds.
+
+Assessment input must identify the exact request, pending intent binding and
+inventory. Every inventoried delta appears exactly once with its path, delta
+hash, claimed disposition and findings. Missing, duplicate, unknown or changed
+deltas block intake. Blocked/unresolved decisions require findings; global
+conditions survive even an empty dependency inventory. Input is copied before
+validation/publication. Records remain explicitly `unverified_assessment`, with
+all authenticated/gate/install authority flags false. Caller identity text is
+only submitter metadata, not reviewer authentication.
+
+History projection checks every existing record and rejects malformed or unknown
+entries rather than silently discarding negative claims. It reports whether
+ANY blocked or unresolved claim remains present, not only the latest claim.
+Later reviewed claims cannot hide earlier blockers. Concurrent history-entry
+changes observed during projection block it; this is not an atomic filesystem
+CAS or a replacement for the future trusted publication boundary.
+
+An actual isolated RED reproduced an unknown-path/null-hash coverage flaw.
+Explicit membership and final set equality now require complete exact coverage.
+The same authorized reviewer also found that compact input plus an indented
+wrapper could exceed the reader's limit and poison later history loading. The
+shared publisher now measures the exact stored indented UTF-8 bytes plus newline
+against the same4MiB limit BEFORE directory creation/publication. Tests include
+near-limit claims and a multibyte exact-size boundary.
+
+The same reviewer confirmed both narrow corrections by source inspection, with
+no further required correction in this scope; no independent tests or runtime
+authorization were performed. Trusted publication/authorization integration,
+exact target dependency/cadence and process-boundary requirements remain open.
+No live intake/request/intent, gate, installation, release/merge/activation,
+Telegram, model/data/history or production configuration write was performed.
+
+Final reconciliation/Central CLI selection: **86 passed in54.24s**, log
+`/private/tmp/stage5-assessment-intake-final.log`. Quick and diff checks passed;
+scoring goldens unchanged. This is unfinished nonmain workflow engineering; no
+full source or immutable release gate was run and no production acceptance is
+claimed. Earlier84-pass selection predates the final size-bound corrections.

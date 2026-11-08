@@ -187,6 +187,14 @@ def build_parser() -> argparse.ArgumentParser:
     review_request.add_argument("--target-commit", required=True)
     review_request.add_argument("--actor", required=True)
     review_request.add_argument("--json", action="store_true")
+    assessment = sub.add_parser("reconcile-installation-assessment")
+    assessment.add_argument("--request", required=True)
+    assessment.add_argument("--assessment-file", type=Path, required=True)
+    assessment.add_argument("--actor", required=True)
+    assessment.add_argument("--json", action="store_true")
+    assessment_status = sub.add_parser("reconcile-installation-assessment-status")
+    assessment_status.add_argument("--request", required=True)
+    assessment_status.add_argument("--json", action="store_true")
     intent = sub.add_parser("reconcile-installation-intent")
     intent.add_argument("--source-commit", required=True)
     intent.add_argument("--target-commit", required=True)
@@ -231,6 +239,23 @@ def main(argv: Sequence[str] | None = None) -> int:
                 repo, state_root, source_commit=args.source_commit, target_commit=args.target_commit,
                 production_roots=production_roots(), actor=args.actor)
         except (ReleaseError, OSError, ValueError, TypeError) as exc:
+            print(json.dumps({"status": "blocked", "error": str(exc)}, ensure_ascii=False))
+            return 1
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
+    if args.command in {"reconcile-installation-assessment", "reconcile-installation-assessment-status"}:
+        from shared_wong_choi.installation_reconciliation import (
+            _read_review_json, record_installation_assessment, installation_assessment_status)
+        from shared_wong_choi.release_automation import production_roots
+
+        try:
+            options = {"request_hash": args.request, "production_roots": production_roots()}
+            if args.command == "reconcile-installation-assessment":
+                result = record_installation_assessment(repo, state_root, **options,
+                    actor=args.actor, assessment=_read_review_json(args.assessment_file))
+            else:
+                result = installation_assessment_status(repo, state_root, **options)
+        except (ReleaseError, OSError, ValueError, TypeError, KeyError) as exc:
             print(json.dumps({"status": "blocked", "error": str(exc)}, ensure_ascii=False))
             return 1
         print(json.dumps(result, ensure_ascii=False, indent=2))

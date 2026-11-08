@@ -664,3 +664,171 @@ def test_review_patch_digest_uses_literal_git_path_identity(history):
     expected = reconciliation._review_git_bytes(root, '--literal-pathspecs', 'diff', '--binary',
         '--full-index', '--no-ext-diff', '--no-textconv', '--no-renames', source, target, '--', *paths)
     assert material['patch_sha256'] == reconciliation.hashlib.sha256(expected).hexdigest()
+
+
+
+@pytest.fixture
+def assessment_request(history):
+    root, production, state, _, _ = history
+    request = review_request(history)
+    roots = {domain: production for domain in reconciliation.DOMAINS}
+    return root, state, roots, request
+
+
+def assessment_input(request, disposition='reviewed'):
+    return {'request_hash': request['content_hash'], 'intent_binding_hash': request['intent_binding_hash'],
+            'inventory_hash': request['material']['inventory_hash'], 'summary': 'fixture claim, not authority',
+            'conditions': [], 'dependency_decisions': [
+                {'path': entry['path'], 'delta_hash': reconciliation._hash(entry),
+                 'disposition': disposition, 'findings': [] if disposition == 'reviewed' else ['fixture blocker']}
+                for entry in request['material']['dependencies']]}
+
+
+@pytest.mark.parametrize('history', [{reconciliation.INSTALLER: b'#!/bin/zsh\nexit 75\n'}], indirect=True)
+def test_assessment_requires_actual_delta_path_not_unknown_none_hash(assessment_request):
+    root, state, roots, request = assessment_request
+    value = assessment_input(request)
+    value['dependency_decisions'][0].update(path='foreign/uninventoried.py', delta_hash=None)
+    with pytest.raises(reconciliation.ReleaseError):
+        reconciliation.record_installation_assessment(root, state, request_hash=request['content_hash'],
+            production_roots=roots, actor='fixture', assessment=value)
+    assert not (state / 'installation-review-assessments').exists()
+
+
+
+def test_review_request_loader_is_readonly_and_revalidates_material(assessment_request):
+    root, state, roots, request = assessment_request
+    before = {p:p.read_bytes() for p in state.rglob('*') if p.is_file()}
+    loaded = reconciliation.load_installation_review_request(root, state,
+        request_hash=request['content_hash'], production_roots=roots)
+    assert loaded == {k:v for k,v in request.items() if k != 'path'}
+    assert {p:p.read_bytes() for p in state.rglob('*') if p.is_file()} == before
+
+
+@pytest.mark.parametrize('damage', ['extra-field', 'duplicate-field', 'symlink', 'hardlink',
+                                  'mode', 'material', 'manifest'])
+def test_review_request_loader_rejects_damaged_or_stale_bindings(assessment_request, tmp_path, damage):
+    root, state, roots, request = assessment_request
+    path = Path(request['path'])
+    request_hash = request['content_hash']
+    if damage == 'extra-field':
+        value = json.loads(path.read_text())
+        value['approved'] = True
+        path.write_text(json.dumps(value))
+    elif damage == 'duplicate-field':
+        path.write_text('{"actor":"injected",' + path.read_text().lstrip()[1:])
+    elif damage == 'symlink':
+        other = tmp_path/'alias'
+        path.rename(other)
+        path.symlink_to(other)
+    elif damage == 'hardlink':
+        import os
+        os.link(path, tmp_path/'alias')
+    elif damage == 'mode':
+        path.chmod(0o644)
+    elif damage == 'manifest':
+        manifest, _ = reconciliation._load_release(state/'releases', request['intent_binding']['target_commit'])
+        manifest.write_bytes(manifest.read_bytes() + b'\n')
+    else:
+        value = json.loads(path.read_text())
+        value['material']['target_tree'] = '0'*40
+        value['content_hash'] = reconciliation._hash({k:v for k,v in value.items() if k != 'content_hash'})
+        request_hash = value['content_hash']
+        path = path.with_name(request_hash+'.json')
+        path.write_text(json.dumps(value))
+        path.chmod(0o600)
+    with pytest.raises((reconciliation.ReleaseError, OSError)):
+        reconciliation.load_installation_review_request(root, state,
+            request_hash=request_hash, production_roots=roots)
+
+
+@pytest.mark.parametrize('history', [{reconciliation.INSTALLER: b'#!/bin/zsh\nexit 75\n'}], indirect=True)
+def test_unverified_assessments_preserve_blocked_and_unresolved_history(assessment_request):
+    root, state, roots, request = assessment_request
+    before = {p:p.read_bytes() for p in state.rglob('*.json')}
+    for disposition in ('blocked', 'unresolved', 'reviewed'):
+        result = reconciliation.record_installation_assessment(root, state,
+            request_hash=request['content_hash'], production_roots=roots, actor='fixture',
+            assessment=assessment_input(request, disposition))
+        assert result['status'] == 'unverified_assessment'
+        assert result['assessment_authenticated'] is False
+        assert result['gate_authorized'] is False
+        assert result['installation_authorized'] is False
+    assert result['history']['assessment_count'] == 3
+    assert result['history']['blocked_claim_present'] is True
+    assert result['history']['unresolved_claim_present'] is True
+    assert {p:p.read_bytes() for p in before} == before
+    with pytest.raises(reconciliation.ReleaseError, match='native execution disabled'):
+        reconciliation._require_installation_review(result)
+    assert not (state/'installation-intents').exists()
+    assert not (state/'installation-attempts').exists()
+
+
+@pytest.mark.parametrize('history', [{reconciliation.INSTALLER: b'#!/bin/zsh\nexit 75\n'}], indirect=True)
+@pytest.mark.parametrize('damage', ['missing', 'duplicate', 'delta-hash', 'authority', 'request', 'condition'])
+def test_assessment_rejects_incomplete_or_wrong_claims(assessment_request, damage):
+    root, state, roots, request = assessment_request
+    value = assessment_input(request)
+    if damage == 'missing':
+        value['dependency_decisions'].clear()
+    elif damage == 'duplicate':
+        value['dependency_decisions'] *= 2
+    elif damage == 'delta-hash':
+        value['dependency_decisions'][0]['delta_hash'] = '0'*64
+    elif damage == 'authority':
+        value['assessment_authenticated'] = True
+    elif damage == 'request':
+        value['request_hash'] = '0'*64
+    else:
+        value['conditions'] = ['']
+    with pytest.raises(reconciliation.ReleaseError):
+        reconciliation.record_installation_assessment(root, state, request_hash=request['content_hash'],
+            production_roots=roots, actor='fixture', assessment=value)
+    assert not (state/'installation-review-assessments').exists()
+
+
+def test_invalid_assessment_history_is_never_silently_dropped(assessment_request):
+    root, state, roots, request = assessment_request
+    result = reconciliation.record_installation_assessment(root, state,
+        request_hash=request['content_hash'], production_roots=roots, actor='fixture',
+        assessment=assessment_input(request))
+    path = Path(result['path'])
+    path.write_bytes(path.read_bytes() + b'invalid')
+    with pytest.raises((reconciliation.ReleaseError, ValueError)):
+        reconciliation.installation_assessment_status(root, state,
+            request_hash=request['content_hash'], production_roots=roots)
+
+
+def test_unresolved_global_conditions_survive_empty_delta_inventory(assessment_request):
+    root, state, roots, request = assessment_request
+    value = assessment_input(request)
+    value['conditions'] = ['target still needs independent assessment']
+    result = reconciliation.record_installation_assessment(root, state,
+        request_hash=request['content_hash'], production_roots=roots, actor='fixture', assessment=value)
+    assert result['claim_status'] == 'unresolved'
+    assert result['history']['unresolved_claim_present'] is True
+
+
+
+@pytest.mark.parametrize('history', [{reconciliation.INSTALLER: b'#!/bin/zsh\nexit 75\n'}], indirect=True)
+def test_assessment_envelope_cannot_poison_history_with_unreadable_size(assessment_request):
+    root, state, roots, request = assessment_request
+    value = assessment_input(request)
+    value['dependency_decisions'][0]['findings'] = ['x'*16384]*256
+    with pytest.raises(reconciliation.ReleaseError, match='stored size limit'):
+        reconciliation.record_installation_assessment(root, state,
+            request_hash=request['content_hash'], production_roots=roots, actor='fixture', assessment=value)
+    assert not (state/'installation-review-assessments').exists()
+
+
+def test_record_size_limit_applies_to_exact_indented_utf8_bytes(tmp_path, monkeypatch):
+    folder = tmp_path/'records'
+    value = {'schema':'fixture', 'unicode': '馬'*5, 'content_hash':'f'*64}
+    exact = len((json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2)+'\n').encode('utf-8'))
+    monkeypatch.setattr(reconciliation, 'MAX_REVIEW_RECORD_BYTES', exact-1)
+    with pytest.raises(reconciliation.ReleaseError, match='stored size limit'):
+        reconciliation._append_installation_record(folder, value)
+    assert not folder.exists()
+    monkeypatch.setattr(reconciliation, 'MAX_REVIEW_RECORD_BYTES', exact)
+    result = reconciliation._append_installation_record(folder, value)
+    assert Path(result['path']).stat().st_size == exact

@@ -28,6 +28,7 @@ DOMAINS = ("au", "hkjc", "nba", "tennis")
 # name, main membership, or a caller-supplied list of supposedly owned releases.
 OWN_FAILED_RELEASES = frozenset({"e7e1d28e0076f9981b8bf135cfc1f42eb90c353f"})
 _SHA = re.compile(r"[0-9a-f]{40}")
+MAX_REVIEW_RECORD_BYTES = 4 * 1024 * 1024
 _DEPENDENCY_ROOTS = (
     ".agents/scripts/",
     ".agents/skills/",
@@ -297,6 +298,191 @@ def create_installation_review_request(
     value['content_hash'] = _hash(value)
     return _append_installation_record(state_root / 'installation-review-requests', value)
 
+
+def _read_review_json(path: Path, *, limit=MAX_REVIEW_RECORD_BYTES) -> dict:
+    """Bounded stable private reads; storage integrity is not authentication."""
+    if any(parent.is_symlink() for parent in path.parents):
+        raise ReleaseError('symlinked installation review directory')
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    with os.fdopen(fd, 'rb') as handle:
+        before = os.fstat(handle.fileno())
+        if (not stat.S_ISREG(before.st_mode) or before.st_uid != os.getuid()
+                or before.st_nlink != 1 or stat.S_IMODE(before.st_mode) != 0o600
+                or before.st_size > limit):
+            raise ReleaseError('unsafe installation review file')
+        raw = handle.read(limit + 1)
+        after = os.fstat(handle.fileno())
+        named = path.lstat()
+    identity = lambda item: (item.st_dev, item.st_ino, item.st_mode, item.st_size,
+                             item.st_mtime_ns, item.st_ctime_ns, item.st_nlink)
+    if len(raw) > limit or identity(before) != identity(after) or identity(after) != identity(named):
+        raise ReleaseError('installation review file changed while reading')
+    value = json.loads(raw, object_pairs_hook=_strict_object)
+    if not isinstance(value, dict):
+        raise ReleaseError('installation review must be an object')
+    return value
+
+
+def load_installation_review_request(repo: Path, state_root: Path, *, request_hash: str,
+                                     production_roots: Mapping[str, Path]) -> dict:
+    if not isinstance(request_hash, str) or not re.fullmatch('[0-9a-f]{64}', request_hash):
+        raise ReleaseError('full installation review request hash is required')
+    path = state_root / 'installation-review-requests' / (request_hash + '.json')
+    value = _read_review_json(path)
+    fields = {'schema_version', 'created_at', 'actor', 'status', 'intent_binding',
+              'intent_binding_hash', 'material', 'installation_authorized', 'gate_authorized',
+              'assessment_authenticated', 'execution_intent_created', 'content_hash'}
+    if (set(value) != fields or value['schema_version'] != 'wong-choi-installation-review-request/v1'
+            or value['content_hash'] != request_hash
+            or _hash({k:v for k,v in value.items() if k != 'content_hash'}) != request_hash
+            or value['status'] != 'pending_independent_review'
+            or any(value[key] is not False for key in ('installation_authorized', 'gate_authorized',
+                   'assessment_authenticated', 'execution_intent_created'))
+            or not isinstance(value['actor'], str) or not value['actor'].strip()):
+        raise ReleaseError('installation review request schema/hash/authority mismatch')
+    stamp = datetime.fromisoformat(value['created_at'])
+    if stamp.tzinfo is None or stamp.utcoffset() is None or stamp > datetime.now(timezone.utc):
+        raise ReleaseError('invalid installation review request time')
+    binding = value['intent_binding']
+    binding_fields = {'source_commit', 'target_commit', 'source_release_id', 'target_release_id',
+                      'manifest_hashes', 'production_roots', 'rollback_commit', 'installers'}
+    if (not isinstance(binding, dict) or set(binding) != binding_fields
+            or value['intent_binding_hash'] != _hash(binding)
+            or not all(isinstance(binding[key], str) and _SHA.fullmatch(binding[key])
+                       for key in ('source_commit', 'target_commit'))):
+        raise ReleaseError('invalid pending intent binding')
+    source, target = binding['source_commit'], binding['target_commit']
+    options = dict(source_commit=source, target_commit=target,
+                   production_roots=production_roots, review_request=True)
+    observed = _observe_installation_reconciliation(repo, state_root, **options)
+    if observed['status'] != 'pending_independent_review':
+        raise ReleaseError(observed.get('error', 'review request is no longer structurally valid'))
+    def expected_binding():
+        return {'source_commit': source, 'target_commit': target,
+                'source_release_id': observed['source_release_id'],
+                'target_release_id': observed['target_release_id'],
+                'manifest_hashes': {commit: hashlib.sha256(
+                    _load_release(state_root / 'releases', commit)[0].read_bytes()).hexdigest()
+                    for commit in (source, target)},
+                'production_roots': {domain: str(Path(root).expanduser().resolve())
+                                     for domain, root in sorted(production_roots.items())},
+                'rollback_commit': target, 'installers': [INSTALLER]}
+    if binding != expected_binding():
+        raise ReleaseError('review request differs from current exact manifest/root bindings')
+    if (installation_review_material(repo, source, target) != value['material']
+            or _observe_installation_reconciliation(repo, state_root, **options) != observed
+            or expected_binding() != binding or _read_review_json(path) != value):
+        raise ReleaseError('review request material/provenance changed')
+    return value
+
+
+def _assessment_claim(assessment: dict, request: dict) -> str:
+    fields = {'request_hash', 'intent_binding_hash', 'inventory_hash',
+              'dependency_decisions', 'conditions', 'summary'}
+    if (not isinstance(assessment, dict) or set(assessment) != fields
+            or assessment['request_hash'] != request['content_hash']
+            or assessment['intent_binding_hash'] != request['intent_binding_hash']
+            or assessment['inventory_hash'] != request['material']['inventory_hash']
+            or not isinstance(assessment['summary'], str) or not assessment['summary'].strip()
+            or len(assessment['summary']) > 16384):
+        raise ReleaseError('assessment does not bind the exact review request')
+    def strings(value):
+        return (isinstance(value, list) and len(value) <= 256
+                and all(isinstance(item, str) and 0 < len(item.strip()) <= 16384 for item in value))
+    if not strings(assessment['conditions']):
+        raise ReleaseError('invalid unresolved assessment conditions')
+    expected = {entry['path']: _hash(entry) for entry in request['material']['dependencies']}
+    decisions = assessment['dependency_decisions']
+    if not isinstance(decisions, list) or len(decisions) != len(expected):
+        raise ReleaseError('assessment must cover every exact dependency delta')
+    seen, dispositions = set(), set()
+    for decision in decisions:
+        if (not isinstance(decision, dict)
+                or set(decision) != {'path', 'delta_hash', 'disposition', 'findings'}
+                or not isinstance(decision['path'], str) or decision['path'] in seen
+                or decision['path'] not in expected
+                or expected[decision['path']] != decision['delta_hash']
+                or decision['disposition'] not in {'reviewed', 'blocked', 'unresolved'}
+                or not strings(decision['findings'])
+                or decision['disposition'] != 'reviewed' and not decision['findings']):
+            raise ReleaseError('assessment delta identity/disposition is invalid')
+        seen.add(decision['path'])
+        dispositions.add(decision['disposition'])
+    if seen != set(expected):
+        raise ReleaseError('assessment dependency coverage differs from request')
+    return ('blocked' if 'blocked' in dispositions else 'unresolved'
+            if 'unresolved' in dispositions or assessment['conditions'] else 'reviewed')
+
+
+def installation_assessment_status(repo: Path, state_root: Path, *, request_hash: str,
+                                    production_roots: Mapping[str, Path]) -> dict:
+    request = load_installation_review_request(repo, state_root, request_hash=request_hash,
+                                               production_roots=production_roots)
+    folder = state_root / 'installation-review-assessments' / request_hash
+    if any(parent.is_symlink() for parent in (folder, *folder.parents)):
+        raise ReleaseError('unsafe installation assessment directory')
+    paths = sorted(folder.iterdir()) if folder.exists() else []
+    claims = []
+    fields = {'schema_version', 'created_at', 'actor', 'request_hash', 'intent_binding_hash',
+              'inventory_hash', 'assessment', 'claim_status', 'status', 'installation_authorized',
+              'gate_authorized', 'assessment_authenticated', 'content_hash'}
+    for path in paths:
+        value = _read_review_json(path)
+        if (not re.fullmatch(r'[0-9a-f]{64}\.json', path.name) or set(value) != fields
+                or value['schema_version'] != 'wong-choi-installation-assessment/v1'
+                or value['content_hash'] + '.json' != path.name
+                or _hash({k:v for k,v in value.items() if k != 'content_hash'}) != value['content_hash']
+                or value['request_hash'] != request_hash
+                or value['intent_binding_hash'] != request['intent_binding_hash']
+                or value['inventory_hash'] != request['material']['inventory_hash']
+                or value['status'] != 'unverified_assessment'
+                or any(value[key] is not False for key in ('installation_authorized',
+                   'gate_authorized', 'assessment_authenticated'))
+                or not isinstance(value['actor'], str) or not value['actor'].strip()):
+            raise ReleaseError('invalid installation assessment history; never drop negative records')
+        stamp = datetime.fromisoformat(value['created_at'])
+        if stamp.tzinfo is None or stamp.utcoffset() is None or stamp > datetime.now(timezone.utc):
+            raise ReleaseError('invalid installation assessment time')
+        claim = _assessment_claim(value['assessment'], request)
+        if value['claim_status'] != claim:
+            raise ReleaseError('assessment claim projection mismatch')
+        claims.append(claim)
+    if folder.exists() and sorted(folder.iterdir()) != paths:
+        raise ReleaseError('assessment history changed during observation')
+    return {'status': 'unverified_assessments', 'request_hash': request_hash,
+            'assessment_count': len(claims), 'blocked_claim_present': 'blocked' in claims,
+            'unresolved_claim_present': 'unresolved' in claims,
+            'installation_authorized': False, 'gate_authorized': False,
+            'assessment_authenticated': False}
+
+
+def record_installation_assessment(repo: Path, state_root: Path, *, request_hash: str,
+                                   production_roots: Mapping[str, Path], actor: str,
+                                   assessment: dict) -> dict:
+    """Store untrusted claims append-only; no reviewer identity or authority inferred."""
+    if not isinstance(actor, str) or not actor.strip():
+        raise ReleaseError('assessment submitter is required')
+    request = load_installation_review_request(repo, state_root, request_hash=request_hash,
+                                               production_roots=production_roots)
+    assessment = json.loads(json.dumps(assessment, allow_nan=False))
+    claim = _assessment_claim(assessment, request)
+    installation_assessment_status(repo, state_root, request_hash=request_hash,
+                                    production_roots=production_roots)
+    value = {'schema_version': 'wong-choi-installation-assessment/v1',
+             'created_at': datetime.now(timezone.utc).isoformat(), 'actor': actor.strip(),
+             'request_hash': request_hash, 'intent_binding_hash': request['intent_binding_hash'],
+             'inventory_hash': request['material']['inventory_hash'], 'assessment': assessment,
+             'claim_status': claim, 'status': 'unverified_assessment',
+             'installation_authorized': False, 'gate_authorized': False,
+             'assessment_authenticated': False}
+    if load_installation_review_request(repo, state_root, request_hash=request_hash,
+                                        production_roots=production_roots) != request:
+        raise ReleaseError('review request changed before assessment publication')
+    value['content_hash'] = _hash(value)
+    result = _append_installation_record(state_root / 'installation-review-assessments' / request_hash, value)
+    return {**result, 'history': installation_assessment_status(
+        repo, state_root, request_hash=request_hash, production_roots=production_roots)}
+
 def create_installation_intent(
     repo: Path, state_root: Path, *, source_commit: str, target_commit: str,
     production_roots: Mapping[str, Path], actor: str,
@@ -342,6 +528,9 @@ def create_installation_intent(
 
 
 def _append_installation_record(folder: Path, payload: dict) -> dict:
+    encoded = (json.dumps(payload, ensure_ascii=False, sort_keys=True, indent=2) + "\n").encode('utf-8')
+    if len(encoded) > MAX_REVIEW_RECORD_BYTES:
+        raise ReleaseError('installation record exceeds readable stored size limit')
     if any(path.is_symlink() for path in (folder, *folder.parents)):
         raise ReleaseError("installation intent directory is symlinked")
     folder.mkdir(mode=0o700, parents=True, exist_ok=True)

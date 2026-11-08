@@ -212,3 +212,30 @@ def test_installation_review_request_dispatch_cannot_approve_or_activate(tmp_pat
                      '--target-commit', 'b'*40, '--actor', 'fixture', '--json']) == 0
     assert calls[0]['source_commit'] == 'a'*40
     assert calls[0]['target_commit'] == 'b'*40
+
+
+
+def test_assessment_intake_and_status_never_call_approval_or_activation(tmp_path, monkeypatch):
+    import json
+    from shared_wong_choi import installation_reconciliation, release_automation
+    value = tmp_path/'claim.json'
+    value.write_text(json.dumps({'fixture': True}))
+    value.chmod(0o600)
+    calls = []
+    monkeypatch.setattr(release_automation, 'production_roots', lambda: {'au': tmp_path})
+    def intake(*args, **kwargs):
+        calls.append(('intake', kwargs))
+        return {'status':'unverified_assessment','installation_authorized':False}
+    monkeypatch.setattr(installation_reconciliation, 'record_installation_assessment', intake)
+    monkeypatch.setattr(installation_reconciliation, 'installation_assessment_status',
+                        lambda *args, **kwargs: calls.append(('status',kwargs)) or {'installation_authorized':False})
+    def forbidden(*args, **kwargs):
+        raise AssertionError('assessment entered approval/activation')
+    monkeypatch.setattr(cli, 'approve_release', forbidden)
+    monkeypatch.setattr(cli, 'activate_release', forbidden)
+    prefix = ['--repo',str(tmp_path),'--state-root',str(tmp_path/'state')]
+    assert cli.main(prefix+['reconcile-installation-assessment','--request','a'*64,
+                           '--assessment-file',str(value),'--actor','fixture','--json']) == 0
+    assert cli.main(prefix+['reconcile-installation-assessment-status','--request','a'*64,'--json']) == 0
+    assert calls[0][1]['assessment'] == {'fixture':True}
+    assert calls[1][0] == 'status'
