@@ -168,6 +168,8 @@ class HorseAnalysis(BaseModel):
     score_impact_baseline: Optional[float] = None
     # HKJC 21-day trackwork (gallops / trials with times, 從化 stay, load, trend).
     trackwork_timeline: Optional[dict] = None
+    # HKJC 白話重點（engine summary.py）：headline／plus／minus／watch／gaps。純顯示。
+    analysis_summary: Optional[dict] = None
     
     # Conclusion
     conclusion: Optional[str] = None  # 💡 結論
@@ -246,6 +248,7 @@ class RaceAnalysis(BaseModel):
     
     # Raw sections
     battlefield_overview: Optional[str] = None  # 第一部分
+    race_summary: Optional[dict] = None  # HKJC 全場重點（engine summary.race_summary）：lines／gap_1_2／tightness
     market_divergence: Optional[dict] = None  # AU 首選早盤分歧（純顯示）：level/icon/top_pick/market_rank/priced
     verdict_text: Optional[str] = None  # 第三部分
     blind_spots: Optional[str] = None  # 第四部分

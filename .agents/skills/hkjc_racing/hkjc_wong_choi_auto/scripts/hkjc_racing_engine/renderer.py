@@ -340,6 +340,7 @@ def render_race_markdown(logic_data: dict) -> str:
     horses = logic_data.get("horses", {})
     shadow_verdicts = logic_data.get("python_auto_shadow_verdicts", {}) if isinstance(logic_data.get("python_auto_shadow_verdicts"), dict) else {}
     lines = _render_panorama(race, verdict, horses, shadow_verdicts)
+    lines.extend(_race_summary_lines(logic_data.get("python_auto_race_summary")))
     lines.extend(["", "---", "#### [第二部分] 全場馬匹深度分析", ""])
     for horse_num, horse in _horses_by_rank(horses):
         auto = horse.get("python_auto")
@@ -502,9 +503,12 @@ def _all_weather_notice(race: dict, verdict: dict, horses: dict) -> list[str]:
         horse = horses.get(num) or {}
         name = item.get("horse_name") or horse.get("horse_name") or ""
         record = _SAME_COURSE_RE.search(str(horse.get("season_stats") or ""))
-        if record and int(record.group(4)) > 0:
-            wins, seconds, thirds, starts = record.groups()
-            with_record.append(f"[{num}] {name} {wins}-{seconds}-{thirds}-{starts}")
+        # 格式係（冠-亞-季-其餘），出賽 = 四項總和（舊版當第四格係出賽，
+        # 全勝或全上名嘅馬會被列做「未跑過」）。
+        counts = [int(x) for x in record.groups()] if record else []
+        if counts and sum(counts) > 0:
+            wins, seconds, thirds, _rest = counts
+            with_record.append(f"[{num}] {name} {wins}-{seconds}-{thirds}-{sum(counts)}")
         else:
             no_record.append(f"[{num}] {name}")
     return [
@@ -533,6 +537,7 @@ def _render_horse_section(horse_num: str, horse: dict, auto: dict) -> list[str]:
         head.append(_shadow_flag_line(auto))
     return head + [
         "",
+        *_horse_summary_lines(auto.get("summary")),
         _matrix_grade_section(auto, features),
         "",
         *_data_readout_lines(auto),
@@ -549,8 +554,8 @@ def _render_horse_section(horse_num: str, horse: dict, auto: dict) -> list[str]:
         "",
         "#### 💡 最終判讀 (Analyst View)",
         f"> - **核心判讀:** {_core_logic(auto, horse)}",
-        f"> - **主要優勢:** {_advantage_text(features)}",
-        f"> - **主要風險:** {_risk_text(auto)}",
+        f"> - **主要優勢:** {_summary_points(auto, 'plus') or _advantage_text(features)}",
+        f"> - **主要風險:** {_summary_points(auto, 'minus', with_watch=True) or _risk_text(auto)}",
         "",
         "---",
         "",
@@ -1125,7 +1130,46 @@ def _data_readout_lines(auto: dict) -> list[str]:
     return lines
 
 
+def _race_summary_lines(summary: dict | None) -> list[str]:
+    lines = (summary or {}).get("lines") or []
+    if not lines:
+        return []
+    return ["", "**📝 全場重點**", *[f"- {line}" for line in lines]]
+
+
+def _horse_summary_lines(summary: dict | None) -> list[str]:
+    """「📝 重點」：一行定位，然後按對總分嘅影響排先後講原因。"""
+    if not summary:
+        return []
+    lines = ["#### 📝 重點", f"**{summary.get('headline', '')}**", ""]
+    for item in summary.get("plus") or []:
+        lines.append(f"- ✅ **{item['label']}** {item['impact']:+.1f}：{item['why']}")
+    for item in summary.get("minus") or []:
+        lines.append(f"- ❌ **{item['label']}** {item['impact']:+.1f}：{item['why']}")
+    if summary.get("watch"):
+        lines.append(f"- 👀 **留意：** {'；'.join(summary['watch'])}")
+    if summary.get("gaps"):
+        lines.append(f"- ❔ **資料不足（按中性處理）：** {'、'.join(summary['gaps'])}")
+    lines.append("> 數字係對綜合分（原始尺）嘅影響：同該維度一般馬比較，加咗／扣咗幾多分。")
+    lines.append("")
+    return lines
+
+
+def _summary_points(auto: dict, side: str, *, with_watch: bool = False) -> str:
+    summary = auto.get("summary") or {}
+    if not summary:
+        return ""
+    items = [f"{item['label']}（{item['impact']:+.1f}）" for item in summary.get(side) or []]
+    if with_watch:
+        items.extend(summary.get("watch") or [])
+    return "、".join(items) or ("冇明顯扣分位" if side == "minus" else "冇明顯加分位")
+
+
 def _core_logic(auto: dict, horse: dict) -> str:
+    summary = auto.get("summary") or {}
+    if summary.get("headline"):
+        reasons = [f"{item['label']}：{item['why']}" for item in (summary.get("plus") or [])[:2]]
+        return _sanitize_text(summary["headline"] + ("。" + "；".join(reasons) if reasons else "") + "。")
     text = str(auto.get("core_logic") or "").strip()
     if text:
         return _sanitize_text(text)

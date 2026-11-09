@@ -166,7 +166,14 @@ class Explanations:
                 except ValueError:
                     gap = ""
             tail = f"；{passed} 通過檢驗" if passed else ""
-            tag = "賽會覆檢" if rec.get("performance_only") else "賽會傷患記錄"
+            # 「季終時年屆八歲或以上」係年齡例行檢查，唔係傷患；計分分類唔郁
+            # （官方傷患 B1 forward 測試用緊），只係顯示唔再加 ⚠️。
+            if rec.get("performance_only"):
+                tag = "賽會覆檢"
+            elif re.search(r"年屆\S*歲", str(rec.get("detail") or "")):
+                tag = "賽會年齡例行檢查"
+            else:
+                tag = "賽會傷患記錄"
             lines.append(f"{tag}：{inc} {rec.get('detail', '')}{gap}{tail}")
         return lines
 
@@ -646,10 +653,12 @@ class Explanations:
             m = re.search(r"今仗\s*(\d+m)\s*=\s*(\d+)場\s*\(([\d\-]+)\)", str(bd))
             if m:
                 dist, n, rec = m.group(1), m.group(2), m.group(3)
-                parts = [int(x) for x in rec.split("-")]
-                rband = "✅" if parts and parts[0] > 0 else ("➖" if sum(parts[1:]) > 0 else "⚠️")
+                # 抽取層寫嘅係（勝-亞季-未上名），見 inject_hkjc_fact_anchors.compute_distance_aptitude。
+                # 舊版當咗「冠/亞/季」印，又將未上名當上名（全敗唔會亮 ⚠️）。
+                wins, placed, unplaced = ([int(x) for x in rec.split("-")] + [0, 0, 0])[:3]
+                rband = "✅" if wins > 0 else ("➖" if placed > 0 else "⚠️")
                 add("今仗路程", dist, "", band=rband,
-                    reason=f"同程往績 {n}場（{parts[0]}冠/{(parts[1] if len(parts)>1 else 0)}亞/{(parts[2] if len(parts)>2 else 0)}季）")
+                    reason=f"同程往績 {n}場（{wins}勝、{placed}次亞季、{unplaced}次未上名）")
             else:
                 add("今仗路程", str(bd).split("|")[0].strip(), "")
         last6 = self._value("last_6_finishes")
@@ -1324,7 +1333,9 @@ class Explanations:
         days = self._days_since_last()
         wt = self._text("weight_trend")
         span = self._weight_trend_span(wt)
-        official = self._official_medical_records()
+        # 年齡例行檢查唔係傷患（見 _official_injury_lines），唔好喺判讀度當傷患講。
+        official = [r for r in self._official_medical_records()
+                    if not re.search(r"年屆\S*歲", str(r.get("detail") or ""))]
         if "無醫療事故" in medical and official:
             latest = max(official, key=lambda r: r.get("incident_date") or "")
             medical_text = (f"賽事短評未見事故，但賽會傷患記錄有 {latest.get('incident_date')} "

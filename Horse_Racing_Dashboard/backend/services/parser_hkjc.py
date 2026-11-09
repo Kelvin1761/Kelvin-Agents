@@ -1071,8 +1071,19 @@ def _load_logic_scoring_map(analysis_path: Path) -> dict[int, dict]:
             "matrix_raw": dict(auto.get("matrix_scores") or {}),
             "matrix_display": dict(auto.get("matrix_scores_display") or {}),
             "distance_suitability": distance,
+            "summary": auto.get("summary") if isinstance(auto.get("summary"), dict) else None,
         }
     return mapping
+
+
+def _load_logic_race_summary(analysis_path: Path) -> Optional[dict]:
+    logic_path = analysis_path.with_name(analysis_path.name.replace("_Auto_Analysis.md", "_Logic.json"))
+    try:
+        payload = json.loads(logic_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    summary = payload.get("python_auto_race_summary")
+    return summary if isinstance(summary, dict) and summary.get("lines") else None
 
 
 def _parse_auto_top_picks_from_table(text: str) -> list[TopPick]:
@@ -1310,7 +1321,8 @@ def parse_hkjc_analysis(filepath: str) -> Optional[RaceAnalysis]:
             horse.distance_suitability_signal = distance.get("signal") or None
             horse.same_distance_starts = _int_or_none(distance.get("same_distance_starts"))
             horse.same_distance_places = _int_or_none(distance.get("same_distance_places"))
-            horse.scoring_breakdown = score_payload or None
+            horse.analysis_summary = (logic_scoring.get(horse.horse_number) or {}).get("summary")
+            horse.scoring_breakdown = {k: v for k, v in score_payload.items() if k != "summary"} or None
             horse.model_pick_status = row.get("model_pick_status") or None
             if row.get("grade"):
                 horse.final_grade = row.get("grade")
@@ -1370,4 +1382,5 @@ def parse_hkjc_analysis(filepath: str) -> Optional[RaceAnalysis]:
         analysis_type='auto' if is_auto else 'classic',
         scoring_file=str(path.with_name(path.name.replace("_Auto_Analysis.md", "_Auto_Scoring.csv"))) if is_auto else None,
         monte_carlo_simulation=monte_carlo if monte_carlo else None,
+        race_summary=_load_logic_race_summary(path) if is_auto else None,
     )

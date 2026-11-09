@@ -25,6 +25,7 @@ sys.path.append(str(PROJECT_ROOT / ".agents" / "scripts"))
 
 from hkjc_racing_engine.engine_core import RacingEngine, scoring_run_contract
 from hkjc_racing_engine._shadows import SHADOW_PROFILES
+from hkjc_racing_engine import summary as race_summary
 from hkjc_racing_engine.renderer import (
     ensure_verdict,
     prepare_race_outputs,
@@ -1108,6 +1109,8 @@ class HKJCAutoOrchestrator:
         # the horse-number exact-tie key.
         ensure_verdict(logic_data)
         self._finalize_shadow_profiles(logic_data)
+        # 白話重點（純顯示，排名之後先做）：點解排呢度、要留意乜、邊度冇資料。
+        race_summary.attach(logic_data)
         logic_data["python_auto_run_contract"] = scoring_run_contract()
             
         logic_errors = validate_logic_data(logic_data)
