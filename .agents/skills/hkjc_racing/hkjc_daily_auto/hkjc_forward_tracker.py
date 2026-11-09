@@ -35,7 +35,7 @@ class ForwardTest:
     key: str
     label: str
     experiment: str
-    kind: str                     # shadow_profile | harness_ab | awt_races | trackwork_meetings | rail_ledger | live_nights | state_judge
+    kind: str                     # shadow_profile | harness_ab | awt_races | trackwork_meetings | rail_ledger | live_nights | speedpro_races | state_judge
     minimum: int
     since: str = ""
     profile: str = ""
@@ -85,6 +85,14 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 since="2026-11-04",
                 action="夠數之後：用 captured_at 重建開跑前已知嘅當晚前置超額，比較 C（開關）vs A_4（一律 ±4）vs base；"
                        "判決寫死：Gold／Good／NDCG@5 Δ 全部 ≥ 0 先可以提交，上唔上線由 Kelvin 決定"),
+    # SpeedPro 能量差（HKJC 自己公布，賽前一日出，冇歷史檔）。2026-11-10 喺 10-14→11-08 八個賽日 79 場篩選：
+    # 控制模型排名之後能量差頭三上名率 +15.3pp [+8.4, +23.7]，但 Good／Gold 冇郁。嗰 79 場用嚟揀欄位，
+    # 所以判定只數 2026-11-11 起嘅場次；只數有賽前快照（賽日 03:00 UTC 前）而且有賽果嘅場次。
+    ForwardTest("speedpro_energy_diff", "SpeedPro 能量差（研究）", "EXP-20261110-02", "speedpro_races", 150,
+                since="2026-11-11",
+                action="夠數之後原封重跑 docs/experiments/patches/hkjc_screen_speedpro.py --since 2026-11-11"
+                       "（只判 diff 一個欄位）；分層上名率差 CI 下界 > 0 先預先登記排名 arm 行 model-regression-gate，"
+                       "否則記 REJECT；上唔上線由 Kelvin 決定"),
     ForwardTest("weight_refit_t02", "權重 refit t02", "EXP-20260928-10", "shadow_profile", 120,
                 profile="weight_refit_t02"),
     # race_shape_v3_hv 已經 experimental live（EXP-20260929-01），由 race_shape_v2_legacy_hv 做 rollback 對照。
@@ -159,6 +167,38 @@ def _awt_race_count(root: Path, since: str) -> int:
             if cards and "場地: 全天候跑道" in cards[0].read_text(encoding="utf-8", errors="replace"):
                 count += 1
     return count
+
+
+SPEEDPRO_DIRNAME = "_speedpro_snapshots"  # collect_speedpro.SNAPSHOT_DIRNAME
+_SPEEDPRO_COURSE = {"ShaTin": "ST", "HappyValley": "HV"}
+SPEEDPRO_PRE_RACE_UTC = "T030000Z"        # 賽日 03:00 UTC（香港 11:00）之前抓嘅先算賽前
+
+
+def speedpro_pre_race_snapshot(root: Path, meeting_name: str) -> Path | None:
+    """Latest SpeedPro snapshot captured before race-day 03:00 UTC, or None."""
+    day, _, course = meeting_name.partition("_")
+    base = root / SPEEDPRO_DIRNAME / f"{day}_{_SPEEDPRO_COURSE.get(course, course)}"
+    cutoff = day.replace("-", "") + SPEEDPRO_PRE_RACE_UTC
+    try:
+        snaps = sorted(p for p in base.iterdir()
+                       if p.is_dir() and re.fullmatch(r"\d{8}T\d{6}Z", p.name) and p.name < cutoff)
+    except OSError:
+        return None
+    return snaps[-1] if snaps else None
+
+
+def _speedpro_race_count(root: Path, since: str) -> tuple[int, int]:
+    """(races with results AND a pre-race SpeedPro file, races with results but no SpeedPro)."""
+    have = missing = 0
+    for meeting in _meetings(root, since):
+        races = _results_races(meeting)
+        snap = speedpro_pre_race_snapshot(root, meeting.name)
+        for race_no in races:
+            if snap is not None and (snap / f"sg_race_{race_no}.json").exists():
+                have += 1
+            else:
+                missing += 1
+    return have, missing
 
 
 def _trackwork_meetings(root: Path) -> int:
@@ -237,6 +277,13 @@ def progress(test: ForwardTest, *, root: Path, ledger: dict, state: dict) -> dic
     elif test.kind == "trackwork_meetings":
         count = _trackwork_meetings(root)
         note = ""
+    elif test.kind == "speedpro_races":
+        count, missing = _speedpro_race_count(root, test.since)
+        note = f"另有 {missing} 場有賽果但冇賽前 SpeedPro 快照" if missing else ""
+        # 收集器係 best-effort、冇歷史檔可以補：一場都收唔到就要報，唔可以靜靜停喺 0。
+        if count == 0 and missing >= STALLED_AFTER_ROWS:
+            return {"count": 0, "minimum": test.minimum, "status": "stalled",
+                    "note": f"{missing} 場有賽果但一份賽前 SpeedPro 快照都冇 —— 收集器可能斷咗（collect_speedpro.py）"}
     elif test.kind == "live_nights":
         count, partial = _live_nights(root, test.since)
         note = f"另有 {partial} 晚唔完整（有場次 90 分鐘內抓唔到）" if partial else ""

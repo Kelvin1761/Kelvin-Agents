@@ -173,3 +173,33 @@ def test_live_nights_count_only_complete_race_nights(tmp_path):
     assert tracker._live_nights(tmp_path, "2026-11-04") == (1, 1)
     item = tracker.progress(_test("live_track_bias"), root=tmp_path, ledger={}, state={})
     assert item["count"] == 1 and item["status"] == "collecting" and "1 晚唔完整" in item["note"]
+
+
+def _speedpro(root: Path, folder: str, stamp: str, races: int) -> None:
+    snap = root / "_speedpro_snapshots" / folder / stamp
+    snap.mkdir(parents=True)
+    for i in range(1, races + 1):
+        (snap / f"sg_race_{i}.json").write_text("{}", encoding="utf-8")
+
+
+def test_speedpro_counts_only_races_with_a_pre_race_snapshot(tmp_path):
+    test = _test("speedpro_energy_diff")
+    get = lambda: tracker.progress(test, root=tmp_path, ledger={}, state={})
+    _meeting(tmp_path, "2026-11-08_ShaTin", 11)                    # 登記日之前：唔數
+    _speedpro(tmp_path, "2026-11-08_ST", "20261107T050004Z", 11)
+    _meeting(tmp_path, "2026-11-11_HappyValley", 9)                # 賽日朝早抓：賽前
+    _speedpro(tmp_path, "2026-11-11_HV", "20261111T014500Z", 8)    # 第 9 場冇檔
+    _meeting(tmp_path, "2026-11-15_ShaTin", 10)                    # 只有開跑後抓嘅：唔算
+    _speedpro(tmp_path, "2026-11-15_ST", "20261115T060000Z", 10)
+    assert tracker._speedpro_race_count(tmp_path, test.since) == (8, 11)
+    item = get()
+    assert (item["count"], item["status"]) == (8, "collecting")
+    assert "11 場" in item["note"]
+    assert tracker.speedpro_pre_race_snapshot(tmp_path, "2026-11-15_ShaTin") is None
+
+
+def test_speedpro_collector_gone_quiet_is_reported(tmp_path):
+    for day in ("2026-11-11_HappyValley", "2026-11-15_ShaTin", "2026-11-18_HappyValley"):
+        _meeting(tmp_path, day, 9)
+    item = tracker.progress(_test("speedpro_energy_diff"), root=tmp_path, ledger={}, state={})
+    assert item["status"] == "stalled" and "收集器" in item["note"]

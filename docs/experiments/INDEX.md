@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261110-02](EXP-20261110-02-hkjc-speedpro-energy-diff-forward.md) | 2026-11-10 | HKJC | 馬會 SpeedPro 能量差喺控制模型排名之後仲有上名資訊 | **篩選 PASS_SCREEN（探索性，未入分）**：79 場分層上名率差 +15.3pp [+8.0, +23.9]，但混合後 Good／Gold 冇郁；forward 由 2026-11-11 起 150 場一次判定，已登記追蹤表 |
 | [EXP-20261110-01](EXP-20261110-01-nba-featured-ou-forward-protocol.md) | 2026-11-10 | NBA | 大細盤精選紙上盤：每場揀模型 edge 最高（≥5pp）嘅一邊、每日最多 10 注；大細盤抽水約係 milestone 一半 | **FORWARD 預先登記（Kelvin 決定）**。dev：大細盤精選 104 注 +6.1% [−12,+25]、milestone 精選 −9.9%、模型 under logloss 差過去水價。11-11 起，F250 中期（CI 上限<0 先 STOP）、F1000 終判（CI 下限>0）。紙上 card＋dashboard「⭐ 大細盤精選」，唔落真錢、唔入 ROI 板 |
 | [EXP-20261109-04](EXP-20261109-04-nba-minutes-risk-and-late-receivers-protocol.md) | 2026-11-09 | NBA | M：上場時間風險旗標（大比數／分鐘波動／傷患標籤／背靠背）令 p_final 高估；T：21:00 後主力臨場缺陣，接手出手／助攻隊友被低估 | **FORWARD 預先登記**（只用 11-10 起數據，凍結腳本）。M：≥21 日＋≥800 旗標腿，Δ ≤ −3pp 且 CI 上限 <0；T：≥60 宗＋≥200 腿，Δ校準 ≥ +5pp、CI 下限 >0、ROI >0。`nba_forward_tracker` 夠數自動判一次＋Telegram，唔改模型 |
 | [EXP-20261106-01](EXP-20261106-01-tennis-rebuild.md) | 2026-11-06 | Tennis | 全面重建（一本帳、7 個定價 family、剷死 code），輸出要同舊引擎一樣 | **結構重建，已驗證等價**。9 日 978 行定價重播 0 差異；11,712 行結算重播 0 差異。src 36,907→約 17,500 行，CLI 47→7 命令，測試 551 全過。模型數學冇改；抓數層只剷死 code（冇原始 HTML 做重播） |
