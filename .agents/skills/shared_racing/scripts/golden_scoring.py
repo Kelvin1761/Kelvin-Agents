@@ -151,7 +151,10 @@ def collect_samples(platform: str) -> list[dict]:
         meeting = Path(path).parent.name
         race = Path(path).stem
         for number, horse in (data.get("horses") or {}).items():
-            features = horse.get("python_auto", {}).get("feature_scores") or {}
+            auto = horse.get("python_auto", {})
+            # HKJC 有一半維度食 derived leaf（race_shape、form_line…），唔加就會靜靜
+            # 用 60 頂上，量緊一個唔存在嘅模型。AU 冇呢個 block。
+            features = {**(auto.get("feature_scores") or {}), **(auto.get("derived_feature_scores") or {})}
             if not features:
                 continue
             rows.append({
