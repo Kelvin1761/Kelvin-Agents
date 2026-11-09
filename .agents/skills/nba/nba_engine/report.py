@@ -46,6 +46,11 @@ def heading(combo, price) -> str:
     return f"🛡️ 組合 1: Banker SGM（{len(combo)} Legs）— 組合賠率 @{price:g}"
 
 
+def _featured_desc(pick: dict) -> str:
+    from .featured import describe
+    return describe(pick)
+
+
 def render(odds, package, legs, combo, quote, diagnostics, paused=None) -> str:
     meta = package.get("meta") or {}
     out = [f"# 🏀 {odds['away_team']} @ {odds['home_team']} — NBA Wong Choi", "",
@@ -72,6 +77,14 @@ def render(odds, package, legs, combo, quote, diagnostics, paused=None) -> str:
         out += ["", "固定 $1 平注。"]
     else:
         out += ["### 🛡️ 組合 1: NO BET", "", f"原因：{diagnostics.get('no_bet_reason', 'no_combo')}"]
+    pick = diagnostics.get("featured")
+    out += ["", "## ⭐ 大細盤精選（紙上盤，EXP-20261110-01）", "",
+            "> 前向測試：未證實賺錢，唔好落真錢。每場一注、每日最多 10 注。", ""]
+    if pick:
+        out += [f"**{_featured_desc(pick)} @{pick['price']:g}** — 模型 {_pct(pick['p_model'])}｜"
+                f"去水市場 {_pct(pick['p_fair'])}｜edge {100 * pick['edge']:+.1f}pp"]
+    else:
+        out += ["今場冇大細盤 edge ≥ 5pp。"]
     out += ["", "## 📊 全部盤口（按模型機率）", "",
             "| 選項 | 賠率 | 市場 | 模型 | 季度模型 S | L10 | L5 | 平均 | 分鐘 | 備註 |",
             "|---|---|---|---|---|---|---|---|---|---|"]
@@ -152,6 +165,7 @@ def sidecar(report_text, odds, package, legs, combo, quote, diagnostics) -> dict
         "quote_attempts": {"1": quote} if quote else {},
         "review_candidates": [research] if research else [],
         "selection_diagnostics": diagnostics,
+        "featured": [diagnostics["featured"]] if diagnostics.get("featured") else [],
         "availability": {"meta": dict(meta), "injuries": package.get("injuries") or {}},
     }
 

@@ -67,6 +67,57 @@ def _research_card(sidecar, odds, day, tag, published):
     return None
 
 
+FEATURED_START_DATE = "2026-11-11"   # EXP-20261110-01: first forward target date
+
+
+def _valid_pick(pick):
+    return (isinstance(pick, dict) and pick.get('side') in ('over', 'under') and pick.get('player')
+            and pick.get('market') in ('pts', 'reb', 'ast', 'fg3m') and _number(pick.get('ou_line'))
+            and not float(pick['ou_line']).is_integer() and _number(pick.get('price')) and pick['price'] > 1
+            and _number(pick.get('edge')))
+
+
+def _daily_top(picks):
+    nba = Path(__file__).resolve().parents[3] / '.agents' / 'skills' / 'nba'
+    if str(nba) not in sys.path:
+        sys.path.insert(0, str(nba))
+    from nba_engine.featured import daily_top
+    return daily_top(picks)
+
+
+def _featured_records(day, day_picks, actuals):
+    """First verified publication per game, then the same-day cap; settled from the box score."""
+    if day < FEATURED_START_DATE or not day_picks:
+        return []
+    meta = {id(p): (tag, report, odds, published) for p, tag, report, odds, published in day_picks}
+    out = []
+    for pick in _daily_top([{**p, 'game_tag': tag} for p, tag, *_ in day_picks]):
+        tag = pick['game_tag']
+        _, report, odds, published = next(v for k, v in meta.items() if v[0] == tag)
+        row = actuals.get((tag, pick['player'], pick['market']), {})
+        if row.get('outcome') == 'void':
+            state, actual = 'void', 'void'
+        elif _number(row.get('actual')):
+            actual = row['actual']
+            won = actual > pick['ou_line'] if pick['side'] == 'over' else actual < pick['ou_line']
+            state = 'won' if won else 'lost'
+        else:
+            state, actual = 'pending', None
+        profit = round(pick['price'] - 1, 2) if state == 'won' else -1 if state == 'lost' else None
+        out.append({'id': f'nba:{day}:{tag}:featured', 'day': day, 'event_name': tag.replace('_', ' @ '),
+                    'game_tag': tag, 'start_time_utc': odds.get('event_start_time'), 'published_at': published,
+                    'snapshot_id': report.parent.name, 'odds': pick['price'], 'stake': 1,
+                    'tracking_kind': 'featured', 'rule': pick.get('rule'),
+                    'edge': pick['edge'], 'p_model': pick.get('p_model'), 'p_fair': pick.get('p_fair'),
+                    'state': state, 'profit': profit,
+                    'legs': [{'player': pick['player'], 'team': pick.get('team') or '', 'market': pick['market'],
+                              'stat': pick.get('stat'), 'ou_line': pick['ou_line'], 'side': pick['side'],
+                              'price': pick['price'], 'state': state, 'actual': actual,
+                              'settled_at': row.get('settled_at')}],
+                    'settled_at': row.get('settled_at')})
+    return out
+
+
 def build_tracking(roots, ledger_root, firewall):
     from .multisport_exporter import nba_combos, nba_report_sidecar
     ledger_root = Path(ledger_root)
@@ -81,9 +132,9 @@ def build_tracking(roots, ledger_root, firewall):
                 continue
             if day >= TRACKING_START_DATE:
                 folders.setdefault(day, []).append(folder)
-    records = []
+    records, featured_records = [], []
     for day, sources in sorted(folders.items()):
-        settlements, excluded = {}, set()
+        settlements, actuals, excluded = {}, {}, set()
         path = ledger_root / 'ledger' / f'{day}.jsonl'
         try:
             # Stream large all-market ledgers; only small settlement rows survive.
@@ -97,23 +148,31 @@ def build_tracking(roots, ledger_root, firewall):
                     elif (row.get('row_type') == 'settlement' and row.get('outcome') in {'hit','miss','void'}
                           and _verified_settlement(row)):
                         settlements.setdefault(_key(row.get('game_tag'), row), row)
+                        actuals.setdefault(_key(row.get('game_tag'), row)[:3], row)
         except FileNotFoundError:
             pass
         except (OSError, ValueError, TypeError, AttributeError):
             warnings.append(f'settlement_unavailable:{day}')
-            settlements = {}
+            settlements, actuals = {}, {}
         if None in excluded:
             continue
         publications = []
         for folder in sources:
             publications.extend(verified_published_reports(folder, day, firewall, all_publications=True))
-        selected = set()
+        selected, featured_seen, day_picks = set(), set(), []
         for tag, report, odds_path, published in sorted(publications, key=lambda r:(r[3],str(r[1]))):
-            if tag in selected or tag in excluded:
+            if tag in excluded or (tag in selected and tag in featured_seen):
                 continue
             try:
                 sidecar = json.loads(Path(str(report)+'.market_legs.json').read_text())
                 odds = json.loads(odds_path.read_text())
+                if tag not in featured_seen and nba_report_sidecar(report):
+                    featured_seen.add(tag)
+                    for pick in sidecar.get('featured') or []:
+                        if _valid_pick(pick):
+                            day_picks.append((pick, tag, report, odds, published))
+                if tag in selected:
+                    continue
                 # Formal combos only from a sidecar bound to this exact report.
                 cards = nba_combos(sidecar, day, tag, []) if nba_report_sidecar(report) else []
                 # EXP-20261027-21: under the steady policy combo 1 IS the B2
@@ -166,9 +225,14 @@ def build_tracking(roots, ledger_root, firewall):
                 selected.add(tag)
             except (OSError, ValueError, KeyError, TypeError, AttributeError):
                 warnings.append(f'publication_unavailable:{day}:{tag}')
+        featured_records.extend(_featured_records(day, day_picks, actuals))
     return {'schema_version':2, 'inception_date':TRACKING_START_DATE, 'basis':'first_verified_formal_or_steady_research', 'stake_dollars':1,
             'status':'valid' if folders else 'unavailable', 'generated_at':datetime.now(timezone.utc).isoformat(),
-            'covered_dates':sorted(folders), 'records':records, 'warnings':sorted(set(warnings))}
+            'covered_dates':sorted(folders), 'records':records,
+            # EXP-20261110-01 大細盤精選 paper bets: kept apart so the ROI board, the steady
+            # stop-loss and the SGM views (which all read `records`) never see them.
+            'featured_records':featured_records, 'featured_inception_date':FEATURED_START_DATE,
+            'warnings':sorted(set(warnings))}
 
 
 def export_tracking(repo_root):

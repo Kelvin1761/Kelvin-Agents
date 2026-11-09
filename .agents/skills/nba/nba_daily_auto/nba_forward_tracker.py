@@ -34,6 +34,12 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
     ForwardTest("late_receivers", "21:00 後主力臨場缺陣，接手出手／助攻嘅隊友係咪被低估",
                 "EXP-20261109-04 T", "docs/experiments/patches/nba_forward_mt/evaluate.py", "T",
                 "結果已凍結；pass 都只係研究訊號，唔會自動落注；點估 ≥+5pp 但 CI 跨零就按協議延長一次"),
+    ForwardTest("featured_250", "大細盤精選紙上盤：中期檢查（250 注）",
+                "EXP-20261110-01 F250", "docs/experiments/patches/nba_featured/evaluate.py", "F250",
+                "中期唔會判 PASS；STOP（CI 上限 < 0）就建議停 card，否則繼續到 1,000 注"),
+    ForwardTest("featured_1000", "大細盤精選紙上盤：終判（1,000 注）",
+                "EXP-20261110-01 F1000", "docs/experiments/patches/nba_featured/evaluate.py", "F1000",
+                "PASS（ROI CI 下限 > 0）先考慮落真錢，細注開始、由你決定；未過就停或者重新設計"),
 )
 
 
@@ -48,12 +54,19 @@ def _load(script: str):
 def _verdict(result: dict) -> str:
     if result.get("status") == "not_ready":
         return "未夠數"
+    if result.get("test") == "F250":
+        return "⛔ STOP（明顯蝕緊）" if result.get("stop") else "➡️ 繼續（中期唔判 PASS）"
     return "✅ PASS（訊號成立）" if result.get("pass") else "❌ 未過（冇證據）"
 
 
 def _numbers(test: ForwardTest, result: dict) -> str:
     ci = result.get("ci95") or [None, None]
     fmt = lambda v: "N/A" if v is None else f"{v * 100:+.1f}pp"  # noqa: E731
+    if test.test.startswith("F"):
+        pct = lambda v: "N/A" if v is None else f"{v * 100:+.1f}%"  # noqa: E731
+        hit = result.get("hit_rate")
+        return (f"{result.get('n_bets')} 注、{result.get('days')} 日；命中 {'N/A' if hit is None else f'{hit * 100:.1f}%'}；"
+                f"平注 ROI {pct(result.get('roi'))} [{pct(ci[0])}, {pct(ci[1])}]")
     if test.test == "M":
         return (f"有旗標 {result.get('n_flagged')}／{result.get('n_legs')} 腿；"
                 f"（實際−模型）差 {fmt(result.get('primary_delta_resid'))} [{fmt(ci[0])}, {fmt(ci[1])}]")
@@ -93,6 +106,9 @@ def summary_line(report: dict) -> str:
         item = report.get(test.key) or {}
         if item.get("error"):
             parts.append(f"{test.experiment} ⚠️")
+        elif test.test.startswith("F"):
+            parts.append(f"{test.experiment} {item.get('bets')}/{item['checkpoint']['bets']} 注"
+                         + (" ✅" if item.get("ready") else ""))
         elif test.test == "M":
             parts.append(f"{test.experiment} {item.get('days')}/{item['checkpoint']['days']} 日、"
                          f"{item.get('flagged_legs')}/{item['checkpoint']['flagged_legs']} 腿"
