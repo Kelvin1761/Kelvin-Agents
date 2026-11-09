@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261109-04](EXP-20261109-04-nba-minutes-risk-and-late-receivers-protocol.md) | 2026-11-09 | NBA | M：上場時間風險旗標（大比數／分鐘波動／傷患標籤／背靠背）令 p_final 高估；T：21:00 後主力臨場缺陣，接手出手／助攻隊友被低估 | **FORWARD 預先登記**（只用 11-10 起數據，凍結腳本）。M：≥21 日＋≥800 旗標腿，Δ ≤ −3pp 且 CI 上限 <0；T：≥60 宗＋≥200 腿，Δ校準 ≥ +5pp、CI 下限 >0、ROI >0。`nba_forward_tracker` 夠數自動判一次＋Telegram，唔改模型 |
 | [EXP-20261106-01](EXP-20261106-01-tennis-rebuild.md) | 2026-11-06 | Tennis | 全面重建（一本帳、7 個定價 family、剷死 code），輸出要同舊引擎一樣 | **結構重建，已驗證等價**。9 日 978 行定價重播 0 差異；11,712 行結算重播 0 差異。src 36,907→約 17,500 行，CLI 47→7 命令，測試 551 全過。模型數學冇改；抓數層只剷死 code（冇原始 HTML 做重播） |
 | [EXP-20261105-10](EXP-20261105-10-tennis-featured-forward.md) | 2026-11-05 | Tennis | 精選：一場一注（edge 最高）、每日最多 10 注、21:00 出 card；取代每日「資料未就緒」card | **前向測試登記（Kelvin 決定）**。可核實 value 注 1,357 注 −10.7% [−15.7,−5.7]、每 family 都負；同場額外注差 15.1pp [+4.2,+25.9]；按信心揀頭 10 注最差。250 注判一次、600 注終判，唔落真錢直到 ELIGIBLE。模型數學冇改 |
 | [EXP-20261105-tennis-component-blockers](EXP-20261105-tennis-card-component-blockers.md) | 2026-11-05 | Tennis | 固定 card 的資格阻擋及三站官方場地來源 | **診斷／來源核實**。45 賽前場次有 28 active warning、17 無有效 component；六場 Challenger 找齊公開標籤，官方 Hard／Hard／Clay，5/6 雙方完整姓名在 draw 唯一吻合。未套用 metadata，qualification 仍 0 |
@@ -407,4 +408,5 @@
 - [EXP-20261106-02](EXP-20261106-02-au-betfair-market-movement-protocol.md) — AU Betfair 交易所價格走勢：Basic 1 分鐘 LTP（16,999 場）資料檢查三項唔過（T−60 覆蓋 67%、過期 LTP），**冇睇賽果即停**；修訂為 API 自己記錄（每分鐘最佳買賣價、delayed key、只讀），夠 2,000 場先判 Q1／Q2。
 - [EXP-20261109-01](EXP-20261109-01-hkjc-rebuild.md) — HKJC 引擎重建：god class 拆 4 個 mixin、features 改 package import、剷 7 個 shadow／3 個合成 shim／19 個冇入口 script；434 場排名只有 7 場頭三以外打和對調、Gold/Good/首選不變；退出馬唔再令成場拒評（+6 場）；新增白話重點（按 impact 講原因、👀 留意）同頭馬追蹤。win focus：主 KPI 維持 Good（首選頭馬 25.1% vs 熱門 28.1%，上名 52.3% vs 60.1%）。審計：docs/audits/hkjc-rebuild-20261109.md
 - [EXP-20261109-02](EXP-20261109-02-hkjc-rolling-class-record.md) — HKJC 今季下跌診斷＋級數分改用賽前 365 日往績：**REJECT**（Gold／Good −0.26pp，今季 −1.13pp）。市場 AUC 都跌 0.02、模型跌 0.05；最大跌幅喺 class_score（季內新季冇料），但補返嘅資訊同近績重疊。數據管線冇斷；檔位原始號碼今季本身弱咗。
+- [EXP-20261109-04](EXP-20261109-04-nba-minutes-risk-and-late-receivers-protocol.md) — NBA forward 預先登記：M 上場時間風險、T 臨場缺陣接手隊友；只用 11-10 起數據，`nba_forward_tracker` 夠數自動判一次＋Telegram。
 - [EXP-20261109-03](EXP-20261109-03-hkjc-weight-refit-ml.md) — HKJC 外層權重 walk-forward refit（τ／free）＋ML（條件 logit、GBM）：**全部 REJECT，維持現行**。三個擬合一致話形勢偏高（有效份額 ~21% vs 29%）、狀態偏低、級數偏低，但冇一個 out-of-sample 贏；GBM 最差（Gold −2.89pp CI 全負）。

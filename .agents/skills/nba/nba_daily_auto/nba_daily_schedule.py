@@ -49,6 +49,7 @@ import nba_combo_roi  # noqa: E402
 import nba_steady_policy as steady_policy  # noqa: E402
 import nba_reliability  # noqa: E402
 import nba_no_prediction as no_prediction  # noqa: E402
+import nba_forward_tracker as forward_tracker  # noqa: E402
 
 HOOK_DIR = (
     PROJECT_ROOT
@@ -830,6 +831,19 @@ def _record_no_prediction_ledger(
         return {"status": "no_prediction_excluded", "appended": appended, **summary}
 
     _market_ledger(log, "no_prediction", call)
+
+
+def _forward_tracker(log: Any) -> None:
+    """EXP-20261109-04: forward tests — first time a checkpoint is reached, freeze + Telegram once."""
+    try:
+        root = market_ledger.ledger_root()
+        report = forward_tracker.check(
+            ledger=root / "ledger", analysis=NBA_ANALYSIS, reports=root / "reports",
+            notify=lambda key, message: notify_once(key, message, audience="primary"),
+        )
+        log.step("forward_tracker", "ok", summary=forward_tracker.summary_line(report))
+    except Exception as exc:  # noqa: BLE001 — a monitoring add-on must not fail postgame
+        log.step("forward_tracker", "failed", error=f"{type(exc).__name__}: {exc}")
 
 
 def _settle_market_ledger(archive: Path, target_date: str, log: Any) -> None:
@@ -1693,6 +1707,7 @@ def run_postgame(target_date: str, log: RunLog) -> str:
         _record_settlement_evidence(archive, target_date, log)
         _record_no_prediction_ledger(written_off, target_date, log)
         _settle_market_ledger(archive if archive.is_dir() else folder, target_date, log)
+        _forward_tracker(log)
     deploy_target = archive if archive.is_dir() else folder
     deploy = _deploy("NBA Wong Choi scheduled postgame", deploy_target)
     log.step("dashboard", deploy)

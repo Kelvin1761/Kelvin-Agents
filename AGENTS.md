@@ -64,6 +64,10 @@ import，所以**呢份文件係唯一真源** —— 新規則加喺呢度，�
   喺每日覆盤後檢查，250／600 注第一次夠數推 Telegram（state：`data/logs/featured-forward-state.json`）。
   新開 tennis forward 測試要喺同一處加。Tennis 投注推送只有精選（21:00 主 card、23:00／09:00 補充）。
 
+- **NBA**：加入 `.agents/skills/nba/nba_daily_auto/nba_forward_tracker.py` 嘅 `FORWARD_TESTS`（指住一個凍結評估腳本，
+  要有 `status`／`evaluate(only=...)`）。postgame `_forward_tracker` 每晚跑，第一次夠數自動評估一次、凍結結果並經
+  `notify_once` 推 primary。舊 `nba_experiment_readiness.py` 隨 EXP-20261103-16 刪咗，呢個係替代（EXP-20261109-04）。
+
 HKJC 每個 forward／shadow 測試（「夠 N 場先判」）都要加入
 `.agents/skills/hkjc_racing/hkjc_daily_auto/hkjc_forward_tracker.py` 嘅 `FORWARD_TESTS`。
 賽後第一次夠數（或者冇累積）會即刻 Telegram 一次；每週 review 列晒進度；規則完全預先登記嘅
