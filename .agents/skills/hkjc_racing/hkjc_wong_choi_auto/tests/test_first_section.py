@@ -9,7 +9,7 @@ sys.path.insert(0, str(SCRIPTS))
 from hkjc_auto_orchestrator import _first_section_min_delta  # noqa: E402
 from hkjc_racing_engine import engine_core  # noqa: E402
 
-SpeedScorer = engine_core.SpeedScorer  # engine_core 用 top-level `speed`，要用同一個 class
+SpeedScorer = engine_core.SpeedScorer
 WITH_FIRST_SECTION = {"first_section_fast_bonus": 4.0, "first_section_quick_bonus": 2.0,
                       "first_section_slowish_pen": -1.0, "first_section_slow_pen": -2.0}
 

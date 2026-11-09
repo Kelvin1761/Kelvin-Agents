@@ -25,22 +25,10 @@ def active_race_shape_robustness_profile():
     value = os.environ.get("WC_HKJC_RACE_SHAPE_ROBUSTNESS", "winsor10").strip().lower()
     return "legacy_unbounded" if value in {"legacy", "legacy_unbounded", "off"} else "winsor10"
 
-def active_happy_valley_race_shape_profile():
-    """Return the live HV formula, with an explicit emergency rollback.
-
-    The default is the user-accepted experimental V3 formula.  Operations can
-    restore the prior V2 formula without editing a prediction artifact by
-    setting ``WC_HKJC_HV_RACE_SHAPE_PROFILE=legacy_v2`` before the run.  The
-    selected value is persisted in the scoring run contract.
-    """
-    value = os.environ.get("WC_HKJC_HV_RACE_SHAPE_PROFILE", "v3_surface").strip().lower()
-    return "legacy_v2" if value == "legacy_v2" else "v3_surface"
-
-
 def race_shape_contract_manifest():
     return {
         "sha_tin": "legacy_55_draw_25_historical_fit_20_trip",
-        "happy_valley": active_happy_valley_race_shape_profile(),
+        "happy_valley": "v3_surface",
         "happy_valley_v3_formula": "draw+0.45*(pit_surface-60)",
         "happy_valley_surface_gain": HAPPY_VALLEY_RACE_SHAPE_V3_SURFACE_GAIN,
         "happy_valley_fit_weight": 0.0,
@@ -50,7 +38,6 @@ def race_shape_contract_manifest():
         "draw_context": "pit_venue_rail_distance_band_draw_group_relative_cap4",
         "draw_context_venue_partition": "sha_tin_and_happy_valley_never_pool",
         "draw_context_minimums": {"runners": 100, "races": 20, "shrink_runners": 60},
-        "rollback_env": "WC_HKJC_HV_RACE_SHAPE_PROFILE=legacy_v2",
         "whole_field_robustness": active_race_shape_robustness_profile(),
         "whole_field_robust_formula": "meeting_median+clip(shape-meeting_median,-10,+10)",
         "whole_field_robust_cap": RACE_SHAPE_ROBUST_DEVIATION_CAP,

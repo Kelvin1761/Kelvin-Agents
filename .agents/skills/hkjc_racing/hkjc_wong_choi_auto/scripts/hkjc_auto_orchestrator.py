@@ -24,6 +24,7 @@ sys.path.append(str(PROJECT_ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_
 sys.path.append(str(PROJECT_ROOT / ".agents" / "scripts"))
 
 from hkjc_racing_engine.engine_core import RacingEngine, scoring_run_contract
+from hkjc_racing_engine._shadows import SHADOW_PROFILES
 from hkjc_racing_engine.renderer import (
     ensure_verdict,
     prepare_race_outputs,
@@ -907,16 +908,7 @@ def _load_official_injury_records(logic_path, meeting_date, horses):
     return out
 
 
-DEFAULT_SHADOW_PROFILES = (
-    "incident_reliability",
-    "weight_refit_t02",
-    "race_shape_v2_legacy_hv",
-    "race_shape_st_draw70",
-    "race_shape_legacy_unbounded",
-    "pre_race_draw_context_v1_generic",
-    "trainer_recency_st_early90",
-    "distance_suitability_v2",
-)
+DEFAULT_SHADOW_PROFILES = SHADOW_PROFILES
 
 
 class HKJCAutoOrchestrator:
@@ -1238,21 +1230,7 @@ class HKJCAutoOrchestrator:
         return results
 
     def _build_shadow_profiles(self, engine, result):
-        allowed = {
-            "consistency_context",
-            "incident_reliability_m",
-            "incident_reliability_r",
-            "incident_reliability",
-            "weight_refit_t02",
-            "race_shape_v3_hv",
-            "race_shape_v3_hv_t02",
-            "race_shape_v2_legacy_hv",
-            "race_shape_st_draw70",
-            "race_shape_legacy_unbounded",
-            "pre_race_draw_context_v1_generic",
-            "trainer_recency_st_early90",
-            "distance_suitability_v2",
-        }
+        allowed = set(SHADOW_PROFILES)
         shadows = []
         for profile_name in self.shadow_profiles:
             if profile_name not in allowed:
@@ -1263,21 +1241,7 @@ class HKJCAutoOrchestrator:
         return shadows
 
     def _finalize_shadow_profiles(self, logic_data):
-        allowed = {
-            "consistency_context",
-            "incident_reliability_m",
-            "incident_reliability_r",
-            "incident_reliability",
-            "weight_refit_t02",
-            "race_shape_v3_hv",
-            "race_shape_v3_hv_t02",
-            "race_shape_v2_legacy_hv",
-            "race_shape_st_draw70",
-            "race_shape_legacy_unbounded",
-            "pre_race_draw_context_v1_generic",
-            "trainer_recency_st_early90",
-            "distance_suitability_v2",
-        }
+        allowed = set(SHADOW_PROFILES)
         for profile_name in self.shadow_profiles:
             if profile_name in allowed:
                 self._finalize_shadow_profile(logic_data, profile_name)
@@ -1466,8 +1430,7 @@ if __name__ == "__main__":
         default=",".join(DEFAULT_SHADOW_PROFILES),
         help=(
             "Comma-separated shadow profiles computed without changing mainline ranking "
-            "(default: incident reliability, weight refit, HV rollback, ST draw70, "
-            "ST early-season trainer-recency, and PIT rail/draw forward shadows)"
+            "(default: every registered profile in hkjc_racing_engine._shadows.SHADOW_PROFILES)"
         ),
     )
     args = parser.parse_args()

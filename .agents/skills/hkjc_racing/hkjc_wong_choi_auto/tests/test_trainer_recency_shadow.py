@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[5]
 SCRIPTS = ROOT / ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts"
 sys.path.insert(0, str(SCRIPTS))
 
-from hkjc_racing_engine import engine_core  # noqa: E402
+from hkjc_racing_engine import _shadows, engine_core  # noqa: E402,F401
 from hkjc_racing_engine.engine_core import RacingEngine  # noqa: E402
 from hkjc_racing_engine.scoring import MATRIX_WEIGHTS, to_display_scale  # noqa: E402
 
@@ -49,7 +49,7 @@ def test_trainer_recency_shadow_changes_only_trainer_signal() -> None:
         {"trainer": "測試練馬師", "_data": {}},
         {"venue": "沙田", "track": "Turf", "race_date": "2026-10-10"},
     )
-    with mock.patch.object(engine_core, "get_recency_trainer_rating", return_value=_rating()):
+    with mock.patch.object(_shadows, "get_recency_trainer_rating", return_value=_rating()):
         shadow = engine.build_shadow_profile("trainer_recency_st_early90", _base_auto())
 
     assert shadow["applied"] is True
@@ -68,7 +68,7 @@ def test_trainer_recency_shadow_is_noop_outside_frozen_scope() -> None:
     )
     for context in contexts:
         engine = RacingEngine({"trainer": "測試練馬師", "_data": {}}, context)
-        with mock.patch.object(engine_core, "get_recency_trainer_rating", return_value=_rating()) as lookup:
+        with mock.patch.object(_shadows, "get_recency_trainer_rating", return_value=_rating()) as lookup:
             shadow = engine.build_shadow_profile("trainer_recency_st_early90", _base_auto())
         assert shadow["applied"] is False
         assert shadow["ability_delta"] == 0.0
@@ -78,7 +78,7 @@ def test_trainer_recency_shadow_is_noop_outside_frozen_scope() -> None:
         {"trainer": "測試練馬師", "is_debut": True, "_data": {}},
         {"venue": "沙田", "track": "Turf", "race_date": "2026-10-10"},
     )
-    with mock.patch.object(engine_core, "get_recency_trainer_rating", return_value=_rating()) as lookup:
+    with mock.patch.object(_shadows, "get_recency_trainer_rating", return_value=_rating()) as lookup:
         shadow = debut.build_shadow_profile("trainer_recency_st_early90", _base_auto())
     assert shadow["applied"] is False
     lookup.assert_not_called()

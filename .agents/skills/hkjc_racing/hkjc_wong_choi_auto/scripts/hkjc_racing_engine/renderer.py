@@ -371,10 +371,6 @@ def render_race_csv(logic_data: dict) -> str:
         "model_pick_status",
         "shadow_flag_labels",
         "shadow_flag_reasons",
-        "shadow_consistency_rank",
-        "shadow_consistency_ability",
-        "shadow_consistency_delta",
-        "shadow_consistency_reason",
         *FEATURE_LABELS.keys(),
         *DERIVED_SCORE_KEYS,
         *(f"matrix_{key}" for key in MATRIX_LABELS),
@@ -407,10 +403,6 @@ def render_race_csv(logic_data: dict) -> str:
             "model_pick_status": auto.get("model_pick_status", ""),
             "shadow_flag_labels": _shadow_flag_labels(auto),
             "shadow_flag_reasons": _shadow_flag_reasons(auto),
-            "shadow_consistency_rank": _shadow_profile_value(auto, "consistency_context", "rank"),
-            "shadow_consistency_ability": _shadow_profile_value(auto, "consistency_context", "ability_score"),
-            "shadow_consistency_delta": _shadow_profile_value(auto, "consistency_context", "rank_delta"),
-            "shadow_consistency_reason": _shadow_profile_value(auto, "consistency_context", "reason"),
         }
         row.update(auto.get("feature_scores", {}))
         row.update(auto.get("derived_feature_scores", {}))
@@ -481,7 +473,6 @@ def _render_panorama(race: dict, verdict: dict, horses: dict, shadow_verdicts: d
         f"- 檔位分較高: {_top_feature_horses(horses, 'draw_score')}",
         f"- 資料完整度較高: {_top_feature_horses(horses, 'confidence_score')}",
         f"- 影子觀察: {_shadow_watch_summary(verdict)}",
-        f"- Consistency Shadow: {_consistency_shadow_summary(shadow_verdicts.get('consistency_context'))}",
         "",
         "**📊 全場綜合戰力排名**",
         "",
@@ -538,9 +529,8 @@ def _render_horse_section(horse_num: str, horse: dict, auto: dict) -> list[str]:
         f"**【No.{horse_num}】 {horse.get('horse_name', '')}** | 騎師:{horse.get('jockey', '')} | 練馬師:{horse.get('trainer', '')} | 負磅:{_fmt(horse.get('weight'))} | 檔位:{_fmt(horse.get('barrier'))}",
         _summary_banner(auto, features),
     ]
-    for optional in (_shadow_flag_line(auto), _consistency_shadow_line(auto)):
-        if optional:
-            head.append(optional)
+    if _shadow_flag_line(auto):
+        head.append(_shadow_flag_line(auto))
     return head + [
         "",
         _matrix_grade_section(auto, features),
@@ -604,26 +594,6 @@ def _render_verdict(verdict: dict, horses: dict, shadow_verdicts: dict | None = 
             ],
             "",
         ])
-    consistency_shadow = shadow_verdicts.get("consistency_context")
-    if consistency_shadow:
-        lines.extend([
-            "**🧪 Consistency Shadow Top 4 (不改主排名)**",
-            *[
-                f"- [{item['horse_number']}] {item['horse_name']}: 影子排名第{item['rank']}位，較主線提升{item.get('rank_delta', 0)}位"
-                for item in consistency_shadow.get("top4", [])
-            ],
-            "",
-        ])
-        promoted = consistency_shadow.get("promoted", [])
-        if promoted:
-            lines.extend([
-                "**🧭 Consistency Shadow 值得跟進名單**",
-                *[
-                    f"- [{item['horse_number']}] {item['horse_name']}: 影子排名第{item['rank']}位，較主線提升{item.get('rank_delta', 0)}位"
-                    for item in promoted[:4]
-                ],
-                "",
-            ])
     lines.extend([
         "**🚨 緊急重跑檢查 (Emergency Brake Protocol):**",
         "- 若出馬名單、場地資料、負磅、檔位或本地抽取資料更新，需重跑 Auto orchestrator。",
@@ -1365,9 +1335,6 @@ def _context_tags_display(auto: dict) -> str:
         tags.append(pick_text)
     if shadow_text:
         tags.append(f"影子觀察: {shadow_text}")
-    consistency_text = _consistency_shadow_tag(auto)
-    if consistency_text:
-        tags.append(consistency_text)
     return " / ".join(tags)
 
 
@@ -1399,16 +1366,6 @@ def _shadow_flag_line(auto: dict) -> str:
     return f"- **影子觀察:** {labels} — {reasons}"
 
 
-def _consistency_shadow_line(auto: dict) -> str:
-    profile = _shadow_profile(auto, "consistency_context")
-    if not profile:
-        return ""
-    rank = profile.get("rank")
-    rank_delta = profile.get("rank_delta")
-    reason = str(profile.get("reason") or "").strip()
-    if rank in (None, ""):
-        return ""
-    return f"- **Consistency Shadow:** 影子排名第{rank}位，較主線提升{rank_delta}位 — {reason}"
 
 
 def _verdict_pick_line(auto: dict) -> list[str]:
@@ -1441,28 +1398,8 @@ def _shadow_profile_value(auto: dict, profile_name: str, key: str):
     return value
 
 
-def _consistency_shadow_tag(auto: dict) -> str:
-    profile = _shadow_profile(auto, "consistency_context")
-    if not profile:
-        return ""
-    rank_delta = int(profile.get("rank_delta", 0) or 0)
-    if rank_delta >= 2:
-        return f"Consistency影子升{rank_delta}位"
-    if bool(profile.get("entered_top4")):
-        return "Consistency影子入前四"
-    return ""
 
 
-def _consistency_shadow_summary(verdict: dict | None) -> str:
-    if not verdict:
-        return "未啟用"
-    promoted = verdict.get("promoted", [])
-    if not promoted:
-        return "已啟用，但未見明顯升位馬"
-    parts = []
-    for item in promoted[:3]:
-        parts.append(f"[{item['horse_number']}] {item['horse_name']} 升{item.get('rank_delta', 0)}位")
-    return "；".join(parts)
 
 
 def _atomic_write_text(path: Path, content: str) -> None:
