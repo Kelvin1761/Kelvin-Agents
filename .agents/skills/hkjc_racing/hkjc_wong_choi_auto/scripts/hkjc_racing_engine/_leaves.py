@@ -650,7 +650,7 @@ class LeafScores:
             sources["jockey_score"] = "th01_trainer_context"
             sources["trainer_score"] = "th01_trainer_context"
 
-        shadow = self._consistency_shadow_detail()
+        shadow = self._consistency_from_runs()
         if shadow is not None:
             updated["consistency_score"] = clip_score(shadow["score"])
             shift_txt = {"recovering": "，且近三仗名次好過再之前", "declining": "，但近三仗名次差過再之前"}.get(shadow["recent_shift"], "")
@@ -815,12 +815,7 @@ class LeafScores:
         note = "已再參考" + "、".join(dict.fromkeys(triggers)) + "調整騎練分。"
         return updated, note
 
-    def _apply_health_only_v2(self, base_score):
-        return round(clip_score(base_score), 2)
 
-    def _apply_trainer_signal_v3(self, base_score):
-        # 除去配備 −3 已剷走（EXP-20261010-05）；配備變動只做顯示。
-        return round(clip_score(base_score), 2)
 
     def _candidate_health_risk_score(self):
         score = scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["base"]
@@ -880,11 +875,8 @@ class LeafScores:
         note = "已再綜合醫療紀錄、休賽日數同體重波幅，"
         return clip_score(score), note
 
-    def _candidate_consistency_shadow_score(self):
-        detail = self._consistency_shadow_detail()
-        return detail["score"] if detail else None
 
-    def _consistency_shadow_detail(self):
+    def _consistency_from_runs(self):
         """逐仗連輸距重算穩定性分，並回傳可以直接寫入報告嘅事實統計
         （幾多仗貼近前列、幾多仗明顯敗陣、近三仗係咪好過之前）。"""
         if self._is_debut():

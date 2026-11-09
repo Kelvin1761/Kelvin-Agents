@@ -310,18 +310,6 @@ class Explanations:
         nums = re.findall(r"-?\d+\.?\d*", head)
         return f"{nums[0]}→{nums[-1]}{unit}" if len(nums) >= 2 else ""
 
-    def _rating_direction(self, text):
-        """Derive rating direction from the actual numbers (the source tail label is
-        unreliable — e.g. '82→90 → 降班中' is wrong; rising numbers = 評分上升)."""
-        nums = re.findall(r"\d+", re.split(r"→\s*趨勢|趨勢", str(text or ""))[0])
-        if len(nums) < 2:
-            return ""
-        first, last = int(nums[0]), int(nums[-1])
-        if last - first >= 3:
-            return "評分上升"
-        if first - last >= 3:
-            return "評分回落"
-        return "評分平穩"
 
     def _compact_finish(self, raw):
         """'5 (-3-3/4)' → '第5負3-3/4'; '1 (...)' → '第1（勝出）'."""
@@ -916,56 +904,6 @@ class Explanations:
             f"勝率{row['win_rate']:.1f}% 位率{row['place_rate']:.1f}%"
         )
 
-    def _trainer_signal_combo_summary(self):
-        combo_block = self._clean(self._value("jockey_combo_block") or "")
-        if not combo_block:
-            return ""
-        current_jockey = self._clean(self.horse_data.get("jockey", "") or self._current_declared_jockey() or "今場騎師")
-        current_row = None
-        for row in self._jockey_combo_rows():
-            if row["is_current"] or row["jockey"] == current_jockey:
-                current_row = row
-                break
-        recent_rows = self._recent_jockey_history_rows()
-        latest_rider = recent_rows[0]["jockey"] if recent_rows else ""
-        retained = bool(latest_rider and latest_rider == current_jockey)
-        best_other = self._best_jockey_for_horse(exclude={current_jockey} if current_row else set())
-
-        bits = []
-        if current_row:
-            bits.append(f"人馬組合統計方面，{self._format_combo_record(current_row)}。")
-            if retained:
-                bits.append("今場沿用上仗配搭。")
-            elif latest_rider:
-                bits.append(f"今場屬換騎，上仗由{latest_rider}執韁。")
-            if best_other:
-                current_edge = (
-                    current_row["wins"],
-                    current_row["places"],
-                    current_row["place_rate"],
-                    current_row["win_rate"],
-                    -current_row["avg_finish"],
-                    current_row["starts"],
-                )
-                other_edge = (
-                    best_other["wins"],
-                    best_other["places"],
-                    best_other["place_rate"],
-                    best_other["win_rate"],
-                    -best_other["avg_finish"],
-                    best_other["starts"],
-                )
-                if current_edge >= other_edge:
-                    bits.append("相比其他曾策騎者，現任配搭已屬此馬較有依據的一組。")
-                else:
-                    bits.append(f"此馬歷來較有參考的是 {self._format_combo_record(best_other)}。")
-        else:
-            bits.append(f"人馬組合統計方面，{current_jockey}今場暫未有此馬歷史。")
-            if latest_rider:
-                bits.append(f"今場屬換騎，上仗由{latest_rider}執韁。")
-            if best_other:
-                bits.append(f"此馬歷來較有參考的是 {self._format_combo_record(best_other)}。")
-        return self._normalize_prose("".join(bits))
 
     _TIMELINE_TYPES = {"gallop": "快操", "trial": "試閘"}
 
@@ -1273,7 +1211,7 @@ class Explanations:
             lead = f"{seq_txt}有交代，未算穩定"
 
         # 2) 輸距面（同穩定性分覆核同一組事實）
-        shadow = self._consistency_shadow_detail()
+        shadow = self._consistency_from_runs()
         margin_txt = ""
         if shadow and shadow["n"] >= 3:
             if shadow["poor_runs"] == 0 and shadow["close_runs"] >= max(2, shadow["n"] - 2):

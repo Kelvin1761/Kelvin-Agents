@@ -130,8 +130,6 @@ class RacingEngine(HorseFacts, LeafScores, ShadowProfiles, Explanations):
             self.provenance.setdefault(key, "missing_neutral")
 
         matrix_scores = map_features_to_matrix_scores(feature_scores, debut=self._is_debut())
-        matrix_scores["trainer_signal"] = self._apply_trainer_signal_v3(matrix_scores["trainer_signal"])
-        matrix_scores["horse_health"] = self._apply_health_only_v2(matrix_scores["horse_health"])
         # 同程表現（9D，2026-10-10）：之前係 7D 以外嘅獨立 raw 調整，而家係一個
         # centred 維度。leaf = 60 + 調整 ÷ 權重，所以 權重 × (leaf − 60) 等於原本嘅調整。
         distance_suitability = self._distance_suitability_adjustment(feature_scores, matrix_scores)
