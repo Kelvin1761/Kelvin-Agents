@@ -768,6 +768,16 @@ def _align_runner_headers(logic_path, race_context, horses):
             if str(key).isdigit() and not _is_withdrawn_runner(entry)
         }
         logic_numbers = {str(key) for key in horses}
+        # Logic 有、排位表冇 = 建 Logic 之後退出（排位表重抽時已經冇咗佢）。
+        # 以前成場拒絕評分（舊存檔 7/441 場）；而家照排位表剔走，記低係邊匹。
+        # 反過來（排位表有、Logic 冇）冇資料可評，照舊報錯。
+        scratched = sorted(logic_numbers - official_numbers, key=_horse_number_sort_key) if official_numbers else []
+        for number in scratched:
+            horse_key = next(key for key in horses if str(key) == number)
+            removed = horses.pop(horse_key)
+            race_context.setdefault("scratched_after_logic", []).append(
+                {"horse_number": number, "horse_name": (removed or {}).get("horse_name", "")})
+        logic_numbers -= set(scratched)
         if official_numbers and official_numbers != logic_numbers:
             raise ValueError(
                 "runner set differs between Logic and racecard: "
