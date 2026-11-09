@@ -256,6 +256,14 @@ def archived_dirs(target_date: str) -> list[Path]:
 ORCHESTRATOR_BUDGET_WARN = 0.5
 RUN_TIMEOUT = 7200
 FEATURED_START_DATE = "2026-11-11"  # EXP-20261110-01 first forward target date
+# Kelvin 2026-11-10: 大細盤精選 replaces the SGM card. From this target date the SGM
+# card is no longer sent and the ROI board's NBA line counts 精選 paper bets. The
+# engine still computes and the dashboard still tracks SGM, for comparison only.
+SGM_RETIRED_DATE = FEATURED_START_DATE
+
+
+def sgm_retired(target_date: str) -> bool:
+    return target_date >= SGM_RETIRED_DATE
 
 # 預設 7200：orchestrator 全 slate 跑法要俾夠時間（2026-10-26 七場要 61 分鐘，
 # 舊嘅 3600 上限令 pregame 連日 TimeoutExpired）。要短嘅呼叫都有自己明確 timeout。
@@ -1114,6 +1122,10 @@ def send_partial_betting_card(
     their card when a later run freezes the full slate.
     """
     blocked = set(blocked_tags)
+    if sgm_retired(target_date):
+        log.step("telegram_partial_betting_card", "skipped", reason="sgm_retired_featured_is_main")
+        _send_featured_card(target_date, snapshot, log)
+        return
     exported = export_nba_snapshot(PROJECT_ROOT, target_date=target_date, firewall=card_firewall(snapshot))
     # Row ids are ``nba:<date>:<GAME_TAG>:combo:<n>``.
     recommendations = [
@@ -1432,6 +1444,10 @@ def run_pregame(
         )
         return "shadow_complete"
 
+    if sgm_retired(target_date):
+        log.step("telegram_betting_card", "skipped", reason="sgm_retired_featured_is_main")
+        _send_featured_card(target_date, snapshot, log)
+        return "complete"
     exported = export_nba_snapshot(PROJECT_ROOT, target_date=target_date, firewall=card_firewall(snapshot))
     try:
         exported["selection_health"] = nba_reliability.selection_health(target_date)
@@ -1545,9 +1561,15 @@ def _record_roi_board(target_date: str, log: RunLog) -> bool:
         from services.nba_tracking import export_tracking
         tracking = export_tracking(PROJECT_ROOT)
         log.step("bet_tracking", str(tracking.get("status")), records=len(tracking.get("records") or []))
-        days = nba_combo_roi.tracking_days(tracking)
-        entry = wongchoi_roi.record_days("nba", days, day=target_date,
-                                         since=tracking.get("inception_date"))
+        if sgm_retired(target_date):
+            # The board's NBA line is the 精選 paper bets from SGM_RETIRED_DATE on;
+            # SGM history is not mixed in (record_days replaces the domain's days).
+            days = nba_combo_roi.tracking_days({"records": tracking.get("featured_records") or []})
+            since = SGM_RETIRED_DATE
+        else:
+            days = nba_combo_roi.tracking_days(tracking)
+            since = tracking.get("inception_date")
+        entry = wongchoi_roi.record_days("nba", days, day=target_date, since=since)
         return bool((entry.get("latest") or {}).get("bets"))
     except Exception as exc:  # noqa: BLE001 — a reporting add-on must not fail postgame
         log.step("bet_tracking", "failed", error=f"{type(exc).__name__}: {exc}")
@@ -1753,13 +1775,20 @@ def run_postgame(target_date: str, log: RunLog) -> str:
         log.step("telegram_performance", "skipped", reason="no_prediction")
     elif archive.is_dir():
         try:
-            performance_message = postgame_message(target_date, archive)
-            board_has_bets = _record_roi_board(target_date, log)
-            performance_message += "\n\n" + _steady_stop_text(target_date, log)
-            featured_text = _featured_postgame_text(target_date, log)
-            if featured_text:
-                performance_message += "\n\n" + featured_text
-            performance_message += "\n\n" + _reliability_text(target_date, log)
+            if sgm_retired(target_date):
+                # SGM is no longer published: the review is the 精選 result only.
+                board_has_bets = _record_roi_board(target_date, log)
+                featured_text = _featured_postgame_text(target_date, log)
+                performance_message = (f"🏀 NBA 旺財賽後覆盤｜{target_date}\n\n"
+                                       + (featured_text or "⭐ 大細盤精選（紙上盤）：今日冇精選。"))
+            else:
+                performance_message = postgame_message(target_date, archive)
+                board_has_bets = _record_roi_board(target_date, log)
+                performance_message += "\n\n" + _steady_stop_text(target_date, log)
+                featured_text = _featured_postgame_text(target_date, log)
+                if featured_text:
+                    performance_message += "\n\n" + featured_text
+                performance_message += "\n\n" + _reliability_text(target_date, log)
         except ValueError as exc:
             warning = notify_once(
                 f"postgame-performance-blocked:{target_date}",

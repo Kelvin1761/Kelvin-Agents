@@ -49,3 +49,11 @@
 python3 docs/experiments/patches/nba_featured/evaluate.py status     # 只顯示已結算注數
 python3 docs/experiments/patches/nba_featured/evaluate.py evaluate   # 未夠數會拒絕；已凍結就讀返
 ```
+
+## 附錄（2026-11-10，產品決定，唔改上面任何揀注或判決規則）
+Kelvin：「大細盤精選 我覺得要做 可以取代左現有sgm」，揀 A。由 target date 2026-11-11 起：
+- 唔再發 SGM card；精選 card 係 NBA 主 card。覆盤只報精選（中／唔中）。
+- ROI 板 NBA 嗰行改計精選紙上盤（`featured_records`，2026-11-11 起），唔再混 SGM。
+- 穩膽停損（EXP-20261027-21）唔再檢查，因為 SGM 唔再發佈。
+- 引擎照計 B2／SGM、dashboard 照追蹤，只作對照。
+- **仍然係紙上盤**：F1000 PASS 之前唔落真錢。

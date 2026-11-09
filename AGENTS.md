@@ -47,8 +47,8 @@ import，所以**呢份文件係唯一真源** —— 新規則加喺呢度，�
   悉尼 `central_wong_choi/install_roi_summary.sh` 嘅 launchd job 發總結。
   只報四樣嘢：注數、中、ROI（u）、ROI%；時間窗 = 最近結算日 + 累計。
   **唔准再喺各旺財自己嘅訊息度另加 ROI 段。** HKJC 未有落注定義，暫時唔喺板上。
-  口徑：AU = `au_betting` 位注策略（2026-08-12 起）；NBA = dashboard tracking
-  （21:00 版本穩膽 $1）；網球 = 正式推薦紙上盤。
+  口徑：AU = `au_betting` 位注策略（2026-08-12 起）；NBA = 大細盤精選紙上盤（2026-11-11 起，
+  `featured_records`；之前係 dashboard tracking 21:00 穩膽 $1）；網球 = 正式推薦紙上盤。
 
 ### Forward 測試一律登記入追蹤表（夠數一定要 Telegram）
 
@@ -505,6 +505,8 @@ Deploy wrapper：
 - **大細盤精選（紙上盤，EXP-20261110-01）**：`nba_engine/featured.py` 每場揀一注寫入 sidecar `featured`；dashboard tracking 放喺
   `featured_records`（**唔入** `records`，所以 ROI 板、穩膽停損、SGM 顯示都唔受影響）；21:00 card 同覆盤文字喺
   `nba_daily_auto/nba_featured_card.py`。改揀注規則 = 開新版本（新 `RULE`），唔准改舊版。
+- **SGM 已停發（Kelvin 2026-11-10）**：由 target date 2026-11-11（`SGM_RETIRED_DATE`）起唔再發 SGM card，精選係
+  NBA 主 card；覆盤只報精選；ROI 板 NBA 改計精選；穩膽停損唔再檢查。引擎照計 B2／SGM，dashboard 照追蹤，只作對照。
 
 ### Supported inputs
 

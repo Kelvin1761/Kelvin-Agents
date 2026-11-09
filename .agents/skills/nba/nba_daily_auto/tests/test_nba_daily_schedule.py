@@ -687,6 +687,43 @@ class NbaDailyScheduleTests(unittest.TestCase):
             schedule.send_partial_betting_card("2026-10-29", Path(tmp) / "s", ["LAL_LAC"], _Log())
         notify.assert_not_called()
 
+    # ── Kelvin 2026-11-10: 大細盤精選 replaces the SGM card from 2026-11-11 ──────────
+
+    def test_retired_sgm_partial_card_sends_only_the_featured_card(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(
+            schedule, "export_nba_snapshot"
+        ) as exported, mock.patch.object(
+            schedule, "notify_once", return_value={"ok": True, "status": "sent"}
+        ) as notify:
+            snapshot = Path(tmp) / "20261110-210500-000000"
+            snapshot.mkdir()
+            schedule.send_partial_betting_card("2026-11-11", snapshot, ["LAL_LAC"], _Log())
+        exported.assert_not_called()
+        (key, card), kwargs = notify.call_args.args, notify.call_args.kwargs
+        self.assertEqual(key, "featured-card:2026-11-11:20261110-210500-000000")
+        self.assertEqual(kwargs, {"audience": "content"})
+        self.assertIn("大細盤精選", card)
+
+    def test_sgm_is_retired_from_the_featured_start_date_only(self) -> None:
+        self.assertFalse(schedule.sgm_retired("2026-11-10"))
+        self.assertTrue(schedule.sgm_retired("2026-11-11"))
+        self.assertEqual(schedule.SGM_RETIRED_DATE, schedule.FEATURED_START_DATE)
+
+    def test_retired_roi_board_counts_featured_paper_bets_only(self) -> None:
+        tracking = {"status": "valid", "inception_date": "2026-10-25",
+                    "records": [{"day": "2026-11-11", "state": "lost", "profit": -1}],
+                    "featured_records": [{"day": "2026-11-11", "state": "won", "profit": 0.9},
+                                         {"day": "2026-11-11", "state": "void", "profit": None}]}
+        with mock.patch("services.nba_tracking.export_tracking", return_value=tracking), \
+                mock.patch.object(schedule.nba_combo_roi, "write_reports",
+                                  return_value={"daily": {"total": {"combos": 0, "settled": 0}}}), \
+                mock.patch("wongchoi_roi.record_days", return_value={"latest": {"bets": 1}}) as record:
+            self.assertTrue(schedule._record_roi_board("2026-11-11", _Log()))
+        days, kwargs = record.call_args.args[1], record.call_args.kwargs
+        self.assertEqual(days, {"2026-11-11": {"bets": 1, "hits": 1, "stake": 1.0, "pnl": 0.9}})
+        self.assertEqual(kwargs["since"], "2026-11-11")
+
+
 if __name__ == "__main__":
     unittest.main()
 # Role-specific launchd jobs preserve the intended slot even after sleep/wake
