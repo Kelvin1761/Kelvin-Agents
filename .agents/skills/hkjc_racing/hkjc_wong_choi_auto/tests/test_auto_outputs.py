@@ -461,7 +461,7 @@ class AutoOutputTests(unittest.TestCase):
             "confidence_score": 40,
         }
         high_confidence = {**low_confidence, "confidence_score": 90}
-        inside_draw = {**low_confidence, "draw_score": 75}
+        inside_draw = {**low_confidence, "race_shape_context_score": 75}
 
         low_scores = map_features_to_matrix_scores(low_confidence)
         high_scores = map_features_to_matrix_scores(high_confidence)

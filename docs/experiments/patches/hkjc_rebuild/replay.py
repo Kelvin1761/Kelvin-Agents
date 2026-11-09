@@ -112,7 +112,7 @@ def diff(args) -> int:
         return {(r["meeting"], r["race"]): r for r in map(json.loads, open(p, encoding="utf-8"))}
     old, new = load(args.old), load(args.new)
     keys = sorted(old.keys() & new.keys() if args.common else old.keys() | new.keys())
-    bad, kinds, examples = 0, Counter(), []
+    bad, kinds, examples, text_kinds = 0, Counter(), [], Counter()
     for key in keys:
         a, b = old.get(key, {}), new.get(key, {})
         if args.ignore_text:
@@ -120,6 +120,18 @@ def diff(args) -> int:
             b = {k: v for k, v in b.items() if k not in ("md", "csv")}
         d = []
         _walk(a, b, "", d, args.tol)
+        if args.ignore:
+            import re as _re
+            d = [(p, w) for p, w in d if not _re.search(args.ignore, p)]
+        if args.text_lines:
+            for field in ("md", "csv"):
+                if any(p == f".{field}" for p, _ in d):
+                    old_lines = set((a.get(field) or "").splitlines())
+                    new_lines = set((b.get(field) or "").splitlines())
+                    for line in sorted(old_lines - new_lines)[:50]:
+                        text_kinds[(field, "-", line[:90])] += 1
+                    for line in sorted(new_lines - old_lines)[:50]:
+                        text_kinds[(field, "+", line[:90])] += 1
         if d:
             bad += 1
             for path, _ in d:
@@ -129,6 +141,8 @@ def diff(args) -> int:
     print(f"races {len(keys)}  differing {bad}")
     for k, c in kinds.most_common(30):
         print(f"  {c:6d}  {k}")
+    for (field, sign, line), c in text_kinds.most_common(args.show_text):
+        print(f"  {field} {sign} x{c}: {line}")
     for key, d in examples[: args.show]:
         print(key)
         for path, what in d:
@@ -153,6 +167,9 @@ def main() -> int:
     c.add_argument("--ignore-text", action="store_true")
     c.add_argument("--show", type=int, default=5)
     c.add_argument("--common", action="store_true", help="only races present in both dumps")
+    c.add_argument("--ignore", help="regex of paths to ignore")
+    c.add_argument("--text-lines", action="store_true", help="summarise changed Markdown/CSV lines")
+    c.add_argument("--show-text", type=int, default=25)
     a = ap.parse_args()
     return dump(a) if a.cmd == "dump" else diff(a)
 

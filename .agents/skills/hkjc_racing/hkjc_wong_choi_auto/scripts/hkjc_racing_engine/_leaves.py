@@ -5,7 +5,6 @@ import re
 
 from . import scoring
 from .rail_draw_context import rail_draw_context_adjustment
-from . import dimensions
 from .scoring import (CENTRED_MATRIX_WEIGHTS, DEBUT_MATRIX_WEIGHTS, MATRIX_WEIGHTS, clip_score, parse_float)
 
 
@@ -112,33 +111,16 @@ class LeafScores:
             if v2_shadow is not None:
                 neutral["v2_shadow"] = v2_shadow
             return neutral
-        if record["places"] > 0:
-            micro = scoring.DISTANCE_SUITABILITY_MICRO_WEIGHTS["same_dist_place_bonus"]
-            signal = "same_distance_placed"
-            note = "同程有上名實績，獨立路程適性調整為正面。"
-        else:
-            micro = scoring.DISTANCE_SUITABILITY_MICRO_WEIGHTS["same_dist_unplaced_pen"]
-            signal = "same_distance_unplaced"
-            note = "同程已有樣本但未上名，獨立路程適性調整為負面。"
-
-        clean_class = float(features.get("class_score", 60.0))
-        weight_score = float(features.get("weight_score", 60.0))
-        # 舊遷移嘅數（EXP-20261007-04）：同程微調入 class_score，再經「班次 75%＋
-        # 負磅 25%、權重 0.1428」嘅舊級數優勢出嚟。2026-11-05 負磅分搬入級數之後，
-        # live 級數優勢唔再係呢條式，所以兩邊都用舊式重砌，唔好讀 matrix_scores。
-        clean_dimension = round(clip_score(clean_class * 0.75 + weight_score * 0.25), 2)
-        legacy_class = clip_score(clean_class + micro)
-        legacy_dimension = round(clip_score(legacy_class * 0.75 + weight_score * 0.25), 2)
-        raw_adjustment = round(
-            (legacy_dimension - clean_dimension) * dimensions.LEGACY_CLASS_ADVANTAGE_WEIGHT,
-            6,
-        )
+        placed = record["places"] > 0
+        signal = "same_distance_placed" if placed else "same_distance_unplaced"
+        note = ("同程有上名實績，獨立路程適性調整為正面。" if placed
+                else "同程已有樣本但未上名，獨立路程適性調整為負面。")
+        raw_adjustment = scoring.DISTANCE_SUITABILITY_RAW[signal]
         output = {
             "raw_adjustment": raw_adjustment,
             "signal": signal,
             "same_distance_starts": int(record["starts"]),
             "same_distance_places": int(record["places"]),
-            "micro_signal": micro,
             "note": note,
         }
         if v2_shadow is not None:
@@ -148,7 +130,6 @@ class LeafScores:
     def _distance_score(self, _features):
         best_distance = self._value("best_distance")
         distance = str(self.race_context.get("distance") or "")
-        text = self._text("best_distance", "season_stats", "course_record")
         # 同程往績一定要由「同程 (…)」讀。舊 code 用 parse_record(text) 掃第一個
         # 四元組，而 season_stats 個字串係「季內 (…) | 同程 (…) | 同場同程 (…)」
         # ——第一個係**季內**，所以路程分一路用緊季內成績做同程證據。09-06 全場
@@ -178,7 +159,7 @@ class LeafScores:
         if best_distance and distance and direct_match:
             starts = record["starts"] if record else None
             if starts and record["places"] > 0:
-                return scoring.DISTANCE_MICRO_WEIGHTS.get("direct_match_place_base", 72.0), f"路程資料見今仗距離及上名紀錄，路程適性評為72分。", "best_distance"
+                return scoring.DISTANCE_MICRO_WEIGHTS.get("direct_match_place_base", 72.0), "路程資料見今仗距離及上名紀錄，路程適性評為72分。", "best_distance"
             return scoring.DISTANCE_MICRO_WEIGHTS.get("direct_match_small_sample_base", 66.0), "最佳路程欄與今仗距離吻合，但樣本有限，路程分66分。", "best_distance"
         if self._is_debut():
             self.reason_codes.append("debut_distance_unproven")
@@ -368,7 +349,7 @@ class LeafScores:
         elif same_count and not lower_count:
             note_map[signal] += f" 對手後續有{same_count}匹於同班再贏，證明基本線索有兌現。"
         elif lower_count and not higher_count:
-            note_map[signal] += f" 對手後續主要在較低班再贏，提升幅度只宜保守。"
+            note_map[signal] += " 對手後續主要在較低班再贏，提升幅度只宜保守。"
         final = clip_score(score + bonus)
         # 「碰過強敵」要今馬自己跑得埋堆先算數：若所有賽績線往績都冇跑近過
         # （≤6名兼落後≤5個馬位＝competitive ratio 0，例：次次被拋離十幾個馬位），

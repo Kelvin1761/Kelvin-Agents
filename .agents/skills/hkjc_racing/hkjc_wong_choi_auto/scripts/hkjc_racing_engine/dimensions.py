@@ -39,23 +39,16 @@ class DimensionSpec:
     debut_leaves: tuple[tuple[str, float], ...] | None = None
 
 
-# 負磅分由「馬匹健康」搬入「級數優勢」（2026-11-05，rank-neutral）。之前負磅分
-# 喺兩個維度各佔一份：健康 0.0404 × 38.9%、級數 0.1428 × 25%。負磅係讓磅官對
-# 能力嘅評價，同健康無關，所以健康只留風險分，負磅分嗰份權重原封搬去級數，
-# 總權重唔變。下面係搬之前嘅數，`LEGACY_WEIGHT_MERGE` shim 同同程舊調整都要用。
-_PRE_MERGE = {
-    "class_weight": 0.1428, "class_debut_weight": 0.05,
-    "class_leaves": (("class_score", 0.75), ("weight_score", 0.25)),
-    "health_weight": 0.0404, "health_debut_weight": 0.30,
-    "health_leaves": (("risk_score", 0.611), ("weight_score", 0.389)),
-}
-_RISK_SHARE = 0.611
-_MOVED = _PRE_MERGE["health_weight"] * (1.0 - _RISK_SHARE)              # 0.0157156
-_MOVED_DEBUT = _PRE_MERGE["health_debut_weight"] * (1.0 - _RISK_SHARE)  # 0.1167
-_CLASS_WEIGHT = _PRE_MERGE["class_weight"] + _MOVED                     # 0.1585156
-_CLASS_DEBUT_WEIGHT = _PRE_MERGE["class_debut_weight"] + _MOVED_DEBUT   # 0.1667
-_CLASS_SHARE = _PRE_MERGE["class_weight"] * 0.75 / _CLASS_WEIGHT        # ≈ 0.6756
-_CLASS_DEBUT_SHARE = _PRE_MERGE["class_debut_weight"] * 0.75 / _CLASS_DEBUT_WEIGHT  # ≈ 0.2250
+# 負磅分喺「級數優勢」（2026-11-05 由健康搬入，總權重不變）：負磅係讓磅官對
+# 能力嘅評價，唔係健康訊號。權重寫成「搬之前嘅數」嘅組合，令來源一眼睇到：
+#   健康  = 0.0404 × 61.1%（風險分嗰份）
+#   級數  = 0.1428 + 0.0404 × 38.9%（負磅分嗰份搬入）
+#   級數內班次份額 = 0.1428 × 75% ÷ 級數權重；初出馬同理（0.05／0.30）。
+_HEALTH_WEIGHT, _HEALTH_DEBUT_WEIGHT = 0.0404 * 0.611, 0.30 * 0.611
+_CLASS_WEIGHT = 0.1428 + 0.0404 * 0.389
+_CLASS_DEBUT_WEIGHT = 0.05 + 0.30 * 0.389
+_CLASS_SHARE = 0.1428 * 0.75 / _CLASS_WEIGHT
+_CLASS_DEBUT_SHARE = 0.05 * 0.75 / _CLASS_DEBUT_WEIGHT
 
 
 # Order = report display order (Kelvin: 騎練訊號 follows 狀態與穩定性).
@@ -92,10 +85,8 @@ DIMENSIONS: tuple[DimensionSpec, ...] = (
     ),
     DimensionSpec(
         key="horse_health", label="馬匹健康 / 新鮮感", short_label="健康新鮮", role="輔助",
-        # 2026-11-05：負磅分已搬去級數優勢（見 _PRE_MERGE），呢度淨係健康本身。
         leaves=(("risk_score", 1.00),),
-        weight=_PRE_MERGE["health_weight"] * _RISK_SHARE,
-        debut_weight=_PRE_MERGE["health_debut_weight"] * _RISK_SHARE,
+        weight=_HEALTH_WEIGHT, debut_weight=_HEALTH_DEBUT_WEIGHT,
         # Display ruler re-measured after the merge on 5,365 runners (2026-11-05):
         # median 69.00, SD 4.711 (risk_score alone).
         display_centre=69.0, display_gain=2.1228,
@@ -130,8 +121,7 @@ DIMENSIONS: tuple[DimensionSpec, ...] = (
     ),
     DimensionSpec(
         key="class_advantage", label="級數優勢", short_label="班次優勢", role="輔助",
-        # 2026-11-05：負磅分由健康搬入嚟，總權重唔變（見 _PRE_MERGE）。初出馬
-        # 之前健康佔 0.30，所以搬入嚟嘅負磅份額大好多，要用另一個組合。
+        # 初出馬之前健康佔 0.30，所以搬入嚟嘅負磅份額大好多，要用另一個組合。
         leaves=(("class_score", _CLASS_SHARE), ("weight_score", 1.0 - _CLASS_SHARE)),
         debut_leaves=(("class_score", _CLASS_DEBUT_SHARE), ("weight_score", 1.0 - _CLASS_DEBUT_SHARE)),
         weight=_CLASS_WEIGHT, debut_weight=_CLASS_DEBUT_WEIGHT,
@@ -145,56 +135,9 @@ DIMENSIONS: tuple[DimensionSpec, ...] = (
 
 BY_KEY = {spec.key: spec for spec in DIMENSIONS}
 
-# Transition shim for the rank-neutral 7D → 9D split (2026-10-10). The 7D
-# stability dimension was round(0.5·form + 0.4·consistency + 0.1·trackwork, 2).
-# Splitting it into two separately rounded dimensions moved 2 of 351 races by
-# one adjacent place. To stay exact, the 9D stability value is derived from the
-# old rounded 7D value minus trackwork's share, so
-#   0.08847 · stability + 0.00983 · trackwork == 0.0983 · old_stability.
-# Remove this (and its use in matrix_mapper) when trackwork is rebuilt (Phase 4).
-LEGACY_STABILITY_SPLIT = {
-    "parent": "stability",
-    "child": "trackwork",
-    "legacy_leaves": (("form_score", 0.50), ("consistency_score", 0.40), ("trackwork_trend_score", 0.10)),
-    "child_share": 0.10,
-}
-
-# Transition shim for the rank-neutral 負磅分 merge (2026-11-05). Before the
-# move each of the two dimensions was rounded to 2dp on its own. To stay exact,
-# the new class value is derived from the two old rounded values minus the new
-# health value, so that
-#   W_class' · class + W_health' · health == W_class · old_class + W_health · old_health
-# for both standard and debut weights. Remove when class_advantage is rebuilt.
-LEGACY_WEIGHT_MERGE = {
-    "target": "class_advantage",
-    "donor": "horse_health",
-    "legacy_target_leaves": _PRE_MERGE["class_leaves"],
-    "legacy_donor_leaves": _PRE_MERGE["health_leaves"],
-    "legacy_weights": {"class_advantage": _PRE_MERGE["class_weight"], "horse_health": _PRE_MERGE["health_weight"]},
-    "legacy_debut_weights": {"class_advantage": _PRE_MERGE["class_debut_weight"],
-                             "horse_health": _PRE_MERGE["health_debut_weight"]},
-}
-# 同程表現嘅舊調整係「同程微調入 class_score 再經級數優勢出嚟」嘅差，要用搬之前嘅數。
-LEGACY_CLASS_ADVANTAGE_WEIGHT = _PRE_MERGE["class_weight"]
-
-# Summation / iteration orders inherited from the pre-registry dicts. Float sums
-# depend on order, so these keep the composite bit-identical. A dimension missing
-# from an order tuple is appended after it (new dimensions need no edit here).
-_WEIGHT_ORDER = ("sectional", "trainer_signal", "stability", "race_shape",
-                 "class_advantage", "horse_health", "form_line")
-_DEBUT_ORDER = ("trainer_signal", "horse_health", "race_shape", "stability", "class_advantage")
-_FORMULA_ORDER = ("stability", "sectional", "race_shape", "trainer_signal",
-                  "horse_health", "form_line", "class_advantage")
-
-
-def _ordered(order: tuple[str, ...]) -> list[DimensionSpec]:
-    known = [BY_KEY[key] for key in order if key in BY_KEY]
-    return known + [spec for spec in DIMENSIONS if spec.key not in order]
-
-
 def weights() -> dict[str, float]:
     """Sum-to-1 weights (centred dimensions excluded)."""
-    return {spec.key: spec.weight for spec in _ordered(_WEIGHT_ORDER) if not spec.centred}
+    return {spec.key: spec.weight for spec in DIMENSIONS if not spec.centred}
 
 
 def centred_weights() -> dict[str, float]:
@@ -206,15 +149,15 @@ def all_keys() -> tuple[str, ...]:
 
 
 def debut_weights() -> dict[str, float]:
-    return {spec.key: spec.debut_weight for spec in _ordered(_DEBUT_ORDER) if spec.debut_weight}
+    return {spec.key: spec.debut_weight for spec in DIMENSIONS if spec.debut_weight}
 
 
 def formulas() -> dict[str, tuple[tuple[str, float], ...]]:
-    return {spec.key: spec.leaves for spec in _ordered(_FORMULA_ORDER)}
+    return {spec.key: spec.leaves for spec in DIMENSIONS}
 
 
 def debut_formulas() -> dict[str, tuple[tuple[str, float], ...]]:
-    return {spec.key: spec.debut_leaves or spec.leaves for spec in _ordered(_FORMULA_ORDER)}
+    return {spec.key: spec.debut_leaves or spec.leaves for spec in DIMENSIONS}
 
 
 def labels() -> dict[str, str]:

@@ -71,14 +71,12 @@ MATRIX_WEIGHTS = dimensions.weights()
 CENTRED_MATRIX_WEIGHTS = dimensions.centred_weights()
 MATRIX_KEYS_ALL = dimensions.all_keys()
 
-# Same-distance evidence is a distance-suitability signal, not evidence that a
-# horse has a class edge.  These micro values deliberately preserve the former
-# production contribution while the signal is moved out of class_score.  The
-# resulting raw-score adjustment is independently displayed and capped by the
-# two signal values (roughly +0.43 / -0.17 after the class dimension blend).
-DISTANCE_SUITABILITY_MICRO_WEIGHTS = {
-    "same_dist_place_bonus": 4.0,
-    "same_dist_unplaced_pen": -1.55,
+# 同程表現：直接加落原始總分（centred 維度，見 dimensions.distance_fit）。
+# 數值係 EXP-20261007-04 由 class_score 遷出嚟嗰陣嘅等效貢獻：
+#   微調 +4 / −1.55 × 班次份額 0.75 × 舊級數權重 0.1428。
+DISTANCE_SUITABILITY_RAW = {
+    "same_distance_placed": 4.0 * 0.75 * 0.1428,      # +0.4284
+    "same_distance_unplaced": -1.55 * 0.75 * 0.1428,  # −0.166005
 }
 
 # EXP-20261007-05.  The component is a within-horse residual rather than a raw
@@ -96,10 +94,8 @@ def distance_suitability_contract_manifest():
     return {
         "source": "point_in_time_same_distance_record",
         "route": "independent_visible_adjustment_outside_class_score",
-        "signal_micro": dict(DISTANCE_SUITABILITY_MICRO_WEIGHTS),
+        "raw_points": dict(DISTANCE_SUITABILITY_RAW),
         "v2_shadow_profiles": {key: dict(value) for key, value in DISTANCE_SUITABILITY_V2_PROFILES.items()},
-        "legacy_equivalent_class_component_weight": 0.75,
-        "legacy_equivalent_outer_weight": MATRIX_WEIGHTS["class_advantage"],
         "ranking_policy": "v1_live_v2_prospective_shadow_pending_primary_gate",
     }
 
