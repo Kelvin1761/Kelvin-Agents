@@ -72,7 +72,7 @@ def rank_row(row: dict, weights: dict, centred: dict, base_weights: dict, arm: s
 
 
 def fit(rows: list[dict], keys: list[str], prior: dict, centred: dict, base_weights: dict,
-        fit_tau: bool = False, trail: dict | None = None) -> dict:
+        fit_tau: bool = False, trail: dict | None = None, l2: float = L2) -> dict:
     import numpy as np
 
     races = []
@@ -101,7 +101,7 @@ def fit(rows: list[dict], keys: list[str], prior: dict, centred: dict, base_weig
             s = (x @ w + offset) / tau
             s = s - s.max()
             total -= float(y @ (s - np.log(np.exp(s).sum())))
-        return total / len(races) + L2 * float(((w - w0) ** 2).sum())
+        return total / len(races) + l2 * float(((w - w0) ** 2).sum())
 
     # Exact optimisation (L-BFGS on θ, numerical gradient). The first version used
     # a hand-rolled gradient step 25× too large and collapsed every fit into one
@@ -172,12 +172,77 @@ def shape_amplitude(rows: list[dict], base: dict, centred: dict) -> list[dict]:
     return out
 
 
+# ── ML 對照（EXP-20261109-03）─────────────────────────────────────────────
+GBM_PARAMS = dict(max_depth=3, learning_rate=0.05, max_iter=200, min_samples_leaf=40, random_state=0)
+CLOGIT_L2 = 0.01
+
+
+def _features(row: dict, keys: list[str]) -> list[list[float]]:
+    return [[h["m"].get(k, 60.0) for k in keys] + [1.0 if h["debut"] else 0.0, float(len(row["horses"]))]
+            for h in row["horses"]]
+
+
+def fit_clogit(history: list[dict], keys: list[str]):
+    """Unconstrained conditional logit: within-race softmax over β·x, placers as targets."""
+    import numpy as np
+    from scipy.optimize import minimize
+
+    races = []
+    for row in history:
+        horses = [h for h in row["horses"] if h.get("pos")]
+        if len(horses) < 4 or not any(h["pos"] <= 3 for h in horses):
+            continue
+        x = np.array([[h["m"].get(k, 60.0) - 60.0 for k in keys] + [1.0 if h["debut"] else 0.0] for h in horses])
+        y = np.array([1.0 if h["pos"] <= 3 else 0.0 for h in horses])
+        races.append((x, y / y.sum()))
+
+    def loss(beta):
+        total = 0.0
+        for x, y in races:
+            s = x @ beta
+            s = s - s.max()
+            total -= float(y @ (s - np.log(np.exp(s).sum())))
+        return total / len(races) + CLOGIT_L2 * float(beta @ beta)
+
+    beta = minimize(loss, np.zeros(len(keys) + 1), method="L-BFGS-B", options={"maxiter": 300}).x
+    return lambda row: [float(np.dot([h["m"].get(k, 60.0) - 60.0 for k in keys] + [1.0 if h["debut"] else 0.0], beta))
+                        for h in row["horses"]], beta
+
+
+def fit_gbm(history: list[dict], keys: list[str]):
+    from sklearn.ensemble import HistGradientBoostingClassifier
+
+    x, y = [], []
+    for row in history:
+        feats = _features(row, keys)
+        for h, f in zip(row["horses"], feats):
+            if h.get("pos"):
+                x.append(f)
+                y.append(1 if h["pos"] <= 3 else 0)
+    model = HistGradientBoostingClassifier(**GBM_PARAMS).fit(x, y)
+    return lambda row: list(model.predict_proba(_features(row, keys))[:, 1]), None
+
+
+def rank_by_scores(row: dict, scores: list[float], arm: str) -> dict:
+    from eval_metrics import race_metrics
+
+    picks = [n for _s, n in sorted((-s, h["n"]) for s, h in zip(scores, row["horses"]))]
+    positions = {h["n"]: h["pos"] for h in row["horses"] if h.get("pos")}
+    metrics = race_metrics(picks, [n for n, p in positions.items() if p <= 3], actual_pos=positions)
+    metrics["mean_top3_model_rank"] = metrics.get("top3_mean_model_rank")
+    out = {k: row[k] for k in ("date", "meeting", "race", "venue", "awt", "distance", "field")}
+    out.update({"arm": arm, "picks": picks, "meeting_dead_fields": row.get("meeting_dead_fields", [])})
+    out.update({k: metrics.get(k) for k in ("gold", "gold_strict", "good_positional", "champion", *RANKING)})
+    return out
+
+
 def main(argv=None) -> int:
     from hkjc_racing_engine import scoring
 
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("dump")
-    ap.add_argument("--arm", choices=("current", "neutral", "wf_refit", "wf_refit_tau", "wf_shape_k"), required=True)
+    ap.add_argument("--arm", choices=("current", "neutral", "wf_refit", "wf_refit_tau", "wf_refit_free",
+                                         "wf_shape_k", "wf_clogit", "wf_gbm"), required=True)
     ap.add_argument("--out", required=True)
     args = ap.parse_args(argv)
     rows = load(args.dump)
@@ -201,8 +266,18 @@ def main(argv=None) -> int:
         for index, meeting in enumerate(meetings):
             history = [r for m in meetings[:index] for r in by_meeting[m]]
             extra: dict = {}
+            if args.arm in ("wf_clogit", "wf_gbm"):
+                if index < WARMUP_MEETINGS:
+                    out.extend(rank_row(r, base, centred, base, args.arm) for r in by_meeting[meeting])
+                    continue
+                scorer, beta = (fit_clogit if args.arm == "wf_clogit" else fit_gbm)(history, keys)
+                if beta is not None:
+                    trail.append({"meeting": meeting, "beta": dict(zip(keys + ["debut"], map(lambda v: round(float(v), 4), beta)))})
+                out.extend(rank_by_scores(r, scorer(r), args.arm) for r in by_meeting[meeting])
+                continue
             weights = base if index < WARMUP_MEETINGS else fit(
-                history, keys, base, centred, base, fit_tau=args.arm == "wf_refit_tau", trail=extra)
+                history, keys, base, centred, base, fit_tau=args.arm in ("wf_refit_tau", "wf_refit_free"),
+                trail=extra, l2=0.0 if args.arm == "wf_refit_free" else L2)
             trail.append({"meeting": meeting, "weights": {k: round(v, 4) for k, v in weights.items()}, **extra})
             out.extend(rank_row(r, weights, centred, base, args.arm) for r in by_meeting[meeting])
         Path(args.out + ".weights.json").write_text(json.dumps(trail, ensure_ascii=False, indent=1), encoding="utf-8")
