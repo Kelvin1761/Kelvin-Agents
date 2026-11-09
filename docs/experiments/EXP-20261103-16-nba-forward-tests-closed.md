@@ -29,3 +29,10 @@ MS2／MS3 嘅 INVALID_DATA 係 11-01／11-02 ESPN 轉換期對手表 `source_una
 
 ## 刪走嘅 code
 `nba_ms_forward.py`（+ 4 個 json）、`nba_season_rate_v4_forward.py`、`nba_early_season_guard_monitor.py`、`nba_experiment_readiness.py`、`nba_availability_outcomes.py`、排程 `_experiment_readiness` 步驟，同埋相應測試。要睇舊版用 git history（本 commit 嘅 parent）。
+
+## 更正（2026-11-10）
+上面「ledger 每晚照記 `p_ms`／`p_c`／`p_s`」**唔啱**：`nba_market_ledger.record_snapshot` 只抄舊引擎嘅
+`season_rate_v*_prob_S` 欄位名，而 `nba_engine` sidecar 用 `p_market`／`p_c`／`p_s`／`p_ms`，所以 11-03 起 ledger 嘅
+S 全部係 null。2026-11-10 起 `model_obs` 照 sidecar 原名記低呢四個（`ENGINE_COMPONENTS`，唔入 `MODEL_VARIANTS`，
+`evaluate()` 不變）。11-03…11-10 嘅歷史值冇補寫入 ledger（ledger 只加唔改）；要用就直接讀
+`_prediction_snapshots/<snapshot_id>/Game_<tag>_Full_Analysis.md.market_legs.json`，每個 21:00 snapshot 都有。

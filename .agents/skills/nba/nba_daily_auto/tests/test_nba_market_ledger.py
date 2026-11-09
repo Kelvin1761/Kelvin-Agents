@@ -498,3 +498,16 @@ def test_sgm_price_capture_records_why_a_quote_is_missing(root, tmp_path):
 def test_sgm_price_capture_never_hits_the_network_under_tests(root, tmp_path):
     with pytest.raises(ledger.LedgerIsolationError):
         ledger.record_sgm_prices(tmp_path, DAY)
+
+
+def test_engine_components_are_recorded_from_the_sidecar(root, tmp_path):
+    """2026-11-10: the ledger copied only old-engine S names, so nba_engine's p_s was lost."""
+    legs = [{**LEGS[0], "p_market": 0.5556, "p_c": 0.61, "p_s": 0.66, "p_ms": 0.62}, LEGS[1]]
+    snap = _snapshot(tmp_path / "live", role="production", created=TIP - timedelta(hours=10),
+                     extraction="2026-10-21 21:00:00", legs=legs)
+    ledger.record_snapshot(snap, DAY, now=TIP - timedelta(hours=9))
+    rows = {r["line"]: r for r in ledger.read_rows(root, DAY) if r["row_type"] == "model_obs"}
+    assert (rows[20.0]["p_market"], rows[20.0]["p_c"], rows[20.0]["p_s"], rows[20.0]["p_ms"]) == \
+        (0.5556, 0.61, 0.66, 0.62)
+    assert rows[25.0]["p_s"] is None          # absent in the sidecar -> null, never invented
+    assert "p_s" not in ledger.MODEL_VARIANTS  # recorded only; evaluate() unchanged
