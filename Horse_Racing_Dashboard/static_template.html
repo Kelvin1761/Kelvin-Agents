@@ -5663,7 +5663,14 @@ function renderVerdictChips(horse) {
   // test -- the test is whether the report gave us any bullets at all. HKJC's
   // newer format prints none, and the chips were left saying only who rides.
   const hasSourceBullets = plus.length > 0 || minus.length > 0;   // read BEFORE the jockey/trainer chips are added
-  if (!hasSourceBullets) {
+  // HKJC engine summary (summary.py) carries the same impacts plus the reason;
+  // the reason goes in the chip's tooltip so the preview card stays short.
+  const summary = horse.analysis_summary;
+  const reasons = {};
+  if (!hasSourceBullets && summary) {
+    (summary.plus || []).forEach(d => { const c = `${d.label} +${Number(d.impact).toFixed(1)}`; plus.push(c); reasons[c] = d.why; });
+    (summary.minus || []).forEach(d => { const c = `${d.label} ${Number(d.impact).toFixed(1)}`; minus.push(c); reasons[c] = d.why; });
+  } else if (!hasSourceBullets) {
     const ranked = (horse.dimension_details || [])
       .filter(d => d.ranking_weighted && d.score != null && dimFactor(d) != null)
       .map(d => ({ name: d.name, impact: (d.score - 60) * dimFactor(d) }))
@@ -5687,12 +5694,15 @@ function renderVerdictChips(horse) {
     people.forEach(p => { if (!target.includes(p)) target.push(p); });
   }
 
-  if (!plus.length && !minus.length) return '';
+  const watch = (summary && summary.watch) || [];
+  const gaps = (summary && summary.gaps && summary.gaps.length) ? [`${summary.gaps.join('、')}（按中性）`] : [];
+  if (!plus.length && !minus.length && !watch.length && !gaps.length) return '';
   const group = (label, cls, items) => items.length
     ? `<div class="verdict verdict--${cls}"><span class="verdict__label">${label}</span><span class="verdict__items">${
-        items.map(i => `<span class="verdict__chip">${esc(i)}</span>`).join('')}</span></div>`
+        items.map(i => `<span class="verdict__chip"${reasons[i] ? ` title="${esc(reasons[i])}"` : ''}>${esc(i)}</span>`).join('')}</span></div>`
     : '';
-  return `<div class="verdicts">${group('✅ 加分位', 'plus', plus)}${group('⚠️ 扣分位', 'minus', minus)}</div>`;
+  return `<div class="verdicts">${group('✅ 加分位', 'plus', plus)}${group('⚠️ 扣分位', 'minus', minus)}`
+    + `${group('👀 留意', 'minus', watch)}${group('❔ 資料不足', 'plus', gaps)}</div>`;
 }
 
 const DIM_SYMBOL_COLOR = {
@@ -7418,6 +7428,11 @@ function renderSingleAnalystView(analysis, analystName) {
 
   // AU 首選早盤分歧（純顯示信心提示；引擎 market_reference.divergence_lines，唔入評分）
   html += renderMarketDivergenceBadge(analysis.market_divergence);
+  // HKJC 全場重點（engine summary.race_summary）：首選有幾清楚，附歷史上名率
+  if (analysis.race_summary && (analysis.race_summary.lines || []).length) {
+    html += `<div style="margin:0 0 12px;padding:8px 12px;border-radius:10px;background:#F1F5F9;color:#334155;font-size:.85rem;max-width:900px">`
+      + `<strong>📝 全場重點</strong> ${analysis.race_summary.lines.map(esc).join('；')}</div>`;
+  }
 
   // Horse cards
   html += `<h2 style="font-size:1rem;font-weight:700;margin-bottom:12px">📋 全場馬匹分析</h2>`;
@@ -7887,8 +7902,8 @@ function renderProfitChart(data) {
   data.forEach((d, i) => {
     const col = values[i] >= 0 ? '#059669' : '#DC2626';
     const pStr = values[i] >= 0 ? '+' : '';
-    hoverDots += `<circle cx="${pts[i].x}" cy="${pts[i].y}" r="12" fill="transparent" style="cursor:pointer" 
-      onmouseenter="showChartTip('${chartId}',event,${pts[i].x},${pts[i].y},'${esc(d.date)} · ${esc(d.horse_name||'')}','${pStr}$${d.cumulative}','${col}')" 
+    hoverDots += `<circle cx="${pts[i].x}" cy="${pts[i].y}" r="12" fill="transparent" style="cursor:pointer"
+      onmouseenter="showChartTip('${chartId}',event,${pts[i].x},${pts[i].y},'${esc(d.date)} · ${esc(d.horse_name||'')}','${pStr}$${d.cumulative}','${col}')"
       onmouseleave="hideChartTip('${chartId}')"/>`;
     hoverDots += `<circle cx="${pts[i].x}" cy="${pts[i].y}" r="3" fill="${col}" opacity="0" pointer-events="none" class="chart-dot-${chartId}-${i}"/>`;
   });

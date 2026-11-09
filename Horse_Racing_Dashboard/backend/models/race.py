@@ -79,10 +79,10 @@ class HorseAnalysis(BaseModel):
     weight: Optional[str] = None
     barrier: Optional[int] = None
     rating: Optional[int] = None  # Official rating number
-    
+
     # Context
     situation_tag: Optional[str] = None  # 情境標記
-    
+
     # Performance
     recent_form: Optional[str] = None  # 近六場序列
     form_cycle: Optional[str] = None  # 狀態週期
@@ -90,7 +90,7 @@ class HorseAnalysis(BaseModel):
     statistics: Optional[str] = None
     key_runs: Optional[list[str]] = None  # 關鍵場次法醫
     trend_summary: Optional[str] = None  # 趨勢總評
-    
+
     # HKJC-specific sections
     full_time_speed: Optional[dict] = None  # AU report-captured full-time evidence
     score_overlays: Optional[dict] = None  # AU 綜合分 = 七維 + overlay（EXP-20261101-38）
@@ -98,16 +98,16 @@ class HorseAnalysis(BaseModel):
     eem_energy: Optional[str] = None  # ⚡ 形勢與走位 (legacy field name kept for compat)
     forgiveness_file: Optional[str] = None  # 📋 寬恕檔案
     form_line: Optional[str] = None  # 🔗 賽績線
-    
+
     # AU-specific sections
     horse_profile: Optional[str] = None  # 🐴 馬匹剖析
     core_analysis: Optional[str] = None  # 🧠 核心分析推演
-    
+
     # Engine & Distance classification (AU + HKJC)
     engine_type: Optional[str] = None  # Type A / Type B / Type C / Type A/B
     engine_type_label: Optional[str] = None  # 前領均速型 / 末段爆發型 etc.
     engine_distance_summary: Optional[str] = None  # Full engine distance text
-    
+
     # Rating
     rating_matrix: Optional[RatingMatrix] = None
     final_grade: Optional[str] = None  # A+, A, B+, etc.
@@ -168,20 +168,22 @@ class HorseAnalysis(BaseModel):
     score_impact_baseline: Optional[float] = None
     # HKJC 21-day trackwork (gallops / trials with times, 從化 stay, load, trend).
     trackwork_timeline: Optional[dict] = None
-    
+    # HKJC 白話重點（engine summary.py）：headline／plus／minus／watch／gaps。純顯示。
+    analysis_summary: Optional[dict] = None
+
     # Conclusion
     conclusion: Optional[str] = None  # 💡 結論
     core_logic: Optional[str] = None  # 核心邏輯
     data_readout: Optional[List[dict]] = None  # 📊 數據判讀 rows: {label,value,trend,band,reason}
     advantage: Optional[str] = None  # 最大競爭優勢
     risk: Optional[str] = None  # 最大失敗原因
-    
+
     # Underhorse Signal (3-tier: light/moderate/strong)
     underhorse_triggered: bool = False
     underhorse_level: Optional[str] = None  # 'light' (🟢), 'moderate' (🟡), 'strong' (🔴)
     underhorse_condition: Optional[str] = None
     underhorse_reason: Optional[str] = None
-    
+
     # Raw text for full display
     raw_text: Optional[str] = None
 
@@ -227,31 +229,32 @@ class RaceAnalysis(BaseModel):
     # Pace prediction
     pace_prediction: Optional[str] = None
     speed_map: Optional[str] = None
-    
+
     # Horses
     horses: list[HorseAnalysis] = []
-    
+
     # Verdict
     top_picks: list[TopPick] = []
     # SIP-RR01: dual-scenario top picks. Keys are track conditions, e.g. {"Good 4": [...], "Soft 5": [...]}
     scenario_top_picks: Optional[dict[str, list[TopPick]]] = None
     confidence: Optional[str] = None
     key_variable: Optional[str] = None
-    
+
     # Pace flip insurance
     pace_flip: Optional[str] = None
-    
+
     # Underhorse signals summary
     underhorse_signals: Optional[list[str]] = None
-    
+
     # Raw sections
     battlefield_overview: Optional[str] = None  # 第一部分
+    race_summary: Optional[dict] = None  # HKJC 全場重點（engine summary.race_summary）：lines／gap_1_2／tightness
     market_divergence: Optional[dict] = None  # AU 首選早盤分歧（純顯示）：level/icon/top_pick/market_rank/priced
     verdict_text: Optional[str] = None  # 第三部分
     blind_spots: Optional[str] = None  # 第四部分
     analysis_type: Optional[str] = None  # classic / auto
     scoring_file: Optional[str] = None
-    
+
     # Monte Carlo simulation results
     monte_carlo_simulation: Optional[list['MonteCarloPick']] = None
 

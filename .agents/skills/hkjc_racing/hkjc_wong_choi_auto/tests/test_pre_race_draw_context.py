@@ -105,7 +105,7 @@ def test_same_rail_is_partitioned_between_sha_tin_and_happy_valley(tmp_path: Pat
     assert st["venue"] == "沙田"
 
 
-def test_shadow_changes_only_race_shape_and_keeps_mainline_unchanged() -> None:
+def test_pit_rail_draw_context_moves_draw_score_and_is_deterministic() -> None:
     horse = {
         "horse_name": "測試馬",
         "barrier": "10",
@@ -133,23 +133,17 @@ def test_shadow_changes_only_race_shape_and_keeps_mainline_unchanged() -> None:
         "reason": "stable_point_in_time_rail_cell",
     }
     with patch(
-        "hkjc_racing_engine.engine_core.rail_draw_context_adjustment",
+        "hkjc_racing_engine._leaves.rail_draw_context_adjustment",
         return_value=source,
     ), patch(
-        "draw.rail_draw_context_adjustment",
+        "hkjc_racing_engine.features.draw.rail_draw_context_adjustment",
         return_value=source,
     ):
         baseline = engine.analyze_horse()
-        shadow = engine.build_shadow_profile("pre_race_draw_context_v1_generic", base_auto=baseline)
 
-    assert shadow["applied"] is True
     assert baseline["feature_scores"]["draw_score"] == 52.06
-    assert shadow["matrix_scores"]["race_shape"] == 49.06
-    for key, value in baseline["matrix_scores"].items():
-        if key != "race_shape":
-            assert shadow["matrix_scores"][key] == value
     with patch(
-        "draw.rail_draw_context_adjustment",
+        "hkjc_racing_engine.features.draw.rail_draw_context_adjustment",
         return_value=source,
     ):
         assert engine.analyze_horse()["matrix_scores"] == baseline["matrix_scores"]

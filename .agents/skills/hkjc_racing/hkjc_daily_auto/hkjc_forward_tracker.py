@@ -49,7 +49,8 @@ class ForwardTest:
 FORWARD_TESTS: tuple[ForwardTest, ...] = (
     ForwardTest("gear_removed", "配備「除去」−3 剷走", "EXP-20261010-05", "harness_ab", 60,
                 since="2026-10-11", arm="docs/experiments/patches/hkjc_arm_no_gear_removed.py",
-                action="自動判：Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議剷走 −3；否則維持"),
+                action="自動判：Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議剷走 −3；否則維持",
+                decided="2026-10-29 forward 59 場過關（Gold／Good Δ 0、NDCG@5 +0.0004），Kelvin 批准，ffdc47d0 已剷走"),
     # EXP-20261029-30 B：回放 345 場 Gold +1.16pp [+0.29, +2.30] 但 Good −0.58pp，按 v3 REJECT。
     # Kelvin 交我決定；呢個係 harness_ab 嘅加入類（唔係剷走類），所以過咗係「建議上線」。
     ForwardTest("weight_rating_gap", "負磅分改用官方評分差距", "EXP-20261029-30", "harness_ab", 60,

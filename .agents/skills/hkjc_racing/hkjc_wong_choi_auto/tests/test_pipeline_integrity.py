@@ -590,6 +590,22 @@ class PipelineIntegrityTests(unittest.TestCase):
                     logic_path, logic["race_analysis"], logic["horses"]
                 )
 
+    def test_alignment_drops_runner_missing_from_racecard_as_scratched(self) -> None:
+        # 存檔 7/441 場：建 Logic 之後退出，排位表重抽時已經冇咗嗰匹 —— 以前成場唔評分。
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            logic_path = folder / "Race_1_Logic.json"
+            (folder / "07-15 Race 1 排位表.md").write_text(
+                "馬號: 1\n馬名: 馬一\n評分: 60\n", encoding="utf-8",
+            )
+            logic = _minimal_logic()
+            logic["horses"]["2"] = copy.deepcopy(logic["horses"]["1"])
+            logic["horses"]["2"]["horse_name"] = "退出馬"
+            auto._align_runner_headers(logic_path, logic["race_analysis"], logic["horses"])
+            self.assertEqual(sorted(logic["horses"]), ["1"])
+            self.assertEqual(logic["race_analysis"]["scratched_after_logic"],
+                             [{"horse_number": "2", "horse_name": "退出馬"}])
+
     def test_weight_review_uses_live_race_shape_context_feature(self) -> None:
         logic = _minimal_logic()
         horse = logic["horses"]["1"]

@@ -25,22 +25,10 @@ def active_race_shape_robustness_profile():
     value = os.environ.get("WC_HKJC_RACE_SHAPE_ROBUSTNESS", "winsor10").strip().lower()
     return "legacy_unbounded" if value in {"legacy", "legacy_unbounded", "off"} else "winsor10"
 
-def active_happy_valley_race_shape_profile():
-    """Return the live HV formula, with an explicit emergency rollback.
-
-    The default is the user-accepted experimental V3 formula.  Operations can
-    restore the prior V2 formula without editing a prediction artifact by
-    setting ``WC_HKJC_HV_RACE_SHAPE_PROFILE=legacy_v2`` before the run.  The
-    selected value is persisted in the scoring run contract.
-    """
-    value = os.environ.get("WC_HKJC_HV_RACE_SHAPE_PROFILE", "v3_surface").strip().lower()
-    return "legacy_v2" if value == "legacy_v2" else "v3_surface"
-
-
 def race_shape_contract_manifest():
     return {
         "sha_tin": "legacy_55_draw_25_historical_fit_20_trip",
-        "happy_valley": active_happy_valley_race_shape_profile(),
+        "happy_valley": "v3_surface",
         "happy_valley_v3_formula": "draw+0.45*(pit_surface-60)",
         "happy_valley_surface_gain": HAPPY_VALLEY_RACE_SHAPE_V3_SURFACE_GAIN,
         "happy_valley_fit_weight": 0.0,
@@ -50,7 +38,6 @@ def race_shape_contract_manifest():
         "draw_context": "pit_venue_rail_distance_band_draw_group_relative_cap4",
         "draw_context_venue_partition": "sha_tin_and_happy_valley_never_pool",
         "draw_context_minimums": {"runners": 100, "races": 20, "shrink_runners": 60},
-        "rollback_env": "WC_HKJC_HV_RACE_SHAPE_PROFILE=legacy_v2",
         "whole_field_robustness": active_race_shape_robustness_profile(),
         "whole_field_robust_formula": "meeting_median+clip(shape-meeting_median,-10,+10)",
         "whole_field_robust_cap": RACE_SHAPE_ROBUST_DEVIATION_CAP,
@@ -84,14 +71,12 @@ MATRIX_WEIGHTS = dimensions.weights()
 CENTRED_MATRIX_WEIGHTS = dimensions.centred_weights()
 MATRIX_KEYS_ALL = dimensions.all_keys()
 
-# Same-distance evidence is a distance-suitability signal, not evidence that a
-# horse has a class edge.  These micro values deliberately preserve the former
-# production contribution while the signal is moved out of class_score.  The
-# resulting raw-score adjustment is independently displayed and capped by the
-# two signal values (roughly +0.43 / -0.17 after the class dimension blend).
-DISTANCE_SUITABILITY_MICRO_WEIGHTS = {
-    "same_dist_place_bonus": 4.0,
-    "same_dist_unplaced_pen": -1.55,
+# 同程表現：直接加落原始總分（centred 維度，見 dimensions.distance_fit）。
+# 數值係 EXP-20261007-04 由 class_score 遷出嚟嗰陣嘅等效貢獻：
+#   微調 +4 / −1.55 × 班次份額 0.75 × 舊級數權重 0.1428。
+DISTANCE_SUITABILITY_RAW = {
+    "same_distance_placed": 4.0 * 0.75 * 0.1428,      # +0.4284
+    "same_distance_unplaced": -1.55 * 0.75 * 0.1428,  # −0.166005
 }
 
 # EXP-20261007-05.  The component is a within-horse residual rather than a raw
@@ -109,10 +94,8 @@ def distance_suitability_contract_manifest():
     return {
         "source": "point_in_time_same_distance_record",
         "route": "independent_visible_adjustment_outside_class_score",
-        "signal_micro": dict(DISTANCE_SUITABILITY_MICRO_WEIGHTS),
+        "raw_points": dict(DISTANCE_SUITABILITY_RAW),
         "v2_shadow_profiles": {key: dict(value) for key, value in DISTANCE_SUITABILITY_V2_PROFILES.items()},
-        "legacy_equivalent_class_component_weight": 0.75,
-        "legacy_equivalent_outer_weight": MATRIX_WEIGHTS["class_advantage"],
         "ranking_policy": "v1_live_v2_prospective_shadow_pending_primary_gate",
     }
 
@@ -594,7 +577,7 @@ TRACKWORK_MICRO_WEIGHTS = {
     "improving_base": 70.0,  # 加強
     "slowing_base": 46.24,   # 放緩 (ML Optimized: Harsher penalty)
     "neutral_base": 60.0,    # 中性
-    
+
     # 2. 真實操練次數指標 (Raw exercise numerical multipliers)
     "gallop_weight": 0.5,    # 每課快操加分
     "trial_weight": 1.0,     # 每課大閘加分
