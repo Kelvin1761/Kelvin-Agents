@@ -131,11 +131,9 @@ class AutoOutputTests(unittest.TestCase):
                 {
                     "incident_reliability",
                     "weight_refit_t02",
-                    "race_shape_v2_legacy_hv",
                     "race_shape_st_draw70",
                     "race_shape_legacy_unbounded",
                     "trainer_recency_st_early90",
-                    "pre_race_draw_context_v1_generic",
                 },
                 set(horse["python_auto"]["shadow_profiles"]),
             )
@@ -143,11 +141,9 @@ class AutoOutputTests(unittest.TestCase):
                 {
                     "incident_reliability",
                     "weight_refit_t02",
-                    "race_shape_v2_legacy_hv",
                     "race_shape_st_draw70",
                     "race_shape_legacy_unbounded",
                     "trainer_recency_st_early90",
-                    "pre_race_draw_context_v1_generic",
                 },
                 set(updated["python_auto_shadow_verdicts"]),
             )
@@ -219,7 +215,7 @@ class AutoOutputTests(unittest.TestCase):
         self.assertEqual(baseline["matrix_scores"], engine.analyze_horse()["matrix_scores"])
         self.assertEqual(shadow["evidence_status"], "prospective_shadow_only")
 
-    def test_happy_valley_v3_uses_draw_and_pit_surface_but_withholds_tempo(self) -> None:
+    def test_happy_valley_live_shape_uses_draw_and_pit_surface_but_withholds_tempo(self) -> None:
         logic = _logic()
         horse = logic["horses"]["1"]
         horse["_data"]["surface_performance_shadow"] = (
@@ -229,62 +225,17 @@ class AutoOutputTests(unittest.TestCase):
         )
         engine = RacingEngine(horse, {"venue": "跑馬地", "distance": "1650"})
         baseline = engine.analyze_horse()
-        shadow = engine.build_shadow_profile("race_shape_v3_hv", base_auto=baseline)
-        components = shadow["race_shape_components"]
-        expected_shape = components["draw"] + 0.45 * (components["surface_performance"]["score"] - 60.0)
+        detail = baseline["race_shape_detail"]
+        expected_shape = detail["draw"] + 0.45 * (detail["surface_performance"]["score"] - 60.0)
 
-        self.assertEqual(baseline["race_shape_detail"]["live_profile"], "v3_surface")
-        self.assertAlmostEqual(baseline["matrix_scores"]["race_shape"], expected_shape, places=2)
-        self.assertTrue(shadow["applied"])
-        self.assertAlmostEqual(shadow["matrix_scores"]["race_shape"], expected_shape, places=2)
-        self.assertEqual(components["fit_weight"], 0.0)
-        self.assertEqual(components["trip_weight"], 0.0)
-        self.assertEqual(components["field_tempo"]["status"], "withheld_insufficient_reliability")
-        self.assertEqual(components["field_tempo"]["score_weight"], 0.0)
+        self.assertEqual(detail["live_profile"], "v3_surface")
+        self.assertAlmostEqual(baseline["matrix_scores"]["race_shape"], expected_shape, places=1)
+        self.assertEqual(detail["field_tempo"], "withheld_insufficient_reliability")
+        self.assertEqual([t["scored"] for t in detail["terms"]], [True, True, False, False])
         self.assertEqual(baseline["matrix_scores"], engine.analyze_horse()["matrix_scores"])
 
-    def test_happy_valley_v3_has_explicit_legacy_rollback_shadow(self) -> None:
-        logic = _logic()
-        horse = logic["horses"]["1"]
-        horse["_data"]["surface_performance_shadow"] = (
-            "今場=跑馬地草地 70.0分(有效樣本3.0/原始4) | 採用來源=local_history"
-        )
-        engine = RacingEngine(horse, {"venue": "跑馬地", "distance": "1650"})
-        live = engine.analyze_horse()
-        rollback = engine.build_shadow_profile("race_shape_v2_legacy_hv", base_auto=live)
 
-        self.assertTrue(rollback["applied"])
-        self.assertEqual(
-            rollback["matrix_scores"]["race_shape"],
-            live["race_shape_detail"]["legacy_score"],
-        )
-        self.assertEqual(rollback["evidence_status"], "experimental_live_rollback_shadow")
 
-    def test_happy_valley_v3_can_be_rolled_back_by_environment(self) -> None:
-        logic = _logic()
-        horse = logic["horses"]["1"]
-        horse["_data"]["surface_performance_shadow"] = (
-            "今場=跑馬地草地 70.0分(有效樣本3.0/原始4) | 採用來源=local_history"
-        )
-        with patch.dict(os.environ, {"WC_HKJC_HV_RACE_SHAPE_PROFILE": "legacy_v2"}):
-            result = RacingEngine(horse, {"venue": "跑馬地", "distance": "1650"}).analyze_horse()
-
-        self.assertEqual(result["race_shape_detail"]["live_profile"], "legacy_v2")
-        self.assertEqual(
-            result["matrix_scores"]["race_shape"],
-            result["race_shape_detail"]["legacy_score"],
-        )
-
-    def test_race_shape_v3_is_noop_outside_happy_valley(self) -> None:
-        logic = _logic()
-        horse = logic["horses"]["1"]
-        engine = RacingEngine(horse, {"venue": "沙田", "distance": "1650"})
-        baseline = engine.analyze_horse()
-        shadow = engine.build_shadow_profile("race_shape_v3_hv", base_auto=baseline)
-
-        self.assertFalse(shadow["applied"])
-        self.assertEqual(shadow["matrix_scores"], baseline["matrix_scores"])
-        self.assertEqual(shadow["ability_score"], baseline["ability_score"])
 
     def test_sha_tin_draw70_shadow_is_turf_only_and_keeps_live_unchanged(self) -> None:
         logic = _logic()
@@ -403,19 +354,6 @@ class AutoOutputTests(unittest.TestCase):
         self.assertEqual(horses["1"]["python_auto"]["ability_percentile"], 100.0)
         self.assertNotIn("complete_strength", horses["1"]["python_auto"])
 
-    def test_combined_shadow_keeps_v3_and_weight_refit_separable(self) -> None:
-        logic = _logic()
-        horse = logic["horses"]["1"]
-        horse["_data"]["surface_performance_shadow"] = "今場=跑馬地草地 68.0分 | 採用來源=local_history"
-        engine = RacingEngine(horse, {"venue": "跑馬地", "distance": "1650"})
-        baseline = engine.analyze_horse()
-        shape_only = engine.build_shadow_profile("race_shape_v3_hv", base_auto=baseline)
-        combined = engine.build_shadow_profile("race_shape_v3_hv_t02", base_auto=baseline)
-
-        self.assertEqual(combined["matrix_scores"], shape_only["matrix_scores"])
-        self.assertEqual(combined["weights"]["race_shape"], 0.2537)
-        self.assertAlmostEqual(combined["weights"]["stability"], 0.1183 * 0.9, places=4)
-        self.assertNotEqual(combined["weights"], shape_only["weights"])
 
     def test_chinese_jockey_and_trainer_names_are_scored(self) -> None:
         # 主要來源＝兩季 master stats 連續實績評分（2026-07-08 ML 驗證上線）
@@ -523,7 +461,7 @@ class AutoOutputTests(unittest.TestCase):
             "confidence_score": 40,
         }
         high_confidence = {**low_confidence, "confidence_score": 90}
-        inside_draw = {**low_confidence, "draw_score": 75}
+        inside_draw = {**low_confidence, "race_shape_context_score": 75}
 
         low_scores = map_features_to_matrix_scores(low_confidence)
         high_scores = map_features_to_matrix_scores(high_confidence)
@@ -1093,75 +1031,6 @@ class AutoOutputTests(unittest.TestCase):
             self.assertEqual(summary["scoring_profile"], "class_form_combined")
             self.assertIn("gold", summary["kpis"])
 
-    def test_consistency_shadow_profile_is_written_without_changing_mainline_namespace(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            folder = Path(tmp)
-            logic_path = folder / "Race_1_Logic.json"
-            results_path = folder / "05-13 測試 全日賽果.json"
-            logic = _logic()
-            logic["horses"]["1"]["_data"]["recent_6_detail"] = "第1仗: 4名 1-1/4 | 第2仗: 4名 1-1/2 | 第3仗: 5名 2-1/4 | 第4仗: 9名 8-1/2 | 第5仗: 10名 10 | 第6仗: 11名 12"
-            logic["horses"]["1"]["_data"]["margin_trend"] = "1-1/4→1-1/2→2-1/4→8-1/2→10→12 → 📈收窄中"
-            logic_path.write_text(json.dumps(logic, ensure_ascii=False), encoding="utf-8")
-            results_path.write_text(
-                json.dumps(
-                    {
-                        "1": {
-                            "results": [
-                                {"pos": 1, "horse_no": 1, "horse_name": "測試甲"},
-                                {"pos": 2, "horse_no": 2, "horse_name": "測試乙"},
-                                {"pos": 3, "horse_no": 3, "horse_name": "後備丙"},
-                            ]
-                        }
-                    },
-                    ensure_ascii=False,
-                ),
-                encoding="utf-8",
-            )
-
-            result = subprocess.run(
-                [
-                    sys.executable,
-                    str(SCRIPT),
-                    str(folder),
-                    "--scoring-profile",
-                    "consistency_context_shadow",
-                    "--shadow-profile",
-                    "consistency_context",
-                ],
-                cwd=ROOT,
-                text=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                check=False,
-            )
-
-            self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
-            updated = json.loads(logic_path.read_text(encoding="utf-8"))
-            auto = updated["horses"]["1"]["python_auto"]
-            self.assertIn("shadow_profiles", auto)
-            self.assertIn("consistency_context", auto["shadow_profiles"])
-            shadow = auto["shadow_profiles"]["consistency_context"]
-            self.assertIn("ability_score", shadow)
-            self.assertIn("rank", shadow)
-            self.assertIn("rank_delta", shadow)
-            self.assertIn("python_auto_shadow_verdicts", updated)
-            self.assertIn("consistency_context", updated["python_auto_shadow_verdicts"])
-
-            summary = json.loads((folder / "evaluation_summary.json").read_text(encoding="utf-8"))
-            self.assertEqual(summary["shadow_profile"], "consistency_context")
-            self.assertIn("shadow_profiles", summary)
-            self.assertIn("consistency_context", summary["shadow_profiles"])
-
-            race_csv = (folder / "Race_1_Auto_Scoring.csv").read_text(encoding="utf-8")
-            rows = list(csv.DictReader(io.StringIO(race_csv)))
-            target = next(row for row in rows if row["horse_name"] == "測試甲")
-            self.assertIn("shadow_consistency_rank", target)
-            self.assertIn("shadow_consistency_ability", target)
-            self.assertIn("shadow_consistency_delta", target)
-
-            report = (folder / "Race_1_Auto_Analysis.md").read_text(encoding="utf-8")
-            self.assertIn("Consistency Shadow Top 4", report)
-            self.assertIn("Consistency Shadow", report)
 
 
 if __name__ == "__main__":

@@ -2018,6 +2018,15 @@ def forward_tracker_section(state: dict, state_path: Path) -> str:
     return text
 
 
+def win_tracking_section() -> str:
+    """首選 vs 熱門頭馬率（Kelvin 2026-11-09：主 KPI 唔轉，只追蹤）。失敗唔阻 review。"""
+    try:
+        import hkjc_win_tracking
+        return hkjc_win_tracking.section(HK_RACING)
+    except Exception as exc:  # noqa: BLE001
+        return f"\n\n🏁 頭馬追蹤計唔到：{type(exc).__name__}: {exc}"
+
+
 def run_weekly(state: dict, state_path: Path, candidate_gate: Path) -> int:
     code, output = run_cmd([sys.executable, str(WEIGHT_REVIEW), "--json"])
     if code != 0:
@@ -2068,6 +2077,7 @@ def run_weekly(state: dict, state_path: Path, candidate_gate: Path) -> int:
     message += first_section_forward_section(state)
     message += official_injury_forward_section(state)
     message += forward_tracker_section(state, state_path)
+    message += win_tracking_section()
     notify(message)
     state["last_weekly_review"] = stamp()
     save_state(state_path, state)

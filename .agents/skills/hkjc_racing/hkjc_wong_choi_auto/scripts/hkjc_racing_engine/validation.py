@@ -216,26 +216,7 @@ def _validate_auto_namespace(horse_num: str, auto: dict) -> list[str]:
         errors.append(f"SCHEMA-004 horse {horse_num} missing score_provenance")
     if not auto.get("scoring_contract_id"):
         errors.append(f"SCHEMA-012 horse {horse_num} missing scoring_contract_id")
-    # Health-slot profiles are optional in the current matrix. If a future
-    # candidate emits one, validate it strictly; absence is not fabricated as
-    # full evidence.
-    if "health_slot_profile" in auto or "health_slot_detail" in auto:
-        errors.extend(_validate_mainline_health_slot(horse_num, auto))
-    readiness_shadow = ((auto.get("shadow_profiles") or {}).get("readiness_health_slot") or {})
-    if readiness_shadow:
-        errors.extend(_validate_readiness_shadow(horse_num, auto, readiness_shadow))
-    legacy_shadow = ((auto.get("shadow_profiles") or {}).get("legacy_health_slot") or {})
-    if legacy_shadow:
-        errors.extend(_validate_legacy_health_shadow(horse_num, auto, legacy_shadow))
-    for profile_name in (
-        "weight_refit_t02",
-        "race_shape_v3_hv",
-        "race_shape_v3_hv_t02",
-        "race_shape_v2_legacy_hv",
-        "race_shape_st_draw70",
-        "race_shape_legacy_unbounded",
-        "pre_race_draw_context_v1_generic",
-    ):
+    for profile_name in ("weight_refit_t02", "race_shape_st_draw70", "race_shape_legacy_unbounded"):
         candidate = ((auto.get("shadow_profiles") or {}).get(profile_name) or {})
         if candidate:
             errors.extend(_validate_weight_race_shape_shadow(horse_num, auto, candidate))
@@ -283,39 +264,6 @@ def _validate_weight_race_shape_shadow(horse_num: str, auto: dict, shadow: dict)
         errors.append(f"SHADOW-028 horse {horse_num} {profile} invalid numeric payload")
 
     components = shadow.get("race_shape_components")
-    if profile in {"race_shape_v3_hv", "race_shape_v3_hv_t02"}:
-        if not isinstance(components, dict):
-            errors.append(f"SHADOW-029 horse {horse_num} {profile} missing V3 components")
-        elif components.get("venue") == "HV":
-            try:
-                draw = float(components.get("draw"))
-                surface = float((components.get("surface_performance") or {}).get("score"))
-                expected_shape = max(0.0, min(100.0, draw + 0.45 * (surface - 60.0)))
-                if abs(float(matrix_scores.get("race_shape")) - expected_shape) > 0.05:
-                    errors.append(f"SHADOW-030 horse {horse_num} {profile} V3 shape formula mismatch")
-                tempo = components.get("field_tempo") or {}
-                if tempo.get("status") != "withheld_insufficient_reliability" or float(tempo.get("score_weight", -1)) != 0.0:
-                    errors.append(f"SHADOW-031 horse {horse_num} {profile} unreliable tempo was not withheld")
-            except (TypeError, ValueError):
-                errors.append(f"SHADOW-032 horse {horse_num} {profile} invalid V3 component payload")
-    if profile == "pre_race_draw_context_v1_generic":
-        try:
-            source = (components or {}).get("point_in_time_source") or {}
-            adjustment = float((components or {}).get("draw_adjustment", 0.0))
-            shape_gain = float((components or {}).get("shape_gain"))
-            base_shape = float((components or {}).get("base_race_shape"))
-            if abs(adjustment) > 4.0001:
-                errors.append(f"SHADOW-034 horse {horse_num} {profile} draw adjustment exceeds cap")
-            candidate_shape = float((components or {}).get("candidate_race_shape"))
-            if abs(float(matrix_scores.get("race_shape")) - candidate_shape) > 0.05:
-                errors.append(f"SHADOW-035 horse {horse_num} {profile} rollback shape mismatch")
-            if source.get("applied") and (
-                int(source.get("cell_runners", 0)) < 100
-                or int(source.get("cell_races", 0)) < 20
-            ):
-                errors.append(f"SHADOW-036 horse {horse_num} {profile} unstable PIT cell applied")
-        except (TypeError, ValueError):
-            errors.append(f"SHADOW-037 horse {horse_num} {profile} invalid rail context payload")
     if profile == "race_shape_legacy_unbounded":
         try:
             cap = float((components or {}).get("cap"))
@@ -329,7 +277,7 @@ def _validate_weight_race_shape_shadow(horse_num: str, auto: dict, shadow: dict)
             errors.append(f"SHADOW-039 horse {horse_num} {profile} invalid robust rollback payload")
     expected_status = (
         "experimental_live_rollback_shadow"
-        if profile in {"race_shape_v2_legacy_hv", "race_shape_legacy_unbounded"}
+        if profile == "race_shape_legacy_unbounded"
         else "prospective_shadow_only"
     )
     if shadow.get("evidence_status") != expected_status:
@@ -337,101 +285,10 @@ def _validate_weight_race_shape_shadow(horse_num: str, auto: dict, shadow: dict)
     return errors
 
 
-def _validate_mainline_health_slot(horse_num: str, auto: dict) -> list[str]:
-    errors = []
-    profile = auto.get("health_slot_profile")
-    detail = auto.get("health_slot_detail")
-    if profile not in {"readiness_health_slot", "legacy_health_v2"}:
-        return [f"HEALTH-001 horse {horse_num} invalid health_slot_profile"]
-    if not isinstance(detail, dict):
-        return [f"HEALTH-002 horse {horse_num} missing health_slot_detail"]
-    for key in ("score", "raw_score", "legacy_horse_health"):
-        if not _in_range(detail.get(key)):
-            errors.append(f"HEALTH-003 horse {horse_num} {key} outside 0-100")
-    try:
-        reliability = float(detail.get("reliability"))
-        evidence_count = int(detail.get("evidence_count"))
-        raw_score = float(detail.get("raw_score"))
-        readiness_score = float(detail.get("score"))
-    except (TypeError, ValueError):
-        errors.append(f"HEALTH-004 horse {horse_num} readiness detail invalid")
-        return errors
-    if evidence_count not in {0, 1, 2} or abs(reliability - evidence_count / 2.0) > 0.001:
-        errors.append(f"HEALTH-005 horse {horse_num} readiness reliability mismatch")
-    expected_readiness = 60.0 + reliability * (raw_score - 60.0)
-    if abs(readiness_score - expected_readiness) > 0.01:
-        errors.append(f"HEALTH-006 horse {horse_num} readiness shrink formula mismatch")
-    matrix_health = float((auto.get("matrix_scores") or {}).get("horse_health", -1))
-    selected = readiness_score if profile == "readiness_health_slot" else float(detail.get("legacy_horse_health", -2))
-    if abs(matrix_health - selected) > 0.01:
-        errors.append(f"HEALTH-007 horse {horse_num} mainline health slot mismatch")
-    return errors
 
 
-def _validate_readiness_shadow(horse_num: str, auto: dict, shadow: dict) -> list[str]:
-    errors = []
-    shadow_matrix = shadow.get("matrix_scores", {})
-    if sorted(shadow_matrix) != sorted(MATRIX_KEYS):
-        errors.append(f"SHADOW-001 horse {horse_num} readiness matrix keys mismatch")
-        return errors
-    for key in MATRIX_KEYS:
-        if not _in_range(shadow_matrix.get(key)):
-            errors.append(f"SHADOW-002 horse {horse_num} readiness matrix {key} outside 0-100")
-    health_score = shadow.get("readiness_health_score")
-    reliability = shadow.get("reliability")
-    if not _in_range(health_score):
-        errors.append(f"SHADOW-003 horse {horse_num} readiness health outside 0-100")
-    try:
-        reliability_value = float(reliability)
-    except (TypeError, ValueError):
-        reliability_value = -1.0
-    if not 0.0 <= reliability_value <= 1.0:
-        errors.append(f"SHADOW-004 horse {horse_num} readiness reliability outside 0-1")
-    if _in_range(health_score) and abs(float(shadow_matrix.get("horse_health", -1)) - float(health_score)) > 0.01:
-        errors.append(f"SHADOW-005 horse {horse_num} readiness health slot mismatch")
-    mainline_matrix = auto.get("matrix_scores", {})
-    for key in MATRIX_KEYS:
-        if key == "horse_health":
-            continue
-        if abs(float(shadow_matrix.get(key, -1)) - float(mainline_matrix.get(key, -2))) > 0.01:
-            errors.append(f"SHADOW-006 horse {horse_num} readiness changed non-health matrix {key}")
-    expected = sum(float(shadow_matrix.get(key, 60)) * weight for key, weight in MATRIX_WEIGHTS.items())
-    expected += sum(float(item.get("boost", 0) or 0) for item in shadow.get("sip_flags", []))
-    ability = shadow.get("ability_score")
-    if not _in_range(ability) or abs(float(ability) - expected) > 0.05:
-        errors.append(f"SHADOW-007 horse {horse_num} readiness ability formula mismatch")
-    if _in_range(ability) and shadow.get("grade") != compute_grade(float(ability)):
-        errors.append(f"SHADOW-008 horse {horse_num} readiness grade mismatch")
-    try:
-        expected_delta = float(ability) - float(auto.get("ability_score"))
-        actual_delta = float(shadow.get("ability_delta"))
-        if abs(actual_delta - expected_delta) > 0.05:
-            errors.append(f"SHADOW-009 horse {horse_num} readiness ability delta mismatch")
-    except (TypeError, ValueError):
-        errors.append(f"SHADOW-009 horse {horse_num} readiness ability delta invalid")
-    return errors
 
 
-def _validate_legacy_health_shadow(horse_num: str, auto: dict, shadow: dict) -> list[str]:
-    errors = []
-    shadow_matrix = shadow.get("matrix_scores", {})
-    if sorted(shadow_matrix) != sorted(MATRIX_KEYS):
-        return [f"SHADOW-010 horse {horse_num} legacy matrix keys mismatch"]
-    mainline_matrix = auto.get("matrix_scores", {})
-    for key in MATRIX_KEYS:
-        if not _in_range(shadow_matrix.get(key)):
-            errors.append(f"SHADOW-011 horse {horse_num} legacy matrix {key} outside 0-100")
-        if key != "horse_health" and abs(float(shadow_matrix.get(key, -1)) - float(mainline_matrix.get(key, -2))) > 0.01:
-            errors.append(f"SHADOW-012 horse {horse_num} legacy changed non-health matrix {key}")
-    expected_health = float((auto.get("health_slot_detail") or {}).get("legacy_horse_health", -1))
-    if abs(float(shadow_matrix.get("horse_health", -2)) - expected_health) > 0.01:
-        errors.append(f"SHADOW-013 horse {horse_num} legacy health slot mismatch")
-    expected = sum(float(shadow_matrix.get(key, 60)) * weight for key, weight in MATRIX_WEIGHTS.items())
-    expected += sum(float(item.get("boost", 0) or 0) for item in shadow.get("sip_flags", []))
-    ability = shadow.get("ability_score")
-    if not _in_range(ability) or abs(float(ability) - expected) > 0.05:
-        errors.append(f"SHADOW-014 horse {horse_num} legacy ability formula mismatch")
-    return errors
 
 
 def _validate_verdict(logic_data: dict, scored: list[tuple[str, dict]]) -> list[str]:

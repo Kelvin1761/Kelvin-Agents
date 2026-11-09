@@ -24,6 +24,8 @@ sys.path.append(str(PROJECT_ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_
 sys.path.append(str(PROJECT_ROOT / ".agents" / "scripts"))
 
 from hkjc_racing_engine.engine_core import RacingEngine, scoring_run_contract
+from hkjc_racing_engine._shadows import SHADOW_PROFILES
+from hkjc_racing_engine import summary as race_summary
 from hkjc_racing_engine.renderer import (
     ensure_verdict,
     prepare_race_outputs,
@@ -767,6 +769,16 @@ def _align_runner_headers(logic_path, race_context, horses):
             if str(key).isdigit() and not _is_withdrawn_runner(entry)
         }
         logic_numbers = {str(key) for key in horses}
+        # Logic 有、排位表冇 = 建 Logic 之後退出（排位表重抽時已經冇咗佢）。
+        # 以前成場拒絕評分（舊存檔 7/441 場）；而家照排位表剔走，記低係邊匹。
+        # 反過來（排位表有、Logic 冇）冇資料可評，照舊報錯。
+        scratched = sorted(logic_numbers - official_numbers, key=_horse_number_sort_key) if official_numbers else []
+        for number in scratched:
+            horse_key = next(key for key in horses if str(key) == number)
+            removed = horses.pop(horse_key)
+            race_context.setdefault("scratched_after_logic", []).append(
+                {"horse_number": number, "horse_name": (removed or {}).get("horse_name", "")})
+        logic_numbers -= set(scratched)
         if official_numbers and official_numbers != logic_numbers:
             raise ValueError(
                 "runner set differs between Logic and racecard: "
@@ -907,16 +919,7 @@ def _load_official_injury_records(logic_path, meeting_date, horses):
     return out
 
 
-DEFAULT_SHADOW_PROFILES = (
-    "incident_reliability",
-    "weight_refit_t02",
-    "race_shape_v2_legacy_hv",
-    "race_shape_st_draw70",
-    "race_shape_legacy_unbounded",
-    "pre_race_draw_context_v1_generic",
-    "trainer_recency_st_early90",
-    "distance_suitability_v2",
-)
+DEFAULT_SHADOW_PROFILES = SHADOW_PROFILES
 
 
 class HKJCAutoOrchestrator:
@@ -936,12 +939,12 @@ class HKJCAutoOrchestrator:
         self.races = []
         self.log_path = (self.target_path if self.is_meeting else self.target_path.parent) / "racing_run_log.jsonl"
         self.summary_path = (self.target_path if self.is_meeting else self.target_path.parent) / "evaluation_summary.json"
-        
+
     def run(self):
         print(f"🚀 Starting HKJC Wong Choi Auto scoring on: {self.target_path}")
         if self.validate_engine():
             return 1
-        
+
         if self.is_meeting:
             logic_files = sorted(
                 self.target_path.glob("Race_*_Logic.json"),
@@ -965,7 +968,7 @@ class HKJCAutoOrchestrator:
             race_count=len(self.races),
             is_meeting=self.is_meeting,
         )
-            
+
         results = []
         failed = []
         for race_file in self.races:
@@ -989,7 +992,7 @@ class HKJCAutoOrchestrator:
                 summary_path=str(self.summary_path),
                 kpis=summary.get("kpis", {}),
             )
-            
+
         if failed:
             print("\n❌ HKJC Wong Choi Auto completed with failed races:")
             for name in failed:
@@ -1065,11 +1068,11 @@ class HKJCAutoOrchestrator:
             horse_obj = horses.get(h_num)
             if isinstance(horse_obj, dict) and isinstance(horse_obj.setdefault("_data", {}), dict):
                 horse_obj["_data"]["official_injury_records"] = records
-        
+
         for h_num, h_obj in horses.items():
             h_name = h_obj.get("horse_name", "Unknown")
             print(f"   - Scoring Horse {h_num}: {h_name}")
-            
+
             engine = RacingEngine(h_obj, race_context)
             result = engine.analyze_horse()
             # 情境 overlay：逐匹計（shadow 都計），加分喺全場 robustness 之後先做。
@@ -1077,7 +1080,7 @@ class HKJCAutoOrchestrator:
             shadows = self._build_shadow_profiles(engine, result)
             for shadow in shadows:
                 result.setdefault("shadow_profiles", {})[shadow["profile"]] = shadow
-            
+
             h_obj["python_auto"] = result
             self._emit_event(
                 "horse_scored",
@@ -1096,7 +1099,7 @@ class HKJCAutoOrchestrator:
             )
             # Also update the classic matrix if requested (optional rule)
             # h_obj["matrix"] = result["matrix"]
-            
+
         _apply_sip_enhancements(horses)
         self._apply_mainline_shape_robustness(horses)
         self._apply_overlays(horses)
@@ -1106,8 +1109,10 @@ class HKJCAutoOrchestrator:
         # the horse-number exact-tie key.
         ensure_verdict(logic_data)
         self._finalize_shadow_profiles(logic_data)
+        # 白話重點（純顯示，排名之後先做）：點解排呢度、要留意乜、邊度冇資料。
+        race_summary.attach(logic_data)
         logic_data["python_auto_run_contract"] = scoring_run_contract()
-            
+
         logic_errors = validate_logic_data(logic_data)
         if logic_errors:
             print("❌ Logic validation failed:")
@@ -1238,21 +1243,7 @@ class HKJCAutoOrchestrator:
         return results
 
     def _build_shadow_profiles(self, engine, result):
-        allowed = {
-            "consistency_context",
-            "incident_reliability_m",
-            "incident_reliability_r",
-            "incident_reliability",
-            "weight_refit_t02",
-            "race_shape_v3_hv",
-            "race_shape_v3_hv_t02",
-            "race_shape_v2_legacy_hv",
-            "race_shape_st_draw70",
-            "race_shape_legacy_unbounded",
-            "pre_race_draw_context_v1_generic",
-            "trainer_recency_st_early90",
-            "distance_suitability_v2",
-        }
+        allowed = set(SHADOW_PROFILES)
         shadows = []
         for profile_name in self.shadow_profiles:
             if profile_name not in allowed:
@@ -1263,21 +1254,7 @@ class HKJCAutoOrchestrator:
         return shadows
 
     def _finalize_shadow_profiles(self, logic_data):
-        allowed = {
-            "consistency_context",
-            "incident_reliability_m",
-            "incident_reliability_r",
-            "incident_reliability",
-            "weight_refit_t02",
-            "race_shape_v3_hv",
-            "race_shape_v3_hv_t02",
-            "race_shape_v2_legacy_hv",
-            "race_shape_st_draw70",
-            "race_shape_legacy_unbounded",
-            "pre_race_draw_context_v1_generic",
-            "trainer_recency_st_early90",
-            "distance_suitability_v2",
-        }
+        allowed = set(SHADOW_PROFILES)
         for profile_name in self.shadow_profiles:
             if profile_name in allowed:
                 self._finalize_shadow_profile(logic_data, profile_name)
@@ -1466,12 +1443,11 @@ if __name__ == "__main__":
         default=",".join(DEFAULT_SHADOW_PROFILES),
         help=(
             "Comma-separated shadow profiles computed without changing mainline ranking "
-            "(default: incident reliability, weight refit, HV rollback, ST draw70, "
-            "ST early-season trainer-recency, and PIT rail/draw forward shadows)"
+            "(default: every registered profile in hkjc_racing_engine._shadows.SHADOW_PROFILES)"
         ),
     )
     args = parser.parse_args()
-    
+
     orchestrator = HKJCAutoOrchestrator(args.target, scoring_profile=args.scoring_profile, shadow_profile=args.shadow_profile)
     orchestrator._validate_engine_requested = args.validate_engine
     raise SystemExit(orchestrator.run())

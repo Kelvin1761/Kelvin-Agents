@@ -1,8 +1,9 @@
-"""負磅分由「馬匹健康」搬入「級數優勢」（2026-11-05）一定要 rank-neutral。
+"""負磅分由「馬匹健康」搬入「級數優勢」（2026-11-05）係 rank-neutral 嘅搬位。
 
 搬之前：級數 = round(0.75·班次 + 0.25·負磅, 2) × 0.1428
         健康 = round(0.611·風險 + 0.389·負磅, 2) × 0.0404（初出馬 0.05 / 0.30）
-搬之後兩項加權和必須一模一樣，否則就唔係「搬位」而係改模型。
+2026-11-09 重建拆走咗逐位還原嘅 shim：兩項加權和只差兩個維度各自 round 到
+2 位小數嘅誤差（≤ 0.004 原始分，初出馬權重大所以誤差較大），每個 leaf 嘅總權重仍然完全一樣。
 """
 import random
 import sys
@@ -38,7 +39,7 @@ class WeightMergeRankNeutralTests(unittest.TestCase):
                 }
                 m = map_features_to_matrix_scores(features, debut=debut)
                 new = weights["class_advantage"] * m["class_advantage"] + weights["horse_health"] * m["horse_health"]
-                self.assertAlmostEqual(new, legacy_pair(features, debut), places=10)
+                self.assertAlmostEqual(new, legacy_pair(features, debut), delta=0.004)
 
     def test_weight_score_only_lives_in_class_advantage(self):
         formulas = dimensions.formulas()
@@ -61,7 +62,9 @@ class WeightMergeRankNeutralTests(unittest.TestCase):
 
     def test_distance_adjustment_keeps_the_pre_merge_class_weight(self):
         # 同程舊調整（+0.43 / −0.17）係經舊級數優勢計出嚟，唔准跟住新權重變。
-        self.assertEqual(dimensions.LEGACY_CLASS_ADVANTAGE_WEIGHT, 0.1428)
+        from hkjc_racing_engine import scoring
+        self.assertAlmostEqual(scoring.DISTANCE_SUITABILITY_RAW["same_distance_placed"], 4.0 * 0.75 * 0.1428)
+        self.assertAlmostEqual(scoring.DISTANCE_SUITABILITY_RAW["same_distance_unplaced"], -1.55 * 0.75 * 0.1428)
 
 
 if __name__ == "__main__":

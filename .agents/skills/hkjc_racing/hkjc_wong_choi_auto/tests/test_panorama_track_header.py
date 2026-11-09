@@ -33,7 +33,7 @@ class PanoramaTrackHeaderTest(unittest.TestCase):
         notice = "\n".join(renderer._all_weather_notice(AWT, verdict, horses))
 
         self.assertIn("今場場地路程未跑過: [12] 乙", notice)
-        self.assertIn("[4] 甲 0-1-1-5", notice)
+        self.assertIn("[4] 甲 0-1-1-7", notice)  # 冠-亞-季-出賽，出賽 = 0+1+1+5
         self.assertEqual(renderer._all_weather_notice(TURF, verdict, horses), [])
 
 
