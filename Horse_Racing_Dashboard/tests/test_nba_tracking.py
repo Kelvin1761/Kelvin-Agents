@@ -5,6 +5,8 @@ import json
 from pathlib import Path
 import sys
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'backend'))
 from services.nba_tracking import build_tracking
 
@@ -235,3 +237,71 @@ def test_steady_policy_without_formal_combo_falls_back_to_research(tmp_path,monk
     results(tmp_path)
     row=build(tmp_path)['records'][0]
     assert row['tracking_kind']=='research' and row['strategy_profile']=='banker-steady-b2-v1'
+
+
+# ── EXP-20261110-01 大細盤精選 (paper bets, kept out of `records`) ─────────────────
+
+FDAY='2026-11-08'
+PICK={'rule':'nba-featured-ou-v1','player':'First Player','team':'BOS','market':'pts','stat':'PTS','ou_line':24.5,
+      'side':'under','price':1.9,'other_price':1.9,'p_model':.6,'p_fair':.5,'edge':.1,'milestone_line':25.0}
+
+
+@pytest.fixture(autouse=True)
+def _featured_window(monkeypatch):
+    # The live window opens 2026-11-11; fixtures must be in the past to count as published.
+    import services.nba_tracking as tracking
+    monkeypatch.setattr(tracking,'FEATURED_START_DATE','2026-11-01')
+
+
+def _featured(root, pick=PICK, name='feat', created='2026-11-07T10:00:00+00:00'):
+    folder=publication(root,name,created=created,day=FDAY)
+    odds=folder/f'Sportsbet_Odds_{TAG}.json';odds.write_text(json.dumps({'event_start_time':'2026-11-08T00:00:00+00:00'}))
+    manifest=folder/'manifest.json';meta=json.loads(manifest.read_text())
+    for row in meta['files']:
+        if row['name']==odds.name:row.update(bytes=odds.stat().st_size,sha256=hashlib.sha256(odds.read_bytes()).hexdigest())
+    manifest.write_text(json.dumps(meta))
+    _patch_sidecar(folder,featured=[pick] if pick else [])
+    return folder
+
+
+def _box(root, actual, outcome='hit'):
+    directory=root/'ledger';directory.mkdir(exist_ok=True)
+    row={'row_type':'settlement','target_date':FDAY,'game_tag':TAG,'player':'First Player','market':'pts','line':25,
+         'outcome':outcome,'actual':actual,'results_sha256':'a'*64,'settled_at':'2026-11-08T03:00:00+00:00'}
+    (directory/f'{FDAY}.jsonl').write_text(json.dumps(row)+'\n')
+
+
+def test_featured_pick_settles_from_the_box_score_and_stays_out_of_records(tmp_path):
+    _featured(tmp_path);_box(tmp_path,actual=22)
+    out=build(tmp_path)
+    assert [r['tracking_kind'] for r in out['records']] != ['featured']
+    (rec,)=out['featured_records']
+    assert (rec['state'],rec['profit'],rec['odds'],rec['legs'][0]['actual']) == ('won',0.9,1.9,22)
+    _box(tmp_path,actual=25)
+    assert build(tmp_path)['featured_records'][0]['state']=='lost'
+
+
+def test_featured_first_publication_wins_and_void_is_not_a_bet(tmp_path):
+    _featured(tmp_path,name='z-first')
+    _featured(tmp_path,pick={**PICK,'side':'over','price':2.4},name='a-later',created='2026-11-07T11:00:00+00:00')
+    _box(tmp_path,actual=0,outcome='void')
+    (rec,)=build(tmp_path)['featured_records']
+    assert (rec['odds'],rec['legs'][0]['side'],rec['state'],rec['profit'])==(1.9,'under','void',None)
+
+
+def test_featured_before_inception_or_invalid_is_ignored(tmp_path):
+    publication(tmp_path,'old',day=DAY)
+    _patch_sidecar(tmp_path/f'{DAY} NBA Analysis'/'_prediction_snapshots'/'old',featured=[PICK])
+    _featured(tmp_path,pick={**PICK,'ou_line':25.0},name='bad')   # integer line is a milestone, not O/U
+    assert build(tmp_path)['featured_records']==[]
+
+
+def test_featured_merge_keeps_cold_days_and_replaces_covered_ones():
+    sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
+    from generate_static import _merge_sports_feed
+    old={'status':'valid','records':[],'featured_records':[{'id':'nba:2026-11-11:A_B:featured','day':'2026-11-11','state':'won'},
+                                                          {'id':'nba:2026-11-12:A_B:featured','day':'2026-11-12','state':'pending'}]}
+    fresh={'status':'valid','covered_dates':['2026-11-12'],'records':[],
+           'featured_records':[{'id':'nba:2026-11-12:A_B:featured','day':'2026-11-12','state':'lost'}]}
+    result=_merge_sports_feed({'sports':{'nba':{'tracking':old}}},{'sports':{'nba':{'tracking':fresh}}})['sports']['nba']['tracking']
+    assert [(r['day'],r['state']) for r in result['featured_records']]==[('2026-11-11','won'),('2026-11-12','lost')]

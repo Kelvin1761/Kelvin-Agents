@@ -915,6 +915,12 @@ def _merge_sports_feed(cached, fresh, today=None):
         nba['tracking']['records'] = list(by_id.values())
         if retained:
             nba['tracking']['retained_dates'] = sorted({r['day'] for r in retained})
+        # EXP-20261110-01 精選 paper bets follow the same rule: covered dates are
+        # authoritative, older published days are never erased by a partial checkout.
+        featured = {r['id']: r for r in (old_tracking or {}).get('featured_records', [])
+                    if r.get('day') not in covered}
+        featured.update({r['id']: r for r in fresh_tracking.get('featured_records', [])})
+        nba['tracking']['featured_records'] = sorted(featured.values(), key=lambda r: (r.get('day', ''), r['id']))
     elif old_tracking:
         nba['tracking'] = copy.deepcopy(old_tracking)
         nba['tracking']['status'] = 'stale'

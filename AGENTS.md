@@ -502,6 +502,9 @@ Deploy wrapper：
 - 冇 ML、冇 Monte Carlo、冇 10 因子調整、冇 shadow 欄位。舊引擎逐場 replay 對比：腿 16,934/16,934 一樣、B2 89 場 88 場一樣。
 - 改 `config.json` 嘅係數 = 改模型，要過 `model-regression-gate`；`docs/experiments/patches/nba_rebuild/evaluate.py` 可以用 ledger 重跑同一把尺。
 - 所有 forward／shadow 測試已於 EXP-20261103-16 中止（冇判決）。
+- **大細盤精選（紙上盤，EXP-20261110-01）**：`nba_engine/featured.py` 每場揀一注寫入 sidecar `featured`；dashboard tracking 放喺
+  `featured_records`（**唔入** `records`，所以 ROI 板、穩膽停損、SGM 顯示都唔受影響）；21:00 card 同覆盤文字喺
+  `nba_daily_auto/nba_featured_card.py`。改揀注規則 = 開新版本（新 `RULE`），唔准改舊版。
 
 ### Supported inputs
 

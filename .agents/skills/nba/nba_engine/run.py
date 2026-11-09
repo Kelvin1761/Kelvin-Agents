@@ -24,6 +24,7 @@ import nba_steady_policy  # noqa: E402
 from . import report  # noqa: E402
 from .banker import pool_sizes, select_b2  # noqa: E402
 from .legs import MARKET, build_legs  # noqa: E402
+from . import featured  # noqa: E402
 
 MIN_SGM_PRICE = 2.0
 
@@ -45,6 +46,8 @@ def analyse(odds: dict, package: dict, *, quote=quote_combo, valid=quote_valid, 
     proposal, rule = select_b2(legs, phase)
     diagnostics = {"rule": rule, "skipped": skipped, "candidates": len(legs), "banker_pool": pool_sizes(legs, phase),
                    "flags": dict(Counter(f for l in legs for f in l.flags))}
+    # EXP-20261110-01 大細盤精選（紙上盤）: independent of B2 / SGM, never a bet.
+    diagnostics["featured"] = None if phase == "PRESEASON" else featured.game_pick(odds, legs)
     if phase == "PRESEASON":
         diagnostics["no_bet_reason"] = "preseason_shadow_only"
         return legs, [], None, diagnostics

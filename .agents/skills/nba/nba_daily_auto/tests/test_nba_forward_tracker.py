@@ -36,7 +36,7 @@ class FakeScript:
 
 
 def test_registry_covers_both_tests():
-    assert {t.test for t in tracker.FORWARD_TESTS} == {"M", "T"}
+    assert {t.test for t in tracker.FORWARD_TESTS} == {"M", "T", "F250", "F1000"}
     for t in tracker.FORWARD_TESTS:
         assert (REPO / t.script).is_file()
 
@@ -96,3 +96,38 @@ def test_line_pick_prefers_price_nearest_190_after_news():
     leg = ev.pick_line(obs, y, base, after=t1)
     assert leg == {"line": 25.0, "price": 2.10, "y": 0}
     assert ev.pick_line(obs, y, base)["price"] == 2.10  # closing prices when no news time
+
+
+# ── EXP-20261110-01 大細盤精選 looks ─────────────────────────────────────────────
+
+def _featured_rows(n, won_every=2, price=1.9):
+    return [{"id": f"nba:2026-11-{11 + i // 8:02d}:G{i}:featured", "day": f"2026-11-{11 + i // 8:02d}",
+             "tracking_kind": "featured", "odds": price, "state": "won" if i % won_every == 0 else "lost",
+             "legs": [{"side": "under" if i % 3 else "over"}]} for i in range(n)]
+
+
+def test_featured_looks_are_registered_and_judge_exactly_the_first_n(tmp_path):
+    ev = _load_featured()
+    assert {t.test for t in tracker.FORWARD_TESTS} >= {"F250", "F1000"}
+    rows = _featured_rows(300)
+    assert ev.status(rows=rows)["F250"]["ready"] and not ev.status(rows=rows)["F1000"]["ready"]
+    out = ev.evaluate(out_dir=tmp_path, rows=rows)
+    assert out["F250"]["n_bets"] == 250 and out["F250"]["pass"] is False
+    assert out["F1000"]["status"] == "not_ready"
+    # frozen: a later call reads the file, it never re-judges on more data
+    again = ev.evaluate(out_dir=tmp_path, rows=_featured_rows(300, won_every=1))
+    assert again["F250"]["roi"] == out["F250"]["roi"]
+
+
+def test_featured_interim_stops_only_when_clearly_losing(tmp_path):
+    ev = _load_featured()
+    losing = ev.judge("F250", _featured_rows(250, won_every=5))   # 20% at 1.9 => about -62%
+    assert losing["stop"] is True and losing["pass"] is False
+    final = ev.judge("F1000", _featured_rows(1000, won_every=1))
+    assert final["pass"] is True
+    msg = tracker._numbers(next(t for t in tracker.FORWARD_TESTS if t.test == "F250"), losing)
+    assert msg.startswith("250 注") and "ROI" in msg and "STOP" in tracker._verdict(losing)
+
+
+def _load_featured():
+    return tracker._load("docs/experiments/patches/nba_featured/evaluate.py")

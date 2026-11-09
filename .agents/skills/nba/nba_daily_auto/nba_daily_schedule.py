@@ -50,6 +50,7 @@ import nba_steady_policy as steady_policy  # noqa: E402
 import nba_reliability  # noqa: E402
 import nba_no_prediction as no_prediction  # noqa: E402
 import nba_forward_tracker as forward_tracker  # noqa: E402
+import nba_featured_card as featured_card  # noqa: E402
 
 HOOK_DIR = (
     PROJECT_ROOT
@@ -254,6 +255,7 @@ def archived_dirs(target_date: str) -> list[Path]:
 
 ORCHESTRATOR_BUDGET_WARN = 0.5
 RUN_TIMEOUT = 7200
+FEATURED_START_DATE = "2026-11-11"  # EXP-20261110-01 first forward target date
 
 # 預設 7200：orchestrator 全 slate 跑法要俾夠時間（2026-10-26 七場要 61 分鐘，
 # 舊嘅 3600 上限令 pregame 連日 TimeoutExpired）。要短嘅呼叫都有自己明確 timeout。
@@ -1078,6 +1080,28 @@ def _freeze_partial_snapshot(
     return snapshot
 
 
+def _send_featured_card(target_date: str, snapshot: Path, log: Any) -> None:
+    """EXP-20261110-01 大細盤精選紙上盤 card; a failure never blocks the betting card."""
+    if target_date < FEATURED_START_DATE:
+        return
+    try:
+        picks = featured_card.snapshot_picks(snapshot)
+        result = notify_once(f"featured-card:{target_date}:{snapshot.name}",
+                             featured_card.card(target_date, picks), audience="content")
+        log.step("telegram_featured_card", str(result.get("status") or "unknown"), picks=len(picks))
+    except Exception as exc:  # noqa: BLE001
+        log.step("telegram_featured_card", "failed", error=f"{type(exc).__name__}: {exc}")
+
+
+def _featured_postgame_text(target_date: str, log: Any) -> str | None:
+    try:
+        from services.nba_tracking import export_tracking
+        return featured_card.postgame_lines(target_date, export_tracking(PROJECT_ROOT).get("featured_records") or [])
+    except Exception as exc:  # noqa: BLE001 — a reporting add-on must not fail postgame
+        log.step("featured_postgame", "failed", error=f"{type(exc).__name__}: {exc}")
+        return None
+
+
 def send_partial_betting_card(
     target_date: str, snapshot: Path, blocked_tags: list[str], log: Any
 ) -> None:
@@ -1119,6 +1143,7 @@ def send_partial_betting_card(
     title, _, body = card.partition("\n")
     card = f"{title}（部分場次）\n⏳ 未開盤／未通過：{', '.join(sorted(blocked))}；稍後完整卡會再發。\n{body}"
     result = notify_once(f"pregame-card:{target_date}:{snapshot.name}", card, audience="content")
+    _send_featured_card(target_date, snapshot, log)
     log.step(
         "telegram_partial_betting_card",
         str(result.get("status") or "unknown"),
@@ -1442,6 +1467,7 @@ def run_pregame(
             validation_status=exported.get("validation_status"),
             recommendations=len(exported.get("recommendations") or []),
         )
+    _send_featured_card(target_date, snapshot, log)
     return "complete"
 
 
@@ -1730,6 +1756,9 @@ def run_postgame(target_date: str, log: RunLog) -> str:
             performance_message = postgame_message(target_date, archive)
             board_has_bets = _record_roi_board(target_date, log)
             performance_message += "\n\n" + _steady_stop_text(target_date, log)
+            featured_text = _featured_postgame_text(target_date, log)
+            if featured_text:
+                performance_message += "\n\n" + featured_text
             performance_message += "\n\n" + _reliability_text(target_date, log)
         except ValueError as exc:
             warning = notify_once(
