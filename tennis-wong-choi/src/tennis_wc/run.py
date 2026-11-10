@@ -328,6 +328,72 @@ def review_day(match_date: str) -> dict:
             "pending_for_date": pending}
 
 
+FINISHED_AFTER_MINUTES = 90   # a best-of-three is rarely over sooner
+TICK_GIVES_UP_AFTER_HOURS = 12  # later than this the 09:00 / 18:00 runs take over
+
+
+def due_featured(conn, now: datetime) -> list[dict]:
+    """PENDING 精選 whose match (at its current start time) should be finished."""
+    from tennis_wc.select.featured import ensure_schema
+
+    ensure_schema(conn)
+    due = []
+    for r in conn.execute(
+        """SELECT f.prop_id, m.match_date, p.match_date AS prop_date, m.start_time_utc
+           FROM featured_picks f
+           JOIN prop_tracker p ON p.id = f.prop_id
+           JOIN matches m ON m.id = f.match_id
+           WHERE p.result_status = 'PENDING' AND m.start_time_utc IS NOT NULL"""
+    ).fetchall():
+        try:
+            start = datetime.fromisoformat(str(r["start_time_utc"]).replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if start.tzinfo is None:
+            continue
+        minutes = (now - start).total_seconds() / 60
+        if FINISHED_AFTER_MINUTES <= minutes <= TICK_GIVES_UP_AFTER_HOURS * 60:
+            due.append({"prop_id": int(r["prop_id"]),
+                        "dates": {d for d in (r["match_date"], r["prop_date"]) if d}})
+    return due
+
+
+def settle_finished_featured(now: datetime | None = None, *, fetch=None) -> dict:
+    """Hourly tick: fetch results and settle, only when a 精選 match should be over.
+
+    Before 2026-11-10 results were read at 09:00 / 18:00 / 21:00 / 23:00 only:
+    40 picks settled a median 8.1h after the start (1.7h to 16h). No network
+    call is made when nothing is due. Selection, prices and the forward-test
+    verdict are untouched: this only runs the existing settlement sooner.
+    """
+    from tennis_wc.settle.props import settle_props
+
+    now = now or datetime.now(timezone.utc)
+    with get_connection() as conn:
+        due = due_featured(conn, now)
+    summary: dict = {"due": len(due), "dates": [], "settled": 0, "errors": []}
+    if not due:
+        return summary
+    if fetch is None:
+        from tennis_wc.settle.results import fetch_results_for_date as fetch
+    summary["dates"] = sorted(set().union(*(d["dates"] for d in due)))
+    for day in summary["dates"]:
+        try:
+            fetch(day)
+        except Exception as exc:  # noqa: BLE001 - one bad date must not stop the others
+            summary["errors"].append(f"{day}: {type(exc).__name__}: {exc}")
+    ids = [d["prop_id"] for d in due]
+    with get_connection() as conn:
+        settle_props(conn)
+        marks = ",".join("?" for _ in ids)
+        still = conn.execute(
+            f"SELECT COUNT(*) FROM prop_tracker WHERE result_status = 'PENDING' AND id IN ({marks})", ids
+        ).fetchone()[0]
+    summary["settled"] = len(ids) - int(still)
+    summary["latest_date"] = summary["dates"][-1]
+    return summary
+
+
 def results_extracted(review: dict) -> bool:
     """Did the review see any result at all (or have nothing left to settle)?"""
     results = review.get("results") or {}

@@ -74,6 +74,9 @@ DOMAIN_LABELS: dict[str, dict[str, tuple[str, ...]]] = {
         "com.antigravity.tennis-wong-choi.night": (
             "tennis-wong-choi/scripts/tennis_daily_schedule.py",
         ),
+        "com.antigravity.tennis-wong-choi.settle": (
+            "tennis-wong-choi/scripts/tennis_settle_tick.py",
+        ),
     },
 }
 CENTRAL_LABELS = {

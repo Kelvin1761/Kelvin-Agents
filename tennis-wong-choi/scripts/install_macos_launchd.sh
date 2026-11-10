@@ -8,6 +8,7 @@ set -eu
 #   .daily    18:00 settles yesterday, ROI board, archive, warms tomorrow
 #   .recovery 10:30/12:30 reruns a failed 09:00 pass or a stale dashboard
 #   .preclose every 30 min: near-start price of each 精選 match (closing price)
+#   .settle   every hour at :35: settles finished 精選, redeploys if any settled
 #
 # Location-independent: WC_TENNIS_RUNTIME_ROOT points at the live data checkout
 # (database, .venv, logs); the scripts run from this checkout.
@@ -27,6 +28,7 @@ LABELS=(
   "com.antigravity.tennis-wong-choi.recovery"
   "com.antigravity.tennis-wong-choi.preclose"
   "com.antigravity.tennis-wong-choi.night"
+  "com.antigravity.tennis-wong-choi.settle"
 )
 
 RENDER_ONLY=0
@@ -44,8 +46,11 @@ elif [ "${1:-}" = "--preclose-only" ]; then
 elif [ "${1:-}" = "--night-only" ]; then
   # 21:00 精選 card + 23:00 top-up; safe to add without touching the others.
   LABELS=("com.antigravity.tennis-wong-choi.night")
+elif [ "${1:-}" = "--settle-only" ]; then
+  # Hourly 精選 settlement; safe to add without touching the others.
+  LABELS=("com.antigravity.tennis-wong-choi.settle")
 elif [ -n "${1:-}" ]; then
-  echo "Usage: $0 [--recovery-only|--preclose-only|--night-only|--render-only DEST]" >&2
+  echo "Usage: $0 [--recovery-only|--preclose-only|--night-only|--settle-only|--render-only DEST]" >&2
   exit 2
 fi
 
@@ -68,7 +73,8 @@ mkdir -p "$DEST_DIR" "$TENNIS_LOG_DIR"
 chmod +x "$PROJECT_DIR/scripts/run_tennis_daily_schedule.sh" \
          "$PROJECT_DIR/scripts/tennis_daily_schedule.py" \
          "$PROJECT_DIR/scripts/tennis_card_recovery.py" \
-         "$PROJECT_DIR/scripts/tennis_preclose_refresh.py"
+         "$PROJECT_DIR/scripts/tennis_preclose_refresh.py" \
+         "$PROJECT_DIR/scripts/tennis_settle_tick.py"
 
 install_one() {
   local label="$1"
@@ -114,6 +120,7 @@ echo "  09:00  card    — backup: prices TODAY, sends 補充精選 only when ne
 echo "  18:00  daily   — settles/reviews yesterday, archives, warms tomorrow"
 echo "  10:30 + 12:30 recovery — missing card or dashboard-only retry, maximum twice each"
 echo "  every 30 min  preclose — near-start odds capture for CLV (no card changes)"
+echo "  hourly at :35 settle   — settles finished 精選, redeploys the dashboard if any settled"
 echo "Logs: $TENNIS_LOG_DIR/"
 echo
 if [ "$RENDER_ONLY" -eq 1 ]; then

@@ -220,3 +220,90 @@ def test_preclose_tick_covers_today_and_tomorrow():
     summary = module.run_tick("2026-10-14", refresh=refresh)
     assert seen == ["2026-10-14", "2026-10-15"]
     assert summary["refreshed"] == 2 and summary["failed"] == 1
+
+
+# ---------------------------------------------------------------- hourly 精選 settlement
+
+def _pending_prop(conn, prop_id, status="PENDING"):
+    conn.execute(
+        """INSERT INTO prop_tracker (id, prop_key, match_id, match_date, match_label, market_key, line,
+               selection, decimal_odds, stake_units, is_value, result_status, recorded_at, updated_at)
+           VALUES (?, ?, ?, '2026-08-11', 'A vs B', 'player_win_a_set_1', 0.5, 'Yes', 2.0, 1.0, 1, ?, 'now', 'now')""",
+        (prop_id, f"k{prop_id}", prop_id, status),
+    )
+
+
+def test_settle_tick_only_fetches_when_a_featured_match_should_be_over(db, monkeypatch):
+    from tennis_wc import run
+    from tennis_wc.settle import props as settle_module
+
+    _match(db, 7)                                               # 12:00Z, due at 14:00Z
+    _match(db, 8, start="2026-08-11T13:30:00Z")                 # only 30 minutes in
+    _match(db, 9, start="2026-08-10T20:00:00Z", date="2026-08-10")  # 18h ago: left to the daily runs
+    _match(db, 10, start="2026-08-11T11:00:00Z")                # finished, but not featured
+    for i in (7, 8, 9, 10):
+        _pending_prop(db, i)
+    for i in (7, 8, 9):
+        _featured(db, i)
+    db.commit()
+    now = datetime(2026, 8, 11, 14, 0, tzinfo=timezone.utc)
+    fetched = []
+
+    def settle(conn, today=None):
+        conn.execute("UPDATE prop_tracker SET result_status='WON' WHERE id=7")
+        conn.commit()
+        return {"graded": 1}
+
+    monkeypatch.setattr(settle_module, "settle_props", settle)
+    summary = run.settle_finished_featured(now, fetch=fetched.append)
+    assert fetched == ["2026-08-11"]
+    assert summary["due"] == 1 and summary["settled"] == 1 and summary["latest_date"] == "2026-08-11"
+
+    # Nothing due any more: no fetch at all.
+    again = run.settle_finished_featured(now, fetch=fetched.append)
+    assert again["due"] == 0 and again["settled"] == 0 and fetched == ["2026-08-11"]
+
+
+def test_settle_tick_follows_a_rescheduled_start_and_survives_a_failed_fetch(db, monkeypatch):
+    from tennis_wc import run
+    from tennis_wc.settle import props as settle_module
+
+    _match(db, 7, start="2026-08-11T13:10:00Z", date="2026-08-12")  # pick frozen at 12:00Z, moved later
+    _pending_prop(db, 7)
+    _featured(db, 7)
+    db.commit()
+    monkeypatch.setattr(settle_module, "settle_props", lambda conn, today=None: {"graded": 0})
+    early = run.settle_finished_featured(datetime(2026, 8, 11, 14, 0, tzinfo=timezone.utc), fetch=lambda d: None)
+    assert early["due"] == 0, "50 minutes after the real start is too soon"
+
+    def boom(day):
+        raise RuntimeError("source down")
+
+    late = run.settle_finished_featured(datetime(2026, 8, 11, 15, 0, tzinfo=timezone.utc), fetch=boom)
+    assert late["due"] == 1 and late["settled"] == 0
+    assert late["dates"] == ["2026-08-11", "2026-08-12"] and len(late["errors"]) == 2
+
+
+def test_settle_tick_deploys_only_when_something_settled():
+    import importlib.util
+    import sys
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parents[1] / "scripts" / "tennis_settle_tick.py"
+    spec = importlib.util.spec_from_file_location("tennis_settle_tick_t", path)
+    module = importlib.util.module_from_spec(spec)
+    sys.path.insert(0, str(path.parent))
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        sys.path.remove(str(path.parent))
+    deployed = []
+
+    def deploy(day):
+        deployed.append(day)
+        return {"status": "deployed"}
+
+    quiet = module.run_tick(settle=lambda: {"due": 2, "settled": 0, "dates": ["2026-08-11"]}, deploy=deploy)
+    assert deployed == [] and "dashboard" not in quiet
+    done = module.run_tick(settle=lambda: {"due": 2, "settled": 1, "latest_date": "2026-08-11"}, deploy=deploy)
+    assert deployed == ["2026-08-11"] and done["dashboard"] == {"status": "deployed"}
