@@ -46,6 +46,9 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
     ForwardTest("under_edge", "大細盤 under：模型同去水價分歧 ≥8pp（紙上，300 注）",
                 "EXP-20261110-03 FU_EDGE", "docs/experiments/patches/nba_under/evaluate.py", "FU_EDGE",
                 "PASS（97.5% CI 下限 > 0）先考慮將精選門檻由 5pp 改 8pp（要新 RULE）；未過就記低"),
+    ForwardTest("pick_penalty", "穩膽揀中嘅腿，命中率係咪低過模型自己估嘅（對照：合資格但冇揀嘅腿）",
+                "EXP-20261111-01 P", "docs/experiments/patches/nba_pick_penalty/evaluate.py", "P",
+                "PASS = 揀腿規則本身拖低命中，下一步係預先登記一個新揀腿規則再比；未過 = 冇證據，穩膽規則唔郁"),
 )
 
 
@@ -73,6 +76,12 @@ def _numbers(test: ForwardTest, result: dict) -> str:
         hit = result.get("hit_rate")
         return (f"{result.get('n_bets')} 注、{result.get('days')} 日；命中 {'N/A' if hit is None else f'{hit * 100:.1f}%'}；"
                 f"平注 ROI {pct(result.get('roi'))} [{pct(ci[0])}, {pct(ci[1])}]")
+    if test.test == "P":
+        picked, control = result.get("picked") or {}, result.get("control") or {}
+        rate = lambda side, key: "N/A" if side.get(key) is None else f"{side[key] * 100:.1f}%"  # noqa: E731
+        return (f"揀中 {result.get('n_flagged')} 腿（中 {rate(picked, 'hit_rate')}、模型 {rate(picked, 'model')}、差一 {rate(picked, 'near_miss_rate')}）；"
+                f"對照 {control.get('n')} 腿（中 {rate(control, 'hit_rate')}、模型 {rate(control, 'model')}）；"
+                f"殘差差距 {fmt(result.get('primary_delta_resid'))} [{fmt(ci[0])}, {fmt(ci[1])}]")
     if test.test == "M":
         return (f"有旗標 {result.get('n_flagged')}／{result.get('n_legs')} 腿；"
                 f"（實際−模型）差 {fmt(result.get('primary_delta_resid'))} [{fmt(ci[0])}, {fmt(ci[1])}]")
@@ -115,7 +124,7 @@ def summary_line(report: dict) -> str:
         elif test.test.startswith("F"):
             parts.append(f"{test.experiment} {item.get('bets')}/{item['checkpoint']['bets']} 注"
                          + (" ✅" if item.get("ready") else ""))
-        elif test.test == "M":
+        elif test.test in ("M", "P"):
             parts.append(f"{test.experiment} {item.get('days')}/{item['checkpoint']['days']} 日、"
                          f"{item.get('flagged_legs')}/{item['checkpoint']['flagged_legs']} 腿"
                          + (" ✅" if item.get("ready") else ""))
