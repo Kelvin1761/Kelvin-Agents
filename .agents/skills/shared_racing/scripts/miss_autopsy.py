@@ -198,6 +198,22 @@ def crowd_context(verdict: dict, platform: str = "au") -> dict:
             "top1_top3_gap": gap3, "top1_top2_gap": gap2}
 
 
+def _current_pf_coverage(stored: dict, horses: dict, platform: str) -> dict:
+    """舊 Logic（EXP-20261110-05 之前）嘅 PF 覆蓋將初出馬當缺數據；用現行規則由同一份 Logic 重算。
+
+    新 Logic 有 `debut_excluded`，照用儲存值。唔係 AU、或者舊檔冇 provenance（`pct` 係 None）都唔郁。
+    規則只有一份：`au_racing_engine.renderer._pace_figure_coverage`。
+    """
+    if platform != "au" or "debut_excluded" in stored or stored.get("pct") is None:
+        return stored
+    scripts = HERE.parents[1] / "au_racing" / "au_wong_choi_auto" / "scripts"
+    if str(scripts) not in sys.path:
+        sys.path.insert(0, str(scripts))
+    from au_racing_engine.renderer import _pace_figure_coverage
+    current = _pace_figure_coverage(horses)
+    return stored if current.get("status") == "unavailable" else current
+
+
 def classify_race(race_num: int, logic: dict, predictions: list[dict], actual_rows: list[dict],
                   *, health_issues: list | None = None, dropped_rows: int = 0,
                   platform: str = "au") -> dict:
@@ -212,7 +228,7 @@ def classify_race(race_num: int, logic: dict, predictions: list[dict], actual_ro
     triggers: list[dict] = []
     if health_issues:
         triggers.append({"rule": "data_health_issue", "value": health_issues[:5]})
-    pf = verdict.get("pace_figure_coverage") or {}
+    pf = _current_pf_coverage(verdict.get("pace_figure_coverage") or {}, horses, platform)
     if pf.get("alert"):
         triggers.append({"rule": "pace_figure_alert", "value": pf.get("pct")})
     swap = (verdict.get("decision_trace") or {}).get("thin_evidence_swap")
@@ -257,6 +273,17 @@ def classify_race(race_num: int, logic: dict, predictions: list[dict], actual_ro
     }
 
 
+def _evaluated_label(snapshot: Path | None, meeting_dir: Path) -> str:
+    """快照過咗 14 日會搬去外置碟（唔再喺場次目錄之下）—— 以前 `relative_to` 會直接拋 ValueError，
+    令舊場次重跑唔到（EXP-20261110-05）。"""
+    if not snapshot:
+        return "meeting_dir（搵唔到賽前快照）"
+    try:
+        return str(Path(snapshot).relative_to(meeting_dir))
+    except ValueError:
+        return f"已歸檔快照 {Path(snapshot).parent.name}/{Path(snapshot).name}"
+
+
 def autopsy_meeting(platform: str, meeting_dir: Path) -> dict:
     meeting_dir = Path(meeting_dir)
     results_file = core.find_existing_results_file(platform, meeting_dir)
@@ -268,7 +295,7 @@ def autopsy_meeting(platform: str, meeting_dir: Path) -> dict:
     # 開跑後重評（2026-10-07 跑馬地 21:05 HKT 重評，第一場 18:35）。
     snapshot, _created, _post = core.select_prerace_snapshot(meeting_dir, platform)
     analysis_dir = snapshot or meeting_dir
-    base["evaluated"] = str(analysis_dir.relative_to(meeting_dir)) if snapshot else "meeting_dir（搵唔到賽前快照）"
+    base["evaluated"] = _evaluated_label(snapshot, meeting_dir)
     results = core.load_structured_results(platform, Path(results_file))
     predictions = core.load_prediction_rows(analysis_dir, platform)
     health = _data_health_issues(analysis_dir if (analysis_dir / "Data_Health.json").exists() else meeting_dir)

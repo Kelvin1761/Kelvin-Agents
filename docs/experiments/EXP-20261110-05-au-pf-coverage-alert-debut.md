@@ -1,6 +1,7 @@
-# EXP-20261110-03 AU PF 覆蓋警報唔再將初出馬當缺數據（診斷修正，排名零差）
+# EXP-20261110-05 AU PF 覆蓋警報唔再將初出馬當缺數據（診斷修正，排名零差）
 
 - **日期**：2026-11-10；**平台**：AU；**baseline**：`e1789a5d`（origin/main）。
+- **編號**：第一次發佈（`51cd15eb`）用咗 `EXP-20261110-03`，同 tennis 一份記錄撞號；code 註解仲寫錯做 -02。全部改為 -05。
 - **類別**：診斷／報告層修正。**唔係模型改動，唔聲稱任何準確度改善。**
 - **來由**：全面掃描 AU 時，失手體檢嘅 `pace_figure_alert` 由每週約 13–27 場升到 38–50 場（W43 起）。
 
@@ -50,7 +51,34 @@ python3 -m pytest -q .agents/skills/au_racing/au_wong_choi_auto/tests/test_confi
 ./檢查.sh
 ```
 
+## 跟進（同日）
+
+### 細場地 L600 缺口：來源本身冇，唔係管線問題
+
+用 11-02 之後抽嘅 Formguide（`RaceL600:` 原始秒數由 11-01 起先有寫）數去重後嘅往績賽事：
+
+- 13,451 場往績賽事：有原始 L600 87.4%、有 `L600 Delta` 87.3%。
+- **有原始秒數但計唔到 delta（標準表缺口）只有 20 場（0.2%）** → 標準表唔係問題。
+- 冇原始秒數嘅集中喺 18 個場地（共 547 場）：Port Lincoln 96/100、Mount Gambier 71/72、Port Augusta 47/47、
+  Moree 40/40、Armidale 38/38、Naracoorte 35/35、Oakbank、Wellington、Bordertown、Penola、Goondiwindi、Richmond、
+  Clare、Gladstone、Deniliquin，同海外（Ellerslie、Curragh、Leopardstown）。
+- 睇 cache 入面嘅 Sportsbet 原始頁：Port Lincoln 10-25 R7、10-04 R3 有 `Winning Time`、走位、頭三名，
+  **但成段冇 `Sectionals 600m`**；同一頁 Balaklava／Morphettville 嘅往績就有。即係 Sportsbet 冇公佈，唔係 regex 漏。
+
+結論：呢啲場地嘅馬 L600 環境分中性 60 係啱嘅處理；要補就要新來源，唔喺今次範圍。警報照出係應該嘅。
+
+### 失手體檢歷史重寫
+
+- `miss_autopsy._current_pf_coverage`：舊 Logic（儲存嘅覆蓋冇 `debut_excluded`）用現行規則由同一份賽前快照重算；
+  新 Logic 照用儲存值；HKJC 唔郁。規則只有一份（`renderer._pace_figure_coverage`）。
+- **順手修咗一個 crash**：快照過咗 14 日搬咗去外置碟之後，`analysis_dir.relative_to(meeting_dir)` 拋 ValueError ——
+  358 個場次有 260 個重跑唔到。每晚排程只跑新場次所以一直冇人見到。
+- 唔寫入先比對全部 358 個場次（1,888 場失手）：199 場 `pace_figure_alert` 消失
+  （48 場轉「模型判錯」、9 場轉「分數擠迫」、142 場因其他規則留喺「輸入有問題」）；2 場新增警報；
+  其餘 4 場嘅差異係賽果後來修正過（`unscored_placegetter`），同今次無關，**嗰 4 個場次冇重寫**。
+- 發佈之後用已發佈嘅 code 重寫 ledger；舊 ledger 備份喺資料根 `AU_Miss_Autopsy.jsonl.bak_20261110`。
+
 ## 未做
 
-- 細場地（Port Lincoln 等）L600 環境數據缺口未查原因。
-- 歷史 `AU_Miss_Autopsy.jsonl` 冇重寫；W43–W45 嘅 `pace_figure_alert` 數字仍然係舊口徑。
+- 冇 600m 段速嘅場地冇替代來源。
+- 4 個賽果後來修正過嘅場次（09-10 Warwick、09-12 Doomben、10-03 Flemington、10-03 Randwick）ledger 冇重寫。

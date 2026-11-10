@@ -45,6 +45,16 @@ PREDS = _preds([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
 MISS = _actual([7, 8, 9])
 
 
+class EvaluatedLabelTests(unittest.TestCase):
+    def test_offloaded_snapshot_outside_meeting_dir_does_not_raise(self):
+        meeting = Path("/data/AU/Archive/2026-10-25 Port Lincoln Race 1-8")
+        offloaded = Path("/Volumes/X/prediction-snapshots/au") / meeting.name / "_prediction_snapshots" / "20261025T10"
+        self.assertEqual(ma._evaluated_label(offloaded, meeting), "已歸檔快照 _prediction_snapshots/20261025T10")
+        self.assertEqual(ma._evaluated_label(meeting / "_prediction_snapshots" / "s1", meeting),
+                         "_prediction_snapshots/s1")
+        self.assertIn("搵唔到賽前快照", ma._evaluated_label(None, meeting))
+
+
 class ClassifyTests(unittest.TestCase):
     def test_clean_inputs_clear_margin_is_model_wrong(self):
         self.assertEqual(ma.classify_race(1, _logic(), PREDS, MISS)["bucket"], "model_wrong")
@@ -62,6 +72,36 @@ class ClassifyTests(unittest.TestCase):
         entry = ma.classify_race(1, _logic(tier="tight", pf_alert=True), PREDS, MISS)
         self.assertEqual(entry["bucket"], "input_anomaly")
         self.assertEqual({t["rule"] for t in entry["triggers"]}, {"pace_figure_alert", "tight"})
+
+    def _old_format_logic(self, *, debut_missing):
+        """舊 Logic：儲存嘅 PF 覆蓋冇 `debut_excluded`，兩匹缺 PF 嘅馬被計入分母。"""
+        logic = _logic(pf_alert=True)
+        for h, horse in logic["horses"].items():
+            missing = int(h) >= 9
+            horse["career_race_starts"] = 0 if (missing and debut_missing) else 5
+            horse["python_auto"]["score_provenance"] = {
+                "pace_figure_score": "missing_neutral" if missing else "pf_l600_delta_field_relative"}
+        return logic
+
+    def test_old_format_pf_alert_from_first_starters_is_dropped(self):
+        entry = ma.classify_race(1, self._old_format_logic(debut_missing=True), PREDS, MISS)
+        self.assertEqual(entry["bucket"], "model_wrong")
+        self.assertEqual(entry["triggers"], [])
+
+    def test_old_format_pf_alert_from_raced_horses_is_kept(self):
+        entry = ma.classify_race(1, self._old_format_logic(debut_missing=False), PREDS, MISS)
+        self.assertEqual(entry["bucket"], "input_anomaly")
+        self.assertEqual([t["rule"] for t in entry["triggers"]], ["pace_figure_alert"])
+
+    def test_new_format_pf_coverage_is_trusted_as_stored(self):
+        logic = self._old_format_logic(debut_missing=True)
+        logic["python_auto_verdict"]["pace_figure_coverage"]["debut_excluded"] = 0
+        self.assertEqual(ma.classify_race(1, logic, PREDS, MISS)["bucket"], "input_anomaly")
+
+    def test_hkjc_never_recomputes_pf_coverage(self):
+        logic = self._old_format_logic(debut_missing=True)
+        entry = ma.classify_race(1, logic, PREDS, MISS, platform="hkjc")
+        self.assertIn("pace_figure_alert", [t["rule"] for t in entry["triggers"]])
 
     def test_thin_placegetter_needs_four_weak_leaves(self):
         """≥2 會喺 28% 馬匹觸發（太鬆）；門檻係 4。"""

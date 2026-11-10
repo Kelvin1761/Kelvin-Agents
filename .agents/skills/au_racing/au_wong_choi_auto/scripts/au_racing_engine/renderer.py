@@ -224,7 +224,7 @@ def _pace_figure_coverage(horses: dict) -> dict:
 
     初出馬（`career_race_starts == 0`）唔計入分母：佢哋冇正式往績，PF 本來就冇得計，
     唔係數據缺失。2026-10 中試閘速度搬去試閘備戰之後初出馬 100% 冇 PF，
-    10-19 → 11-09 有 76% 嘅警報純粹因為初出馬（EXP-20261110-02）。
+    10-19 → 11-09 有 76% 嘅警報純粹因為初出馬（EXP-20261110-05）。
     `career_race_starts` 缺失 = 唔知 → 照計（唔會靜靜收埋真缺失）。
     """
     missing_labels = {"missing_neutral", "no_spread"}
