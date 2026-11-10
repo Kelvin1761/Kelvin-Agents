@@ -39,6 +39,7 @@ PYTHONPATH=src .venv/bin/python -m pytest -q
 | 18:00 | settle yesterday, ROI board, archive, warm tomorrow; Sundays the timing check | ROI board row (if settled picks); weekly check to Kelvin |
 | 10:30, 12:30 | recovery of a failed 09:00 run | failures only |
 | every 30 min | near-start price capture for 精選 matches | none |
+| hourly at :35 | settle 精選 whose match started 90 min–12 h ago; redeploy the dashboard only if one settled | none |
 
 Install: `WC_TENNIS_RUNTIME_ROOT=<live checkout>/tennis-wong-choi scripts/install_macos_launchd.sh`.
 
