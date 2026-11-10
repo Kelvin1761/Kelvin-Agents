@@ -37,7 +37,10 @@
   flag must not swap or rescore them.
 - `python_auto_verdict.pace_figure_coverage` is a data-quality gate only. It
   alerts below 90% race-level PF coverage when provenance is available; unknown
-  legacy provenance must not produce a false alert.
+  legacy provenance must not produce a false alert. First starters
+  (`career_race_starts == 0`) are excluded from the denominator — they have no
+  official runs, so a missing PF is expected, not a data fault
+  (EXP-20261110-02). An all-debut race reports `status = "all_debut"`.
 - `python_auto_verdict.decision_trace` must record the clean-7D pre/post order.
   Under this contract the orders are identical and `changed=false`; any future
   reranker must make its change and reason explicit.

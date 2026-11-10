@@ -415,3 +415,4 @@
 - [EXP-20261110-01](EXP-20261110-01-nba-featured-ou-forward-protocol.md) — NBA 大細盤精選紙上盤（每場一注、每日最多 10 注）forward 登記；F250 中期／F1000 終判，dashboard 獨立顯示。
 - [EXP-20261109-04](EXP-20261109-04-nba-minutes-risk-and-late-receivers-protocol.md) — NBA forward 預先登記：M 上場時間風險、T 臨場缺陣接手隊友；只用 11-10 起數據，`nba_forward_tracker` 夠數自動判一次＋Telegram。
 - [EXP-20261109-03](EXP-20261109-03-hkjc-weight-refit-ml.md) — HKJC 外層權重 walk-forward refit（τ／free）＋ML（條件 logit、GBM）：**全部 REJECT，維持現行**。三個擬合一致話形勢偏高（有效份額 ~21% vs 29%）、狀態偏低、級數偏低，但冇一個 out-of-sample 贏；GBM 最差（Gold −2.89pp CI 全負）。
+- [EXP-20261110-03](EXP-20261110-03-au-pf-coverage-alert-debut.md) — AU PF 覆蓋警報唔再將初出馬當缺數據（診斷修正，排名零差）：試閘速度搬走後初出馬 100% 冇 PF，舊警報 402 場 → 92 場；剩低真缺口集中 Port Lincoln 等細場地，未修
