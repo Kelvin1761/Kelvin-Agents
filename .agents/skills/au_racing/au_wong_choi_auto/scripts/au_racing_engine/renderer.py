@@ -220,10 +220,19 @@ def ensure_verdict(logic_data: dict) -> dict:
 
 
 def _pace_figure_coverage(horses: dict) -> dict:
-    """Summarise race-level PF provenance without mistaking unknown legacy data for missing."""
+    """Summarise race-level PF provenance without mistaking unknown legacy data for missing.
+
+    初出馬（`career_race_starts == 0`）唔計入分母：佢哋冇正式往績，PF 本來就冇得計，
+    唔係數據缺失。2026-10 中試閘速度搬去試閘備戰之後初出馬 100% 冇 PF，
+    10-19 → 11-09 有 76% 嘅警報純粹因為初出馬（EXP-20261110-02）。
+    `career_race_starts` 缺失 = 唔知 → 照計（唔會靜靜收埋真缺失）。
+    """
     missing_labels = {"missing_neutral", "no_spread"}
-    known = covered = 0
+    known = covered = debut_excluded = 0
     for horse in horses.values():
+        if isinstance(horse, dict) and horse.get("career_race_starts") == 0:
+            debut_excluded += 1
+            continue
         auto = horse.get("python_auto") if isinstance(horse, dict) else None
         provenance = auto.get("score_provenance") if isinstance(auto, dict) else None
         if not isinstance(provenance, dict) or "pace_figure_score" not in provenance:
@@ -231,16 +240,26 @@ def _pace_figure_coverage(horses: dict) -> dict:
         known += 1
         if str(provenance.get("pace_figure_score") or "") not in missing_labels:
             covered += 1
+    eligible = len(horses) - debut_excluded
     pct = (100.0 * covered / known) if known else None
-    enough_evidence = known >= max(1, (len(horses) + 1) // 2)
+    enough_evidence = known >= max(1, (eligible + 1) // 2)
     alert = bool(enough_evidence and pct is not None and pct < 90.0)
+    if alert:
+        status = "low"
+    elif pct is not None:
+        status = "ok"
+    elif horses and eligible == 0:
+        status = "all_debut"
+    else:
+        status = "unavailable"
     return {
         "covered": covered,
         "known": known,
         "field_size": len(horses),
+        "debut_excluded": debut_excluded,
         "pct": round(pct, 1) if pct is not None else None,
         "alert": alert,
-        "status": "low" if alert else ("ok" if pct is not None else "unavailable"),
+        "status": status,
     }
 
 
@@ -415,9 +434,13 @@ def _confidence_tier_text(verdict) -> str:
 
 def _pace_figure_coverage_text(verdict) -> str:
     coverage = verdict.get("pace_figure_coverage")
+    if isinstance(coverage, dict) and coverage.get("status") == "all_debut":
+        return "全場初出，冇正式往績可計 PF"
     if not isinstance(coverage, dict) or coverage.get("pct") is None:
         return "舊檔未有 provenance，未能量度"
-    label = f"{coverage['pct']:.1f}%（{coverage['covered']}/{coverage['known']}）"
+    debut = coverage.get("debut_excluded") or 0
+    debut_note = f"，初出 {debut} 匹唔計" if debut else ""
+    label = f"{coverage['pct']:.1f}%（{coverage['covered']}/{coverage['known']}{debut_note}）"
     if coverage.get("alert"):
         return f"⚠️ {label}，低過 90% live gate"
     return f"✅ {label}"

@@ -74,6 +74,51 @@ class ConfidenceRadarTests(unittest.TestCase):
         self.assertTrue(coverage["alert"])
         self.assertEqual(coverage["status"], "low")
 
+    def test_first_starters_are_not_counted_as_missing_pf(self) -> None:
+        logic = _logic([66.0, 64.0, 63.0, 61.0, 60.0])
+        for idx, horse in enumerate(logic["horses"].values()):
+            horse["career_race_starts"] = 0 if idx >= 3 else 5
+            horse["python_auto"]["score_provenance"] = {
+                "pace_figure_score": "measured" if idx < 3 else "missing_neutral"
+            }
+        coverage = ensure_verdict(logic)["pace_figure_coverage"]
+        self.assertEqual((coverage["covered"], coverage["known"]), (3, 3))
+        self.assertEqual(coverage["debut_excluded"], 2)
+        self.assertFalse(coverage["alert"])
+        self.assertEqual(coverage["status"], "ok")
+
+    def test_unknown_career_starts_still_counts_missing_pf(self) -> None:
+        logic = _logic([66.0, 64.0, 63.0, 61.0, 60.0])
+        for idx, horse in enumerate(logic["horses"].values()):
+            horse["python_auto"]["score_provenance"] = {
+                "pace_figure_score": "measured" if idx < 3 else "missing_neutral"
+            }
+        coverage = ensure_verdict(logic)["pace_figure_coverage"]
+        self.assertEqual(coverage["debut_excluded"], 0)
+        self.assertTrue(coverage["alert"])
+
+    def test_missing_pf_on_raced_horse_still_alerts_beside_debuts(self) -> None:
+        logic = _logic([66.0, 64.0, 63.0, 61.0, 60.0])
+        for idx, horse in enumerate(logic["horses"].values()):
+            horse["career_race_starts"] = 0 if idx == 4 else 3
+            horse["python_auto"]["score_provenance"] = {
+                "pace_figure_score": "missing_neutral" if idx >= 3 else "measured"
+            }
+        coverage = ensure_verdict(logic)["pace_figure_coverage"]
+        self.assertEqual((coverage["covered"], coverage["known"]), (3, 4))
+        self.assertTrue(coverage["alert"])
+
+    def test_all_debut_race_is_labelled_not_legacy(self) -> None:
+        from au_racing_engine.renderer import _pace_figure_coverage_text
+        logic = _logic([66.0, 64.0, 63.0])
+        for horse in logic["horses"].values():
+            horse["career_race_starts"] = 0
+            horse["python_auto"]["score_provenance"] = {"pace_figure_score": "missing_neutral"}
+        verdict = ensure_verdict(logic)
+        self.assertEqual(verdict["pace_figure_coverage"]["status"], "all_debut")
+        self.assertFalse(verdict["pace_figure_coverage"]["alert"])
+        self.assertIn("全場初出", _pace_figure_coverage_text(verdict))
+
     def test_legacy_logic_without_provenance_is_not_false_alerted(self) -> None:
         logic = _logic([66.0, 64.0, 63.0])
         coverage = ensure_verdict(logic)["pace_figure_coverage"]
