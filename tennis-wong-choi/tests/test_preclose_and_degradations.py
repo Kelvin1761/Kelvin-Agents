@@ -284,6 +284,22 @@ def test_settle_tick_follows_a_rescheduled_start_and_survives_a_failed_fetch(db,
     assert late["dates"] == ["2026-08-11", "2026-08-12"] and len(late["errors"]) == 2
 
 
+def test_settle_tick_also_fetches_the_utc_day_the_match_started_on(db, monkeypatch):
+    from tennis_wc import run
+    from tennis_wc.settle import props as settle_module
+
+    # 01:00 Sydney on the 12th = 14:00 UTC on the 11th; the card date is the 12th.
+    _match(db, 7, start="2026-08-11T14:00:00Z", date="2026-08-12")
+    _pending_prop(db, 7)
+    db.execute("UPDATE prop_tracker SET match_date='2026-08-12' WHERE id=7")
+    _featured(db, 7)
+    db.commit()
+    monkeypatch.setattr(settle_module, "settle_props", lambda conn, today=None: {"graded": 0})
+    fetched = []
+    run.settle_finished_featured(datetime(2026, 8, 11, 16, 0, tzinfo=timezone.utc), fetch=fetched.append)
+    assert fetched == ["2026-08-11", "2026-08-12"]
+
+
 def test_settle_tick_deploys_only_when_something_settled():
     import importlib.util
     import sys

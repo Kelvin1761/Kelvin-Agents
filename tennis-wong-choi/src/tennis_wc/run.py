@@ -353,8 +353,13 @@ def due_featured(conn, now: datetime) -> list[dict]:
             continue
         minutes = (now - start).total_seconds() / 60
         if FINISHED_AFTER_MINUTES <= minutes <= TICK_GIVES_UP_AFTER_HOURS * 60:
+            # Also the UTC day the match started on: a 01:00 Sydney start is the
+            # previous day in Europe, and TennisExplorer files it there. On
+            # 2026-11-11 seven of ten picks waited for the 09:00 run because
+            # only the Sydney date was fetched.
             due.append({"prop_id": int(r["prop_id"]),
-                        "dates": {d for d in (r["match_date"], r["prop_date"]) if d}})
+                        "dates": {d for d in (r["match_date"], r["prop_date"],
+                                              start.astimezone(timezone.utc).date().isoformat()) if d}})
     return due
 
 
