@@ -179,7 +179,11 @@ def export_tennis_tracking(db_path):
                     "tier": f"精選 #{f.get('rank')}",
                 }
                 record = make(row, f"tennis:featured:{f.get('prop_id')}", "featured")
+                # The card day is frozen with the pick. A match rescheduled past
+                # midnight Sydney must not move yesterday's pick (and its result)
+                # into today's card: 2026-11-10 showed 11 picks for a 10-a-day cap.
                 record.update(
+                    day=f.get("match_date") or record["day"],
                     featured=True,
                     featured_rank=f.get("rank"),
                     sportsbet_market=f.get("feed_market_name") or None,

@@ -160,6 +160,30 @@ def test_featured_picks_use_frozen_odds_and_stay_separate(tmp_path):
     assert len([r for r in out["records"] if r["kind"] == "prop"]) == 1
 
 
+def test_featured_pick_keeps_its_card_day_when_the_match_is_rescheduled(tmp_path):
+    path = tmp_path / "db"
+    c = database(path)
+    prop(c, 1)
+    c.execute(
+        "CREATE TABLE featured_picks(id INTEGER PRIMARY KEY,prop_id INTEGER,match_id INTEGER,"
+        "match_date TEXT,rank INTEGER,run_label TEXT,market_key TEXT,selection TEXT,match_label TEXT,"
+        "feed_market_name TEXT,feed_selection_name TEXT,start_time_utc TEXT,odds REAL,edge REAL,"
+        "ev REAL,model_prob REAL,featured_at TEXT)"
+    )
+    c.execute(
+        "INSERT INTO featured_picks VALUES(1,1,1,'2026-10-27',10,'09:00','first_set_winner_1','Player A',"
+        "'Player A vs Player B','Set 1 Winner','Player A','2026-10-27T10:20:00Z',2.1,0.2,0.1,0.5,"
+        "'2026-10-26T10:00:00Z')"
+    )
+    # Rain delay: 21:20 Sydney on the 27th becomes 00:10 on the 28th.
+    c.execute("UPDATE matches SET start_time_utc='2026-10-27T13:10:00Z', match_date='2026-10-28' WHERE id=1")
+    c.commit()
+    c.close()
+    (pick,) = [r for r in export_tennis_tracking(path)["records"] if r["kind"] == "featured"]
+    assert pick["day"] == "2026-10-27"
+    assert pick["start_time_utc"].startswith("2026-10-27T13:10")  # the real start is still shown
+
+
 def test_missing_featured_table_adds_no_warning(tmp_path):
     path = tmp_path / "db"
     c = database(path)
