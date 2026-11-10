@@ -1,0 +1,35 @@
+dev 8850 holdout 7311 今季 1183
+
+== dev 時間 fold ΔMAE 對 baseline（負 = 好）
+  shrink+rest+spread+role+pool_prev                              -0.067 -0.067 -0.075 -0.102  全負 True
+  shrink                                                         -0.073 +0.004 -0.010 -0.061  全負 False
+  shrink+rest                                                    -0.083 -0.019 -0.037 -0.092  全負 True
+  shrink+rest+spread                                             -0.081 -0.031 -0.038 -0.109  全負 True
+  shrink+rest+total                                              -0.081 -0.025 -0.043 -0.085  全負 True
+  shrink+rest+role                                               -0.074 -0.058 -0.069 -0.089  全負 True
+  shrink+rest+pool_prev                                          -0.083 -0.017 -0.040 -0.099  全負 True
+  shrink+rest+spread+total+role+pool_prev                        -0.064 -0.073 -0.080 -0.095  全負 True
+  shrink+rest+spread+total+role+pool_prev+pool_today             -0.096 -0.097 -0.094 -0.121  全負 True
+  shrink+rest+spread+total+role+pool_prev+pool_today+starts_today -0.216 -0.361 -0.238 -0.268  全負 True
+
+== dev 擬合 → holdout（上季尾段）／今季
+  shrink+rest+spread+role+pool_prev                              | holdout 4.948→4.847 Δ-0.102 [-0.140,-0.062] | 今季 4.430→4.344 Δ-0.085 [-0.122,-0.044]
+  shrink                                                         | holdout 4.948→4.911 Δ-0.037 [-0.065,-0.008] | 今季 4.430→4.415 Δ-0.015 [-0.045,+0.020]
+  shrink+rest                                                    | holdout 4.948→4.894 Δ-0.054 [-0.085,-0.022] | 今季 4.430→4.414 Δ-0.016 [-0.043,+0.027]
+  shrink+rest+spread                                             | holdout 4.948→4.868 Δ-0.080 [-0.114,-0.042] | 今季 4.430→4.398 Δ-0.032 [-0.079,+0.024]
+  shrink+rest+total                                              | holdout 4.948→4.893 Δ-0.056 [-0.086,-0.023] | 今季 4.430→4.413 Δ-0.017 [-0.044,+0.027]
+  shrink+rest+role                                               | holdout 4.948→4.878 Δ-0.071 [-0.105,-0.033] | 今季 4.430→4.365 Δ-0.065 [-0.082,-0.040]
+  shrink+rest+pool_prev                                          | holdout 4.948→4.881 Δ-0.067 [-0.099,-0.034] | 今季 4.430→4.405 Δ-0.025 [-0.052,+0.018]
+  shrink+rest+spread+total+role+pool_prev                        | holdout 4.948→4.844 Δ-0.104 [-0.143,-0.064] | 今季 4.430→4.345 Δ-0.085 [-0.115,-0.040]
+  shrink+rest+spread+total+role+pool_prev+pool_today             | holdout 4.948→4.774 Δ-0.175 [-0.226,-0.125] | 今季 4.430→4.330 Δ-0.100 [-0.148,-0.041]
+  shrink+rest+spread+total+role+pool_prev+pool_today+starts_today | holdout 4.948→4.552 Δ-0.396 [-0.467,-0.328] | 今季 4.430→4.107 Δ-0.323 [-0.419,-0.208]
+
+== 尾部（holdout，as-of 全模型）：預測比 baseline 低/高 最多嘅 10%
+  模型話會打少（最低 10%）         n=  732 模型調整 -3.01 實際−baseline -1.85 分鐘；打少過 75% 佔 22%；打多過 125% 佔 10%
+  中間 80%                 n= 5847 模型調整 -0.16 實際−baseline +0.01 分鐘；打少過 75% 佔 14%；打多過 125% 佔 14%
+  模型話會打多（最高 10%）         n=  732 模型調整 +2.29 實際−baseline +2.90 分鐘；打少過 75% 佔 8%；打多過 125% 佔 31%
+  rest {'b2b': 1.087, 'b2b×主力': -1.392, '休>7日': -2.498, '缺席上一場': -0.825}
+  spread {'讓分×主力': -0.034, '讓分×輪換': 0.096, '讓分': -0.022, 'max(讓分−8,0)×主力': -0.084, '熱門×讓分×主力': -0.025}
+  total {'(總分−225)/10': -0.182}
+  role {'上場正選': 0.847, '近5場正選比例': 0.16, '角色變化': 0.687}
+  pool_prev {'上場缺陣時間池': 0.002, '×輪換': 0.003}
