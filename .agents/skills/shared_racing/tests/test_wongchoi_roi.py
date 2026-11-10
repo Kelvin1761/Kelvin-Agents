@@ -29,6 +29,7 @@ def test_board_shows_only_bets_hits_roi_and_pct_for_every_wong_choi(tmp_path):
     assert "🇦🇺 AU 賽馬\n  昨日（11-04）：8 注｜中 5｜ROI +1.20u｜+15.0%" in text
     assert "  累計（2026-08-12 起）：18 注｜中 9｜ROI −1.30u｜−7.2%" in text
     # 冇紀錄嘅旺財照列，等兩個人知佢未有數，唔係漏咗。
+    assert "🏀 NBA SGM\n  未有紀錄" in text
     assert "🏀 NBA 大細盤精選（紙上盤）\n  未有紀錄" in text
     assert "合共累計：75 注｜中 38｜ROI −6.07u｜−8.1%" in text or \
         "合共累計：75 注｜中 38｜ROI −6.06u｜−8.1%" in text

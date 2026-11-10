@@ -41,7 +41,8 @@ HERE = Path(__file__).resolve().parent
 # 顯示次序 = 呢個 tuple 嘅次序。加新旺財只要加一行。
 DOMAINS: tuple[tuple[str, str], ...] = (
     ("au", "🇦🇺 AU 賽馬"),
-    ("nba", "🏀 NBA 大細盤精選（紙上盤）"),
+    ("nba", "🏀 NBA SGM"),
+    ("nba_featured", "🏀 NBA 大細盤精選（紙上盤）"),
     ("tennis", "🎾 網球"),
 )
 DOMAIN_LABELS = dict(DOMAINS)
@@ -217,7 +218,7 @@ def render(*, updated: str | None = None, today: str | None = None,
     for key, label in DOMAINS:
         entry = data["domains"].get(key)
         lines.append("")
-        lines.append(label + (" 🆕" if key == updated else ""))
+        lines.append(label + (" 🆕" if updated and key.split("_")[0] == updated else ""))
         if not entry:
             lines.append("  未有紀錄")
             continue

@@ -20,7 +20,7 @@ def test_export_copies_board_days_and_marks_domains_without_days(tmp_path):
     }}), encoding='utf-8')
     board = export_roi_board(ledger)
     assert board['status'] == 'valid'
-    assert list(board['domains']) == ['au', 'nba', 'tennis']
+    assert list(board['domains']) == ['au', 'nba', 'nba_featured', 'tennis']
     au = board['domains']['au']
     assert list(au['days']) == ['2026-11-05', '2026-11-06']
     # A row without stake is flat 1u per bet, as on the board itself.

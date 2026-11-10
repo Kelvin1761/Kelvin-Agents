@@ -687,29 +687,10 @@ class NbaDailyScheduleTests(unittest.TestCase):
             schedule.send_partial_betting_card("2026-10-29", Path(tmp) / "s", ["LAL_LAC"], _Log())
         notify.assert_not_called()
 
-    # ── Kelvin 2026-11-10: 大細盤精選 replaces the SGM card from 2026-11-11 ──────────
+    # ── Kelvin 2026-11-10: SGM card stays daily; 大細盤精選 follows it; the board tracks both ──
 
-    def test_retired_sgm_partial_card_sends_only_the_featured_card(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(
-            schedule, "export_nba_snapshot"
-        ) as exported, mock.patch.object(
-            schedule, "notify_once", return_value={"ok": True, "status": "sent"}
-        ) as notify:
-            snapshot = Path(tmp) / "20261110-210500-000000"
-            snapshot.mkdir()
-            schedule.send_partial_betting_card("2026-11-11", snapshot, ["LAL_LAC"], _Log())
-        exported.assert_not_called()
-        (key, card), kwargs = notify.call_args.args, notify.call_args.kwargs
-        self.assertEqual(key, "featured-card:2026-11-11:20261110-210500-000000")
-        self.assertEqual(kwargs, {"audience": "content"})
-        self.assertIn("大細盤精選", card)
-
-    def test_sgm_is_retired_from_the_featured_start_date_only(self) -> None:
-        self.assertFalse(schedule.sgm_retired("2026-11-10"))
-        self.assertTrue(schedule.sgm_retired("2026-11-11"))
-        self.assertEqual(schedule.SGM_RETIRED_DATE, schedule.FEATURED_START_DATE)
-
-    def test_retired_roi_board_counts_featured_paper_bets_only(self) -> None:
+    def test_roi_board_records_sgm_and_featured_as_separate_lines(self) -> None:
+        self.assertFalse(hasattr(schedule, "sgm_retired"))
         tracking = {"status": "valid", "inception_date": "2026-10-25",
                     "records": [{"day": "2026-11-11", "state": "lost", "profit": -1}],
                     "featured_records": [{"day": "2026-11-11", "state": "won", "profit": 0.9},
@@ -719,9 +700,13 @@ class NbaDailyScheduleTests(unittest.TestCase):
                                   return_value={"daily": {"total": {"combos": 0, "settled": 0}}}), \
                 mock.patch("wongchoi_roi.record_days", return_value={"latest": {"bets": 1}}) as record:
             self.assertTrue(schedule._record_roi_board("2026-11-11", _Log()))
-        days, kwargs = record.call_args.args[1], record.call_args.kwargs
-        self.assertEqual(days, {"2026-11-11": {"bets": 1, "hits": 1, "stake": 1.0, "pnl": 0.9}})
-        self.assertEqual(kwargs["since"], "2026-11-11")
+        calls = {c.args[0]: c for c in record.call_args_list}
+        self.assertEqual(set(calls), {"nba", "nba_featured"})
+        self.assertEqual(calls["nba"].args[1], {"2026-11-11": {"bets": 1, "hits": 0, "stake": 1.0, "pnl": -1.0}})
+        self.assertEqual(calls["nba"].kwargs["since"], "2026-10-25")
+        self.assertEqual(calls["nba_featured"].args[1],
+                         {"2026-11-11": {"bets": 1, "hits": 1, "stake": 1.0, "pnl": 0.9}})
+        self.assertEqual(calls["nba_featured"].kwargs["since"], "2026-11-11")
 
 
 if __name__ == "__main__":

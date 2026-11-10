@@ -40,6 +40,12 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
     ForwardTest("featured_1000", "大細盤精選紙上盤：終判（1,000 注）",
                 "EXP-20261110-01 F1000", "docs/experiments/patches/nba_featured/evaluate.py", "F1000",
                 "PASS（ROI CI 下限 > 0）先考慮落真錢，細注開始、由你決定；未過就停或者重新設計"),
+    ForwardTest("under_avg", "大細盤 under：線高過近 10 場平均 5% 以上（紙上，1,200 注）",
+                "EXP-20261110-03 FU_AVG", "docs/experiments/patches/nba_under/evaluate.py", "FU_AVG",
+                "PASS（97.5% CI 下限 > 0）先考慮加入精選揀注規則（要新 RULE 同新協議）；未過就記低、唔再用呢批數據重試"),
+    ForwardTest("under_edge", "大細盤 under：模型同去水價分歧 ≥8pp（紙上，300 注）",
+                "EXP-20261110-03 FU_EDGE", "docs/experiments/patches/nba_under/evaluate.py", "FU_EDGE",
+                "PASS（97.5% CI 下限 > 0）先考慮將精選門檻由 5pp 改 8pp（要新 RULE）；未過就記低"),
 )
 
 

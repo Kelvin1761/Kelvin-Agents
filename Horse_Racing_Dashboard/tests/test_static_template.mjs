@@ -1087,7 +1087,7 @@ test("portfolio shows all four sports: board for AU/NBA/tennis, D1 for HKJC", ()
   t.setPortfolioForTest({ days: { hkjc: { "2026-11-04": { bets: 4, hits: 1, stake: 4, pnl: 0.5 } } }, horses_by_region: { hkjc: { pending: 2 } } });
   t.setPfViewForTest("week");
   const html = t.renderPortfolioWorkspace();
-  for (const label of ["香港賽馬", "AU 賽馬", "NBA", "網球"]) assert.match(html, new RegExp(label));
+  for (const label of ["香港賽馬", "AU 賽馬", "NBA SGM", "NBA 大細盤精選", "網球"]) assert.match(html, new RegExp(label));
   // Week of the latest settled day (Mon 11-02 .. Sun 11-08): 20 bets, pnl -2 + 1.5 + 0.5 = 0.
   assert.match(html, /11月2日 – 11月8日/);
   assert.match(html, /<span>注數<\/span><strong>16<\/strong>/);
