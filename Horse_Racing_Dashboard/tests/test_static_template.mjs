@@ -2763,3 +2763,27 @@ test("HKJC horse card has no odds placeholder (no HKJC odds feed); AU still show
   setActiveRegionForTest("au");
   assert.match(renderHorseCard(horse, 0, 1), /市場賠率未有資料/);
 });
+
+test("decorative emoji become line icons; status and identity marks are left alone", () => {
+  const html = fs.readFileSync(new URL("../static_template.html", import.meta.url), "utf8");
+  const start = html.indexOf("const WC_EMOJI_ICON = {");
+  const map = html.slice(start, html.indexOf("};", start));
+  assert.ok(start > 0 && map.length > 0);
+  // Marks that carry meaning (verdicts, medals, pending, pins) and identity marks
+  // (sports, horses) must never be swapped for a generic glyph.
+  for (const keep of ["✅", "❌", "⚠", "➖", "⏳", "⭐", "🥇", "🥈", "🥉", "🏀", "🎾", "🏇", "🐴"]) {
+    assert.ok(!map.includes(`'${keep}'`), `${keep} must stay an emoji`);
+  }
+  // Every mapped emoji points at an icon that exists.
+  const paths = html.slice(html.indexOf("const WC_ICON_PATHS = {"), start);
+  for (const [, name] of map.matchAll(/: '([a-z]+)'/g)) {
+    assert.ok(paths.includes(`  ${name}: '`), `icon ${name} is defined`);
+  }
+  // Text nodes only: attributes, handlers and the report parsers stay untouched.
+  assert.match(html, /document\.createTreeWalker\(root, NodeFilter\.SHOW_TEXT\)/);
+});
+
+test("compact timeline controls keep a 44px tap area", () => {
+  const html = fs.readFileSync(new URL("../static_template.html", import.meta.url), "utf8");
+  assert.match(html, /\.tl-chip::after, \.watch-btn::after, \.tl-past-toggle::after, \.bh-analysis::after \{\s*content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 44px;/);
+});
