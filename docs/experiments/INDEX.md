@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261111-09](EXP-20261111-09-hkjc-top-weight-recheck-and-rating-gap-rerun.md) | 2026-11-11 | HKJC | 頂磅缺口仲喺唔喺；評分差距代替負磅喺今日 main 過唔過閘 | **MEASUREMENT／REJECT**：頂磅（模型排名 4+）+8.7pp → **+1.50pp [−3.34,+6.65]**，調轉後已消失；讓磅賽頂磅＝最高評分。評分差距 380 場 Gold +1.05 [+0.26,+2.12]、Good −0.53 跨零 → primary_regression；forward 30 場打和、NDCG −0.0083 |
 | [EXP-20261111-08](EXP-20261111-08-hkjc-well-in-vs-rating.md) | 2026-11-11 | HKJC | 模型能力（唔含負磅／班次）固定之後，官方評分越低越著數（well-in） | **REJECT（冇訊號）**：343 讓磅場 / 4,185 匹；zR +0.028 [−0.054,+0.108]；well-in 組 −2.28pp [−8.33,+3.38]；完整模型之上評分 −0.017 跨零。我哋能力估計搵唔到讓磅官評錯嘅馬，同 AU 一樣 |
 | [EXP-20261111-07](EXP-20261111-07-hkjc-class-up-penalty.md) | 2026-11-11 | HKJC | 升班喺 class_score −4（控制上仗名次後升班 −4.1pp） | **REJECT / primary_regression**：380 場、39 場有變；Gold −0.26pp、Good −0.26pp；實際頭三平均模型名次 +0.0079 [+0.0009,+0.0157]。群體效應真，但負磅／form 已消化，再扣係雙計 |
 | [EXP-20261111-06](EXP-20261111-06-hkjc-trainer-jockey-class-move.md) | 2026-11-11 | HKJC | 練馬師／騎師帶馬升班、降班嘅超額係穩定特質，加到排序力 | **REJECT（screening，兩條）**：練馬師 Δ AUC +0.0001 [−0.0001,+0.0003]、跨季 r −0.553（反向）；騎師 Δ −0.0000，跨季 r +0.616 穩定但加唔到分（揀坐騎習慣）。順帶：匹馬升班 52% 上仗贏咗，加落上仗名次之上 Δ −0.0001 —— 係 form 嘅影子 |
@@ -421,6 +422,7 @@
 - [EXP-20261106-02](EXP-20261106-02-au-betfair-market-movement-protocol.md) — AU Betfair 交易所價格走勢：Basic 1 分鐘 LTP（16,999 場）資料檢查三項唔過（T−60 覆蓋 67%、過期 LTP），**冇睇賽果即停**；修訂為 API 自己記錄（每分鐘最佳買賣價、delayed key、只讀），夠 2,000 場先判 Q1／Q2。
 - [EXP-20261109-01](EXP-20261109-01-hkjc-rebuild.md) — HKJC 引擎重建：god class 拆 4 個 mixin、features 改 package import、剷 7 個 shadow／3 個合成 shim／19 個冇入口 script；434 場排名只有 7 場頭三以外打和對調、Gold/Good/首選不變；退出馬唔再令成場拒評（+6 場）；新增白話重點（按 impact 講原因、👀 留意）同頭馬追蹤。win focus：主 KPI 維持 Good（首選頭馬 25.1% vs 熱門 28.1%，上名 52.3% vs 60.1%）。審計：docs/audits/hkjc-rebuild-20261109.md
 - [EXP-20261109-02](EXP-20261109-02-hkjc-rolling-class-record.md) — HKJC 今季下跌診斷＋級數分改用賽前 365 日往績：**REJECT**（Gold／Good −0.26pp，今季 −1.13pp）。市場 AUC 都跌 0.02、模型跌 0.05；最大跌幅喺 class_score（季內新季冇料），但補返嘅資訊同近績重疊。數據管線冇斷；檔位原始號碼今季本身弱咗。
+- [EXP-20261111-09](EXP-20261111-09-hkjc-top-weight-recheck-and-rating-gap-rerun.md) — HKJC 頂磅缺口已消失；評分差距第三次量：Gold 升 Good 微跌，交 Kelvin 決定。
 - [EXP-20261111-08](EXP-20261111-08-hkjc-well-in-vs-rating.md) — HKJC well-in：模型能力固定後評分冇影響；負磅調轉後頂磅缺口已消失。
 - [EXP-20261111-07](EXP-20261111-07-hkjc-class-up-penalty.md) — HKJC 升班扣分：群體 −4.1pp 係真，但引擎 A/B 輸；文字層「降班有著數」要改。
 - [EXP-20261111-06](EXP-20261111-06-hkjc-trainer-jockey-class-move.md) — HKJC 練馬師／騎師 × 升降班：兩條都 REJECT；匹馬升班＝上仗贏咗，form 已捉到。
