@@ -1389,7 +1389,9 @@ class Explanations:
         move = self._class_move_note()
         move_txt = ""
         if "降班" in move:
-            move_txt = f"{move}：對手淺咗，實際著數；"
+            # 香港降班多數係評分跌（近況差）而唔係刻意降班搏贏：同一上仗名次之內，
+            # 降班對比同班上名率只 +0.66pp（EXP-20261111-07），所以唔寫成著數。
+            move_txt = f"{move}：對手淺咗，但降班多數因近況差、評分跌落嚟，未算著數；"
         elif "升班" in move:
             move_txt = f"{move}：過往交代要打折；"
         elif move:
