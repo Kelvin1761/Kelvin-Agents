@@ -65,6 +65,12 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 since="2026-11-12", arm="docs/experiments/patches/hkjc_arm_revert_rating_gap.py",
                 action="自動判：同一批 live 場次，舊版 − live 嘅 Gold／Good／NDCG@5 全部 ≥ 0 → 問你退唔退；否則保留評分差距",
                 extra={"pass_verdict": "舊版唔輸（等你決定退唔退）"}),
+    # EXP-20261105-03 B1 回放（≤ 2026-10-10，286 場）Gold +1.40 [+0.34,+2.78]、Good −0.35 → REJECT；
+    # 協議已將 2026-10-11 起留做 forward holdout。Kelvin 2026-11-11 要求登記（EXP-20261111-11），arm 原封唔改。
+    ForwardTest("l400_standardised", "L400 按上仗場地路程標準化", "EXP-20261111-11", "harness_ab", 60,
+                since="2026-10-11", arm="docs/experiments/patches/hkjc_arm_l400_standardised.py",
+                action="自動判：forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議上線；否則維持絕對值",
+                extra={"pass_verdict": "建議上線（等你決定）"}),
     ForwardTest("first_section", "頭段速度（已退回）", "EXP-20261016-53", "state_judge", 150,
                 state_key="first_section_forward_final", action="每週自動判，見前速 forward 一段"),
     ForwardTest("official_injury", "官方傷患紀錄 B1", "EXP-20261020-02", "state_judge", 60,
@@ -376,7 +382,9 @@ def judge_ready(state: dict, *, root: Path, run_cmd: Callable, harness: Path, py
     judged = tracker.setdefault("judged", {})
     lines = []
     for test in FORWARD_TESTS:
-        if test.kind != "harness_ab" or test.key in judged:
+        # decided = 人手判完（例如 Kelvin 已決定上線）：唔再自動判，否則會對住已經改咗嘅 live
+        # 再跑一次 arm，發出誤導嘅「建議上線／維持現狀」（2026-11-11，weight_rating_gap）。
+        if test.kind != "harness_ab" or test.key in judged or test.decided:
             continue
         count = _race_count(root, test.since)
         if count < test.minimum:

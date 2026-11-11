@@ -113,13 +113,14 @@ def test_harness_ab_is_judged_once_and_frozen(tmp_path):
     state: dict = {}
     lines = tracker.judge_ready(state, root=tmp_path, run_cmd=run, harness=Path("h.py"), python="py",
                                 out_dir=tmp_path / "fc", stamp=lambda: "now")
+    # 10-11 起只得 l400_standardised 未判（gear_removed、weight_rating_gap 已 decided）
     assert len(calls) == 3 and "--arm" in calls[1] and "fixed_rule" in calls[2]
-    assert lines and "建議剷走" in lines[0]
-    assert state[tracker.STATE_KEY]["judged"]["gear_removed"]["passed"] is True
+    assert lines and "L400" in lines[0] and "建議上線" in lines[0]
+    assert state[tracker.STATE_KEY]["judged"]["l400_standardised"]["passed"] is True
     again = tracker.judge_ready(state, root=tmp_path, run_cmd=run, harness=Path("h.py"), python="py",
                                 out_dir=tmp_path / "fc", stamp=lambda: "now")
     assert again == [] and len(calls) == 3
-    item = tracker.progress(_test("gear_removed"), root=tmp_path, ledger={}, state=state)
+    item = tracker.progress(_test("l400_standardised"), root=tmp_path, ledger={}, state=state)
     assert item["status"] == "decided"
 
 
@@ -131,21 +132,33 @@ def test_harness_ab_negative_delta_keeps_current_model(tmp_path):
     lines = tracker.judge_ready(state, root=tmp_path, run_cmd=run, harness=Path("h.py"), python="py",
                                 out_dir=tmp_path / "fc", stamp=lambda: "now")
     assert "維持現狀" in lines[0]
-    assert state[tracker.STATE_KEY]["judged"]["gear_removed"]["passed"] is False
+    assert state[tracker.STATE_KEY]["judged"]["l400_standardised"]["passed"] is False
 
 
-def test_additive_harness_ab_says_ship_not_remove(tmp_path):
-    """加入類 forward（EXP-20261029-30 評分差距）過咗要講「建議上線」，唔係「建議剷走」。"""
+def test_decided_harness_ab_is_never_auto_judged(tmp_path):
+    """人手判完（weight_rating_gap 已上線、gear_removed 已剷）就唔准再自動判 —— 否則會對住已改嘅 live 發誤導通知。"""
     for i in range(6):
         _meeting(tmp_path, f"2026-11-{1 + i:02d}_ShaTin", 11)
     run, calls = _fake_run((0.01, 0.0, 0.001))
     state: dict = {}
+    tracker.judge_ready(state, root=tmp_path, run_cmd=run, harness=Path("h.py"), python="py",
+                        out_dir=tmp_path / "fc", stamp=lambda: "now")
+    judged = state[tracker.STATE_KEY]["judged"]
+    assert "weight_rating_gap" not in judged and "gear_removed" not in judged
+    assert not any("hkjc_arm_weight_rating_gap.py" in " ".join(map(str, c)) for c in calls)
+
+
+def test_post_live_revert_says_old_version_did_not_lose(tmp_path):
+    """EXP-20261111-10：Δ = 舊版 − live，全部 ≥ 0 要講「舊版唔輸」，唔係「建議上線」或「建議剷走」。"""
+    for i in range(6):
+        _meeting(tmp_path, f"2026-11-{12 + i:02d}_ShaTin", 11)
+    run, calls = _fake_run((0.0, 0.0, 0.0))
+    state: dict = {}
     lines = tracker.judge_ready(state, root=tmp_path, run_cmd=run, harness=Path("h.py"), python="py",
                                 out_dir=tmp_path / "fc", stamp=lambda: "now")
-    rating = [line for line in lines if "官方評分差距" in line]
-    assert rating and "建議上線" in rating[0] and "剷走" not in rating[0]
-    assert state[tracker.STATE_KEY]["judged"]["weight_rating_gap"]["passed"] is True
-    assert any("hkjc_arm_weight_rating_gap.py" in " ".join(map(str, c)) for c in calls)
+    post = [line for line in lines if "上線後" in line]
+    assert post and "舊版唔輸" in post[0] and "剷走" not in post[0]
+    assert any("hkjc_arm_revert_rating_gap.py" in " ".join(map(str, c)) for c in calls)
 
 
 def test_not_enough_races_runs_nothing(tmp_path):
