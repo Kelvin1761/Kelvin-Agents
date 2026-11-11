@@ -1,5 +1,10 @@
 #!/bin/zsh
-# Invoked only by approved runtime activation. Preserve first-pass evidence.
+# Invoked only by approved runtime activation.
+# Acceptance = cursor state verified (--initialize, then read-only --status).
+# It deliberately does NOT run a review pass: a pass needs 2,300-3,600 s and
+# almost never ends 'succeeded' (1 of 35 receipts by 2026-11-11), so a
+# synchronous pass made every unified cutover hit the 300 s activation timeout
+# (2026-11-04/05/10). The scheduled 07:10 job writes the append-only receipts.
 set -eu
 SKILL_DIR="${0:A:h}"
 PROJECT_ROOT="${SKILL_DIR:h:h:h}"
@@ -45,7 +50,7 @@ cleanup() {
   [ -z "$STAGED" ] || rm -f "$STAGED"
   # Retain snapshot on failure for manual recovery.
   if [ "$COMPLETE" -eq 1 ]; then
-    rm -f "$TEMP_DIR/previous.plist" "$TEMP_DIR/candidate.plist" "$TEMP_DIR/pass.json"
+    rm -f "$TEMP_DIR/previous.plist" "$TEMP_DIR/candidate.plist"
     rmdir "$TEMP_DIR"
   else
     print -u2 -- "research installation failed; recovery evidence: $TEMP_DIR"
@@ -57,11 +62,9 @@ trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
 export WC_PRIMARY_REPO_ROOT="$PROJECT_ROOT" WC_TENNIS_RUNTIME_ROOT="$TENNIS_ROOT" TENNIS_LOG_DIR="$TENNIS_LOGS"
-# A blocked first pass remains in the append-only run log and stops activation.
+# Blocked cursor state stops activation before any plist is touched.
 /bin/zsh "$SCRIPT_DIR/run_central_research_review.sh" --initialize
-/bin/zsh "$SCRIPT_DIR/run_central_research_review.sh" > "$TEMP_DIR/pass.json"
-RECEIPT="$(/usr/bin/python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["run_log"])' "$TEMP_DIR/pass.json")"
-/bin/zsh "$SCRIPT_DIR/run_central_research_review.sh" --status --receipt "$RECEIPT"
+/bin/zsh "$SCRIPT_DIR/run_central_research_review.sh" --status
 # plistlib handles XML escaping in paths, including external disks with spaces.
 /usr/bin/python3 - "$SKILL_DIR/launchd/$LABEL.plist.template" "$TEMP_DIR/candidate.plist" "$SCRIPT_DIR" "$PROJECT_ROOT" "$TENNIS_ROOT" "$TENNIS_LOGS" <<'PY'
 import plistlib, sys
@@ -108,4 +111,4 @@ STAGED=""
 "$LAUNCHCTL" enable "$DOMAIN/$LABEL"
 "$LAUNCHCTL" print "$DOMAIN/$LABEL" >/dev/null
 COMPLETE=1
-print -r -- "research review installed: daily Sydney 07:10 + Monday 09:00; acceptance $RECEIPT"
+print -r -- "research review installed: daily Sydney 07:10 + Monday 09:00; acceptance: cursors verified (no synchronous pass)"
