@@ -4,6 +4,8 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261111-06](EXP-20261111-06-hkjc-trainer-jockey-class-move.md) | 2026-11-11 | HKJC | 練馬師／騎師帶馬升班、降班嘅超額係穩定特質，加到排序力 | **REJECT（screening，兩條）**：練馬師 Δ AUC +0.0001 [−0.0001,+0.0003]、跨季 r −0.553（反向）；騎師 Δ −0.0000，跨季 r +0.616 穩定但加唔到分（揀坐騎習慣）。順帶：匹馬升班 52% 上仗贏咗，加落上仗名次之上 Δ −0.0001 —— 係 form 嘅影子 |
+| [EXP-20261111-05](EXP-20261111-05-hkjc-trainer-by-class.md) | 2026-11-11 | HKJC | 練馬師喺今場班次嘅上名超額（相對自己整體）加到排序力 | **REJECT（screening）**：12,935 行 OOS，加落騎練＋同程＋場地之上 Δ AUC +0.0000 [−0.0000,+0.0001]；單獨 AUC 0.4987；跨季 r −0.027 [−0.336,+0.301]（場地係 +0.504）。覆蓋 95.7% ≥30 仗，唔係樣本問題；陽性對照（同程）重現 ✅ |
 | [EXP-20261111-03](EXP-20261111-03-nba-minutes-model-v2.md) | 2026-11-11 | NBA | 用休息／讓分／正選角色／上場缺陣調整 S 嘅上場時間預測 | **NEEDS MORE TESTING（候選未接線）**：時間 MAE holdout −0.102 [−0.140,−0.062]、跨季 −0.085；S 腿 log-loss −0.0015 [−0.0021,−0.0006]；知道當日正選嘅上限 −0.0044。ESPN summary 有 starter／DNP 原因／賽前讓分，冇逐場時間預測 |
 | [EXP-20261111-04](EXP-20261111-04-nba-banker-line-closeness-scan.md) | 2026-11-11 | NBA | 穩膽合資格腿：條線離近況越遠命中越高，距離篩可以減少「差一」 | **REJECT（冇候選）**：613 腿五種距離量度冇一種單調，命中率全部約 70%；離線遠嘅腿價更短、ROI 更差。「差一」係腿數×命中率嘅必然結果，唔係揀線太貼 |
 | [EXP-20261111-02](EXP-20261111-02-nba-s-model-error-decomposition.md) | 2026-11-11 | NBA | 獨立模型 S 輸喺上場時間定係每分鐘效率 | **MEASUREMENT**：9 日 10,750 腿，S 單獨同連抽水市場打和（−0.0033，CI 跨零）；知道真實時間值 −0.042（MS 優勢嘅 7 倍）；時間佔 PTS／REB 均值誤差方差約兩成；換加權方法冇用，損失喺打少／打多兩條尾；讓分 8–12 主力 15% 打少過 75%。冇改 code |
@@ -417,6 +419,8 @@
 - [EXP-20261106-02](EXP-20261106-02-au-betfair-market-movement-protocol.md) — AU Betfair 交易所價格走勢：Basic 1 分鐘 LTP（16,999 場）資料檢查三項唔過（T−60 覆蓋 67%、過期 LTP），**冇睇賽果即停**；修訂為 API 自己記錄（每分鐘最佳買賣價、delayed key、只讀），夠 2,000 場先判 Q1／Q2。
 - [EXP-20261109-01](EXP-20261109-01-hkjc-rebuild.md) — HKJC 引擎重建：god class 拆 4 個 mixin、features 改 package import、剷 7 個 shadow／3 個合成 shim／19 個冇入口 script；434 場排名只有 7 場頭三以外打和對調、Gold/Good/首選不變；退出馬唔再令成場拒評（+6 場）；新增白話重點（按 impact 講原因、👀 留意）同頭馬追蹤。win focus：主 KPI 維持 Good（首選頭馬 25.1% vs 熱門 28.1%，上名 52.3% vs 60.1%）。審計：docs/audits/hkjc-rebuild-20261109.md
 - [EXP-20261109-02](EXP-20261109-02-hkjc-rolling-class-record.md) — HKJC 今季下跌診斷＋級數分改用賽前 365 日往績：**REJECT**（Gold／Good −0.26pp，今季 −1.13pp）。市場 AUC 都跌 0.02、模型跌 0.05；最大跌幅喺 class_score（季內新季冇料），但補返嘅資訊同近績重疊。數據管線冇斷；檔位原始號碼今季本身弱咗。
+- [EXP-20261111-06](EXP-20261111-06-hkjc-trainer-jockey-class-move.md) — HKJC 練馬師／騎師 × 升降班：兩條都 REJECT；匹馬升班＝上仗贏咗，form 已捉到。
+- [EXP-20261111-05](EXP-20261111-05-hkjc-trainer-by-class.md) — HKJC 練馬師 × 班次：冇訊號而且唔穩定（跨季 r −0.027），唔開引擎 A/B；升降班未測。
 - [EXP-20261111-03](EXP-20261111-03-nba-minutes-model-v2.md) — NBA 上場時間模型 v2：as-of 候選細但真（S −0.0015），最大嘅獎係當日正選名單；候選未接線，下一步 shadow＋forward。
 - [EXP-20261111-04](EXP-20261111-04-nba-banker-line-closeness-scan.md) — NBA 穩膽「線太貼」：五種距離量度都分唔開，命中率一律約 70%；差一係結構性，REJECT。
 - [EXP-20261111-02](EXP-20261111-02-nba-s-model-error-decomposition.md) — NBA 獨立模型 S 誤差拆解：上場時間係最大槓桿（完美時間 −0.042 log-loss），下一步係時間模型唔係新得分公式；只量度。
