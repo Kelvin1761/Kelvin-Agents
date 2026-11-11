@@ -35,7 +35,7 @@ class ForwardTest:
     key: str
     label: str
     experiment: str
-    kind: str                     # shadow_profile | harness_ab | awt_races | trackwork_meetings | rail_ledger | live_nights | speedpro_races | state_judge
+    kind: str                     # shadow_profile | harness_ab | awt_races | trackwork_meetings | rail_ledger | live_nights | speedpro_races | purton_rival | state_judge
     minimum: int
     since: str = ""
     profile: str = ""
@@ -107,6 +107,14 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 action="夠數之後原封重跑 docs/experiments/patches/hkjc_screen_speedpro.py --since 2026-11-11"
                        "（只判 diff 一個欄位）；分層上名率差 CI 下界 > 0 先預先登記排名 arm 行 model-regression-gate，"
                        "否則記 REJECT；上唔上線由 Kelvin 決定"),
+    # 潘頓上仗騎、今仗同場揀咗另一匹（Kelvin 2026-11-11）。賽果庫 2024-09→2026-11 579 匹：控制賠率 −3.0pp
+    # [−6.6, +1.0]、控制模型排名 −4.8pp [−11.4, +2.3]，未夠判；頭五騎師推廣係零 → 只限潘頓。
+    # forward 只數 2026-11-11 起（之前嗰批用咗嚟揀呢個分法）；定義喺 hkjc_purton_rival.py。
+    ForwardTest("purton_rival", "潘頓棄騎、同場揀咗另一匹", "EXP-20261111-21", "purton_rival", 400,
+                since="2026-11-11",
+                action="夠數之後原封重跑 docs/experiments/patches/hkjc_screen_purton_rival.py forward"
+                       "（模型排名分層差；CI 上界 < 0 先開預先登記嘅 −0.5 分排名 arm，行 model-regression-gate）；"
+                       "上唔上線由 Kelvin 決定"),
     ForwardTest("weight_refit_t02", "權重 refit t02", "EXP-20260928-10", "shadow_profile", 120,
                 profile="weight_refit_t02"),
     # race_shape_v3_hv 已經 experimental live（EXP-20260929-01），由 race_shape_v2_legacy_hv 做 rollback 對照。
@@ -298,6 +306,10 @@ def progress(test: ForwardTest, *, root: Path, ledger: dict, state: dict) -> dic
         if count == 0 and missing >= STALLED_AFTER_ROWS:
             return {"count": 0, "minimum": test.minimum, "status": "stalled",
                     "note": f"{missing} 場有賽果但一份賽前 SpeedPro 快照都冇 —— 收集器可能斷咗（collect_speedpro.py）"}
+    elif test.kind == "purton_rival":
+        from hkjc_purton_rival import rival_cases
+        count = len(rival_cases(root, test.since))
+        note = ""
     elif test.kind == "live_nights":
         count, partial = _live_nights(root, test.since)
         note = f"另有 {partial} 晚唔完整（有場次 90 分鐘內抓唔到）" if partial else ""

@@ -216,3 +216,36 @@ def test_speedpro_collector_gone_quiet_is_reported(tmp_path):
         _meeting(tmp_path, day, 9)
     item = tracker.progress(_test("speedpro_energy_diff"), root=tmp_path, ledger={}, state={})
     assert item["status"] == "stalled" and "收集器" in item["note"]
+
+
+def _results(root: Path, name: str, races: dict) -> None:
+    """races: {race_no: [(horse_no, brand, jockey, pos), ...]}"""
+    m = root / name
+    m.mkdir(exist_ok=True)
+    payload = {str(rn): {"race_no": rn, "results": [
+        {"pos": str(pos), "horse_no": str(no), "horse_name": f"馬{no}({brand})", "jockey": jockey, "win_odds": "5"}
+        for no, brand, jockey, pos in rows]} for rn, rows in races.items()}
+    (m / f"{name}_全日賽果.json").write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+
+
+def test_purton_rival_counts_only_when_purton_rides_another_horse_in_the_same_race(tmp_path):
+    import hkjc_purton_rival as pr
+    _results(tmp_path, "2026-11-08_ShaTin", {1: [(1, "A001", "潘頓", 1), (2, "B002", "潘頓", 4), (3, "C003", "潘頓", 2)]})
+    _results(tmp_path, "2026-11-11_HappyValley", {
+        1: [(1, "A001", "田泰安", 3), (2, "X009", "潘頓", 1)],   # A001：潘頓同場揀咗 X009 → case
+        2: [(1, "B002", "巴度", 2)],                             # B002：潘頓唔喺呢場 → 唔係
+        3: [(1, "C003", "潘頓", 5)],                             # C003：潘頓留低 → 唔係
+    })
+    _results(tmp_path, "2026-11-15_ShaTin", {1: [(1, "A001", "田泰安", "WV"), (2, "Y010", "潘頓", 2)]})  # 退出唔計
+    cases = pr.rival_cases(tmp_path, "2026-11-11")
+    assert [(c["date"], c["horse"]) for c in cases] == [("2026-11-11", "A001")]
+    assert pr.rival_cases(tmp_path, "2026-11-12") == []
+    item = tracker.progress(_test("purton_rival"), root=tmp_path, ledger={}, state={})
+    assert (item["count"], item["status"]) == (1, "collecting")
+
+
+def test_purton_rival_never_uses_same_day_history(tmp_path):
+    import hkjc_purton_rival as pr
+    # 同一日上一場潘頓騎過唔算「上仗」（同一匹馬一日唔會跑兩場；呢度防住計法本身）
+    _results(tmp_path, "2026-11-11_HappyValley", {1: [(1, "A001", "潘頓", 1)], 2: [(1, "A001", "田泰安", 1), (2, "Z", "潘頓", 2)]})
+    assert pr.rival_cases(tmp_path, "") == []
