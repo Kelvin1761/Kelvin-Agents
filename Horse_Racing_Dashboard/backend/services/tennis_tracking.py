@@ -13,6 +13,8 @@ from pathlib import Path
 import sqlite3
 from zoneinfo import ZoneInfo
 
+from .tennis_reasons import pick_reasons
+
 
 def _number(value):
     try:
@@ -61,6 +63,32 @@ def _subject(row, match, players):
         identity = None
     name = players.get(identity) if identity is not None else None
     return {"subject_player_id": identity if name else None, "subject_player_name": name or None}
+
+
+def _match_predictions(c, match_ids):
+    """Match-winner predictions for the featured matches, oldest first; {} if unreadable."""
+    ids = [i for i in match_ids if i is not None]
+    if not ids:
+        return {}
+    try:
+        rows = c.execute(
+            "SELECT match_id, selection_player_id, model_probability, no_vig_market_probability, created_at "
+            f"FROM predictions WHERE match_id IN ({','.join('?' * len(ids))}) ORDER BY id", ids).fetchall()
+    except sqlite3.Error:
+        return {}
+    out = {}
+    for r in rows:
+        out.setdefault(r["match_id"], []).append(dict(r))
+    return out
+
+
+def _prediction_at(rows, featured_at):
+    """Latest prediction made no later than the pick (never one written after it)."""
+    cutoff = _time(featured_at)
+    if not rows or cutoff is None:
+        return None
+    usable = [r for r in rows if (made := _time(r.get("created_at"))) is not None and made <= cutoff]
+    return usable[-1] if usable else None
 
 
 def export_tennis_tracking(db_path):
@@ -158,7 +186,9 @@ def export_tennis_tracking(db_path):
             # result comes from prop_tracker, the single settlement source.
             # Read separately so a database without the table adds no warning.
             prop_by_id = {r["id"]: r for r in sources["prop_tracker"] or []}
-            for f in _rows(c, "featured_picks") or []:
+            featured_rows = _rows(c, "featured_picks") or []
+            match_preds = _match_predictions(c, {f.get("match_id") for f in featured_rows})
+            for f in featured_rows:
                 base = prop_by_id.get(f.get("prop_id"), {})
                 status = str(base.get("result_status") or "PENDING").upper()
                 frozen = _number(f.get("odds"))
@@ -188,6 +218,13 @@ def export_tennis_tracking(db_path):
                     featured_rank=f.get("rank"),
                     sportsbet_market=f.get("feed_market_name") or None,
                 )
+                # The pick was chosen on the odds-blind model probability; the
+                # blended value on the prop row is the market for some families.
+                if _number(f.get("model_prob")) is not None:
+                    record["model_probability"] = _number(f.get("model_prob"))
+                record["reasons"] = pick_reasons(
+                    f, base, matches.get(f.get("match_id"), {}), players,
+                    _prediction_at(match_preds.get(f.get("match_id")), f.get("featured_at")))
                 records.append(record)
             props = {r["id"]: r for r in sources["prop_tracker"] or []}
             for r in sources["prop_live_bets"] or []:
