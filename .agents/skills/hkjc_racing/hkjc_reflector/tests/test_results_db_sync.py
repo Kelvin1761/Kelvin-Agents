@@ -60,15 +60,15 @@ def _meeting(tmp_path, name, payload=None):
     return folder
 
 
-def test_results_land_in_the_season_folder_under_both_names(tmp_path, monkeypatch):
+def test_results_land_in_the_season_folder_under_the_canonical_name_only(tmp_path, monkeypatch):
+    # Two names per day made `*/*.json` readers count every race twice (EXP-20261110-07).
     db_root = tmp_path / "db"
     monkeypatch.setattr(db, "get_results_database_root", lambda: db_root)
     folder = _meeting(tmp_path, "2026-09-06_ShaTin")
     out = db.sync_meeting_results(folder)
-    assert out["status"] == "ok" and out["copied"] == 2
+    assert out["status"] == "ok" and out["copied"] == 1
     target = db_root / "hkjc results 2026 27" / "2026-09-06"
-    assert (target / "2026-09-06_ShaTin_全日賽果.json").is_file()
-    assert (target / "full_day_results.json").is_file()
+    assert sorted(p.name for p in target.iterdir()) == ["full_day_results.json"]
 
 
 def test_running_twice_does_not_duplicate_or_overwrite(tmp_path, monkeypatch):
@@ -88,7 +88,7 @@ def test_overwrite_refreshes_a_corrected_result(tmp_path, monkeypatch):
     (folder / "2026-09-06_ShaTin_全日賽果.json").write_text(
         json.dumps({"1": {"results": [{"pos": 1}]}}), encoding="utf-8")
     out = db.sync_meeting_results(folder, overwrite=True)
-    assert out["copied"] == 2
+    assert out["copied"] == 1
     stored = json.loads(
         (db_root / "hkjc results 2026 27" / "2026-09-06" / "full_day_results.json")
         .read_text(encoding="utf-8"))

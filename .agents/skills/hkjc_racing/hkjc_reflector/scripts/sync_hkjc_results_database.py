@@ -33,23 +33,18 @@ def sync_meeting_results(meeting_dir: Path, dry_run: bool = False) -> list[tuple
     season_dir = db_dirs["root"] / infer_season_bucket(date_text) / date_text
     season_dir.mkdir(parents=True, exist_ok=True)
 
+    # .json / .md go in under the canonical name only. Also writing the dated
+    # name left two identical copies per day, and `*/*.json` readers counted
+    # every race twice (EXP-20261110-07: 350 races, 2026-05 onward).
     for source in sorted(meeting_dir.glob("*全日賽果.*")):
-        normalized_name = source.name.replace("沙田", "ShaTin").replace("跑馬地", "HappyValley")
-        dest = season_dir / normalized_name
+        suffix = source.suffix.lower()
+        if suffix in (".json", ".md"):
+            dest = season_dir / f"full_day_results{suffix}"
+        else:
+            dest = season_dir / source.name.replace("沙田", "ShaTin").replace("跑馬地", "HappyValley")
         copied.append((source, dest))
         if not dry_run:
             shutil.copy2(source, dest)
-
-        if source.suffix.lower() == ".json":
-            normalized_dest = season_dir / "full_day_results.json"
-        elif source.suffix.lower() == ".md":
-            normalized_dest = season_dir / "full_day_results.md"
-        else:
-            normalized_dest = None
-        if normalized_dest is not None:
-            copied.append((source, normalized_dest))
-            if not dry_run:
-                shutil.copy2(source, normalized_dest)
     return copied
 
 

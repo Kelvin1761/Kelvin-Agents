@@ -86,20 +86,30 @@ def _parse_date(text):
 
 @lru_cache(maxsize=1)
 def _jockey_wins_by_day(db_root: str) -> dict:
-    """{race date: {jockey: wins}} from every results-database day file."""
+    """{race date: {jockey: wins}} from every results-database day file.
+
+    From 2026-05 each day folder holds two identical copies of the same races
+    (`<date>_<venue>_全日賽果.json` and `full_day_results.json`), so each race
+    is counted once by (date, venue, race number) — EXP-20261110-07.
+    """
     wins: dict = defaultdict(lambda: defaultdict(int))
-    for path in glob.glob(f"{db_root}/hkjc results */*/*.json"):
+    seen: set = set()
+    for path in sorted(glob.glob(f"{db_root}/hkjc results */*/*.json")):
         try:
             payload = json.loads(Path(path).read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
-        for race in payload.values():
+        for key, race in payload.items():
             if not isinstance(race, dict):
                 continue
             try:
                 day = date.fromisoformat(str(race.get("racedate") or ""))
             except ValueError:
                 continue
+            race_id = (day, str(race.get("venue") or ""), str(race.get("race_no") or key))
+            if race_id in seen:
+                continue
+            seen.add(race_id)
             for row in race.get("results") or []:
                 if str(row.get("pos") or "").strip() == "1" and row.get("jockey"):
                     wins[day][row["jockey"]] += 1

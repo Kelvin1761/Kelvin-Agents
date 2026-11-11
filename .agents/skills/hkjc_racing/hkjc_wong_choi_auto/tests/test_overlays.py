@@ -58,6 +58,16 @@ class OverlayTests(unittest.TestCase):
         self.assertEqual(wins["甲"], 3)
         self.assertEqual(len(top), overlays.TOP_JOCKEY_COUNT)
 
+    def test_duplicate_day_file_counted_once(self):
+        # 2026-05 起每個賽日有兩份一樣嘅檔（EXP-20261110-07）
+        folder = Path(self.root) / "hkjc results 2026 27" / "2026-10-01"
+        dup = folder / "full_day_results.json"
+        (folder / "2026-10-01_ShaTin_全日賽果.json").write_text(dup.read_text(encoding="utf-8"), encoding="utf-8")
+        overlays._jockey_wins_by_day.cache_clear()
+        _top, wins = overlays.top_jockeys_as_of(date(2026, 10, 28), self.root)
+        self.assertEqual(wins["甲"], 3)
+        self.assertEqual(wins["乙"], 2)
+
     def test_upgrade_and_today_flags(self):
         engine = FakeEngine("2026-10-28", "甲", [{"date": "11/10/2026", "jockey": "路人"}])
         hits = overlays.evaluate_overlays(engine)

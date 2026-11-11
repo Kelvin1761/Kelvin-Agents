@@ -168,13 +168,14 @@ def sync_meeting_results(meeting_dir: Path, *, overwrite: bool = False) -> dict:
         return {"status": "unparsable_date", "meeting": meeting_dir.name, "copied": 0}
     target_dir = get_results_database_root() / season_folder_name(meeting_date) / meeting_date
     target_dir.mkdir(parents=True, exist_ok=True)
+    # Only the canonical name. Writing the dated name as well left two identical
+    # copies per day, and any `*/*.json` reader counted every race twice
+    # (EXP-20261110-07: 350 races, 2026-05 onward).
     copied = 0
-    for name in (source.name, CANONICAL_RESULTS_NAME):
-        target = target_dir / name
-        if target.exists() and not overwrite:
-            continue
+    target = target_dir / CANONICAL_RESULTS_NAME
+    if overwrite or not target.exists():
         shutil.copy2(source, target)
-        copied += 1
+        copied = 1
     return {"status": "ok" if copied else "already_present",
             "meeting": meeting_dir.name, "date": meeting_date,
             "season": season_folder_name(meeting_date),
