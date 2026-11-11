@@ -68,10 +68,26 @@ def composite(form, quality):
     return clip_score(60.0 + 0.6 * (clip_score(form) - 60.0) + 0.4 * (clip_score(quality) - 60.0))
 
 
+# EXP-20261111-31 研究開關（預設 = 現行）：場內 SD 細嗰陣，細差距會被放大成大分。
+#   floor → 除數 = max(場內 SD, SD_POOL)；fixed → 除數 = SD_POOL（固定尺，唔再跟場內 SD）。
+# SD_POOL = 08-05 起 724 場賽前 raw（C2 公式由儲存逐仗重算）嘅場內 pooled SD，冇用賽果，量度前凍結。
+SD_POOL = 0.3065
+
+
+def _scale_mode():
+    import os
+    return os.environ.get("WC_AU_FQ_SCALE", "").strip().lower()
+
+
 def field_z(raw, run_count, field_count, mean, stdev):
     """場內 z；資料唔夠 → None。"""
     if raw is None or run_count < MIN_RUNS or field_count < MIN_FIELD or mean is None or not stdev or stdev <= 0:
         return None
+    mode = _scale_mode()
+    if mode == "floor":
+        stdev = max(stdev, SD_POOL)
+    elif mode == "fixed":
+        stdev = SD_POOL
     return (raw - mean) / stdev
 
 
