@@ -119,6 +119,33 @@ snapshot_runtime() {
   : > "$destination/.complete"
 }
 
+label_loaded() {
+  "$LAUNCHCTL" print "$DOMAIN/$1" >/dev/null 2>&1
+}
+
+# bootout returns while a running job (e.g. a RunAtLoad startup run the
+# candidate installer just launched) is still exiting; bootstrapping during
+# that window fails. 2026-11-10: exactly this left hkjc-wong-choi.startup
+# unloaded after rollback. Wait for the unload, then retry the bootstrap.
+wait_unloaded() {
+  local polls=0
+  while label_loaded "$1"; do
+    polls=$((polls + 1))
+    [ "$polls" -le "${WC_RESTORE_UNLOAD_POLLS:-100}" ] || return 1
+    sleep "${WC_RESTORE_POLL_SECONDS:-0.2}"
+  done
+}
+
+bootstrap_label() {
+  local label="$1" target="$2" attempt
+  for attempt in 1 2 3 4 5; do
+    "$LAUNCHCTL" bootstrap "$DOMAIN" "$target" >/dev/null 2>&1 && return 0
+    sleep "${WC_RESTORE_RETRY_SECONDS:-1}"
+    wait_unloaded "$label" || return 1
+  done
+  return 1
+}
+
 restore_runtime() {
   local source="$1"
   [ -f "$source/.complete" ] || {
@@ -130,13 +157,20 @@ restore_runtime() {
   mkdir -p "$AGENTS_DIR"
   for label in $LABELS; do
     local target="$AGENTS_DIR/$label.plist"
-    "$LAUNCHCTL" bootout "$DOMAIN/$label" >/dev/null 2>&1 || true
     if [ -f "$source/$label.plist" ]; then
-      cp -p "$source/$label.plist" "$target" || failed=1
-      "$LAUNCHCTL" bootstrap "$DOMAIN" "$target" >/dev/null 2>&1 || failed=1
-      "$LAUNCHCTL" enable "$DOMAIN/$label" >/dev/null 2>&1 || failed=1
+      # Byte-identical and loaded means the loaded definition already is the
+      # snapshot. Reloading it would only SIGTERM a run in flight.
+      if [ -f "$target" ] && [ ! -L "$target" ] && cmp -s "$source/$label.plist" "$target" && label_loaded "$label"; then
+        continue
+      fi
+      "$LAUNCHCTL" bootout "$DOMAIN/$label" >/dev/null 2>&1 || true
+      wait_unloaded "$label" || { print -u2 -- "restore: $label still loaded after bootout"; failed=1; continue; }
+      cp -p "$source/$label.plist" "$target" || { print -u2 -- "restore: copy failed: $label"; failed=1; continue; }
+      bootstrap_label "$label" "$target" || { print -u2 -- "restore: bootstrap failed: $label"; failed=1; continue; }
+      "$LAUNCHCTL" enable "$DOMAIN/$label" >/dev/null 2>&1 || { print -u2 -- "restore: enable failed: $label"; failed=1; }
     else
-      rm -f "$target" || failed=1
+      "$LAUNCHCTL" bootout "$DOMAIN/$label" >/dev/null 2>&1 || true
+      rm -f "$target" || { print -u2 -- "restore: remove failed: $label"; failed=1; }
     fi
   done
   return "$failed"

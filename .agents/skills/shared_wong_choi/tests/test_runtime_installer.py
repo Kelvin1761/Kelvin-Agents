@@ -18,6 +18,49 @@ INSTALLER = (
     / ".agents/skills/central_wong_choi/install_production_runtime.sh"
 )
 
+# Models real launchd: `bootout` of a running job returns while it is still
+# exiting (`print` keeps succeeding for a few polls) and `bootstrap` fails with
+# exit 5 until the unload has finished. Every call is logged.
+STATEFUL_LAUNCHCTL = """#!/usr/bin/python3
+import os, sys
+from pathlib import Path
+root = Path(os.environ["TEST_LAUNCHD_STATE"])
+root.mkdir(exist_ok=True)
+with (root / "calls.log").open("a") as log:
+    log.write(" ".join(sys.argv[1:]) + "\\n")
+op, label = sys.argv[1], sys.argv[-1].rsplit("/", 1)[-1].removesuffix(".plist")
+loaded, exiting = root / f"{label}.loaded", root / f"{label}.exiting"
+stuck = os.environ.get("TEST_LAUNCHD_STUCK", "")
+def draining():
+    if not exiting.exists():
+        return False
+    left = int(exiting.read_text())
+    if left <= 0 and label != stuck:
+        exiting.unlink()
+        return False
+    exiting.write_text(str(max(left - 1, 0)))
+    return True
+if op == "print":
+    raise SystemExit(0 if loaded.exists() or draining() else 113)
+if op == "bootout":
+    if loaded.exists():
+        loaded.unlink()
+        exiting.write_text(os.environ.get("TEST_LAUNCHD_EXIT_POLLS", "3"))
+    raise SystemExit(0)
+if op == "bootstrap":
+    if loaded.exists() or draining():
+        raise SystemExit(5)
+    loaded.touch()
+raise SystemExit(0)
+"""
+
+
+def _stateful_launchctl(tmp_path: Path) -> tuple[Path, Path]:
+    fake = tmp_path / "stateful-launchctl"
+    fake.write_text(STATEFUL_LAUNCHCTL, encoding="utf-8")
+    fake.chmod(0o755)
+    return fake, tmp_path / "launchd-state"
+
 
 @pytest.mark.parametrize("central_fails", [False, True])
 def test_full_gate_runs_central_tests_and_propagates_failure(tmp_path, central_fails):
@@ -58,9 +101,7 @@ def test_runtime_installer_snapshot_restore_is_exact_and_idempotent(
     agents = tmp_path / "LaunchAgents"
     agents.mkdir()
     snapshot = tmp_path / "snapshot"
-    fake_launchctl = tmp_path / "launchctl"
-    fake_launchctl.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-    fake_launchctl.chmod(0o755)
+    fake_launchctl, launchd_state = _stateful_launchctl(tmp_path)
     existing = agents / "com.antigravity.hkjc-wong-choi.prerace.plist"
     introduced = agents / "com.antigravity.nba-wong-choi.health.plist"
     existing.write_text("old plist\n", encoding="utf-8")
@@ -76,6 +117,9 @@ def test_runtime_installer_snapshot_restore_is_exact_and_idempotent(
             "WC_LAUNCHCTL_BIN": str(fake_launchctl),
             "WC_TENNIS_DB_POINTER": str(pointer),
             "WC_TENNIS_RUNTIME_ROOT": str(runtime),
+            "TEST_LAUNCHD_STATE": str(launchd_state),
+            "WC_RESTORE_POLL_SECONDS": "0.01",
+            "WC_RESTORE_RETRY_SECONDS": "0.01",
         }
     )
 
@@ -226,33 +270,19 @@ if (os.environ["TEST_CALENDAR_MISMATCH"] == "1" and sys.argv[1] == "enable"
     warm.mkdir()
     research_python = fake_bin / "research-python"
     research_python.write_text('''#!/usr/bin/python3
-import json, sys
+import json, os, sys
 from pathlib import Path
-from datetime import datetime, timezone
 script = Path(sys.argv.pop(1))
 sys.path.insert(0, str(script.parent))
 import central_research_review as review
+if "--initialize" in sys.argv and os.environ["TEST_RESEARCH_ACCEPTANCE"] != "1":
+    print(json.dumps({"status": "blocked"}))
+    raise SystemExit(1)
 if "--initialize" in sys.argv or "--status" in sys.argv:
     raise SystemExit(review.main())
-state = Path(sys.argv[sys.argv.index("--state-root") + 1])
-contract = review.load_runtime_contract()
-import os
-accepted = os.environ["TEST_RESEARCH_ACCEPTANCE"] == "1"
-path = state / "runs" / "central" / "test" / "research-review" / "acceptance.json"
-payload = {
-    "schema_version": review.RUN_SCHEMA,
-    "status": "succeeded" if accepted else "failed",
-    "started_at": datetime.now(timezone.utc).isoformat(), "run_log": str(path),
-    "evaluation_release_id": contract.evaluation_release_id,
-    "evaluation_release_commit": contract.evaluation_release_commit,
-    "model_promotion_allowed": False, "telegram_delivery_confirmed": False,
-    "domains": {domain: {
-        "disposition": "succeeded" if accepted else "blocked", "status": "fixture",
-        "model_promotion_allowed": False, "telegram_delivery_confirmed": False,
-    } for domain in contract.domains},
-}
-print(json.dumps(review._write_run(path, payload)))
-raise SystemExit(0 if accepted else 1)
+# Activation must never run a review pass (40-60 min; 2026-11 timeouts).
+Path(os.environ["TEST_FULL_PASS_MARKER"]).touch()
+raise SystemExit(99)
 ''', encoding="utf-8")
     research_python.chmod(0o755)
     au_runner = str(
@@ -292,6 +322,7 @@ raise SystemExit(0 if accepted else 1)
             "TENNIS_ANALYSIS_OUTPUT_ROOT": str(tmp_path / "mirror"),
             "WC_RESEARCH_PYTHON_BIN": str(research_python),
             "TEST_RESEARCH_ACCEPTANCE": "1" if acceptance else "0",
+            "TEST_FULL_PASS_MARKER": str(tmp_path / "full-pass-ran"),
             "TEST_CALENDAR_MISMATCH": "0" if calendar_ok else "1",
             "WONGCHOI_CONTROL_STATE_ROOT": str(tmp_path / "control"),
             "WC_WARM_ARCHIVE_ROOT": str(warm),
@@ -309,6 +340,7 @@ raise SystemExit(0 if accepted else 1)
 
     assert "runtime cutover stage: interpreter preflight" in result.stdout
     assert "runtime cutover stage: active-run preflight" in result.stdout
+    assert not (tmp_path / "full-pass-ran").exists()
 
     if active_run:
         assert result.returncode != 0
@@ -322,8 +354,7 @@ raise SystemExit(0 if accepted else 1)
         assert not (agents / "com.antigravity.central-wong-choi.research-review.plist").exists()
         assert {p.stem for p in agents.glob("*.plist")} == set(au_labels)
         assert pointer.read_bytes() == original_pointer
-        receipt = tmp_path / "control/runs/central/test/research-review/acceptance.json"
-        assert '"status": "failed"' in receipt.read_text()
+        assert '"status": "blocked"' in result.stdout
         return
     if not calendar_ok:
         assert result.returncode != 0
@@ -349,7 +380,7 @@ raise SystemExit(0 if accepted else 1)
     )
 
 
-@pytest.mark.parametrize("fault", ["interrupt", "copyfail", "bootstrapfail", "concurrent", "none"])
+@pytest.mark.parametrize("fault", ["interrupt", "copyfail", "bootstrapfail", "concurrent", "statusfail", "none"])
 def test_research_installer_interruption_and_publication_rollback(tmp_path: Path, fault: str) -> None:
     # Exercise the real installer, but never host launchd or production evidence.
     skill = tmp_path / "repo/.agents/skills/central_wong_choi"
@@ -360,7 +391,7 @@ def test_research_installer_interruption_and_publication_rollback(tmp_path: Path
     label = "com.antigravity.central-wong-choi.research-review"
     shutil.copyfile(INSTALLER.parent / "launchd" / f"{label}.plist.template", skill / "launchd" / f"{label}.plist.template")
     (skill / "scripts/run_central_research_review.sh").write_text(
-        '#!/bin/sh\ncase "$1" in --initialize|--status) exit 0;; esac\nprintf \'{"run_log":"fixture-receipt"}\\n\'\n', encoding="utf-8"
+        '#!/bin/sh\ncase "$1" in --initialize) exit 0;; --status) [ "$TEST_INSTALL_FAULT" = statusfail ] && exit 1; exit 0;; esac\nexit 99\n', encoding="utf-8"
     )
     agents = tmp_path / "agents"
     agents.mkdir()
@@ -435,3 +466,72 @@ def test_active_run_guard_does_not_confuse_release_scope_paths_with_running_jobs
     assert re.search(python_pattern,'/Framework/Python -u /repo/tennis_daily_schedule.py --mode daily')
     assert not re.search(python_pattern,'/usr/bin/python3 /repo/scoped_release.py --path .agents/skills/nba/nba_daily_auto/nba_daily_schedule.py')
     assert not re.search(python_pattern,'python3 -m pytest tests/test_nba_daily_schedule.py')
+
+
+def _restore_fixture(tmp_path: Path) -> tuple[dict[str, str], Path, Path, Path]:
+    agents = tmp_path / "agents"
+    agents.mkdir()
+    fake, state = _stateful_launchctl(tmp_path)
+    state.mkdir()
+    env = {**os.environ, "WC_LAUNCH_AGENTS_DIR": str(agents), "WC_LAUNCHCTL_BIN": str(fake),
+           "WC_TENNIS_DB_POINTER": str(tmp_path / "pointer"),
+           "WC_TENNIS_RUNTIME_ROOT": str(tmp_path / "runtime"), "TEST_LAUNCHD_STATE": str(state),
+           "WC_RESTORE_POLL_SECONDS": "0.01", "WC_RESTORE_RETRY_SECONDS": "0.01",
+           "WC_RESTORE_UNLOAD_POLLS": "20"}
+    return env, agents, state, tmp_path / "snapshot"
+
+
+def test_restore_waits_for_async_bootout_and_leaves_unchanged_running_jobs(tmp_path):
+    """2026-11-10 regression: rollback must not kill an unchanged RunAtLoad job
+    and must survive launchd's asynchronous bootout of a changed one."""
+    env, agents, state, snapshot = _restore_fixture(tmp_path)
+    startup = "com.antigravity.hkjc-wong-choi.startup"
+    prerace = "com.antigravity.hkjc-wong-choi.prerace"
+    introduced = "com.antigravity.tennis-wong-choi.settle"
+    for label in (startup, prerace):
+        (agents / f"{label}.plist").write_text(f"old {label}\n")
+        (state / f"{label}.loaded").touch()
+    subprocess.run(["/bin/zsh", str(INSTALLER), "--snapshot", str(snapshot)],
+                   env=env, capture_output=True, text=True, check=True)
+    # Candidate: startup rewritten byte-identical and running again, prerace
+    # changed, settle newly introduced and loaded.
+    (agents / f"{prerace}.plist").write_text("candidate prerace\n")
+    (agents / f"{introduced}.plist").write_text("new settle\n")
+    (state / f"{introduced}.loaded").touch()
+    (state / "calls.log").unlink(missing_ok=True)
+
+    result = subprocess.run(["/bin/zsh", str(INSTALLER), "--restore", str(snapshot)],
+                            env=env, capture_output=True, text=True, timeout=60)
+
+    assert result.returncode == 0, result.stderr
+    calls = (state / "calls.log").read_text().splitlines()
+    assert not any(c.startswith("bootout") and c.endswith(startup) for c in calls)
+    assert (state / f"{startup}.loaded").exists()
+    assert (agents / f"{prerace}.plist").read_text() == f"old {prerace}\n"
+    assert (state / f"{prerace}.loaded").exists()
+    assert not (agents / f"{introduced}.plist").exists()
+    assert not (state / f"{introduced}.loaded").exists()
+
+
+def test_restore_reports_the_label_that_never_unloads(tmp_path):
+    env, agents, state, snapshot = _restore_fixture(tmp_path)
+    stuck = "com.antigravity.nba-wong-choi.health"
+    other = "com.antigravity.nba-wong-choi.warmup"
+    for label in (stuck, other):
+        (agents / f"{label}.plist").write_text(f"old {label}\n")
+        (state / f"{label}.loaded").touch()
+    subprocess.run(["/bin/zsh", str(INSTALLER), "--snapshot", str(snapshot)],
+                   env=env, capture_output=True, text=True, check=True)
+    for label in (stuck, other):
+        (agents / f"{label}.plist").write_text("candidate\n")
+
+    result = subprocess.run(["/bin/zsh", str(INSTALLER), "--restore", str(snapshot)],
+                            env={**env, "TEST_LAUNCHD_STUCK": stuck},
+                            capture_output=True, text=True, timeout=60)
+
+    assert result.returncode == 1
+    assert f"restore: {stuck} still loaded after bootout" in result.stderr
+    # One stuck label must not stop the others from being restored.
+    assert (agents / f"{other}.plist").read_text() == f"old {other}\n"
+    assert (state / f"{other}.loaded").exists()
+
