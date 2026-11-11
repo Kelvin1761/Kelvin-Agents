@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 from pathlib import Path
 import re
 import sys
@@ -12,6 +13,20 @@ import sys as _sys; _sys.path.insert(0, str(ROOT))
 from wongchoi_paths import HK_RACING, is_materialized_file
 STATS_ROOT = HK_RACING / "HKJC_Race_Results_Database" / "comprehensive_stats"
 TRAINER_RECENCY_PATH = STATS_ROOT / "experimental" / "trainer_recency_90d_stats.csv"
+
+
+HKJC_TZ = ZoneInfo("Asia/Hong_Kong")
+
+
+def hk_today() -> date:
+    """Today's date in Hong Kong, where the race date is defined.
+
+    The scheduler runs on a Sydney Mac (3h ahead in AEDT), whose local date
+    turns over at 21:00 HK.  A Happy Valley card re-scored by the 23:30 /
+    00:30 Sydney slots was then treated as a historical replay and lost every
+    jockey/trainer prior mid-meeting (2026-11-11: 85 of 107 ranks moved).
+    """
+    return datetime.now(HKJC_TZ).date()
 
 
 def _parse_as_of_date(value) -> date | None:
@@ -52,7 +67,7 @@ def is_live_race_date(as_of_date) -> bool:
     if requested is None:
         _warn_unknown_race_date()
         return False
-    return requested >= date.today()
+    return requested >= hk_today()
 
 
 def temporal_source_is_safe(source, as_of_date=None) -> bool:
@@ -71,7 +86,7 @@ def temporal_source_is_safe(source, as_of_date=None) -> bool:
         # EXP-20261014-10).  Fail closed and say so once per process.
         _warn_missing_as_of_date()
         return False
-    if requested >= date.today():
+    if requested >= hk_today():
         return True
     if requested is None:
         return False
@@ -207,7 +222,7 @@ def season_tag_for_date(day) -> str:
 
 def _current_season_tag() -> str:
     """Season the live snapshot is scored in (patched by replay tests)."""
-    return season_tag_for_date(date.today())
+    return season_tag_for_date(hk_today())
 
 
 def season_weight(group: str, season_tag: str, current_tag: str) -> float:

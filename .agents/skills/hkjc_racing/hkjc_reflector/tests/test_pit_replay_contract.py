@@ -146,7 +146,7 @@ class TemporalGuardFailClosedTests(unittest.TestCase):
 
     def test_live_dates_still_use_latest_snapshot(self):
         from datetime import date, timedelta
-        today = date.today()
+        today = live_priors.hk_today()
         self.assertTrue(live_priors.temporal_source_is_safe(self._Latest(), today.isoformat()))
         self.assertTrue(live_priors.temporal_source_is_safe(
             self._Latest(), (today + timedelta(days=3)).isoformat()))
@@ -159,7 +159,7 @@ class TemporalGuardFailClosedTests(unittest.TestCase):
         real = tier_loader.load_tiers()
         name = next(n for t in real.get("jockey", []) if float(t["score"]) != 60.0
                     for n in t.get("names", []))
-        today = date.today().isoformat()
+        today = live_priors.hk_today().isoformat()
         live_score, _ = tier_loader.score_tier("jockey", name, "x", as_of_date=today)
         self.assertNotEqual(live_score, 60.0)
         for as_of in ("2026-04-12", None):
