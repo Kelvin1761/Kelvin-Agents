@@ -45,6 +45,16 @@
 - Good 三次量都係微負（約 2 場 / 380），CI 跨零；可能係真嘅輕微代價
 - **退路**：將 `_weight_score` 開頭 `rating_gap` 分支剷走（或者 orchestrator 唔寫 `rating_gap`）即退返宣佈負磅版本；
   `golden_scoring` 冇郁，舊 baseline 照用
-- **跟進**：上線後 60 場 live 同上線前比較 Gold／Good（記喺下一份記錄）
+- **跟進**：見下「上線後跟進」
 
 **決定**：KEEP（Kelvin 決定上線，唔係閘門判 KEEP）
+
+## 上線後跟進（已登記）
+- 上線 commit：**35050d70**（2026-11-11 merged + activated）
+- Kelvin：「上線後 60 場同上線前比較 Gold 同 Good」→ `hkjc_forward_tracker.py` `FORWARD_TESTS` → `rating_gap_post_live`
+  （`harness_ab`，`since=2026-11-12`，60 場）
+- 做法：同一批上線後場次，用 `docs/experiments/patches/hkjc_arm_revert_rating_gap.py` 退返舊版（宣佈負磅）重評，
+  Δ = 舊版 − live。唔用「上線前 vs 上線後」原始命中率，因為兩段場次唔同、混咗賽事難度
+- 自動判（預先寫死）：Gold、Good、NDCG@5 Δ 全部 ≥ 0 → Telegram「舊版唔輸（等你決定退唔退）」；否則保留評分差距。
+  永遠唔會自動退
+- 退版 arm 核實：440 場回放同上線前 production（7bc10b28）排名**逐場一樣（0 場唔同）**
