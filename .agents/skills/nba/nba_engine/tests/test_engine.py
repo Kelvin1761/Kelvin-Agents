@@ -249,3 +249,12 @@ def test_s2_shadow_never_changes_the_published_probability():
     away = next(l for l in shadow if l.team == "AAA")
     home = next(l for l in shadow if l.team == "BBB")
     assert away.minutes_ratio != home.minutes_ratio        # the favourite and the underdog get different spreads
+
+
+def test_season_fit_factors_multiply_to_the_same_mean_season_mu_returns():
+    """Display breakdown (dashboard「點解揀」) must explain the model's own number, not a second one."""
+    for stat in ("REB", "PTS"):
+        fit = model.season_fit(season_log(), stat, OPP, "2026-27", "AAA")
+        assert (fit["mu"], fit["k"]) == model.season_mu(season_log(), stat, OPP, "2026-27", "AAA")
+        assert abs(fit["minutes"] * fit["per_minute"] * fit["opponent_factor"] - fit["mu"]) < 1e-9
+    assert model.season_fit(season_log(n=3), "REB", OPP, "2026-27", "AAA") is None

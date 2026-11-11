@@ -50,6 +50,7 @@ class Leg:
     flags: list[str] = field(default_factory=list)
     p_s2: float | None = None    # SHADOW (EXP-20261111-03): S with the v2 minutes forecast; never published
     minutes_ratio: float | None = None
+    expect: dict | None = None   # display only: S's mean and its factors (model.season_fit), rounded
 
     @property
     def p_final(self) -> float | None:
@@ -158,6 +159,11 @@ def build_legs(odds: dict, package: dict) -> tuple[list[Leg], dict]:
             team_spread = None if away_spread is None else (away_spread if team == away else -away_spread)
             ratio = minutes_ratio((minutes_ctx.get(team) or {}).get(str(p.get("player_id"))),
                                   team_spread, team_spread is not None and team_spread < 0, minutes_coef)
+            fit = model.season_fit(gamelog.get("season_log"), stat, opp_ctx, season, team)
+            expect = None if fit is None else {
+                "mu": round(fit["mu"], 2), "minutes": round(fit["minutes"], 1),
+                "per_minute": None if fit["per_minute"] is None else round(fit["per_minute"], 4),
+                "opponent_factor": round(fit["opponent_factor"], 3), "games": fit["games"]}
             for line_text, price_text in (entry.get("lines") or {}).items():
                 line, price = float(line_text), float(price_text)
                 if not line.is_integer() or price < 1.01:
@@ -174,5 +180,5 @@ def build_legs(odds: dict, package: dict) -> tuple[list[Leg], dict]:
                     availability=level, flags=list(flags),
                     p_s2=None if ratio is None else model.s2_prob(
                         gamelog.get("season_log"), stat, line, opp_ctx, season, team, ratio),
-                    minutes_ratio=None if ratio is None else round(ratio, 4)))
+                    minutes_ratio=None if ratio is None else round(ratio, 4), expect=expect))
     return legs, skipped

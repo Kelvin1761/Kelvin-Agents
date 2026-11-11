@@ -160,6 +160,9 @@ def sidecar(report_text, odds, package, legs, combo, quote, diagnostics) -> dict
                   "p_s2": _round(l.p_s2), "minutes_ratio": l.minutes_ratio,
                   "p_l10_base_rate": l.hit_l10, "hit_l5": l.hit_l5, "cov": l.cov, "availability": l.availability,
                   "flags": l.flags, "engine": ENGINE_ID, "probability_model_id": model_id,
+                  # Display only (dashboard「點解揀」): what the leg was priced from.
+                  "explain": {"opponent": l.opponent, "l10": l.l10, "avg": l.avg, "median": l.median,
+                              "minutes_l10": l.minutes_l10, "expect": l.expect},
                   "picked": (l.player, l.stat, l.line) in picked,
                   "picked_in": ["1"] if (l.player, l.stat, l.line) in picked else []} for l in legs],
         "combos": combos,

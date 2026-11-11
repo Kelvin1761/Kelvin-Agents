@@ -27,7 +27,8 @@ def test_snapshot_picks_reads_every_game_and_caps_the_day(tmp_path):
 def test_card_says_paper_only_and_lists_each_pick():
     text = fc.card("2026-11-11", [{**_pick("Jayson Tatum", 0.1), "game_tag": "BOS_LAL"}])
     assert "紙上盤" in text and "唔好落真錢" in text
-    assert "BOS@LAL｜Jayson Tatum 得分 細 24.5 @1.9" in text and "+10.0pp" in text
+    assert "BOS@LAL｜Jayson Tatum - Points｜Under 24.5 @1.9" in text and "+10.0pp" in text
+    assert "Sportsbet 搵法" in text and "得分" not in text
     assert "冇大細盤" in fc.card("2026-11-11", [])
 
 
@@ -41,6 +42,6 @@ def test_postgame_reports_hits_but_never_roi():
     ]
     text = fc.postgame_lines("2026-11-11", records)
     assert text.startswith("⭐ 大細盤精選（紙上盤）：2 注｜中 1｜未中 0")
-    assert "✅ A PTS 細 24.5 @1.9（實際 20）" in text and "➖ B AST 大 5.5" in text
+    assert "✅ A - Points｜Under 24.5 @1.9（實際 20）" in text and "➖ B - Assists｜Over 5.5" in text
     assert "ROI" not in text and "%" not in text
     assert fc.postgame_lines("2026-11-12", records) is None

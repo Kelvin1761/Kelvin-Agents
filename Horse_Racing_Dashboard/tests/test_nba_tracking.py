@@ -346,3 +346,16 @@ def test_morning_refresh_without_a_slip_cancels_it_as_void(tmp_path):
     row=build(tmp_path)['records'][0]
     assert row['state']=='void' and row['profit'] is None
     assert row['morning_update']['cancelled'] is True and row['morning_update']['from']['odds']==2.5
+
+
+def test_each_leg_carries_what_it_was_priced_from(tmp_path):
+    folder=publication(tmp_path,'why')
+    explain={'opponent':'DEN','l10':[8,7,5],'avg':6.7,'median':7,'minutes_l10':32.1,
+             'expect':{'mu':7.3,'minutes':31.9,'per_minute':0.228,'opponent_factor':1.0,'games':12}}
+    _patch_sidecar(folder,selection_diagnostics={'rule':'banker'},legs=[
+        {'player':'Second Player','team':'AAA','market':'reb','line':6.0,'side':'over','price':1.5,'p_market':.6667,
+         'p_s':.68,'p_c':.7,'p_final':.69,'p_l10_base_rate':.8,'hit_l5':.8,'cov':.31,'explain':explain}])
+    first,second=build(tmp_path)['records'][0]['legs']
+    assert first['why'] is None                      # a leg the sidecar never priced explains nothing
+    assert second['why']['expect']['mu']==7.3 and second['why']['l10']==[8,7,5]
+    assert second['why']['p_s']==.68 and second['why']['rule']=='banker' and second['why']['opponent']=='DEN'

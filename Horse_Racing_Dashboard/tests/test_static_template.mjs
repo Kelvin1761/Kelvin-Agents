@@ -71,7 +71,7 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
       restoreTennisView, tennisStats, tennisPnl, tennisSelectRows, tennisRenderBets, tennisLoadMore, setTennisFilter, renderTennisWorkspace, loadSportsBetLedger,
       setTennisQueryForTest: (query) => { tennisSearch = query; },
       setTennisLimitForTest: (limit) => { tennisLimit = limit; },
-      renderHkjcInsights, setInsights, nbaStats, nbaRecords, nbaDashboard, nbaSelectRows, nbaPeriodsNow, nbaPeriodRange, nbaRenderMonths, nbaShortDate, nbaJersey,
+      renderHkjcInsights, setInsights, nbaStats, nbaRecords, nbaRenderBets, nbaDashboard, nbaSelectRows, nbaPeriodsNow, nbaPeriodRange, nbaRenderMonths, nbaShortDate, nbaJersey,
       nbaShouldAutoRefresh, racingShouldAutoRefresh, checkForNewSnapshot,
       setPendingBetSyncForTest: (value) => { hasPendingCommittedChanges = value; }, reloadSnapshot, restoreNbaTrackingView,
       getSportsTabForTest: () => activeSportsTab,
@@ -2803,4 +2803,27 @@ test("decorative emoji become line icons; status and identity marks are left alo
 test("compact timeline controls keep a 44px tap area", () => {
   const html = fs.readFileSync(new URL("../static_template.html", import.meta.url), "utf8");
   assert.match(html, /\.tl-chip::after, \.watch-btn::after, \.tl-past-toggle::after, \.bh-analysis::after \{\s*content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 44px;/);
+});
+
+test('NBA 大細盤精選 has its own tab and names bets the way Sportsbet lists them',()=>{
+  const rec=(id,day,state,side,stat,actual)=>({id,day,event_name:'OKC @ POR',game_tag:'OKC_POR',start_time_utc:'2099-01-01T00:00:00Z',sportsbet_event_id:'11148389',odds:1.8,stake:1,tracking_kind:'featured',edge:0.0967,p_model:0.6179,p_fair:0.5213,state,legs:[{player:'Mikal Bridges',team:'NYK',market:'pts',stat,ou_line:9.5,side,price:1.8,state,actual}]});
+  const api=loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,sports_feed:{sports:{nba:{tracking:{status:'valid',records:[],featured_inception_date:'2026-11-11',featured_records:[rec('a','2026-11-11','won','under','PTS',8),rec('b','2026-11-11','lost','over','3PM',1),rec('c','2026-11-12','pending','under','PTS',null)]}}}}});
+  api.setSportsTabForTest('history');let html=api.renderSportsWorkspace('nba');
+  assert.match(html,/⭐ 大細盤精選<\/button>/);assert.match(html,/ou-mini/);assert.match(html,/完整 dashboard/);
+  api.setSportsTabForTest('featured');html=api.renderSportsWorkspace('nba');
+  for(const text of ['大細盤精選總覽','Mikal Bridges - Points','Under 9.5','Mikal Bridges - Made Threes','Over 9.5','前向測試進度','喺 Sportsbet 點搵','過往精選','https://www.sportsbet.com.au/betting/basketball-us/nba/okc-at-por-11148389','data-copy="Mikal Bridges - Points"'])assert.ok(html.includes(text),text);
+  assert.doesNotMatch(html,/得分|細 9\.5/);
+  assert.match(html,/2<small>\/ 250 注<\/small>/);      // two settled, one pending
+  assert.match(html,/−\$0\.20|-\$0\.20/);                // +0.80 − 1.00
+});
+
+test('NBA SGM leg expands into a plain-language reason built from the saved pricing inputs',()=>{
+  const why={price:1.3,p_market:0.7692,p_s:0.68,p_c:0.7,p_final:0.69,p_l10_base_rate:0.8,hit_l5:0.8,cov:0.31,rule:'banker',opponent:'DEN',l10:[8,7,5,9,6,7,10,6,4,8],avg:7,median:7,minutes_l10:32.1,expect:{mu:7.3,minutes:31.9,per_minute:0.228,opponent_factor:1.0,games:12}};
+  const leg=(player,extra)=>({player,team:'BKN',market:'reb',stat:'REB',line:6,side:'over',state:'pending',actual:null,...extra});
+  const api=loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,sports_feed:{sports:{nba:{tracking:{status:'valid',featured_records:[],records:[{id:'nba:x',day:'2099-01-01',event_name:'BKN @ DEN',game_tag:'BKN_DEN',start_time_utc:'2099-01-01T00:00:00Z',odds:2.4,stake:1,tracking_kind:'formal',model_probability:0.4,state:'pending',legs:[leg('Michael Porter Jr.',{why}),leg('Old Leg',{})]}]}}}}});
+  const html=api.nbaRenderBets(api.nbaRecords(),'today');
+  for(const text of ['點解揀 Michael Porter Jr. 籃板 6+？','預計上場分鐘','每分鐘籃板','對手修正（對 DEN）','<b>7.3</b><small>預計籃板</small>','預計高過條線 <b>1.3</b>','10 場有 <b>8</b> 場做到','冇價值優勢','✓ 近 10 場命中 80%','未有記錄分析數據','nbaToggleLeg(this)'])assert.ok(html.includes(text),text);
+  assert.doesNotMatch(html,/點解揀 ▾/);assert.match(html,/leg-chevron/);
+  assert.match(html,/籃板 6\+ · 預計 7\.3 <b class="edge-tag neg">edge −7\.9pp<\/b>/);   // 0.69 − 1/1.3
+  assert.match(html,/模型 40% · 市場 41\.7% · <b class="edge-tag neg">edge −1\.7pp<\/b>/);  // SGM: 0.40 − 1/2.4
 });
