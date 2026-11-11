@@ -56,7 +56,9 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
     ForwardTest("weight_rating_gap", "負磅分改用官方評分差距", "EXP-20261029-30", "harness_ab", 60,
                 since="2026-10-30", arm="docs/experiments/patches/hkjc_arm_weight_rating_gap.py",
                 action="自動判：forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議上線；否則維持現行（宣佈負磅）",
-                extra={"pass_verdict": "建議上線（等你決定）"}),
+                extra={"pass_verdict": "建議上線（等你決定）"},
+                decided="2026-11-11 forward 30/60 打和（Gold 2→2、Good 4→4、NDCG −0.0083）；380 場重跑 Gold +1.05 "
+                        "[+0.26,+2.12]、Good −0.53 跨零；Kelvin 決定上線（EXP-20261111-10）"),
     ForwardTest("first_section", "頭段速度（已退回）", "EXP-20261016-53", "state_judge", 150,
                 state_key="first_section_forward_final", action="每週自動判，見前速 forward 一段"),
     ForwardTest("official_injury", "官方傷患紀錄 B1", "EXP-20261020-02", "state_judge", 60,

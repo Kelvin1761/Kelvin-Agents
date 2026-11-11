@@ -124,6 +124,49 @@ class ApprenticeAllowance(unittest.TestCase):
         self.assertIn("宣佈負磅120磅", note)
 
 
+class RatingGapIsTheInput(unittest.TestCase):
+    """EXP-20261111-10：有官方評分就直接讀「距全場最高評分幾多分」，唔再由負磅推返。
+
+    原因：香港頂磅通常係 135 唔係 133，用絕對負磅 ≥132／≤120 分界，等於「距頂 ≤3」／「距頂 ≥15」，
+    同設計原意（距頂 ≤1／≥13）差兩分；冇馬負到 132 嘅場次（3.9%）連全場最高評分都攞唔到「重」。
+    """
+
+    def _engine(self, gap, rating=80, carried=126):
+        engine = RacingEngine.__new__(RacingEngine)
+        engine.horse_data = {"weight_carried": carried}
+        engine.data = {"rating_gap": gap, "current_rating": rating}
+        engine.provenance = {}
+        engine.race_analysis = {}
+        return engine._weight_score({})
+
+    def test_field_top_rated_is_heavy_even_on_a_light_weight(self):
+        score, note, source = self._engine(0, carried=126)
+        self.assertEqual(score, scoring.WEIGHT_MICRO_WEIGHTS["heavy_weight_base"])
+        self.assertEqual(source, "rating_gap")
+        self.assertIn("讓磅官", note)
+
+    def test_thresholds(self):
+        w = scoring.WEIGHT_MICRO_WEIGHTS
+        self.assertEqual(self._engine(1)[0], w["heavy_weight_base"])
+        self.assertEqual(self._engine(2)[0], w["base"])
+        self.assertEqual(self._engine(12)[0], w["base"])
+        self.assertEqual(self._engine(13)[0], w["light_weight_base"])
+
+    def test_three_points_off_top_is_no_longer_heavy(self):
+        """負磅 132（頂磅 135）以前算重；而家睇評分差距 3 → 中游。"""
+        self.assertEqual(self._engine(3, carried=132)[0], scoring.WEIGHT_MICRO_WEIGHTS["base"])
+
+    def test_note_number_tracks_the_constant(self):
+        for gap in (0, 6, 15):
+            score, note, _ = self._engine(gap)
+            self.assertIn(f"{score:.0f}分", note)
+
+    def test_no_rating_falls_back_to_declared_weight(self):
+        score, _, source = _score(133)
+        self.assertEqual(source, "weight_carried")
+        self.assertEqual(score, scoring.WEIGHT_MICRO_WEIGHTS["heavy_weight_base"])
+
+
 class NarrativeFollowsScoreDirection(unittest.TestCase):
     """文字方向要跟分數方向（2026-10-29）。
 

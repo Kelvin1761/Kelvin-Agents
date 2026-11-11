@@ -312,9 +312,16 @@ TRACK_MICRO_WEIGHTS = {
 # 負磅分只計讓磅，分界用實際負磅（負磅 − 見習減磅）。
 WEIGHT_MICRO_WEIGHTS = {
     "base": 64.0,
-    "light_weight_base": 54.0,   # ≤120 磅：讓磅官睇低佢
-    "heavy_weight_base": 70.0,   # ≥132 磅：讓磅官睇好佢，而且抹得唔夠
+    "light_weight_base": 54.0,   # 讓磅官睇低佢
+    "heavy_weight_base": 70.0,   # 讓磅官睇好佢，而且抹得唔夠
 }
+
+# EXP-20261111-10（Kelvin 2026-11-11 決定上線）：負磅分改讀官方評分距全場最高評分幾多分。
+# 有評分就用評分差距；冇評分（例如部分非讓磅賽／舊存檔）先退返宣佈負磅分界。
+WEIGHT_RATING_GAP_LIGHT = 13   # 評分差距 ≥ 13 → 輕（light_weight_base）
+WEIGHT_RATING_GAP_HEAVY = 1    # 評分差距 ≤ 1 → 重（heavy_weight_base）
+WEIGHT_DECLARED_LIGHT = 120    # 後備：宣佈負磅 ≤ 120
+WEIGHT_DECLARED_HEAVY = 132    # 後備：宣佈負磅 ≥ 132
 
 CONSISTENCY_MICRO_WEIGHTS = {
     "debut_base": 58.0,

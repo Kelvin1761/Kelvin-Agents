@@ -807,6 +807,21 @@ def _align_runner_headers(logic_path, race_context, horses):
                 data["current_rating"] = info["rating"]
                 if info.get("change") is not None:
                     data["rating_change"] = info["change"]
+        # 負磅分讀官方評分（距全場最高評分幾多分），唔再由負磅推返（EXP-20261111-10）。
+        # 只計退出之後仲喺場嘅馬。
+        ratings = [
+            int(horse_obj["_data"]["current_rating"])
+            for horse_obj in horses.values()
+            if isinstance(horse_obj, dict)
+            and (horse_obj.get("_data") or {}).get("current_rating") is not None
+        ]
+        if ratings:
+            top_rating = max(ratings)
+            race_context["field_top_rating"] = top_rating
+            for horse_obj in horses.values():
+                data = horse_obj.get("_data") if isinstance(horse_obj, dict) else None
+                if data and data.get("current_rating") is not None:
+                    data["rating_gap"] = top_rating - int(data["current_rating"])
 
     _enrich_horse_headers(horses, {})
     race_context["field_horse_names"] = [

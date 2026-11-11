@@ -188,6 +188,23 @@ class LeafScores:
         # 見習減磅係騎師嘅減磅，唔係讓磅官對匹馬嘅評價（EXP-20261029-30，§7：
         # Gold +0.29pp、Good +0.58pp，冇一個分層負）。Logic `weight` 係實際負磅
         # （已扣減磅，EXP-20261018-06），冇 `declared_weight` 時用「實際＋減磅」還原。
+        # EXP-20261111-10：直接讀官方評分距全場最高評分幾多分，唔再由負磅推返評分。
+        # 讓磅賽入面兩者幾乎一樣；分別喺頂磅 135 唔係 133、同埋冇馬負到 132 嘅場次。
+        gap = parse_float(self._value("rating_gap"))
+        if gap is not None:
+            rating = self._value("current_rating")
+            score = scoring.WEIGHT_MICRO_WEIGHTS.get("base", 64.0)
+            note = (f"官方評分{rating}，距全場最高{gap:.0f}分，屬中游，讓磅官冇特別意見，"
+                    f"負磅分{score:.0f}分。")
+            if gap >= scoring.WEIGHT_RATING_GAP_LIGHT:
+                score = scoring.WEIGHT_MICRO_WEIGHTS.get("light_weight_base", 54.0)
+                note = (f"官方評分{rating}，距全場最高{gap:.0f}分 —— 讓磅官睇低佢（輕磅），"
+                        f"負磅分{score:.0f}分。")
+            elif gap <= scoring.WEIGHT_RATING_GAP_HEAVY:
+                score = scoring.WEIGHT_MICRO_WEIGHTS.get("heavy_weight_base", 70.0)
+                note = (f"官方評分{rating}，全場最高或只差{gap:.0f}分 —— 讓磅官視佢為全場最好嘅馬，"
+                        f"而實測加磅加得唔夠狠（0.389 分/kg vs 慣例 0.5），負磅分{score:.0f}分。")
+            return clip_score(score), note, "rating_gap"
         weight = parse_float(self._value("weight_carried") or self._value("weight"))
         if weight is None:
             return 60, "負磅資料不足，負磅分60分。", "missing_neutral"
@@ -197,11 +214,11 @@ class LeafScores:
         claim = f"（見習減磅 {allowance:.0f}，實際負磅 {carried - allowance:.0f}）" if allowance else ""
         score = scoring.WEIGHT_MICRO_WEIGHTS.get("base", 64.0)
         note = f"今仗宣佈負磅{carried:.0f}磅{claim}，屬中游負磅，讓磅官冇特別意見，負磅分{score:.0f}分。"
-        if carried <= 120:
+        if carried <= scoring.WEIGHT_DECLARED_LIGHT:
             score = scoring.WEIGHT_MICRO_WEIGHTS.get("light_weight_base", 54.0)
             note = (f"今仗宣佈負磅{carried:.0f}磅{claim}較輕 —— 負磅係讓磅官嘅評分，輕磅即係"
                     f"官方評分低，負磅分{score:.0f}分。")
-        elif carried >= 132:
+        elif carried >= scoring.WEIGHT_DECLARED_HEAVY:
             score = scoring.WEIGHT_MICRO_WEIGHTS.get("heavy_weight_base", 70.0)
             note = (f"今仗宣佈負磅{carried:.0f}磅{claim}屬頂磅 —— 讓磅官視佢為全場最好嘅馬，"
                     f"而實測加磅加得唔夠狠（0.389 分/kg vs 慣例 0.5），"
