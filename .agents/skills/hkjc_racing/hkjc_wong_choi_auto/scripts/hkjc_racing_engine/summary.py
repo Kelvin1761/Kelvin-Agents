@@ -13,6 +13,9 @@ every horse; it also listed 資料完整度 — not part of the model — as an 
 from __future__ import annotations
 
 import re
+from pathlib import Path
+
+from . import tags as tag_builder
 
 # 只講影響綜合分 ≥ 呢個數（原始尺）嘅維度。0.5 ≈ 顯示尺 1.1 分 —— 細過呢個唔值得寫。
 IMPACT_FLOOR = 0.5
@@ -152,12 +155,18 @@ def race_summary(ranking: list[dict]) -> dict:
     return {"gap_1_2": gap, "tightness": tightness, "lines": lines}
 
 
-def attach(logic_data: dict) -> None:
-    """Write `python_auto.summary` per horse and `python_auto_race_summary`."""
+def attach(logic_data: dict, meeting_dir: Path | None = None) -> None:
+    """Write `python_auto.summary` per horse and `python_auto_race_summary`.
+
+    `meeting_dir` lets the tag builder read the horse-profile cache and the racecard
+    (潘頓棄騎、初跑、王牌…). Without it the tags fall back to what the Logic file holds.
+    """
     horses = logic_data.get("horses") or {}
     scored = {num: h for num, h in horses.items() if isinstance(h, dict) and isinstance(h.get("python_auto"), dict)}
-    for horse in scored.values():
+    tags = tag_builder.race_tags(logic_data, meeting_dir)
+    for num, horse in scored.items():
         horse["python_auto"]["summary"] = horse_summary(horse, horse["python_auto"], len(scored))
+        horse["python_auto"]["summary"]["tags"] = tags.get(str(num)) or {"good": [], "bad": [], "note": []}
     ranking = (logic_data.get("python_auto_verdict") or {}).get("ranking") or []
     if not ranking:
         ranking = sorted(
