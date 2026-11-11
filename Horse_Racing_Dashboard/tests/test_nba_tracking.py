@@ -305,3 +305,44 @@ def test_featured_merge_keeps_cold_days_and_replaces_covered_ones():
            'featured_records':[{'id':'nba:2026-11-12:A_B:featured','day':'2026-11-12','state':'lost'}]}
     result=_merge_sports_feed({'sports':{'nba':{'tracking':old}}},{'sports':{'nba':{'tracking':fresh}}})['sports']['nba']['tracking']
     assert [(r['day'],r['state']) for r in result['featured_records']]==[('2026-11-11','won'),('2026-11-12','lost')]
+
+
+# ── Kelvin 2026-11-11: a morning refresh that changes a slip replaces it ──────────
+
+def _swap_leg(folder, player='Third Player', market='ast', line=4.0, price=2.8):
+    side=folder/f'Game_{TAG}_Full_Analysis.md.market_legs.json'
+    data=json.loads(side.read_text());combo=data['combos'][0]
+    combo['legs'][1]={'player':player,'market':market,'line':line,'price':1.6,'p_final':.8,'desc':f'{player} {market.upper()} {line}+'}
+    combo['sportsbet_sgm_price']=price;combo['sgm_quote']['decimal_odds']=price
+    side.write_text(json.dumps(data))
+    manifest=folder/'manifest.json';meta=json.loads(manifest.read_text())
+    for row in meta['files']:
+        if row['name']==side.name:row.update(bytes=side.stat().st_size,sha256=hashlib.sha256(side.read_bytes()).hexdigest())
+    manifest.write_text(json.dumps(meta))
+
+
+def test_morning_refresh_that_changes_a_slip_replaces_it_and_keeps_the_2100_slip(tmp_path):
+    publication(tmp_path,'z-2100')
+    _swap_leg(publication(tmp_path,'a-0830',role='final_refresh',created='2026-10-24T21:30:00+00:00'))
+    rows=build(tmp_path)['records'];assert len(rows)==1
+    row=rows[0]
+    assert row['snapshot_id']=='a-0830' and row['odds']==2.8
+    assert [l['player'] for l in row['legs']]==['First Player','Third Player']
+    update=row['morning_update']
+    assert update['from']['odds']==2.5 and [l['player'] for l in update['from']['legs']]==['First Player','Second Player']
+    assert update['from']['legs'][1]['market']=='reb' and not update.get('cancelled')
+
+
+def test_morning_refresh_with_the_same_legs_keeps_the_2100_slip_and_price(tmp_path):
+    publication(tmp_path,'z-2100');publication(tmp_path,'a-0830',price=3.1,role='final_refresh',created='2026-10-24T21:30:00+00:00')
+    row=build(tmp_path)['records'][0]
+    assert row['snapshot_id']=='z-2100' and row['odds']==2.5 and 'morning_update' not in row
+
+
+def test_morning_refresh_without_a_slip_cancels_it_as_void(tmp_path):
+    publication(tmp_path,'z-2100')
+    publication(tmp_path,'a-0830',probability=.2,role='final_refresh',created='2026-10-24T21:30:00+00:00')
+    results(tmp_path)
+    row=build(tmp_path)['records'][0]
+    assert row['state']=='void' and row['profit'] is None
+    assert row['morning_update']['cancelled'] is True and row['morning_update']['from']['odds']==2.5

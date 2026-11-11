@@ -11,6 +11,7 @@ from dataclasses import asdict, dataclass, field
 
 from nba_availability import classify_injury_status
 from nba_identity import player_name_key
+from nba_minutes import minutes_ratio
 from nba_schedule import canonical_team_abbr
 
 from . import model
@@ -47,6 +48,8 @@ class Leg:
     p_ms: float | None           # market + S: the published probability
     availability: str            # ok / dtd   (out players never become legs)
     flags: list[str] = field(default_factory=list)
+    p_s2: float | None = None    # SHADOW (EXP-20261111-03): S with the v2 minutes forecast; never published
+    minutes_ratio: float | None = None
 
     @property
     def p_final(self) -> float | None:
@@ -105,6 +108,15 @@ def _flags(stat, gamelog, team, season, minutes):
     return flags
 
 
+def _spread(odds: dict) -> float | None:
+    """The away side's handicap as Sportsbet quotes it ("+4.5" = away is the underdog)."""
+    try:
+        value = float(str((odds.get("game_lines") or {}).get("spread_away")).replace("+", ""))
+    except (TypeError, ValueError):
+        return None
+    return value if math.isfinite(value) else None
+
+
 def build_legs(odds: dict, package: dict) -> tuple[list[Leg], dict]:
     """All scoreable milestone legs of one game, plus counts of what was skipped and why."""
     away, home = odds["away_team"], odds["home_team"]
@@ -112,6 +124,9 @@ def build_legs(odds: dict, package: dict) -> tuple[list[Leg], dict]:
     players = package.get("players") or {}
     skipped: dict[str, int] = {}
     legs = []
+    minutes_ctx = ((package.get("minutes_context") or {}).get("teams") or {})
+    minutes_coef = (model.config().get("minutes_v2") or {}).get("coefficients") or []
+    away_spread = _spread(odds)
     for category, by_player in (odds.get("player_props") or {}).items():
         stat = CATEGORY.get(category)
         if stat is None:
@@ -140,6 +155,9 @@ def build_legs(odds: dict, package: dict) -> tuple[list[Leg], dict]:
             flags = _flags(stat, gamelog, team, season, minutes)
             if stat == "FG3M" and round(cov, 3) > 0.5:
                 flags.append("volatile_3pm")
+            team_spread = None if away_spread is None else (away_spread if team == away else -away_spread)
+            ratio = minutes_ratio((minutes_ctx.get(team) or {}).get(str(p.get("player_id"))),
+                                  team_spread, team_spread is not None and team_spread < 0, minutes_coef)
             for line_text, price_text in (entry.get("lines") or {}).items():
                 line, price = float(line_text), float(price_text)
                 if not line.is_integer() or price < 1.01:
@@ -153,5 +171,8 @@ def build_legs(odds: dict, package: dict) -> tuple[list[Leg], dict]:
                     cov=round(cov, 3), market=1.0 / price,
                     p_c=model.c_prob(stat, price, hit10),
                     p_s=p_s, p_ms=model.ms_prob(stat, price, p_s),
-                    availability=level, flags=list(flags)))
+                    availability=level, flags=list(flags),
+                    p_s2=None if ratio is None else model.s2_prob(
+                        gamelog.get("season_log"), stat, line, opp_ctx, season, team, ratio),
+                    minutes_ratio=None if ratio is None else round(ratio, 4)))
     return legs, skipped

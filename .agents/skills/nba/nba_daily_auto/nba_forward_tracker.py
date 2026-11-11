@@ -49,6 +49,9 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
     ForwardTest("pick_penalty", "穩膽揀中嘅腿，命中率係咪低過模型自己估嘅（對照：合資格但冇揀嘅腿）",
                 "EXP-20261111-01 P", "docs/experiments/patches/nba_pick_penalty/evaluate.py", "P",
                 "PASS = 揀腿規則本身拖低命中，下一步係預先登記一個新揀腿規則再比；未過 = 冇證據，穩膽規則唔郁"),
+    ForwardTest("s2_blend", "自己模型佔更大份額：市場＋S2（新上場時間預測）對現行發佈機率",
+                "EXP-20261111-05 S2", "docs/experiments/patches/nba_s2_forward/evaluate.py", "S2",
+                "PASS（log-loss 差 95% CI 上限 < 0）先可以申請將發佈機率換做 MS2，要過 model-regression-gate；未過就維持現行"),
 )
 
 
@@ -76,6 +79,12 @@ def _numbers(test: ForwardTest, result: dict) -> str:
         hit = result.get("hit_rate")
         return (f"{result.get('n_bets')} 注、{result.get('days')} 日；命中 {'N/A' if hit is None else f'{hit * 100:.1f}%'}；"
                 f"平注 ROI {pct(result.get('roi'))} [{pct(ci[0])}, {pct(ci[1])}]")
+    if test.test == "S2":
+        loss = result.get("logloss") or {}
+        num = lambda v: "N/A" if v is None else f"{v:+.4f}"  # noqa: E731
+        return (f"{result.get('n_legs')} 腿、{result.get('days')} 日；log-loss 發佈 {loss.get('pub', float('nan')):.4f}、"
+                f"MS2 {loss.get('ms2', float('nan')):.4f}；差 {num(result.get('primary_delta'))} [{num(ci[0])}, {num(ci[1])}]；"
+                f"其中換新時間預測佔 {num((result.get('ms2_vs_msr') or {}).get('delta'))}")
     if test.test == "P":
         picked, control = result.get("picked") or {}, result.get("control") or {}
         rate = lambda side, key: "N/A" if side.get(key) is None else f"{side[key] * 100:.1f}%"  # noqa: E731
@@ -124,7 +133,7 @@ def summary_line(report: dict) -> str:
         elif test.test.startswith("F"):
             parts.append(f"{test.experiment} {item.get('bets')}/{item['checkpoint']['bets']} 注"
                          + (" ✅" if item.get("ready") else ""))
-        elif test.test in ("M", "P"):
+        elif test.test in ("M", "P", "S2"):
             parts.append(f"{test.experiment} {item.get('days')}/{item['checkpoint']['days']} 日、"
                          f"{item.get('flagged_legs')}/{item['checkpoint']['flagged_legs']} 腿"
                          + (" ✅" if item.get("ready") else ""))

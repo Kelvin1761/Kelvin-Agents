@@ -36,7 +36,7 @@ class FakeScript:
 
 
 def test_registry_covers_both_tests():
-    assert {t.test for t in tracker.FORWARD_TESTS} == {"M", "T", "F250", "F1000", "FU_AVG", "FU_EDGE", "P"}
+    assert {t.test for t in tracker.FORWARD_TESTS} == {"M", "T", "F250", "F1000", "FU_AVG", "FU_EDGE", "P", "S2"}
     for t in tracker.FORWARD_TESTS:
         assert (REPO / t.script).is_file()
 

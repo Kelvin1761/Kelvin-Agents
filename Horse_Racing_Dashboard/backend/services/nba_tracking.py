@@ -118,6 +118,23 @@ def _featured_records(day, day_picks, actuals):
     return out
 
 
+def _market(leg):
+    """'Player PTS' (formal cards) and 'pts' (research records) are the same market."""
+    name = str(leg.get('market') or leg.get('category') or '').lower().replace('player', '').strip()
+    return {'3pm': 'fg3m', 'threes': 'fg3m', 'threes_made': 'fg3m'}.get(name, name)
+
+
+def _legset(legs):
+    return sorted((str(l.get('player')), _market(l), float(l.get('line') or 0)) for l in legs or [])
+
+
+def _slip(record):
+    """What a slip was, for the morning-update note: legs, price, publication time."""
+    return {'odds':record.get('odds'), 'published_at':record.get('published_at'),
+            'legs':[{'player':l.get('player'), 'team':l.get('team'), 'market':_market(l),
+                     'category':l.get('category'), 'line':l.get('line')} for l in record.get('legs') or []]}
+
+
 def build_tracking(roots, ledger_root, firewall):
     from .multisport_exporter import nba_combos, nba_report_sidecar
     ledger_root = Path(ledger_root)
@@ -159,9 +176,9 @@ def build_tracking(roots, ledger_root, firewall):
         publications = []
         for folder in sources:
             publications.extend(verified_published_reports(folder, day, firewall, all_publications=True))
-        selected, featured_seen, day_picks = set(), set(), []
+        selected, featured_seen, day_picks = {}, set(), []
         for tag, report, odds_path, published in sorted(publications, key=lambda r:(r[3],str(r[1]))):
-            if tag in excluded or (tag in selected and tag in featured_seen):
+            if tag in excluded:
                 continue
             try:
                 sidecar = json.loads(Path(str(report)+'.market_legs.json').read_text())
@@ -171,8 +188,6 @@ def build_tracking(roots, ledger_root, firewall):
                     for pick in sidecar.get('featured') or []:
                         if _valid_pick(pick):
                             day_picks.append((pick, tag, report, odds, published))
-                if tag in selected:
-                    continue
                 # Formal combos only from a sidecar bound to this exact report.
                 cards = nba_combos(sidecar, day, tag, []) if nba_report_sidecar(report) else []
                 # EXP-20261027-21: under the steady policy combo 1 IS the B2
@@ -189,6 +204,19 @@ def build_tracking(roots, ledger_root, firewall):
                 # published (legacy EV-gated days, or a stop-loss pause).
                 if not (steady and card):
                     card = _research_card(sidecar, odds, day, tag, published) or card
+                prior = selected.get(tag)
+                if prior is not None:
+                    # Kelvin 2026-11-11: a morning refresh that changes a slip replaces it;
+                    # the record keeps what the 21:00 slip was. Same legs = no update.
+                    old = records[prior]
+                    first = (old.get('morning_update') or {}).get('from') or _slip(old)
+                    if not card:
+                        if not (old.get('morning_update') or {}).get('cancelled'):
+                            records[prior] = {**old, 'state':'void', 'profit':None,
+                                              'morning_update':{'at':published, 'from':first, 'cancelled':True}}
+                        continue
+                    if _legset(card['legs']) == _legset(old['legs']) and not (old.get('morning_update') or {}).get('cancelled'):
+                        continue
                 if not card:
                     continue
                 legs = []
@@ -222,7 +250,10 @@ def build_tracking(roots, ledger_root, firewall):
                                 'model_probability':card.get('model_probability', card.get('metrics',{}).get('model_probability')),
                                 'state':state, 'profit':profit, 'legs':legs,
                                 'settled_at':max((l.get('settled_at') or '' for l in legs),default='') or None})
-                selected.add(tag)
+                if prior is None:
+                    selected[tag] = len(records) - 1
+                else:
+                    records[prior] = {**records.pop(), 'morning_update':{'at':published, 'from':first}}
             except (OSError, ValueError, KeyError, TypeError, AttributeError):
                 warnings.append(f'publication_unavailable:{day}:{tag}')
         featured_records.extend(_featured_records(day, day_picks, actuals))

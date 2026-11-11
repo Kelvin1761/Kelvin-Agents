@@ -220,3 +220,32 @@ def test_paused_or_underpriced_b2_is_still_recorded_for_tracking():
         assert research["odds"] == q["decimal_odds"] and "research" not in payload["selection_diagnostics"]
     _, combo, q, diag = analyse(odds, package, quote=ok, valid=lambda *a: False)
     assert combo == [] and report.research_record([], q, False)["odds"] is None
+
+
+# --- S2 shadow (EXP-20261111-03) ----------------------------------------------
+def test_s2_with_unit_ratio_is_s_and_scales_with_minutes():
+    log = season_log(reb=8.0)
+    s = model.s_prob(log, "REB", 8, OPP, "2026-27", "AAA")
+    assert model.s2_prob(log, "REB", 8, OPP, "2026-27", "AAA", 1.0) == pytest.approx(s)
+    assert model.s2_prob(log, "REB", 8, OPP, "2026-27", "AAA", 0.8) < s < model.s2_prob(log, "REB", 8, OPP, "2026-27", "AAA", 1.2)
+    assert model.s2_prob(log, "REB", 8, OPP, "2026-27", "AAA", None) is None
+
+
+def test_s2_shadow_never_changes_the_published_probability():
+    odds, package = game()
+    odds["game_lines"] = {"spread_away": "+4.5"}
+    for team, plist in package["players"].items():
+        for i, p in enumerate(plist):
+            p["player_id"] = f"{team}{i}"
+    base, _ = build_legs(odds, package)
+    feats = {"m_hl": 34.0, "m_season": 33.0, "m_l10": 34.0, "m_last": 35.0, "games": 10, "started_prev": True,
+             "start_share": 1.0, "rest": 1, "gap_last": 1, "missed_prev": False, "pool_prev": 0.0}
+    package["minutes_context"] = {"status": "available",
+                                  "teams": {t: {f"{t}{i}": dict(feats) for i in range(3)} for t in ("AAA", "BBB")}}
+    shadow, _ = build_legs(odds, package)
+    assert [l.p_final for l in shadow] == [l.p_final for l in base]
+    assert all(l.p_s2 is not None and l.minutes_ratio is not None for l in shadow)
+    assert all(l.p_s2 is None for l in base)
+    away = next(l for l in shadow if l.team == "AAA")
+    home = next(l for l in shadow if l.team == "BBB")
+    assert away.minutes_ratio != home.minutes_ratio        # the favourite and the underdog get different spreads

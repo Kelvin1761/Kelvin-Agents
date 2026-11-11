@@ -789,3 +789,65 @@ def test_postgame_catches_up_unarchived_days_with_a_prediction(tmp_path):
             mock.patch.object(schedule, "run_postgame", side_effect=postgame):
         assert schedule.catch_up_postgame("2026-11-02", log) == ["2026-10-29"]
     assert reviewed == ["2026-10-29"]  # days without a snapshot are left to mark-no-prediction
+
+
+# ── Kelvin 2026-11-11: morning refresh replaces changed SGM slips and tells Kelvin + Heison ──
+
+def _morning_record(cancelled=False):
+    was = {"odds": 2.5, "legs": [{"player": "A One", "market": "pts", "line": 20.0},
+                                 {"player": "B Two", "market": "reb", "line": 6.0}]}
+    return {"day": "2026-10-21", "game_tag": "NYK_MIA", "event_name": "NYK @ MIA", "odds": 2.8,
+            "legs": [{"player": "A One", "market": "Player PTS", "line": 20.0},
+                     {"player": "C Three", "market": "Player AST", "line": 4.0}],
+            "morning_update": {"at": "2026-10-20T21:30:00+00:00", "from": was, "cancelled": cancelled}}
+
+
+def test_morning_update_message_lists_old_and_new_slip() -> None:
+    text = schedule.morning_update_message("2026-10-21", [_morning_record(), {"day": "2026-10-21", "legs": []}])
+    assert "1 張穩膽注單有改" in text
+    assert "21:00 原本：A One 得分 20+、B Two 籃板 6+ @2.5" in text
+    assert "而家：A One 得分 20+、C Three 助攻 4+ @2.8" in text
+    cancelled = schedule.morning_update_message("2026-10-21", [_morning_record(cancelled=True)])
+    assert "而家：取消（冇合資格組合），作廢不計" in cancelled
+    assert schedule.morning_update_message("2026-10-21", [{"day": "2026-10-21", "legs": []}]) is None
+
+
+def _final_refresh(update_text):
+    with tempfile.TemporaryDirectory() as tmp:
+        folder = Path(tmp)
+        _complete_analysis(folder, "2026-10-21", "NYK_MIA")
+        production = folder / "_prediction_snapshots" / "production"
+        production.mkdir(parents=True)
+        (production / "manifest.json").write_text('{"snapshot_role":"production"}\n', encoding="utf-8")
+        now = datetime(2026, 10, 21, 6, 30, tzinfo=SYDNEY)
+
+        def rerun(_date, _folder, *, refreshable_tags, schedule_tags, log):
+            (folder / "nba_game_data_NYK_MIA.json").write_text('{"refreshed":true}\n', encoding="utf-8")
+
+        with mock.patch.object(schedule, "live_dir", return_value=folder), \
+                mock.patch.object(schedule, "latest_snapshot",
+                                  side_effect=lambda _f, *, role=None: production if role is schedule.FreshnessRole.PRODUCTION else None), \
+                mock.patch.object(schedule, "refresh_sportsbet_odds"), \
+                mock.patch.object(schedule, "_run_orchestrator_refresh", side_effect=rerun), \
+                mock.patch.object(schedule, "create_prediction_snapshot", return_value=folder / "_prediction_snapshots" / "final"), \
+                mock.patch.object(schedule, "_morning_update_text", return_value=update_text), \
+                mock.patch.object(schedule, "record_prediction_decision_if_configured", return_value={"status": "skipped"}), \
+                mock.patch.object(schedule, "_market_ledger"), \
+                mock.patch.object(schedule, "_deploy", return_value="ok") as deploy, \
+                mock.patch.object(schedule, "notify_once", return_value={"ok": True, "status": "sent"}) as notify:
+            status = schedule.run_pregame("2026-10-21", _Log(), freshness_role=schedule.FreshnessRole.FINAL_REFRESH,
+                                          at=now, schedule_events=({"NYK_MIA": now + timedelta(hours=2)}, True))
+        return status, deploy, notify
+
+
+def test_final_refresh_with_a_changed_slip_redeploys_and_tells_content() -> None:
+    status, deploy, notify = _final_refresh("🔄 NBA 2026-10-21 朝早更新：1 張穩膽注單有改")
+    assert status == "complete" and deploy.call_count == 1
+    sent = [c for c in notify.call_args_list if c.args[0].startswith("pregame-morning-update:2026-10-21:")]
+    assert len(sent) == 1 and sent[0].kwargs == {"audience": "content"}
+
+
+def test_final_refresh_without_a_changed_slip_does_not_redeploy() -> None:
+    status, deploy, notify = _final_refresh(None)
+    assert status == "complete" and deploy.call_count == 0
+    assert not [c for c in notify.call_args_list if c.args[0].startswith("pregame-morning-update")]

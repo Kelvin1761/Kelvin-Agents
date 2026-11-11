@@ -725,6 +725,14 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
             }
         except Exception as exc:  # shadow data must never break extraction
             package["opponent_context"] = {"error": f"{type(exc).__name__}: {exc}"}
+    # Shadow S2 input (EXP-20261111-03): rest, role and absences known before the game.
+    try:
+        import nba_minutes
+        package["minutes_context"] = nba_minutes.game_context(
+            target_season, history_date_to(game_info.get('date')),
+            history_cutoff_day(game_info.get('date')), (away_abbr, home_abbr))
+    except Exception as exc:  # shadow data must never break extraction
+        package["minutes_context"] = {"status": "error", "error": f"{type(exc).__name__}: {exc}"}
     package["meta"]["stat_source"] = stat_source(package)
     return apply_availability(package, availability_maps)
 

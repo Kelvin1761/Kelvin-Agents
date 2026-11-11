@@ -170,6 +170,26 @@ def season_mu(season_log: dict, stat: str, opponent: dict, season: str, team: st
     return max(mu, 0.05), k
 
 
+def s2_prob(season_log, stat, line, opponent, season, team, ratio, cfg=None) -> float | None:
+    """S with the v2 minutes forecast (EXP-20261111-03): mean scaled by `ratio` = v2 / base minutes.
+
+    SHADOW only. None when S itself or the ratio cannot be computed.
+    """
+    try:
+        line, ratio = float(line), float(ratio)
+    except (TypeError, ValueError):
+        return None
+    if not line.is_integer() or line < 1 or not math.isfinite(ratio) or ratio <= 0:
+        return None
+    fit = season_mu(season_log, stat, opponent, season, team, cfg)
+    if fit is None:
+        return None
+    s = (cfg or config())["season_rate"]
+    mu = max(fit[0] * ratio, 0.05)
+    (scale, power), ref = s["dispersion"][stat], s["dispersion_ref"][stat]
+    return nb_tail(line, mu, s["dispersion_k"][stat] * scale * (max(mu, 0.3) / ref) ** power)
+
+
 def s_prob(season_log, stat, line, opponent, season, team, cfg=None) -> float | None:
     try:
         line = float(line)

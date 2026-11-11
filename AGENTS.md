@@ -505,6 +505,11 @@ Deploy wrapper：
 - **大細盤精選（紙上盤，EXP-20261110-01）**：`nba_engine/featured.py` 每場揀一注寫入 sidecar `featured`；dashboard tracking 放喺
   `featured_records`（**唔入** `records`，所以 SGM 嗰行 ROI、穩膽停損、SGM 顯示都唔受影響）；21:00 card 同覆盤文字喺
   `nba_daily_auto/nba_featured_card.py`。改揀注規則 = 開新版本（新 `RULE`），唔准改舊版。
+- **朝早更新（Kelvin 2026-11-11）**：final refresh（06:30…13:00）如果令某場 SGM 注單變咗（腿唔同），dashboard
+  就換做新版本（`nba_tracking` 記錄 `morning_update.from` = 21:00 原本），並經 `audience="content"` Telegram 列明邊張改咗；
+  冇合資格組合就當取消、作廢不計。同一組腿只係價變唔算更新。**大細盤精選唔跟**（EXP-20261110-01 凍結喺 21:00 價）。
+- **S2 shadow（EXP-20261111-05）**：`nba_minutes.py` 計賽前時間特徵 → package `minutes_context` → 每條腿 `p_s2`（sidecar／ledger）。
+  **唔入 `p_final`**；forward 判 MS2（S 份額 0.35）對現行 MS。
 - **SGM 照發，精選排喺後面（Kelvin 2026-11-10 改決定）**：SGM card 每日照發，「⭐ 大細盤精選（紙上盤）」card 跟喺 SGM 後面；
   覆盤先報 SGM 再報精選；ROI 板分兩行（`nba` = SGM、`nba_featured` = 精選）；穩膽停損照舊檢查。精選仍然係紙上盤、
   forward 測試照跑（F250／F1000）。同日較早嗰個「停發 SGM」決定（5b45a24e）未影響過任何一張 card 就已撤回。

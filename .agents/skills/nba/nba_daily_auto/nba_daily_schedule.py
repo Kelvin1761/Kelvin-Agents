@@ -1096,6 +1096,45 @@ def _send_featured_card(target_date: str, snapshot: Path, log: Any) -> None:
         log.step("telegram_featured_card", "failed", error=f"{type(exc).__name__}: {exc}")
 
 
+MARKET_LABEL = {"pts": "得分", "reb": "籃板", "ast": "助攻", "fg3m": "三分"}
+
+
+def _slip_text(legs, odds) -> str:
+    def market(leg):
+        name = str(leg.get("market") or leg.get("category") or "").lower().replace("player", "").strip()
+        return MARKET_LABEL.get({"3pm": "fg3m"}.get(name, name), name.upper())
+    parts = [f"{l.get('player')} {market(l)} {l.get('line'):g}+"
+             for l in legs or [] if isinstance(l.get("line"), (int, float))]
+    price = f" @{odds:g}" if isinstance(odds, (int, float)) else ""
+    return "、".join(parts) + price if parts else "—"
+
+
+def morning_update_message(target_date: str, records: list[dict]) -> str | None:
+    """Telegram text listing every SGM slip of `target_date` a morning refresh changed."""
+    rows = [r for r in records if r.get("day") == target_date and r.get("morning_update")]
+    if not rows:
+        return None
+    lines = [f"🔄 NBA {target_date} 朝早更新：{len(rows)} 張穩膽注單有改", ""]
+    for r in sorted(rows, key=lambda r: str(r.get("game_tag"))):
+        update = r["morning_update"]
+        was = update.get("from") or {}
+        lines.append(str(r.get("event_name") or r.get("game_tag")))
+        lines.append(f"  21:00 原本：{_slip_text(was.get('legs'), was.get('odds'))}")
+        lines.append("  而家：取消（冇合資格組合），作廢不計" if update.get("cancelled")
+                     else f"  而家：{_slip_text(r.get('legs'), r.get('odds'))}")
+    lines += ["", "Dashboard 已經換咗新版本；大細盤精選唔受影響（照 21:00 價）。"]
+    return "\n".join(lines)
+
+
+def _morning_update_text(target_date: str, log: Any) -> str | None:
+    try:
+        from services.nba_tracking import export_tracking
+        return morning_update_message(target_date, export_tracking(PROJECT_ROOT).get("records") or [])
+    except Exception as exc:  # noqa: BLE001 — a notice must not fail the refresh
+        log.step("morning_update", "failed", error=f"{type(exc).__name__}: {exc}")
+        return None
+
+
 def _featured_postgame_text(target_date: str, log: Any) -> str | None:
     try:
         from services.nba_tracking import export_tracking
@@ -1395,7 +1434,17 @@ def run_pregame(
             sent = notify_once(f"pregame-availability:{target_date}:{hashlib.sha256(alert.encode()).hexdigest()[:16]}",
                                alert, audience="content")
             log.step("telegram_availability_alert", str(sent.get("status") or "unknown"))
-        log.step("dashboard", "final_refresh_not_republished")
+        # Kelvin 2026-11-11: a morning refresh that changes an SGM slip replaces it on the
+        # dashboard, and Kelvin + Heison are told which slips changed. 大細盤精選 stay frozen
+        # at their 21:00 price (EXP-20261110-01).
+        update = _morning_update_text(target_date, log)
+        if update:
+            log.step("dashboard", _deploy("NBA Wong Choi morning slip update", folder))
+            sent = notify_once(f"pregame-morning-update:{target_date}:{hashlib.sha256(update.encode()).hexdigest()[:16]}",
+                               update, audience="content")
+            log.step("telegram_morning_update", str(sent.get("status") or "unknown"))
+        else:
+            log.step("dashboard", "final_refresh_no_slip_change")
         return "complete"
 
     is_preseason = season_context["automation_mode"] == "shadow"

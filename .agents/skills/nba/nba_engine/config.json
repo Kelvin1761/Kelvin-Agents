@@ -102,5 +102,52 @@
         1.0
       ]
     }
+  },
+  "minutes_v2": {
+    "_source": "EXP-20261111-03 (fit on 2025-26 regular season to 2026-02-08; holdout minutes MAE -0.102 [-0.140,-0.062], next season -0.085). SHADOW: feeds p_s2 only, never p_final.",
+    "features": [
+      "const",
+      "m_hl",
+      "season_minus_hl",
+      "last_minus_hl",
+      "l10_minus_hl",
+      "over_32",
+      "b2b",
+      "b2b_starter",
+      "gap_over_7",
+      "missed_prev",
+      "spread_starter",
+      "spread_bench",
+      "spread",
+      "spread_over_8_starter",
+      "favourite_spread_starter",
+      "started_prev",
+      "start_share",
+      "role_change",
+      "pool_prev",
+      "pool_prev_bench"
+    ],
+    "coefficients": [
+      -0.971091,
+      1.019742,
+      0.219271,
+      0.040938,
+      -0.27873,
+      -0.308351,
+      1.094071,
+      -1.380059,
+      -2.512484,
+      -0.825931,
+      -0.034003,
+      0.096468,
+      -0.02387,
+      -0.082212,
+      -0.024655,
+      0.852863,
+      0.164875,
+      0.687988,
+      0.001809,
+      0.002671
+    ]
   }
 }

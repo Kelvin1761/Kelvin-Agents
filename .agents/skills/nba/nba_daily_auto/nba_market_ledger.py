@@ -83,7 +83,7 @@ NBA_SKILL = HERE.parent
 
 MARKET_KEYS = {"points": "pts", "rebounds": "reb", "assists": "ast", "threes_made": "fg3m"}
 MODEL_VARIANTS = ("p_final", "p_hit_rate_10f", "p_ml", "p_monte_carlo")
-ENGINE_COMPONENTS = ("p_market", "p_c", "p_s", "p_ms")  # recorded, never evaluated
+ENGINE_COMPONENTS = ("p_market", "p_c", "p_s", "p_ms", "p_s2")  # recorded, never evaluated
 ROLE_PRIORITY = {"final_refresh": 3, "production": 2, "warmup": 1}
 # The user bets the 21:00 (production) publication, not the morning final refresh
 # (2026-10-26). Pick/ROI evaluation reports this "bet version" beside the latest one.

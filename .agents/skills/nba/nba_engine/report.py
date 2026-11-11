@@ -157,6 +157,7 @@ def sidecar(report_text, odds, package, legs, combo, quote, diagnostics) -> dict
         "legs": [{"player": l.player, "team": l.team, "market": MARKET[l.stat], "line": l.line, "side": "over",
                   "price": l.price, "p_final": _round(l.p_final), "p_market": _round(l.market),
                   "p_c": _round(l.p_c), "p_s": _round(l.p_s), "p_ms": _round(l.p_ms),
+                  "p_s2": _round(l.p_s2), "minutes_ratio": l.minutes_ratio,
                   "p_l10_base_rate": l.hit_l10, "hit_l5": l.hit_l5, "cov": l.cov, "availability": l.availability,
                   "flags": l.flags, "engine": ENGINE_ID, "probability_model_id": model_id,
                   "picked": (l.player, l.stat, l.line) in picked,
