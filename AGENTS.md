@@ -236,6 +236,19 @@ python3 .agents/skills/shared_racing/scripts/data_contract.py --platform au \
   --calibrate --since 2026-08-05 --limit 2000
 ```
 
+### HKJC 賽日一律用香港日期
+
+部 Mac 喺悉尼，夏令時快香港 3 個鐘，悉尼過咗午夜嗰陣跑馬地仲跑緊（21:00 HKT）。
+2026-10-07 同 2026-11-11 兩晚，賽前 run 喺悉尼午夜後先評分，引擎用 `date.today()` 判斷 live，
+當咗場次係歷史回放，騎練分全部跌落後備值，所以 53／85 匹排名郁咗，仲照樣發咗上板。所以：
+
+- 要同 HKJC 賽事日期比較，一律用 `live_priors.hk_today()`。`hkjc_racing_engine` 入面唔准用
+  `date.today()`、`datetime.today()` 或者冇時區嘅 `datetime.now()`
+  （`test_live_card_date_guard.py` 用 AST 掃描攔住）。
+- 排程叫 orchestrator 時會設 `WC_HKJC_LIVE_CARD=1`。有呢個標記而引擎又判斷「非 live」，
+  就直接拋 `LiveCardDateMismatch` 令個 run 失敗，咁板上會保留上一版正確分析，唔會靜靜換成回放分。
+  回放同研究唔好設呢個變數。
+
 ### 已知失敗
 
 **而家冇。** `run_tests.sh` 九個 suite 全綠。

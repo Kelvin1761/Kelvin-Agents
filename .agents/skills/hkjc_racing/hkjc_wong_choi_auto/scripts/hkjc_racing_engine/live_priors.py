@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
+import os
 from pathlib import Path
 import re
 import sys
@@ -56,6 +57,31 @@ def _warn_unknown_race_date() -> None:
     )
 
 
+LIVE_CARD_ENV = "WC_HKJC_LIVE_CARD"
+
+
+class LiveCardDateMismatch(RuntimeError):
+    """A run declared as a live card was about to be scored as a replay."""
+
+
+def _live_card_tripwire(as_of_date) -> None:
+    """Fail loudly instead of silently scoring a live card as a replay.
+
+    The scheduler's pre-race / lineup runs set ``WC_HKJC_LIVE_CARD=1``.  On
+    those runs the race is by definition live, so "not live" can only mean the
+    date logic is wrong (2026-10-07 and 2026-11-11: a Sydney-host date check
+    withheld every jockey/trainer prior mid-card and the board published it).
+    A failed run keeps the last good board; a wrong run replaces it.
+    Replays and research never set the variable and keep the fail-closed path.
+    """
+    if os.environ.get(LIVE_CARD_ENV) != "1":
+        return
+    raise LiveCardDateMismatch(
+        f"{LIVE_CARD_ENV}=1 但 race_date={as_of_date!r} 被判為非 live"
+        f"（香港今日 {hk_today().isoformat()}）—— 拒絕用回放模式評 live 場次"
+    )
+
+
 def is_live_race_date(as_of_date) -> bool:
     """True only for a known race date that is today or later (live card).
 
@@ -66,8 +92,12 @@ def is_live_race_date(as_of_date) -> bool:
     requested = _parse_as_of_date(as_of_date)
     if requested is None:
         _warn_unknown_race_date()
+        _live_card_tripwire(as_of_date)
         return False
-    return requested >= hk_today()
+    if requested >= hk_today():
+        return True
+    _live_card_tripwire(as_of_date)
+    return False
 
 
 def temporal_source_is_safe(source, as_of_date=None) -> bool:
@@ -85,11 +115,11 @@ def temporal_source_is_safe(source, as_of_date=None) -> bool:
         # including the race's own result (騎練分 in-race AUC +0.016,
         # EXP-20261014-10).  Fail closed and say so once per process.
         _warn_missing_as_of_date()
+        _live_card_tripwire(as_of_date)
         return False
     if requested >= hk_today():
         return True
-    if requested is None:
-        return False
+    _live_card_tripwire(as_of_date)
     mode = str(getattr(source, "temporal_mode", "") or "")
     source_date = _parse_as_of_date(getattr(source, "as_of_date", None))
     return mode == "point_in_time" and source_date == requested

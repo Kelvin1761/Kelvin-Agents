@@ -1069,7 +1069,9 @@ def run_prerace(
             "--validate-engine",
             "--skip-cloudflare-deploy",
         ],
-        env_overlay={"WC_HKJC_GATE": gate_mode},
+        # Live card by construction: the engine refuses to fall back to
+        # replay-mode (neutral J/T) scoring if its date check ever disagrees.
+        env_overlay={"WC_HKJC_GATE": gate_mode, "WC_HKJC_LIVE_CARD": "1"},
     )
     if code != 0:
         key = f"{meeting['date']}|{meeting['venue']}"
