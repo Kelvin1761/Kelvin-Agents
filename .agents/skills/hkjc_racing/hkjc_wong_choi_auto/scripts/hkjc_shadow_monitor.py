@@ -25,6 +25,7 @@ for _path in (SHARED_RACING, PROJECT_ROOT):
         sys.path.insert(0, str(_path))
 
 from eval_metrics import race_metrics  # noqa: E402
+from live_record_exclusions import is_excluded, keep  # noqa: E402
 from wongchoi_paths import prediction_snapshot_dir  # noqa: E402
 
 
@@ -132,6 +133,8 @@ def _metrics(picks: list[int], actual_pos: dict[int, int]) -> dict[str, float]:
 
 
 def settle_meeting(meeting_dir: Path) -> list[dict[str, Any]]:
+    if is_excluded("hkjc", meeting_dir):  # live record invalid (live_record_exclusions.json)
+        return []
     snapshot_dir, manifest = _latest_snapshot(meeting_dir)
     result_path = _results_file(meeting_dir)
     results = _load_results(result_path)
@@ -224,6 +227,9 @@ def _metric_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    # Rows already written for a meeting later found invalid stay in the ledger
+    # for audit, but never count (shared_racing/resources/live_record_exclusions.json).
+    rows = keep("hkjc", rows)
     summary: dict[str, Any] = {}
     for profile, minimum in PROFILE_MINIMUMS.items():
         profile_rows = [row for row in rows if row.get("profile") == profile]

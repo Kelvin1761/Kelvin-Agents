@@ -35,6 +35,7 @@ sys.path.insert(0, str(HKJC_REFLECTOR_SCRIPTS))
 
 from wongchoi_paths import HK_RACING  # noqa: E402
 from eval_metrics import build_manifest, race_metrics, summarize_races  # noqa: E402
+from live_record_exclusions import is_excluded as live_record_excluded  # noqa: E402
 from au_archive_calibrator import normalize_condition_bucket  # noqa: E402
 from au_cached_walkforward_ml import as_float, group_races, materialize_dataset  # noqa: E402
 from walk_forward_auto_backtest import clip_score, find_results_json, load_results  # noqa: E402
@@ -97,6 +98,8 @@ def hkjc_meeting_dirs() -> list[Path]:
         if not re.match(r"^\d{4}-\d{2}-\d{2}_", path.name):
             continue
         if "(" in path.name:  # analyst working copies, no canonical Logic files
+            continue
+        if live_record_excluded("hkjc", path):  # stored ability_score is an invalid live record
             continue
         if not list(path.glob("Race_*_Logic.json")) or find_results_json(path) is None:
             continue

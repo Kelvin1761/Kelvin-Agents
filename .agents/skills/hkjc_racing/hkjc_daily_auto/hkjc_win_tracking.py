@@ -39,6 +39,9 @@ def race_rows(meeting_dir: Path) -> list[dict]:
     """One row per race with a frozen top pick and a usable results/odds table."""
     import hkjc_shadow_monitor as monitor
 
+    if monitor.is_excluded("hkjc", meeting_dir):  # live record invalid
+        return []
+
     snapshot, _manifest = monitor._latest_snapshot(meeting_dir)
     results = json.loads(monitor._results_file(meeting_dir).read_text(encoding="utf-8"))
     rows = []

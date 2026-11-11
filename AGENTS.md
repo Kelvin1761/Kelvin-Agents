@@ -248,6 +248,10 @@ python3 .agents/skills/shared_racing/scripts/data_contract.py --platform au \
 - 排程叫 orchestrator 時會設 `WC_HKJC_LIVE_CARD=1`。有呢個標記而引擎又判斷「非 live」，
   就直接拋 `LiveCardDateMismatch` 令個 run 失敗，咁板上會保留上一版正確分析，唔會靜靜換成回放分。
   回放同研究唔好設呢個變數。
+- live 預測紀錄已知無效嘅場次列喺 `shared_racing/resources/live_record_exclusions.json`
+  （而家得 2026-10-07 跑馬地，Kelvin 2026-11-12 決定剔出統計，唔係賽後補評）。用我哋
+  已發佈預測計表現嘅 code 一律經 `live_record_exclusions.is_excluded()`；回放語料唔使剔
+  （輸入冇問題）—— 嗰個係 `au_corpus_exclusions.json` 嘅工作。
 
 ### 已知失敗
 

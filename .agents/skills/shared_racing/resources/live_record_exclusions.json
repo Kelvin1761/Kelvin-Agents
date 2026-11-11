@@ -1,0 +1,14 @@
+{
+  "note": "Live 預測紀錄排除名單：場次嘅賽前預測（最後一個 Prediction_Snapshot／場次 Logic）係用錯模式評出嚟，唔代表模型。所有用我哋預測計嘅表現統計（Gold/Good、覆盤匯總、失手體檢、歸因、shadow／forward 計數、win tracking）一律跳過呢度列出嘅場次。同 au_corpus_exclusions.json 唔同：回放語料（重新評分）冇問題，唔使排除。要加／拆一個場次就改呢份檔，附原因、壞快照同發現嘅 commit。讀取：live_record_exclusions.is_excluded(platform, meeting)。",
+  "meetings": [
+    {
+      "platform": "hkjc",
+      "meeting": "2026-10-07_HappyValley",
+      "reason": "live_scored_as_replay",
+      "bad_snapshot": "20261008T000539+1100",
+      "detail": "悉尼本機日期喺香港 21:00 過咗日，引擎當 live 場次係回放，騎練／梯級分跌落後備值；53/108 個名次變、R1/R6/R7/R8 頭四唔同。呢個係當晚最後一個快照，所以覆盤、失手體檢同歸因都用咗佢。",
+      "detected_by": "89afc0c8",
+      "decided": "2026-11-12 Kelvin"
+    }
+  ]
+}

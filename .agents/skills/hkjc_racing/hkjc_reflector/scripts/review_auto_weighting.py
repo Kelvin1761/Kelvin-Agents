@@ -30,8 +30,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(ROOT))
 SHARED_SKILLS = ROOT / ".agents" / "skills"
 sys.path.insert(0, str(SHARED_SKILLS))
+sys.path.insert(0, str(SHARED_SKILLS / "shared_racing"))
 
 from wongchoi_paths import is_materialized_file  # noqa: E402
+from live_record_exclusions import is_excluded as live_record_excluded  # noqa: E402
 from shared_wong_choi.corpus_catalog import catalog_meeting_locations  # noqa: E402
 
 from hkjc_racing_engine.engine_core import RacingEngine  # noqa: E402
@@ -125,6 +127,10 @@ MODEL_SPECS = {
 
 
 def load_published_mainline_predictions(meeting_dir: Path) -> dict[int, list[int]]:
+    # The stored CSV is what we published; if that live record is invalid it is not
+    # our prediction (replay profiles still re-score the meeting's clean inputs).
+    if live_record_excluded("hkjc", meeting_dir):
+        return {}
     csv_path = meeting_dir / "HKJC_Auto_Scoring.csv"
     if not is_materialized_file(csv_path):
         return {}
