@@ -138,6 +138,9 @@
     .verdict__chip { display: inline-block; padding: 3px 9px; border-radius: 999px; font-weight: 600; line-height: 1.5; color: var(--color-text-secondary); background: var(--color-surface-alt); border: 1px solid var(--color-border); }
     .verdict--plus .verdict__chip { background: var(--color-up-soft); border-color: #A7F3D0; color: #065F46; }
     .verdict--minus .verdict__chip { background: #FFFBEB; border-color: #FDE68A; color: #92400E; }
+    .verdict--note .verdict__label { color: var(--color-text-muted, #64748B); }
+    .verdict--note .verdict__chip { background: transparent; border-color: var(--color-border, #CBD5E1); color: var(--color-text-secondary); }
+    .verdict__chip--info { border-style: dashed; opacity: .9; }
 
     /* Market line — the model's rank next to the market's, and the gap between
        them. Both numbers already exist per horse; only the comparison is new. */
@@ -6019,7 +6022,34 @@ function shortenVerdict(line) {
   return text;   // unknown phrasing: show it whole rather than dropping it
 }
 
+// HKJC 標籤（engine tags.py，2026-11-11）：每個 chip 係一句具體事實（「好檔（3檔）」「人馬合拍」
+// 「潘頓棄騎」），取代「檔位與走位 +2.8」同騎師／練馬師名。scored=false 嘅係賽前事實但
+// 冇入分，畫成虛線 chip、tooltip 寫明，唔扮成模型理由。
+const TAG_LIMIT = { good: 5, bad: 4, note: 4 };
+function renderTagChips(summary) {
+  const tags = summary.tags || {};
+  const chip = t => {
+    const tip = [t.why, t.scored ? (t.impact != null ? `入分（對綜合分 ${t.impact > 0 ? '+' : ''}${Number(t.impact).toFixed(1)}）` : '入分') : '未入分，只供參考']
+      .filter(Boolean).join(' · ');
+    return `<span class="verdict__chip${t.scored ? '' : ' verdict__chip--info'}" title="${esc(tip)}">${esc(t.label)}</span>`;
+  };
+  const group = (label, cls, items, limit) => {
+    if (!items || !items.length) return '';
+    const shown = items.slice(0, limit), more = items.length - shown.length;
+    return `<div class="verdict verdict--${cls}"><span class="verdict__label">${label}</span><span class="verdict__items">${
+      shown.map(chip).join('')}${more > 0 ? `<span class="verdict__chip verdict__chip--info" title="${esc(items.slice(limit).map(t => t.label).join('、'))}">+${more}</span>` : ''}</span></div>`;
+  };
+  const watch = (summary.watch || []).map(w => ({ label: w, scored: false, why: '' }));
+  const gaps = (summary.gaps && summary.gaps.length) ? [{ label: `${summary.gaps.join('、')}（按中性）`, scored: false, why: '資料不足，按中性 60 處理' }] : [];
+  const html = group('✅ 加分位', 'plus', tags.good, TAG_LIMIT.good)
+    + group('⚠️ 扣分位', 'minus', tags.bad, TAG_LIMIT.bad)
+    + group('📌 留意', 'note', [...(tags.note || []), ...watch], TAG_LIMIT.note + watch.length)
+    + group('❔ 資料不足', 'plus', gaps, 1);
+  return html ? `<div class="verdicts">${html}</div>` : '';
+}
+
 function renderVerdictChips(horse) {
+  if (horse.analysis_summary && horse.analysis_summary.tags) return renderTagChips(horse.analysis_summary);
   const split = value => String(value || '').split('\n').map(x => x.trim()).filter(Boolean);
   const plus = split(cleanText(horse.advantage)).map(shortenVerdict);
   const minus = split(cleanText(horse.risk)).map(shortenVerdict);

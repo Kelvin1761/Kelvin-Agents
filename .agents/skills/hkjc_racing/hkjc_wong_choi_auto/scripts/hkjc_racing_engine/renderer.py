@@ -1152,6 +1152,11 @@ def _horse_summary_lines(summary: dict | None) -> list[str]:
         lines.append(f"- ✅ **{item['label']}** {item['impact']:+.1f}：{item['why']}")
     for item in summary.get("minus") or []:
         lines.append(f"- ❌ **{item['label']}** {item['impact']:+.1f}：{item['why']}")
+    tags = summary.get("tags") or {}
+    tag_text = lambda t: t["label"] + ("" if t.get("scored") else "（未入分）")
+    for icon, tone in (("✅", "good"), ("⚠️", "bad"), ("📌", "note")):
+        if tags.get(tone):
+            lines.append(f"- {icon} **標籤：** {'、'.join(tag_text(t) for t in tags[tone])}")
     if summary.get("watch"):
         lines.append(f"- 👀 **留意：** {'；'.join(summary['watch'])}")
     if summary.get("gaps"):
@@ -1165,7 +1170,12 @@ def _summary_points(auto: dict, side: str, *, with_watch: bool = False) -> str:
     summary = auto.get("summary") or {}
     if not summary:
         return ""
-    items = [f"{item['label']}（{item['impact']:+.1f}）" for item in summary.get(side) or []]
+    tags = summary.get("tags") or {}
+    if tags:
+        tone = "good" if side == "plus" else "bad"
+        items = [t["label"] + ("" if t.get("scored") else "（未入分）") for t in tags.get(tone) or []]
+    else:
+        items = [f"{item['label']}（{item['impact']:+.1f}）" for item in summary.get(side) or []]
     if with_watch:
         items.extend(summary.get("watch") or [])
     return "、".join(items) or ("冇明顯扣分位" if side == "minus" else "冇明顯加分位")

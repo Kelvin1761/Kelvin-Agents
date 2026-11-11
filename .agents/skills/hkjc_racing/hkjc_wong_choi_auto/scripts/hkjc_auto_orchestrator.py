@@ -1125,7 +1125,7 @@ class HKJCAutoOrchestrator:
         ensure_verdict(logic_data)
         self._finalize_shadow_profiles(logic_data)
         # 白話重點（純顯示，排名之後先做）：點解排呢度、要留意乜、邊度冇資料。
-        race_summary.attach(logic_data)
+        race_summary.attach(logic_data, meeting_dir=race_file.parent)
         logic_data["python_auto_run_contract"] = scoring_run_contract()
 
         logic_errors = validate_logic_data(logic_data)
