@@ -53,7 +53,7 @@ def test_sidecar_and_report_carry_the_pick():
     diagnostics = {"rule": "b2", "featured": pick, "no_bet_reason": "no_b2_combo"}
     odds = {"away_team": "BOS", "home_team": "LAL", "extraction_time": "x"}
     text = report.render(odds, {}, [], [], None, diagnostics)
-    assert "大細盤精選" in text and "Jayson Tatum PTS 細 24.5" in text
+    assert "大細盤精選" in text and "Jayson Tatum - Points｜Under 24.5" in text
     payload = report.sidecar(text, odds, {}, [], [], None, diagnostics)
     assert payload["featured"] == [pick]
     empty = report.sidecar(text, odds, {}, [], [], None, {"rule": "b2"})

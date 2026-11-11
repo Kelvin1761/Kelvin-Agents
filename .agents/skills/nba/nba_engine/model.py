@@ -112,6 +112,16 @@ def _games(season_log: dict) -> list[dict] | None:
 def season_mu(season_log: dict, stat: str, opponent: dict, season: str, team: str,
               cfg: dict | None = None) -> tuple[float, float] | None:
     """(mu, k) of the S model, or None. `opponent` = package['opponent_context'][opp]."""
+    fit = season_fit(season_log, stat, opponent, season, team, cfg)
+    return None if fit is None else (fit["mu"], fit["k"])
+
+
+def season_fit(season_log: dict, stat: str, opponent: dict, season: str, team: str,
+               cfg: dict | None = None) -> dict | None:
+    """The S model's mean with its three factors, for display: mu = minutes x per_minute x opponent_factor.
+
+    `mu` and `k` are exactly what `season_mu` returns; the factors only explain them.
+    """
     s = (cfg or config())["season_rate"]
     if stat not in STATS or not isinstance(season_log, dict) or not season:
         return None
@@ -164,10 +174,13 @@ def season_mu(season_log: dict, stat: str, opponent: dict, season: str, team: st
     else:
         mu = minutes * rate(col(stat))
     shrink = s["opponent_shrink_games"]
-    mu *= ((sum(allowed) + shrink * league) / (len(allowed) + shrink)) / league
+    per_minute = mu / minutes if minutes > 0 else None
+    opponent_factor = ((sum(allowed) + shrink * league) / (len(allowed) + shrink)) / league
+    mu *= opponent_factor
     base_k, (scale, power), ref = s["dispersion_k"][stat], s["dispersion"][stat], s["dispersion_ref"][stat]
     k = base_k * scale * (max(mu, 0.3) / ref) ** power
-    return max(mu, 0.05), k
+    return {"mu": max(mu, 0.05), "k": k, "minutes": minutes, "per_minute": per_minute,
+            "opponent_factor": opponent_factor, "games": len(games)}
 
 
 def s2_prob(season_log, stat, line, opponent, season, team, ratio, cfg=None) -> float | None:

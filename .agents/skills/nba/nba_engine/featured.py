@@ -66,6 +66,12 @@ def daily_top(picks: list[dict], limit: int = DAILY_LIMIT) -> list[dict]:
     return ranked[:limit]
 
 
+# Sportsbet's own wording, so a pick can be found on the site: market "{Player} - Points",
+# selection "Under 9.5".  Display only — it is not part of the frozen rule.
+SPORTSBET_STAT = {"PTS": "Points", "REB": "Rebounds", "AST": "Assists", "3PM": "Made Threes"}
+
+
 def describe(pick: dict) -> str:
-    side = "大" if pick["side"] == "over" else "細"
-    return f"{pick['player']} {pick['stat']} {side} {pick['ou_line']:g}"
+    side = "Over" if pick["side"] == "over" else "Under"
+    stat = SPORTSBET_STAT.get(pick.get("stat"), pick.get("stat"))
+    return f"{pick['player']} - {stat}｜{side} {pick['ou_line']:g}"

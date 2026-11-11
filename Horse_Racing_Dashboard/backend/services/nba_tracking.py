@@ -106,6 +106,7 @@ def _featured_records(day, day_picks, actuals):
         profit = round(pick['price'] - 1, 2) if state == 'won' else -1 if state == 'lost' else None
         out.append({'id': f'nba:{day}:{tag}:featured', 'day': day, 'event_name': tag.replace('_', ' @ '),
                     'game_tag': tag, 'start_time_utc': odds.get('event_start_time'), 'published_at': published,
+                    'sportsbet_event_id': odds.get('sportsbet_event_id'),
                     'snapshot_id': report.parent.name, 'odds': pick['price'], 'stake': 1,
                     'tracking_kind': 'featured', 'rule': pick.get('rule'),
                     'edge': pick['edge'], 'p_model': pick.get('p_model'), 'p_fair': pick.get('p_fair'),
@@ -115,6 +116,16 @@ def _featured_records(day, day_picks, actuals):
                               'price': pick['price'], 'state': state, 'actual': actual,
                               'settled_at': row.get('settled_at')}],
                     'settled_at': row.get('settled_at')})
+    return out
+
+
+def _why(row, sidecar):
+    """What this leg was priced and picked from, for the dashboard's「點解揀」panel. Display only."""
+    if not isinstance(row, dict):
+        return None
+    out = {k: row.get(k) for k in ('price', 'p_market', 'p_s', 'p_c', 'p_final', 'p_l10_base_rate', 'hit_l5', 'cov')}
+    out.update(row.get('explain') or {})
+    out['rule'] = (sidecar.get('selection_diagnostics') or {}).get('rule')
     return out
 
 
@@ -223,6 +234,7 @@ def build_tracking(roots, ledger_root, firewall):
                 teams = {leg.get('player'):leg.get('team') for leg in sidecar.get('legs',[]) if isinstance(leg,dict)}
                 # Team comes from the verified game-data/sidecar leg, not market family keys.
                 raw = next((c for c in sidecar.get('combos',[]) if str(c.get('combo_id'))=='1'), {})
+                priced = {_key(tag, l): l for l in sidecar.get('legs',[]) if isinstance(l,dict)}
                 for leg in card['legs']:
                     result = settlements.get(_key(tag,leg), {})
                     team_match = next((l.get('team') for l in raw.get('legs',[])
@@ -230,7 +242,8 @@ def build_tracking(roots, ledger_root, firewall):
                     team = team_match or teams.get(leg.get('player'))
                     if team not in tag.split('_'):
                         team = ''
-                    legs.append({**leg, 'team':team, 'state':{'hit':'won','miss':'lost','void':'void'}.get(result.get('outcome'),'pending'),
+                    legs.append({**leg, 'team':team, 'why':_why(priced.get(_key(tag,leg)), sidecar),
+                                 'state':{'hit':'won','miss':'lost','void':'void'}.get(result.get('outcome'),'pending'),
                                  'actual':result.get('actual'), 'settled_at':result.get('settled_at')})
                 states = [leg['state'] for leg in legs]
                 if not states:

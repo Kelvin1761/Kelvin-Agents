@@ -12,8 +12,9 @@ from typing import Any, Iterable
 
 from nba_engine.featured import daily_top, describe
 
-PROP = {"PTS": "得分", "REB": "籃板", "AST": "助攻", "3PM": "三分"}
 HEADER_NOTE = "前向測試 EXP-20261110-01：未證實賺錢，唔好落真錢。每場一注、每日最多 10 注。"
+HOW_TO_FIND = ("Sportsbet 搵法：Basketball → NBA → 揀返場波 → 搵 market「球員名 - Points／Rebounds／Assists／"
+               "Made Threes」→ 揀 Over／Under。下面用嘅係 Sportsbet 原名。")
 
 
 def snapshot_picks(snapshot: Path) -> list[dict]:
@@ -32,9 +33,7 @@ def snapshot_picks(snapshot: Path) -> list[dict]:
 
 
 def _line(i: int, pick: dict) -> str:
-    side = "細" if pick["side"] == "under" else "大"
-    return (f"{i}. {pick['game_tag'].replace('_', '@')}｜{pick['player']} {PROP.get(pick.get('stat'), pick.get('stat'))} "
-            f"{side} {pick['ou_line']:g} @{pick['price']:g}\n"
+    return (f"{i}. {pick['game_tag'].replace('_', '@')}｜{describe(pick)} @{pick['price']:g}\n"
             f"   模型 {pick['p_model'] * 100:.0f}% 對 市場 {pick['p_fair'] * 100:.0f}%（{pick['edge'] * 100:+.1f}pp）")
 
 
@@ -44,7 +43,7 @@ def card(target_date: str, picks: list[dict]) -> str:
         lines.append("今晚冇大細盤 edge ≥ 5pp（或者 Sportsbet 未開大細盤）。")
     else:
         lines += [_line(i, p) for i, p in enumerate(picks, 1)]
-        lines += ["", "Dashboard NBA →「⭐ 大細盤精選」有紀錄同累計表現。"]
+        lines += ["", HOW_TO_FIND, "Dashboard：NBA →「⭐ 大細盤精選」分頁（有直達 Sportsbet 連結、紀錄同累計表現）。"]
     return "\n".join(lines)
 
 
