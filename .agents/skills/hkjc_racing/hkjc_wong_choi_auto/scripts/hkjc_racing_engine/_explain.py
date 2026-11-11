@@ -966,13 +966,13 @@ class Explanations:
         return {
             "form_score": "近績分",
             "speed_score": "速度分",
-            "class_score": "班次分",
+            "class_score": "經驗與季內分",
             "jockey_score": "騎師分",
             "trainer_score": "練馬師分",
             "draw_score": "檔位分",
             "distance_score": "路程分",
             "track_going_score": "場地分",
-            "weight_score": "負磅分",
+            "weight_score": "官方評分分",
             "consistency_score": "穩定性分",
             "trackwork_trend_score": "操練趨勢分",
             "race_shape_context_score": "檔位走位情境分",
@@ -1397,18 +1397,20 @@ class Explanations:
         elif move:
             move_txt = f"{move}；"
         if features.get("class_score", 60) >= 70:
-            class_text = "班次底子穩"
+            class_text = "經驗同季內交代穩"
         elif features.get("class_score", 60) < 60:
-            class_text = "班次底子未夠硬"
+            class_text = "經驗或季內交代未夠"
         else:
-            class_text = "班次背景中性"
+            class_text = "經驗同季內交代中性"
         weight_score = float(features.get("weight_score", 60))
+        gap = self._value("rating_gap")
+        gap_txt = f"（距全場最高 {gap} 分）" if gap not in (None, "") else ""
         if weight_score >= 68:
-            weight = "；讓磅官高評（頂磅）"
+            weight = f"；官方評分屬全場最高一批{gap_txt}"
         elif weight_score >= 60:
-            weight = "；讓磅官評價中游"
+            weight = f"；官方評分中游{gap_txt}"
         else:
-            weight = "；讓磅官評價偏低（輕磅）"
+            weight = f"；官方評分偏低{gap_txt}"
         # 講清楚呢個維度實際上係邊個 sub 分推動。`class_score` 場內幾乎冇變化
         # （實測全日 120 匹只有 52.5–62.0），所以場內排位差不多完全由負磅決定。
         #
@@ -1416,7 +1418,8 @@ class Explanations:
         # 嘅意見，所以場內 ρ(官方評分, weight_score) 而家係**正**嘅。頂磅馬呢一格
         # 高分，係因為全場公認佢最好，而且讓磅官抹得唔夠（0.389 分/kg vs 慣例 0.5）。
         #
-        # ⚠️ 「級數優勢」呢個名同呢一格實際量嘅嘢唔完全對得上，而呢點量過：
+        # 呢格舊名「級數優勢」，2026-11-11 改名「評分與經驗」（EXP-20261111-13），因為佢冇量班次。
+        # 班次本身冇剩餘訊號，呢點量過：
         # 「本駒喺今仗班次或更高嘅上名率」場內 AUC 0.6337，但輸畀唔限班次嘅
         # 0.6418，喺班次條件真係改到嘢嗰 12.3% 更加係 −0.0385；「跌級／升級」
         # 四個分層上名率 29.0/31.6/30.4/32.4%、AUC 0.4662–0.5192。
@@ -1425,7 +1428,7 @@ class Explanations:
         driver = ""
         if abs(weight_score - 60.0) >= 4.0:
             side = "拉高" if weight_score > 60 else "拉低"
-            driver = f"（呢格場內主要由讓磅官負磅{side}，唔係班次底子）"
+            driver = f"（呢格場內主要由官方評分{side}）"
         return f"{move_txt}{class_text}{weight}{driver}{self._score_close(score)}"
 
     def _draw_verdict_signal(self):

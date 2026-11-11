@@ -12,7 +12,7 @@ sets; both are persisted in `python_auto_run_contract`.
 | `trainer_signal` | 騎練訊號 | 0.2362 |
 | `stability` | 狀態與穩定性 | 0.0983 |
 | `race_shape` | 檔位與走位（不含步速） | 0.2737 |
-| `class_advantage` | 級數優勢 | 0.1585156（= 0.1428 + 0.0404 × 0.389） |
+| `class_advantage` | 評分與經驗（舊名級數優勢；leaf：`class_score`＝經驗與季內分、`weight_score`＝官方評分分） | 0.1585156（= 0.1428 + 0.0404 × 0.389） |
 | `horse_health` | 馬匹健康 / 新鮮感 | 0.0246844（= 0.0404 × 0.611） |
 | `form_line` | 賽績線 | 0.0801 |
 

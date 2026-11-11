@@ -828,7 +828,7 @@ class AutoOutputTests(unittest.TestCase):
             self.assertIn("近3-5仗走位窗口", report)
             self.assertIn("部署：", report)  # 晨操部署已併入穩定性嘅晨操分析
             self.assertIn("休賽 / 體重趨勢", report)
-            self.assertIn("班次 / 評分背景", report)
+            self.assertIn("評分 / 經驗背景", report)
             self.assertNotIn("`✅`", report)
             self.assertNotIn("`❌`", report)
             self.assertNotIn("[FILL", report)

@@ -120,7 +120,9 @@ DIMENSIONS: tuple[DimensionSpec, ...] = (
         dashboard_keywords=("賽績線", "對手"),
     ),
     DimensionSpec(
-        key="class_advantage", label="級數優勢", short_label="班次優勢", role="輔助",
+        key="class_advantage", label="評分與經驗", short_label="評分經驗", role="輔助",
+        # 2026-11-11 由「級數優勢」改名（EXP-20261111-13）：內容係讓磅官官方評分＋經驗／季內交代，
+        # 冇量班次。內部 key 唔改（存檔、harness、數據合約都用緊）。
         # 初出馬之前健康佔 0.30，所以搬入嚟嘅負磅份額大好多，要用另一個組合。
         leaves=(("class_score", _CLASS_SHARE), ("weight_score", 1.0 - _CLASS_SHARE)),
         debut_leaves=(("class_score", _CLASS_DEBUT_SHARE), ("weight_score", 1.0 - _CLASS_DEBUT_SHARE)),
@@ -128,8 +130,8 @@ DIMENSIONS: tuple[DimensionSpec, ...] = (
         # Display ruler re-measured after the merge on 5,365 runners (2026-11-05):
         # median 63.24, SD 4.840.
         display_centre=63.24, display_gain=2.0662,
-        description="班次經驗同讓磅官評分（負磅）。",
-        dashboard_keywords=("級數", "班次"),
+        description="讓磅官官方評分（距全場最高幾多分）同經驗／季內交代。",
+        dashboard_keywords=("評分", "經驗", "級數", "班次"),
     ),
 )
 

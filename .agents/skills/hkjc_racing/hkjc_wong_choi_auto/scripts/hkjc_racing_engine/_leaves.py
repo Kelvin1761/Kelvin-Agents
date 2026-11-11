@@ -33,7 +33,7 @@ class LeafScores:
     def _class_score(self, _features):
         if self._is_debut():
             self.reason_codes.append("debut_class_unknown")
-            return 60, "初出馬未有正式班際賽績，級數優勢暫按中性60分。", "career_tag"
+            return 60, "初出馬未有正式賽績，經驗與季內分暫按中性60分。", "career_tag"
         score = 60
         notes = []
         starts = parse_float(self._value("career_race_starts") or self.horse_data.get("career_race_starts"))
@@ -59,7 +59,7 @@ class LeafScores:
                 self.risk_flags.append("class_edge_unproven")
                 notes.append("季內未上名")
         # 短而準：分數行頭，訊號做 tag；無訊號＝各項中性
-        note = f"班次分{clip_score(score):.0f}：" + ("、".join(notes) if notes else "經驗／季內均中性")
+        note = f"經驗與季內分{clip_score(score):.0f}：" + ("、".join(notes) if notes else "經驗／季內均中性")
         return clip_score(score), note, "career_context"
 
     def _distance_suitability_adjustment(self, features, matrix_scores):
@@ -195,34 +195,34 @@ class LeafScores:
             rating = self._value("current_rating")
             score = scoring.WEIGHT_MICRO_WEIGHTS.get("base", 64.0)
             note = (f"官方評分{rating}，距全場最高{gap:.0f}分，屬中游，讓磅官冇特別意見，"
-                    f"負磅分{score:.0f}分。")
+                    f"官方評分分{score:.0f}分。")
             if gap >= scoring.WEIGHT_RATING_GAP_LIGHT:
                 score = scoring.WEIGHT_MICRO_WEIGHTS.get("light_weight_base", 54.0)
                 note = (f"官方評分{rating}，距全場最高{gap:.0f}分 —— 讓磅官睇低佢（輕磅），"
-                        f"負磅分{score:.0f}分。")
+                        f"官方評分分{score:.0f}分。")
             elif gap <= scoring.WEIGHT_RATING_GAP_HEAVY:
                 score = scoring.WEIGHT_MICRO_WEIGHTS.get("heavy_weight_base", 70.0)
                 note = (f"官方評分{rating}，全場最高或只差{gap:.0f}分 —— 讓磅官視佢為全場最好嘅馬，"
-                        f"而實測加磅加得唔夠狠（0.389 分/kg vs 慣例 0.5），負磅分{score:.0f}分。")
+                        f"而實測加磅加得唔夠狠（0.389 分/kg vs 慣例 0.5），官方評分分{score:.0f}分。")
             return clip_score(score), note, "rating_gap"
         weight = parse_float(self._value("weight_carried") or self._value("weight"))
         if weight is None:
-            return 60, "負磅資料不足，負磅分60分。", "missing_neutral"
+            return 60, "評分同負磅資料都不足，官方評分分60分。", "missing_neutral"
         allowance = parse_float(self._value("jockey_allowance")) or 0.0
         declared = parse_float(self._value("declared_weight"))
         carried = declared if declared is not None else weight + allowance
         claim = f"（見習減磅 {allowance:.0f}，實際負磅 {carried - allowance:.0f}）" if allowance else ""
         score = scoring.WEIGHT_MICRO_WEIGHTS.get("base", 64.0)
-        note = f"今仗宣佈負磅{carried:.0f}磅{claim}，屬中游負磅，讓磅官冇特別意見，負磅分{score:.0f}分。"
+        note = f"今仗宣佈負磅{carried:.0f}磅{claim}，屬中游負磅，讓磅官冇特別意見，官方評分分{score:.0f}分。"
         if carried <= scoring.WEIGHT_DECLARED_LIGHT:
             score = scoring.WEIGHT_MICRO_WEIGHTS.get("light_weight_base", 54.0)
             note = (f"今仗宣佈負磅{carried:.0f}磅{claim}較輕 —— 負磅係讓磅官嘅評分，輕磅即係"
-                    f"官方評分低，負磅分{score:.0f}分。")
+                    f"官方評分低，官方評分分{score:.0f}分。")
         elif carried >= scoring.WEIGHT_DECLARED_HEAVY:
             score = scoring.WEIGHT_MICRO_WEIGHTS.get("heavy_weight_base", 70.0)
             note = (f"今仗宣佈負磅{carried:.0f}磅{claim}屬頂磅 —— 讓磅官視佢為全場最好嘅馬，"
                     f"而實測加磅加得唔夠狠（0.389 分/kg vs 慣例 0.5），"
-                    f"負磅分{score:.0f}分。")
+                    f"官方評分分{score:.0f}分。")
         return clip_score(score), note, "weight_carried"
 
     def _consistency_score(self, features):

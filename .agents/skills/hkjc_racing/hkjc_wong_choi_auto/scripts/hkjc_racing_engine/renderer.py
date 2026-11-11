@@ -15,13 +15,13 @@ ABILITY_LABEL = "綜合戰力分"
 FEATURE_LABELS = {
     "form_score": "近績分",
     "speed_score": "速度分",
-    "class_score": "班次分",
+    "class_score": "經驗與季內分",
     "jockey_score": "騎師分",
     "trainer_score": "練馬師分",
     "draw_score": "檔位分",
     "distance_score": "路程分",
     "track_going_score": "場地分",
-    "weight_score": "負磅分",
+    "weight_score": "官方評分分",
     "consistency_score": "穩定性分",
     "risk_score": "風險分",
     "confidence_score": "資料完整度",
@@ -947,14 +947,20 @@ def _matrix_fact_lines(key: str, horse: dict) -> list[str]:
                 weight_bits = f"實際負磅={carried}（見習減{int(allowance)}磅，宣佈負磅{carried + int(allowance)}）"
         except (TypeError, ValueError):
             pass
+        rating_bits = ""
+        if data.get("current_rating") not in (None, ""):
+            rating_bits = f"官方評分={data.get('current_rating')}"
+            if data.get("rating_gap") not in (None, ""):
+                rating_bits += f"（距全場最高 {data.get('rating_gap')} 分）"
         record = _join_nonempty(
+            rating_bits,
             f"{data.get('total_starts')}戰{data.get('total_wins')}勝" if data.get("total_starts") is not None and data.get("total_wins") is not None else "",
             f"評分趨勢={data.get('rating_trend')}" if data.get("rating_trend") else "",
             weight_bits,
             sep=", ",
         )
         return _compact_fact_lines(
-            ("班次 / 評分背景", record, 260),
+            ("評分 / 經驗背景", record, 260),
             ("場地轉換", data.get("venue_transfer"), 80),
         )
     return []

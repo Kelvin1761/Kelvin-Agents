@@ -152,6 +152,7 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
       sportsFeedExpired: typeof sportsFeedExpired === "function" ? sportsFeedExpired : null,
       sportsReferencePicks: typeof sportsReferencePicks === "function" ? sportsReferencePicks : null,
       calibrationBadge: typeof calibrationBadge === "function" ? calibrationBadge : null,
+      dataRouteFor: typeof dataRouteFor === "function" ? dataRouteFor : null,
     };
   `;
   vm.runInContext(source, context);
@@ -162,6 +163,12 @@ test("raw template explains that a generated dashboard must be opened", () => {
   const html = fs.readFileSync(new URL("../static_template.html", import.meta.url), "utf8");
   assert.match(html, /呢個係 Dashboard 原始模板/);
   assert.match(html, /Open Dashboard\.html/);
+});
+
+test("評分與經驗 (renamed from 級數優勢) routes its fact row; old meetings still route", () => {
+  const { dataRouteFor } = loadTemplateFunctions();
+  assert.equal(dataRouteFor("評分與經驗", "評分 / 經驗背景"), "經驗與季內分");
+  assert.equal(dataRouteFor("級數優勢", "班次 / 評分背景"), "班次分");
 });
 
 test("dimension strip reconciles to the raw score; score ledger is gone", () => {

@@ -43,7 +43,7 @@ HKJC_MATRIX_RENDER = [
     ("trainer_signal",  "🧭 騎練訊號",          "核心"),
     ("horse_health",    "⚠️ 馬匹健康 / 新鮮感", "輔助"),
     ("form_line",       "🔗 賽績線",            "輔助"),
-    ("class_advantage", "級數優勢",             "輔助"),
+    ("class_advantage", "評分與經驗",           "輔助"),
 ]
 
 # Quick lookup: canonical_key → (chinese_label, tier_label)
@@ -107,6 +107,7 @@ ZH_EN_MATRIX_MAP = {
     "練馬師訊號":           "trainer_signal",
     "級數與負重":           "class_advantage",
     "級數優勢":             "class_advantage",
+    "評分與經驗":           "class_advantage",   # 2026-11-11 改名（EXP-20261111-13）
     "賽績線":               "form_line",
     "馬匹健康 / 新鮮感":    "horse_health",
     "馬匹健康":             "horse_health",
