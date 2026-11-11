@@ -1290,6 +1290,23 @@ test("the mobile race switcher sticks, and nothing upstream re-breaks it", () =>
   assert.doesNotMatch(css, /html, body \{[^}]*overflow-y: auto;/);
 });
 
+test("phones take the light page transition: no view-transition snapshot, no live blur on the tab bar", () => {
+  const html = fs.readFileSync(new URL("../static_template.html", import.meta.url), "utf8");
+  // Snapshotting a ~5,000px #app-main and freezing the old page until the new
+  // one is built is what felt laggy on a phone (reported 2026-11-11).
+  assert.match(html, /const lite = typeof matchMedia === 'function'\s+&& matchMedia\('\(max-width: 768px\), \(pointer: coarse\)'\)\.matches;/);
+  assert.match(html, /if \(!lite && typeof document\.startViewTransition === 'function'\)/);
+  assert.match(html, /if \(moved && !reduceMotion && !lite\) wcStagger\(main\)/);
+  assert.match(html, /@media \(max-width: 768px\), \(pointer: coarse\) \{\s+#app-main\[data-wc-enter\] \{ animation: wc-lite-rise/);
+  for (const name of ["wc-lite-rise", "wc-lite-left", "wc-lite-right"]) {
+    assert.match(html, new RegExp(`@keyframes ${name} \\{ from \\{ opacity: 0; transform: translate3d\\(`), name);
+  }
+  const premium = html.slice(html.indexOf('<style id="wc-premium">'));
+  const bar = premium.slice(premium.indexOf("/* ─── Mobile tab bar ─── */"), premium.indexOf("/* ─── View transitions ───"));
+  assert.match(bar, /backdrop-filter: none;/);
+  assert.doesNotMatch(bar, /blur\(/);
+});
+
 test("a valid feed that passed nothing falls back to history instead of blanking", () => {
   const historyCase = {
     id: "tennis-old", event_date: "2026-07-23", event_name: "Baez vs Hanfmann",

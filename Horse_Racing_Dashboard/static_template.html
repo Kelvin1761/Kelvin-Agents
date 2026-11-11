@@ -1274,8 +1274,11 @@ body { background: var(--color-bg); font-feature-settings: "cv11", "ss01"; }
 /* ─── Mobile tab bar ─── */
 @media (max-width: 768px) {
   .app-bottom-nav {
-    border: 0; background: rgba(255,255,255,.82);
-    -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
+    /* No backdrop blur here: the bar floats over the page that slides on every
+       navigation, and re-blurring it each frame is what a phone GPU cannot keep
+       up with. Near-opaque white looks the same at rest. */
+    border: 0; background: rgba(255,255,255,.96);
+    -webkit-backdrop-filter: none; backdrop-filter: none;
     box-shadow: 0 0 0 1px rgba(16,24,40,.05), 0 18px 40px -12px rgba(16,24,40,.28);
   }
   .tabbar-btn:hover { background: transparent; }
@@ -1328,10 +1331,20 @@ body { background: var(--color-bg); font-feature-settings: "cv11", "ss01"; }
   #app-main[data-wc-enter="right"] { animation-name: wc-in-right; }
   #app-main[data-wc-enter="forward"] { animation-name: wc-in-forward; }
   #app-main[data-wc-enter="back"] { animation-name: wc-in-back; }
+  /* Phones: shorter travel and a quicker settle. A long slide of a full page is
+     where a phone GPU drops frames; 22px over 260ms reads as the same gesture. */
+  @media (max-width: 768px), (pointer: coarse) {
+    #app-main[data-wc-enter] { animation: wc-lite-rise 240ms var(--ease-out) both; }
+    #app-main[data-wc-enter="left"], #app-main[data-wc-enter="forward"] { animation-name: wc-lite-left; animation-duration: 260ms; }
+    #app-main[data-wc-enter="right"], #app-main[data-wc-enter="back"] { animation-name: wc-lite-right; animation-duration: 260ms; }
+  }
   /* Sections rise in one after another on a view change. `backwards` only, so
      nothing is left holding a transform once it has played. */
   .wc-rise { animation: wc-rise 420ms var(--ease-out) backwards; animation-delay: calc(var(--wc-i, 0) * 38ms + 60ms); }
 }
+@keyframes wc-lite-rise { from { opacity: 0; transform: translate3d(0, 8px, 0); } }
+@keyframes wc-lite-left { from { opacity: 0; transform: translate3d(22px, 0, 0); } }
+@keyframes wc-lite-right { from { opacity: 0; transform: translate3d(-22px, 0, 0); } }
 @keyframes wc-out-fade { to { opacity: 0; } }
 @keyframes wc-in-rise { from { opacity: 0; transform: translateY(10px); } }
 @keyframes wc-out-left { to { opacity: 0; transform: translateX(-48px); } }
@@ -8579,14 +8592,21 @@ function render() {
   wcLastPlace = { key: placeKey, place };
   const reduceMotion = typeof matchMedia === 'function'
     && matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const paint = () => { renderNow(main); wcSyncThumbs(); if (moved && !reduceMotion) wcStagger(main); };
+  // Phones and tablets take the light path. A view transition has to snapshot
+  // #app-main twice (it is ~5,000px tall) and holds the old page frozen on screen
+  // until the new one is built: measured at phone-class CPU that was 110-720ms of
+  // nothing happening after the tap, which read as lag (reported 2026-11-11).
+  // The light path paints at once and slides the new page in on the compositor.
+  const lite = typeof matchMedia === 'function'
+    && matchMedia('(max-width: 768px), (pointer: coarse)').matches;
+  const paint = () => { renderNow(main); wcSyncThumbs(); if (moved && !reduceMotion && !lite) wcStagger(main); };
   // A backgrounded tab gets no frames, so a view transition there would hold the
   // DOM update back until the app is foregrounded again. Paint straight away.
   const hidden = typeof document.visibilityState === 'string' && document.visibilityState !== 'visible';
   if (!moved || reduceMotion || hidden) { paint(); return; }
   syncNavState();
   wcSyncThumbs();
-  if (typeof document.startViewTransition === 'function') {
+  if (!lite && typeof document.startViewTransition === 'function') {
     const root = document.documentElement;
     root.dataset.wcNav = direction;
     const transition = document.startViewTransition(paint);
@@ -8597,13 +8617,17 @@ function render() {
     return;
   }
   paint();
-  // No View Transitions API: play the entrance half as a plain CSS animation.
+  // Light path, or no View Transitions API: play the entrance half as a plain
+  // CSS animation (transform + opacity only, so it never leaves the compositor).
   delete main.dataset.wcEnter;
   void main.offsetWidth;
   main.dataset.wcEnter = direction;
-  main.addEventListener('animationend', event => {
-    if (event.target === main) delete main.dataset.wcEnter;
-  }, { once: true });
+  if (!main.wcEnterBound) {
+    main.wcEnterBound = true;
+    const done = event => { if (event.target === main) delete main.dataset.wcEnter; };
+    main.addEventListener('animationend', done);
+    main.addEventListener('animationcancel', done);
+  }
 }
 
 // ─── Sliding thumbs ───
