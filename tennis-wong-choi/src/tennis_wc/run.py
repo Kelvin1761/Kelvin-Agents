@@ -68,6 +68,13 @@ def _degradations(label: str, result) -> list[dict]:
 
 # --------------------------------------------------------------------------- price
 
+def _ingest_odds_reporting(ingest_odds, match_date: str) -> dict:
+    """Odds rows, plus each event skipped for an unprovable player identity (a degradation)."""
+    rejected: list[dict] = []
+    rows = ingest_odds(match_date, rejected=rejected)
+    return {"rows": rows, "errors": rejected}
+
+
 def refresh_sources(match_date: str, stages: Stages) -> None:
     from tennis_wc.sources.confirmed_metadata import backfill_confirmed_metadata_for_date
     from tennis_wc.sources.ingest_matches import ingest_default_history, ingest_upcoming_matches
@@ -86,7 +93,7 @@ def refresh_sources(match_date: str, stages: Stages) -> None:
         ("history_lowtier", lambda: ingest_tml_low_tier_history(year, year)),
         ("elo_rebuild", build_sackmann_elo),
         ("upcoming_matches", lambda: ingest_upcoming_matches(match_date)),
-        ("odds", lambda: ingest_odds(match_date)),
+        ("odds", lambda: _ingest_odds_reporting(ingest_odds, match_date)),
         ("event_markets", lambda: enrich_sportsbet_event_markets(match_date)),
         ("metadata_backfill", lambda: backfill_confirmed_metadata_for_date(match_date)),
     ):

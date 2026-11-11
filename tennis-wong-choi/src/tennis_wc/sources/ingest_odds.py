@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 
 from tennis_wc.store.db import get_connection
 from tennis_wc.sources.event_identity import direct_event_response_issue
-from tennis_wc.sources.entity_mapping import get_or_create_player, upsert_tournament
+from tennis_wc.sources.entity_mapping import PlayerIdentityConflict, get_or_create_player, upsert_tournament
 from tennis_wc.sources.fixture_versions import (
     upsert_fixture, ensure_fixture_schema, active_fixture_clause, quarantine_fixture,
 )
@@ -16,7 +16,7 @@ from tennis_wc.sources.sportsbet_fixture_mapping import sportsbet_competition_me
 from tennis_wc.sources.providers import get_odds_provider
 
 
-def ingest_odds(date: str) -> int:
+def ingest_odds(date: str, rejected: list[dict] | None = None) -> int:
     provider = get_odds_provider()
     if hasattr(provider, "fetch_upcoming_odds_for_date"):
         rows = provider.fetch_upcoming_odds_for_date(date)
@@ -39,68 +39,86 @@ def ingest_odds(date: str) -> int:
     rows = [row for row in rows if not _sportsbet_in_play(provider.provider_name, row)]
     _prune_stale_sportsbet_odds_for_date(provider.provider_name, date, {str(row.get("event_id")) for row in rows if row.get("event_id")}, raw_id=raw_id, in_play_event_ids=live_ids)
     for row in rows:
-        if provider.provider_name == "mock":
-            row = row | {"event_id": f"mock-event-{date}-1"}
-        # Refresh this provider's own provisional generation before resolving its event key.
-        if provider.provider_name == "sportsbet":
-            with get_connection() as conn:
-                own=conn.execute("SELECT id FROM matches WHERE source_provider='sportsbet' AND provider_match_id=?",
-                                 (f"sportsbet-{row['event_id']}",)).fetchone()
-            if own:
-                _create_provisional_match_for_odds(provider.provider_name,date,row,raw_id)
-        with get_connection() as conn:
-            match_id,blocked=_resolve_odds_fixture(conn,row,date,provider_name=provider.provider_name)
-        if blocked:
-            logging.getLogger(__name__).warning("odds identity rejected: %s/%s",provider.provider_name,row.get('event_id'))
-            continue
-
-        # Always ensure tournament metadata for sportsbet matches
-        _ensure_provisional_tournament_for_odds(provider.provider_name, date, row, raw_id)
-
-        if match_id is None:
-            match_id = _create_provisional_match_for_odds(provider.provider_name, date, row, raw_id)
-        else:
-            # An EXISTING fixture never learned its start time. Only the
-            # create path carried `_row_start_time_utc`, so a match first seen
-            # by the composite fixture provider -- which does not send one --
-            # stayed NULL forever even while Sportsbet odds carrying the start
-            # were being attached to it every run. Measured 2026-08-16 on
-            # match_date 2026-08-17: source_provider='sportsbet' rows were
-            # 100% populated and 'composite' rows 0%, which is what held the
-            # column at 27-63% overall and left the card unable to tell
-            # whether a match had already begun.
-            _backfill_match_start_time(match_id, row)
-        with get_connection() as conn:
-            a_odds, b_odds, a_open, b_open = _oriented_positional_odds(
-                conn, match_id, row)
-            if a_odds is not None and b_odds is not None:
-                conn.execute(
-                    """
-                    INSERT INTO odds_snapshots (
-                        event_id, match_id, bookmaker, market, player_a_odds, player_b_odds,
-                        player_a_open_odds, player_b_open_odds, source_provider, raw_response_id,
-                        fetched_at, created_at
-                    )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        row["event_id"],
-                        match_id,
-                        row["bookmaker"],
-                        row["market"],
-                        a_odds,
-                        b_odds,
-                        a_open,
-                        b_open,
-                        provider.provider_name,
-                        raw_id,
-                        row.get("timestamp", now),
-                        now,
-                    ),
-                )
-            _insert_market_odds(conn, row, match_id, provider.provider_name, raw_id, now)
-        count += 1
+        try:
+            if _ingest_odds_row(provider.provider_name, date, row, raw_id, now):
+                count += 1
+        except PlayerIdentityConflict as exc:
+            # 2026-11-11: one WTA doubles pair whose merged record was tagged
+            # ATP raised here and took the whole odds source down with it, so
+            # the 09:00 and 10:30 cards for every other match never ran. An
+            # identity we cannot prove is one event's problem: skip that event
+            # and report it, never price it on a guessed identity.
+            logging.getLogger(__name__).warning("odds identity conflict: %s/%s: %s",
+                                                provider.provider_name, row.get("event_id"), exc)
+            if rejected is not None:
+                rejected.append({"event_id": row.get("event_id"),
+                                 "event_name": row.get("event_name") or row.get("name"),
+                                 "error": f"player_identity_conflict: {exc}"})
     return count
+
+
+def _ingest_odds_row(provider_name: str, date: str, row: dict, raw_id: int, now: str) -> bool:
+    if provider_name == "mock":
+        row = row | {"event_id": f"mock-event-{date}-1"}
+    # Refresh this provider's own provisional generation before resolving its event key.
+    if provider_name == "sportsbet":
+        with get_connection() as conn:
+            own=conn.execute("SELECT id FROM matches WHERE source_provider='sportsbet' AND provider_match_id=?",
+                             (f"sportsbet-{row['event_id']}",)).fetchone()
+        if own:
+            _create_provisional_match_for_odds(provider_name,date,row,raw_id)
+    with get_connection() as conn:
+        match_id,blocked=_resolve_odds_fixture(conn,row,date,provider_name=provider_name)
+    if blocked:
+        logging.getLogger(__name__).warning("odds identity rejected: %s/%s",provider_name,row.get('event_id'))
+        return False
+
+    # Always ensure tournament metadata for sportsbet matches
+    _ensure_provisional_tournament_for_odds(provider_name, date, row, raw_id)
+
+    if match_id is None:
+        match_id = _create_provisional_match_for_odds(provider_name, date, row, raw_id)
+    else:
+        # An EXISTING fixture never learned its start time. Only the
+        # create path carried `_row_start_time_utc`, so a match first seen
+        # by the composite fixture provider -- which does not send one --
+        # stayed NULL forever even while Sportsbet odds carrying the start
+        # were being attached to it every run. Measured 2026-08-16 on
+        # match_date 2026-08-17: source_provider='sportsbet' rows were
+        # 100% populated and 'composite' rows 0%, which is what held the
+        # column at 27-63% overall and left the card unable to tell
+        # whether a match had already begun.
+        _backfill_match_start_time(match_id, row)
+    with get_connection() as conn:
+        a_odds, b_odds, a_open, b_open = _oriented_positional_odds(
+            conn, match_id, row)
+        if a_odds is not None and b_odds is not None:
+            conn.execute(
+                """
+                INSERT INTO odds_snapshots (
+                    event_id, match_id, bookmaker, market, player_a_odds, player_b_odds,
+                    player_a_open_odds, player_b_open_odds, source_provider, raw_response_id,
+                    fetched_at, created_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    row["event_id"],
+                    match_id,
+                    row["bookmaker"],
+                    row["market"],
+                    a_odds,
+                    b_odds,
+                    a_open,
+                    b_open,
+                    provider_name,
+                    raw_id,
+                    row.get("timestamp", now),
+                    now,
+                ),
+            )
+        _insert_market_odds(conn, row, match_id, provider_name, raw_id, now)
+    return True
 
 
 def _insert_market_odds(conn, row: dict, match_id: int | None, provider_name: str, raw_id: int, now: str,
