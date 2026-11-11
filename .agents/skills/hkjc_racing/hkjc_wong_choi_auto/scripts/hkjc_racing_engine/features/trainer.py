@@ -1,7 +1,6 @@
-from hkjc_racing_engine import scoring
 from hkjc_racing_engine.scoring import BaseScorer
 from hkjc_racing_engine.features.tier_loader import score_tier
-from hkjc_racing_engine.features.jockey import real_overseas_rows
+
 
 class TrainerScorer(BaseScorer):
     def compute(self):
@@ -14,34 +13,10 @@ class TrainerScorer(BaseScorer):
         if rated is not None:
             self.score, self.reason = rated
             return self.score, self.reason
+        # 本地實績同層級表都冇 → 中性 60。以前會用**匹馬**嘅海外班次（G1 85／G2-3 75／70）
+        # 或者抄騎師層級代替，量嘅係匹馬／騎師唔係練馬師（EXP-20261111-12，§7）。
         as_of_date = (self.race_context or {}).get("race_date")
         self.score, self.reason = score_tier(
             "trainer", self.horse_data.get("trainer", ""), "Neutral Trainer", as_of_date=as_of_date
         )
-
-        if self.score == 60.0:
-            data = self.horse_data.get("_data", {}) if isinstance(self.horse_data.get("_data"), dict) else {}
-            pdf_races = real_overseas_rows(data.get("pdf_overseas_races", []))
-            if pdf_races:
-                has_g1 = any("G1" in str(r.get("class_level", "")).upper() or "1級" in str(r.get("class_level", "")) for r in pdf_races)
-                if has_g1:
-                    self.score = scoring.TRAINER_MICRO_WEIGHTS.get("overseas_g1_base", 85.0)
-                    self.reason = "Overseas Trainer (G1 Level)"
-                else:
-                    has_g23 = any("G2" in str(r.get("class_level", "")).upper() or "2級" in str(r.get("class_level", "")) or "G3" in str(r.get("class_level", "")).upper() or "3級" in str(r.get("class_level", "")) for r in pdf_races)
-                    if has_g23:
-                        self.score = scoring.TRAINER_MICRO_WEIGHTS.get("overseas_g23_base", 75.0)
-                        self.reason = "Overseas Trainer (G2/G3 Level)"
-                    else:
-                        jockey_score, _ = score_tier(
-                            "jockey", self.horse_data.get("jockey", ""), "Neutral Jockey",
-                            as_of_date=as_of_date,
-                        )
-                        if jockey_score > 60.0:
-                            self.score = jockey_score
-                            self.reason = "Overseas Trainer (Aligns with Jockey Tier)"
-                        else:
-                            self.score = scoring.TRAINER_MICRO_WEIGHTS.get("overseas_base", 70.0)
-                            self.reason = "Overseas Trainer"
-                            
         return self.score, self.reason

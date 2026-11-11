@@ -362,11 +362,6 @@ DRAW_MICRO_WEIGHTS = {
     "stats_base_add": 40.35
 }
 
-JOCKEY_MICRO_WEIGHTS = {
-    "overseas_g1_base": 85.0,
-    "overseas_base": 70.0
-}
-
 SPEED_MICRO_WEIGHTS = {
     "base": 60.0,
     "l400_22_4_bonus": 8.62,
@@ -408,11 +403,6 @@ SPEED_MICRO_WEIGHTS = {
     "overseas_place_bonus": 1.0
 }
 
-TRAINER_MICRO_WEIGHTS = {
-    "overseas_g1_base": 85.0,
-    "overseas_g23_base": 75.0,
-    "overseas_base": 70.0
-}
 
 FORM_MICRO_WEIGHTS = {
     "rank_1": 100.0,
