@@ -1239,11 +1239,29 @@ test("off-screen analysis prose is skipped, but searchable text is not", () => {
 
 test("view transitions animate real view changes only, never the bet-sync tick", () => {
   const html = fs.readFileSync(new URL("../static_template.html", import.meta.url), "utf8");
-  // render() must gate on the view key changing. Without this the 15s /api/sync poll
-  // would cross-fade the whole page while you are reading a racecard.
-  assert.match(html, /const viewKey = `\$\{activeSport\}\|\$\{currentView\}`/);
-  assert.match(html, /viewChanged = lastRenderedViewKey !== null && lastRenderedViewKey !== viewKey/);
-  assert.match(html, /if \(viewChanged && !reduceMotion && typeof document\.startViewTransition === 'function'\)/);
+  // render() must gate on the PLACE changing (sport, view, race, sub-tab, meeting).
+  // Without this the 15s /api/sync poll would animate the whole page while you
+  // are reading a racecard. The place is built from navigation state only.
+  assert.match(html, /const moved = wcLastPlace !== null && wcLastPlace\.key !== placeKey/);
+  assert.match(html, /if \(!moved \|\| reduceMotion \|\| hidden\) \{ paint\(\); return; \}/);
+  const place = html.slice(html.indexOf("function wcPlace()"), html.indexOf("const WC_HORSE_VIEW_ORDER"));
+  assert.ok(place.length > 0);
+  assert.doesNotMatch(place, /bet|sync|ledger|odds/i);
+  // A backgrounded tab gets no frames; a transition there would hold the DOM back.
+  assert.match(html, /document\.visibilityState !== 'visible'/);
+  // Direction of travel follows the navigation, and is cleared afterwards.
+  assert.match(html, /root\.dataset\.wcNav = direction/);
+  for (const dir of ["left", "right", "forward", "back"]) {
+    assert.ok(html.includes(`html[data-wc-nav="${dir}"]::view-transition-new(app-main)`), dir);
+  }
+  // #app-main's snapshot is painted above the root, so the header and the floating
+  // tab bar need their own groups or the page slides over them and the navigation
+  // vanishes on phones for the length of every transition.
+  assert.match(html, /\.app-header \{ view-transition-name: wc-header; \}/);
+  assert.match(html, /\.app-bottom-nav \{ view-transition-name: wc-tabbar; \}/);
+  assert.doesNotMatch(html, /::view-transition-old\(root\) \{ display: none; \}/);
+  // Sliding thumbs degrade to the original active style without JS.
+  assert.match(html, /\.wc-seg > \.wc-seg-on \{ background: transparent !important;/);
   // Feature-detected and motion-respecting, with a plain render as the fallback path.
   assert.match(html, /matchMedia\('\(prefers-reduced-motion: reduce\)'\)\.matches/);
   assert.match(html, /function renderNow\(main\)/);

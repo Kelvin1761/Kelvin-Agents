@@ -1187,6 +1187,337 @@
 .hkjc-insights .ins-lists,.hkjc-insights .ins-races{grid-template-columns:1fr}
 .hkjc-insights .ins-bias-cols{grid-template-columns:1fr;gap:4px}
 }
+<style id="wc-premium">
+/* ═══ Premium layer (2026-11-11) ═══
+   Loaded LAST on purpose. The five page families (racing, NBA/Tennis, Portfolio,
+   HKJC ROI, 即場形勢) each grew their own colours, radii and shadows; this block is
+   where the shared shell, navigation and motion are defined once, on top of the
+   tokens in index.css. Display only: nothing here reads or changes data.
+   Rules of the layer:
+     - colours, radii, shadows and timings come from index.css tokens, never literals
+     - anything that moves is gated by prefers-reduced-motion (global rule above
+       zeroes durations; the view-transition rules sit inside no-preference)
+     - the sliding thumbs are added by wcSyncThumbs(); without JS every control
+       keeps its original active style, because the overrides hang off .wc-seg */
+
+/* ─── Shell ─── */
+body { background: var(--color-bg); font-feature-settings: "cv11", "ss01"; }
+.app-header { border-bottom: 0; }
+@media (min-width: 769px) {
+  .app-header {
+    background: rgba(255,255,255,.76);
+    -webkit-backdrop-filter: saturate(180%) blur(18px); backdrop-filter: saturate(180%) blur(18px);
+    box-shadow: 0 1px 0 rgba(16,24,40,.06), 0 10px 30px -22px rgba(16,24,40,.3);
+  }
+  .app-header__logo-mark { border-radius: 14px; background: var(--color-tray); }
+}
+@media (max-width: 768px) {
+  .app-header { background: var(--color-bg); }
+  .app-header__nav-capsule { padding: 4px; }
+  .app-header__nav-capsule .nav-pill { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; }
+}
+.app-header__logo:hover { text-decoration: none; }
+/* Between tablet and a roomy desktop the two navs plus the stamp do not fit on
+   one line; give up the decoration first (word "Dashboard", then pill icons). */
+@media (min-width: 769px) and (max-width: 1180px) {
+  .app-header { gap: 10px; padding-left: var(--space-m); padding-right: var(--space-m); }
+  .app-header__logo-suffix { display: none; }
+  .sport-switch { gap: 6px; padding: 6px 10px; }
+  .nav-pill { padding: 8px 11px; }
+}
+@media (min-width: 769px) and (max-width: 960px) {
+  .nav-pill__icon { display: none; }
+  .sport-switch .nav-flag, .sport-switch .nav-emoji { font-size: 20px; }
+  .sport-switch .nav-flag .flag-svg { width: 22px; }
+}
+
+/* ─── Segmented controls: the tray ─── */
+.sport-switcher { gap: 2px; padding: 4px; border: 0; background: var(--color-tray); }
+.sport-switch { min-height: 42px; padding: 6px 14px; color: var(--color-text-secondary); white-space: nowrap; }
+.sport-switch:hover { color: var(--color-text); background: transparent; }
+.app-header__nav-capsule { background: var(--color-tray); padding: 4px; }
+.nav-pill { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; }
+.nav-pill__icon { width: 15px; height: 15px; flex-shrink: 0; }
+.nav-pill--active { background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary-700)); box-shadow: 0 4px 12px -4px rgba(37,99,235,.55); }
+.app-header__refresh { border: 0; background: var(--color-tray); color: var(--color-text-secondary); min-height: 36px; padding: 6px 13px; }
+.app-header__refresh:hover { background: var(--color-surface-hover); color: var(--color-text); }
+
+/* The sliding thumb. wcSyncThumbs() appends one per control and moves it with
+   transform, so the active state glides instead of jumping. */
+.wc-seg > :not(.wc-thumb) { position: relative; z-index: 1; }
+.wc-seg > .wc-seg-on { background: transparent !important; box-shadow: none !important; }
+.wc-thumb {
+  position: absolute; top: 0; left: 0; z-index: 0; pointer-events: none;
+  border-radius: var(--radius-full); background: var(--color-surface); box-shadow: var(--shadow-thumb);
+  transition: transform var(--dur-thumb) var(--ease-out), width var(--dur-thumb) var(--ease-out), height var(--dur-thumb) var(--ease-out), background-color var(--dur-thumb) ease;
+  will-change: transform;
+}
+.wc-thumb--primary { background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary-700)); box-shadow: 0 4px 12px -4px rgba(37,99,235,.55); }
+.wc-thumb--tint { box-shadow: none; }
+/* Labels cross-fade colour while the thumb travels underneath them. */
+.sport-switch, .nav-pill, .tabbar-btn, .wc-seg > * {
+  transition: color 220ms ease, transform var(--dur-press) var(--ease-out);
+}
+
+/* ─── Press feedback ─── */
+.sport-switch:active, .nav-pill:active, .tabbar-btn:active, .app-header__refresh:active,
+.bp-bar-btn:active, .race-pill:active, .wc-seg > button:active { transform: scale(.96); }
+.rcard, .meeting-card, .au-meet {
+  transition: transform 180ms var(--ease-out), box-shadow 240ms ease, border-color 200ms ease, background-color 200ms ease, opacity 200ms ease;
+}
+.rcard:active, .meeting-card:active, .au-meet:active { transform: scale(.985); }
+
+/* ─── Mobile tab bar ─── */
+@media (max-width: 768px) {
+  .app-bottom-nav {
+    border: 0; background: rgba(255,255,255,.82);
+    -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
+    box-shadow: 0 0 0 1px rgba(16,24,40,.05), 0 18px 40px -12px rgba(16,24,40,.28);
+  }
+  .tabbar-btn:hover { background: transparent; }
+  .tabbar-btn__icon { transition: transform 320ms var(--ease-spring); }
+  .tabbar-btn--active .tabbar-btn__icon { transform: translateY(-1px) scale(1.08); }
+}
+
+/* ─── View transitions ───
+   render() tags <html data-wc-nav> with the direction of travel, so the page
+   moves the same way the thumb does: later tab / next race slides in from the
+   right, drilling into a race pushes forward, going back reverses it. */
+@media (prefers-reduced-motion: no-preference) {
+  /* Only #app-main animates; the root (header, tab bar, page background) must
+     simply stay put. The default root cross-fade dims the header mid-flight and
+     leaves a ghost of the old nav thumb. Hiding the old root is NOT the fix: for
+     the frames before the new page is ready it is the only copy of the header
+     there is, so the whole nav blinked out (reported 2026-11-11). Keep both
+     opaque and un-animated, new painted over old. */
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+  /* Named elements are painted ABOVE the root snapshot, and #app-main runs the
+     full height of the page, so its snapshot used to slide over the floating tab
+     bar (and the sticky header once scrolled): on a phone the navigation simply
+     vanished for the length of every transition (reported 2026-11-11). Giving the
+     chrome its own groups puts it back on top. No old copy and no animation: the
+     new one is live, so the thumb inside it keeps sliding. */
+  .app-header { view-transition-name: wc-header; }
+  .app-bottom-nav { view-transition-name: wc-tabbar; }
+  .back-to-top { view-transition-name: wc-totop; }
+  .update-pill { view-transition-name: wc-update; }
+  ::view-transition-old(wc-header), ::view-transition-old(wc-tabbar),
+  ::view-transition-old(wc-totop), ::view-transition-old(wc-update) { display: none; }
+  ::view-transition-new(wc-header), ::view-transition-new(wc-tabbar),
+  ::view-transition-new(wc-totop), ::view-transition-new(wc-update) { animation: none; }
+  ::view-transition-group(wc-header), ::view-transition-group(wc-tabbar),
+  ::view-transition-group(wc-totop), ::view-transition-group(wc-update) { animation: none; }
+  ::view-transition-group(app-main) { animation-duration: var(--dur-view); animation-timing-function: var(--ease-out); }
+  ::view-transition-old(app-main) { animation: wc-out-fade 200ms ease both; }
+  ::view-transition-new(app-main) { animation: wc-in-rise var(--dur-view) var(--ease-out) both; }
+  html[data-wc-nav="left"]::view-transition-old(app-main) { animation-name: wc-out-left; }
+  html[data-wc-nav="left"]::view-transition-new(app-main) { animation-name: wc-in-left; }
+  html[data-wc-nav="right"]::view-transition-old(app-main) { animation-name: wc-out-right; }
+  html[data-wc-nav="right"]::view-transition-new(app-main) { animation-name: wc-in-right; }
+  html[data-wc-nav="forward"]::view-transition-old(app-main) { animation-name: wc-out-forward; }
+  html[data-wc-nav="forward"]::view-transition-new(app-main) { animation-name: wc-in-forward; }
+  html[data-wc-nav="back"]::view-transition-old(app-main) { animation-name: wc-out-back; }
+  html[data-wc-nav="back"]::view-transition-new(app-main) { animation-name: wc-in-back; }
+  /* Browsers without the View Transitions API get the entrance half only. */
+  #app-main[data-wc-enter] { animation: wc-in-rise var(--dur-view) var(--ease-out) both; }
+  #app-main[data-wc-enter="left"] { animation-name: wc-in-left; }
+  #app-main[data-wc-enter="right"] { animation-name: wc-in-right; }
+  #app-main[data-wc-enter="forward"] { animation-name: wc-in-forward; }
+  #app-main[data-wc-enter="back"] { animation-name: wc-in-back; }
+  /* Sections rise in one after another on a view change. `backwards` only, so
+     nothing is left holding a transform once it has played. */
+  .wc-rise { animation: wc-rise 420ms var(--ease-out) backwards; animation-delay: calc(var(--wc-i, 0) * 38ms + 60ms); }
+}
+@keyframes wc-out-fade { to { opacity: 0; } }
+@keyframes wc-in-rise { from { opacity: 0; transform: translateY(10px); } }
+@keyframes wc-out-left { to { opacity: 0; transform: translateX(-48px); } }
+@keyframes wc-in-left { from { opacity: 0; transform: translateX(72px); } }
+@keyframes wc-out-right { to { opacity: 0; transform: translateX(48px); } }
+@keyframes wc-in-right { from { opacity: 0; transform: translateX(-72px); } }
+@keyframes wc-out-forward { to { opacity: 0; transform: translateX(-24px) scale(.985); } }
+@keyframes wc-in-forward { from { opacity: 0; transform: translateX(44px); } }
+@keyframes wc-out-back { to { opacity: 0; transform: translateX(44px); } }
+@keyframes wc-in-back { from { opacity: 0; transform: translateX(-24px) scale(.985); } }
+@keyframes wc-rise { from { opacity: 0; transform: translateY(14px); } }
+
+/* ─── 賽事 page ─── */
+.meeting-selector { gap: var(--space-l); }
+.meeting-card {
+  min-height: 124px; padding: 22px 24px; gap: 18px; border: 0; border-radius: var(--radius-xl);
+  background: var(--color-surface); box-shadow: var(--shadow-card);
+}
+.meeting-card::before { display: none; }
+.meeting-card__flag { width: 64px; height: 64px; flex-basis: 64px; border-radius: 22px; background: var(--color-tray); font-size: 2rem; }
+.meeting-card__venue { font-size: 1.5rem; letter-spacing: -0.03em; }
+.meeting-card__arrow { width: 40px; height: 40px; flex-basis: 40px; border: 0; background: var(--color-tray); color: var(--color-text); }
+.meeting-card:hover { box-shadow: var(--shadow-card-hover); transform: translateY(-2px); }
+.meeting-card.selected { background: var(--color-surface); box-shadow: var(--shadow-card); }
+.meeting-card.selected .meeting-card__arrow,
+.meeting-card:hover .meeting-card__arrow { background: var(--color-text); color: var(--color-text-inverse); }
+.race-overview-header { margin: 30px 4px 14px; }
+.race-overview-title { font-size: 1.2rem; letter-spacing: -0.02em; }
+
+/* Race tiles sit in a tray, like keys on a pad. */
+.rboard { gap: 8px; padding: 8px; border-radius: var(--radius-xl); background: var(--color-tray); }
+.rcard { padding: 14px 16px 15px; border: 0; border-radius: var(--radius-l); box-shadow: var(--shadow-sm); }
+.rcard:hover { box-shadow: var(--shadow-card-hover); transform: translateY(-2px); }
+.rcard__time { letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.rcard--next { box-shadow: 0 0 0 2px var(--color-primary), 0 12px 28px -14px rgba(37,99,235,.5); }
+@media (max-width: 768px) {
+  .rboard { gap: 6px; padding: 6px; border-radius: var(--radius-l); }
+  .rcard { padding: 10px 12px 11px; border-radius: var(--radius-m); }
+}
+
+/* ─── Race switcher (race detail) ───
+   A tray of keys with a blue thumb. It carries its own view-transition-name so
+   that going R3 → R4 slides the race underneath while the switcher stays put and
+   only the thumb travels. */
+.race-pills { gap: 4px; padding: 6px; border-radius: var(--radius-l); background: var(--color-tray); width: fit-content; max-width: 100%; }
+.race-pill { width: 84px; height: 60px; border-radius: var(--radius-m); background: transparent; box-shadow: none; color: var(--color-text-secondary); transition: color 220ms ease, background-color 180ms ease, transform var(--dur-press) var(--ease-out); }
+.race-pill:hover { background: rgba(255,255,255,.7); transform: none; color: var(--color-text); }
+.race-pill--active, .race-pill--active:hover { background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary-700)); color: #fff; box-shadow: 0 6px 14px -6px rgba(37,99,235,.6); }
+.race-pills.wc-seg > .race-pill--active:hover { background: transparent; }
+.race-pills.wc-rise { animation: none; }
+@media (max-width: 768px) {
+  .race-pills { width: auto; max-width: none; border-radius: 0; border-bottom: 0; background: var(--color-bg); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: 0 1px 0 rgba(16,24,40,.06); }
+  .race-pill { width: auto; height: auto; min-height: 40px; padding: 6px 13px; border-radius: 12px; background: var(--color-tray); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  #app-main > .race-pills { view-transition-name: wc-race-pills; }
+  ::view-transition-old(wc-race-pills), ::view-transition-new(wc-race-pills) { animation: none; mix-blend-mode: normal; }
+  html[data-wc-nav="forward"]::view-transition-new(wc-race-pills) { animation: wc-in-rise var(--dur-view) var(--ease-out) both; }
+  html[data-wc-nav="back"]::view-transition-old(wc-race-pills) { animation: wc-out-fade 150ms ease both; }
+}
+/* In race detail the picks sit straight inside the panel, with no race body
+   to pad them, so they used to run into its rounded corners. */
+.bp--race > .bh { margin: 10px 12px; }
+.bp.bp--race { margin: 0 0 20px; }
+
+/* AU meeting list rows */
+.au-meet { border-radius: var(--radius-l); box-shadow: var(--shadow-sm); }
+
+/* Betting panel */
+.bp { border: 0; border-radius: var(--radius-xl); box-shadow: var(--shadow-card); }
+.bp-hdr { padding: 18px 22px; background: var(--color-surface); border-bottom: 1px solid var(--color-border-light); }
+.bp-race { border-bottom-color: var(--color-border-light); }
+.bp-race-hdr { padding: 14px 22px; transition: background-color 180ms ease; }
+.bp-race-hdr:hover { background: var(--color-bg); }
+.bh { border-radius: var(--radius-l); border-color: var(--color-border); border-left-width: 1px; border-left-color: var(--color-border); box-shadow: none; background: var(--color-surface); }
+.bh:hover { border-color: var(--color-primary-100); border-left-color: var(--color-primary-100); box-shadow: var(--shadow-md); }
+.bh--bet { border-color: #A7E3C4; border-left-color: #A7E3C4; background: linear-gradient(135deg,#F3FCF7,#FFFFFF 70%); }
+.bp-bar { padding: 14px 22px; background: var(--color-surface); border-top-color: var(--color-border-light); }
+.bp-bar-btn { padding: 9px 18px; border-radius: var(--radius-full); background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary-700)); box-shadow: 0 6px 14px -6px rgba(37,99,235,.6); transition: transform var(--dur-press) var(--ease-out), box-shadow 200ms ease, filter 200ms ease; }
+.bp-bar-btn:hover { background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary-700)); filter: brightness(1.06); }
+@media (max-width: 768px) {
+  .bp { border-radius: var(--radius-l); }
+  .bp-hdr, .bp-race-hdr, .bp-bar { padding-left: 16px; padding-right: 16px; }
+  .bp-bar--fixed { border: 0; border-radius: var(--radius-xl); box-shadow: 0 0 0 1px rgba(16,24,40,.05), 0 18px 40px -12px rgba(16,24,40,.28); }
+}
+
+/* Floating controls */
+.back-to-top { background: var(--color-text); box-shadow: var(--shadow-lg); }
+.back-to-top:hover { background: var(--color-text); box-shadow: var(--shadow-xl); }
+.update-pill { border: 0; background: var(--color-text); box-shadow: var(--shadow-xl); }
+
+/* Portfolio cards used to paint over the mobile tab bar: a positioned card
+   with its own stacking order sat above a z-index-less sibling. */
+.app-main { position: relative; z-index: 0; }
+
+/* ═══ One look for every page family ═══
+   NBA/Tennis, Portfolio, HKJC ROI and 即場形勢 each declare private variables
+   (--r-*, --pf-*, --i-*, --ink/--line/…). Pointing those at the shared tokens is
+   what makes the five families agree; the per-family rules stay as they are. */
+.roi-page {
+  --r-ink: var(--color-text); --r-text: var(--color-text-secondary); --r-muted: var(--color-text-soft); --r-faint: var(--color-text-muted);
+  --r-line: var(--color-border); --r-soft: var(--color-bg);
+  --r-up: var(--color-up); --r-up-soft: var(--color-up-soft); --r-down: var(--color-down); --r-down-soft: var(--color-down-soft);
+  --r-accent: var(--color-primary); --r-shadow: var(--shadow-card); font-family: var(--font-sans);
+}
+.pf {
+  --pf-ink: var(--color-text); --pf-muted: var(--color-text-soft); --pf-line: var(--color-border); --pf-paper: var(--color-surface);
+  --pf-up: var(--color-up); --pf-down: var(--color-down); font-family: var(--font-sans);
+}
+.hkjc-insights {
+  --i-ink: var(--color-text); --i-text: var(--color-text-secondary); --i-muted: var(--color-text-soft); --i-faint: var(--color-text-muted);
+  --i-line: var(--color-border); --i-soft: var(--color-bg); --i-win: var(--color-primary); --i-win-soft: var(--color-primary-50);
+  --i-shadow: var(--shadow-card); font-family: var(--font-sans);
+}
+:is(.sports-shell--nba,.sports-shell--tennis) {
+  --bg: transparent; --paper: var(--color-surface); --ink: var(--color-text); --muted: var(--color-text-soft); --line: var(--color-border);
+  --accent: var(--color-primary); --blue: var(--color-primary); --soft: var(--color-primary-50); --blue-soft: var(--color-primary-50);
+  --green: var(--color-up); --pos: var(--color-up); --pos-bg: var(--color-up-soft);
+  --red: var(--color-down); --neg: var(--color-down); --neg-bg: var(--color-down-soft);
+  --shadow: var(--shadow-card); font-family: var(--font-sans); color: var(--color-text);
+}
+
+/* Cards: white, borderless, lifted by shadow off the grey page. Heroes get the
+   largest radius, ordinary cards the next, inner tiles the next. */
+.card, .horse-card, .comparison__column,
+.roi-kpi, .roi-card,
+.ins-leader, .ins-card,
+.tl-item,
+.bet-record, .tennis-tools, .nba-notice, .panel,
+.pf-kpi, .pf-card, .pf-panel {
+  border-color: transparent; border-radius: var(--radius-l); box-shadow: var(--shadow-card);
+}
+.roi-hero, .ins-hero, .tracking-dashboard, .battlefield, .battlefield--refined {
+  border-color: transparent; border-radius: var(--radius-xl); box-shadow: var(--shadow-card);
+}
+.card:hover { box-shadow: var(--shadow-card); }
+.card--clickable:hover { box-shadow: var(--shadow-card-hover); }
+.nba-notice, .panel { border-radius: var(--radius-m); box-shadow: var(--shadow-sm); }
+.tl-item--next { border-color: var(--color-primary); }
+
+/* Trays for the in-page segmented controls. */
+.pf-segs, .roi-switch, .hkjc-insights .ins-tabs, .hkjc-insights .ins-pills,
+:is(.sports-shell--nba,.sports-shell--tennis) .tabs, .dashboard-periods {
+  border-color: transparent; background: var(--color-tray);
+}
+
+/* ─── Race detail ─── */
+.comparison__column { overflow: hidden; background: transparent; box-shadow: none; }
+.horse-card { transition: box-shadow 240ms ease, transform 200ms var(--ease-out); }
+.horse-card:hover { box-shadow: var(--shadow-card-hover); }
+/* The coloured rank block beside the card already says #1/#2/#3; the extra
+   left border on the card itself was a second stripe for the same fact. */
+.horse-card--top-pick { border-left-width: 0; }
+.rank-badge { border-radius: var(--radius-m); }
+.dim-strip { border-color: transparent; border-radius: var(--radius-m); background: var(--color-bg); }
+.horse-card__expand-btn { border-radius: var(--radius-m); transition: background-color 180ms ease, border-color 180ms ease, transform var(--dur-press) var(--ease-out); }
+.horse-card__expand-btn:active { transform: scale(.985); }
+.horse-card__expand-chevron { display: inline-block; transition: transform 260ms var(--ease-out); }
+.horse-card__expand-btn.is-expanded .horse-card__expand-chevron { transform: rotate(180deg); }
+.bh-step { border-color: transparent; border-radius: var(--radius-m); background: var(--color-bg); }
+.battlefield__header, .battlefield--refined .battlefield__header { background: linear-gradient(135deg, #0b1220, #17233a); }
+.battlefield__race-pattern, .battlefield-ranking { border-color: var(--color-border); border-radius: var(--radius-m); }
+
+/* ─── Sports workspaces ─── */
+:is(.sports-shell--nba,.sports-shell--tennis) .dashboard-metric { border-radius: var(--radius-m); }
+:is(.sports-shell--nba,.sports-shell--tennis) .tennis-pick-panel { border-radius: var(--radius-m); }
+
+/* ─── Dialogs ─── */
+dialog.roi-modal-dialog::backdrop { background: rgba(11,18,32,.42); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.roi-modal { border-radius: var(--radius-xl); box-shadow: var(--shadow-xl); }
+.roi-modal__header { border-bottom-color: var(--color-border-light); }
+.roi-modal__close { border-radius: var(--radius-full); background: var(--color-tray); transition: background-color 160ms ease, transform var(--dur-press) var(--ease-out); }
+.roi-modal__close:active { transform: scale(.94); }
+.roi-modal__input { border-color: var(--color-border); border-radius: var(--radius-m); transition: border-color 160ms ease, box-shadow 160ms ease; }
+.roi-modal__input:focus { outline: 0; border-color: var(--color-primary); box-shadow: 0 0 0 4px var(--color-primary-100); }
+@media (prefers-reduced-motion: no-preference) {
+  dialog.roi-modal-dialog[open] .roi-modal { animation: wc-pop 260ms var(--ease-out) both; }
+  dialog.roi-modal-dialog[open]::backdrop { animation: wc-fade 200ms ease both; }
+  .update-pill:not([hidden]) { animation: wc-pill 420ms var(--ease-spring) both; }
+}
+@keyframes wc-pop { from { opacity: 0; transform: translateY(14px) scale(.97); } }
+@keyframes wc-fade { from { opacity: 0; } }
+@keyframes wc-pill { from { opacity: 0; transform: translate(-50%, 16px) scale(.94); } }
+
+@media (max-width: 768px) {
+  .roi-hero, .ins-hero, .tracking-dashboard, .battlefield, .battlefield--refined { border-radius: var(--radius-l); }
+  /* Sheet-style dialog on phones: rises from the bottom edge. */
+  dialog.roi-modal-dialog[open] { place-items: end center; padding: 0; }
+  .roi-modal { width: 100%; max-height: calc(100vh - 24px - env(safe-area-inset-top)); border-radius: var(--radius-xl) var(--radius-xl) 0 0; padding-bottom: env(safe-area-inset-bottom); }
+}
 </style>
 </head>
 <body>
@@ -1211,10 +1542,10 @@
         <button type="button" id="sport-portfolio" class="sport-switch" onclick="showSport('portfolio')"><span class="nav-emoji" aria-hidden="true">📈</span><span>Portfolio</span></button>
       </nav>
       <nav class="app-header__nav-capsule" id="horse-nav">
-        <a href="#" id="nav-races" class="nav-pill nav-pill--active" onclick="showDashboard(); return false;">📋 賽事</a>
-        <a href="#" id="nav-timeline" class="nav-pill" style="display:none" onclick="showTimeline(); return false;">⏱ 即將開跑</a>
-        <a href="#" id="nav-insights" class="nav-pill" onclick="showInsights(); return false;">⚡ 即場形勢</a>
-        <a href="#" id="nav-roi" class="nav-pill" onclick="showROI(); return false;">📊 ROI</a>
+        <a href="#" id="nav-races" class="nav-pill nav-pill--active" onclick="showDashboard(); return false;"><svg class="nav-pill__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg><span>賽事</span></a>
+        <a href="#" id="nav-timeline" class="nav-pill" style="display:none" onclick="showTimeline(); return false;"><svg class="nav-pill__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></svg><span>即將開跑</span></a>
+        <a href="#" id="nav-insights" class="nav-pill" onclick="showInsights(); return false;"><svg class="nav-pill__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg><span>即場形勢</span></a>
+        <a href="#" id="nav-roi" class="nav-pill" onclick="showROI(); return false;"><svg class="nav-pill__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span>ROI</span></a>
       </nav>
       <!-- Always-available way to reload. In standalone (PWA) mode there is no
            address bar and no reload button, so without this the only way out of a
@@ -8075,30 +8406,169 @@ async function deleteRoiRecord(encodedKey) {
 // reader asked for reduced motion.
 let lastRenderedViewKey = null;
 
+// ─── Navigation motion ───
+// What counts as "a different place". A re-render with the same key (a bet was
+// ticked, a ledger finished loading) must NOT animate; a change of sport, view,
+// race, sub-tab or meeting does.
+function wcSafe(read, fallback = '') { try { return read(); } catch (e) { return fallback; } }
+function wcPlace() {
+  return {
+    tab: TOP_LEVEL_TABS.indexOf(wcSafe(() => activeTopLevelTab())),
+    view: currentView,
+    race: currentView === 'race' ? Number(wcSafe(() => currentRace, 0)) || 0 : 0,
+    sub: [
+      currentView === 'sports' ? activeSportsTab : '',
+      currentView === 'insights' ? wcSafe(() => insTab) : '',
+      currentView === 'portfolio' ? wcSafe(() => pfGranularity) : '',
+      selectedMeeting ? `${selectedMeeting.date}|${selectedMeeting.venue}` : '',
+    ].join('~'),
+  };
+}
+const WC_HORSE_VIEW_ORDER = ['dashboard', 'timeline', 'insights', 'roi'];
+function wcDirection(from, to) {
+  if (from.tab !== to.tab) return to.tab > from.tab ? 'left' : 'right';
+  if (from.view !== 'race' && to.view === 'race') return 'forward';
+  if (from.view === 'race' && to.view !== 'race') return 'back';
+  if (from.view === 'race' && to.view === 'race' && from.race !== to.race) return to.race > from.race ? 'left' : 'right';
+  if (from.view !== to.view) {
+    const a = WC_HORSE_VIEW_ORDER.indexOf(from.view), b = WC_HORSE_VIEW_ORDER.indexOf(to.view);
+    if (a >= 0 && b >= 0) return b > a ? 'left' : 'right';
+  }
+  return 'rise';
+}
+let wcLastPlace = null;
+
 function render() {
   const main = document.getElementById('app-main');
   if (!main) return;
   const viewKey = `${activeSport}|${currentView}`;
-  const viewChanged = lastRenderedViewKey !== null && lastRenderedViewKey !== viewKey;
+  const place = wcPlace();
+  const placeKey = JSON.stringify(place);
+  const moved = wcLastPlace !== null && wcLastPlace.key !== placeKey;
+  const direction = moved ? wcDirection(wcLastPlace.place, place) : '';
+  // In-page thumbs remember where they were so they can slide from there, but a
+  // position remembered from another page means nothing on this one.
+  if (lastRenderedViewKey !== viewKey) wcForgetPageThumbs();
   lastRenderedViewKey = viewKey;
+  wcLastPlace = { key: placeKey, place };
   const reduceMotion = typeof matchMedia === 'function'
     && matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (viewChanged && !reduceMotion && typeof document.startViewTransition === 'function') {
-    document.startViewTransition(() => renderNow(main));
+  const paint = () => { renderNow(main); wcSyncThumbs(); if (moved && !reduceMotion) wcStagger(main); };
+  // A backgrounded tab gets no frames, so a view transition there would hold the
+  // DOM update back until the app is foregrounded again. Paint straight away.
+  const hidden = typeof document.visibilityState === 'string' && document.visibilityState !== 'visible';
+  if (!moved || reduceMotion || hidden) { paint(); return; }
+  syncNavState();
+  wcSyncThumbs();
+  if (typeof document.startViewTransition === 'function') {
+    const root = document.documentElement;
+    root.dataset.wcNav = direction;
+    const transition = document.startViewTransition(paint);
+    const clear = () => { if (root.dataset.wcNav === direction) delete root.dataset.wcNav; };
+    transition.finished.then(clear, clear);
+    // A second navigation mid-flight skips this one; that is expected, not an error.
+    transition.ready.catch(() => {});
     return;
   }
-  renderNow(main);
+  paint();
+  // No View Transitions API: play the entrance half as a plain CSS animation.
+  delete main.dataset.wcEnter;
+  void main.offsetWidth;
+  main.dataset.wcEnter = direction;
+  main.addEventListener('animationend', event => {
+    if (event.target === main) delete main.dataset.wcEnter;
+  }, { once: true });
 }
 
-function renderNow(main) {
-  // Card ids are random per render, so every re-render used to leave its
-  // entries behind: measured six race switches taking the map from 5 to 78.
-  // The DOM those ids refer to is about to be replaced, so drop them now.
-  // The fetched bundles (ANALYSIS_BUNDLES) are deliberately NOT cleared --
-  // they are keyed by meeting and are the point of the cache.
-  LAZY_ANALYSIS_CTX.clear();
-  if (analysisSpyCleanup) analysisSpyCleanup();
+// ─── Sliding thumbs ───
+// [container, active child, look]. The three header/tab-bar controls live outside
+// #app-main and persist; the rest are rebuilt by every render, which is why their
+// last position is remembered here rather than in the DOM.
+const WC_SEGS = [
+  ['.sport-switcher', '.sport-switch--active', 'plain'],
+  ['#horse-nav', '.nav-pill--active', 'primary'],
+  ['#app-bottom-nav', '.tabbar-btn--active', 'tint'],
+  ['#app-main .tabs', '[aria-current="page"],[aria-selected="true"],[aria-pressed="true"]', 'soft'],
+  ['#app-main .dashboard-periods', '[aria-pressed="true"]', 'soft'],
+  ['#app-main .pf-segs', '.is-active', 'soft'],
+  ['#app-main .ins-tabs', '[aria-pressed="true"]', 'soft'],
+  ['#app-main .roi-switch', '.roi-switch__btn--active', 'soft'],
+  ['#app-main .race-pills', '.race-pill--active', 'primary'],
+];
+const wcThumbMemory = new Map();
+function wcForgetPageThumbs() {
+  [...wcThumbMemory.keys()].forEach(key => { if (key.startsWith('#app-main')) wcThumbMemory.delete(key); });
+}
+function wcSyncThumbs(animate = true) {
+  WC_SEGS.forEach(([selector, activeSelector, look]) => {
+    document.querySelectorAll(selector).forEach((box, index) => {
+      const key = `${selector}#${index}`;
+      const on = [...box.children].find(child => child.matches(activeSelector) && child.offsetWidth > 0);
+      box.querySelectorAll(':scope > .wc-seg-on').forEach(child => { if (child !== on) child.classList.remove('wc-seg-on'); });
+      let thumb = box.querySelector(':scope > .wc-thumb');
+      if (!on) {
+        // Hidden control (the header switcher on phones) or nothing selected.
+        if (thumb) thumb.remove();
+        box.classList.remove('wc-seg');
+        wcThumbMemory.delete(key);
+        return;
+      }
+      if (getComputedStyle(box).position === 'static') box.style.position = 'relative';
+      const fresh = !thumb;
+      if (fresh) {
+        thumb = document.createElement('span');
+        thumb.className = `wc-thumb wc-thumb--${look}`;
+        thumb.setAttribute('aria-hidden', 'true');
+        box.appendChild(thumb);
+      }
+      box.classList.add('wc-seg');
+      on.classList.add('wc-seg-on');
+      if (look === 'tint') thumb.style.backgroundColor = getComputedStyle(on).getPropertyValue('--nav-soft').trim() || '';
+      thumb.style.borderRadius = getComputedStyle(on).borderRadius;
+      const target = { x: on.offsetLeft, y: on.offsetTop, w: on.offsetWidth, h: on.offsetHeight };
+      const put = r => {
+        thumb.style.width = `${r.w}px`;
+        thumb.style.height = `${r.h}px`;
+        thumb.style.transform = `translate(${r.x}px, ${r.y}px)`;
+      };
+      const start = fresh ? (animate && wcThumbMemory.get(key)) || target : (animate ? null : target);
+      if (start) {
+        thumb.style.transition = 'none';
+        put(start);
+        void thumb.offsetWidth;
+        thumb.style.transition = '';
+      }
+      put(target);
+      wcThumbMemory.set(key, target);
+    });
+  });
+}
+function wcStagger(main) {
+  const wrapper = main.children.length === 1 ? main.firstElementChild : main;
+  const limit = (window.innerHeight || 800) * 1.15;
+  let index = 0;
+  for (const el of wrapper.children) {
+    if (index >= 9) break;
+    if (el.getBoundingClientRect().top > limit) break;
+    el.classList.add('wc-rise');
+    el.style.setProperty('--wc-i', index++);
+  }
+}
+if (typeof window !== 'undefined' && window.addEventListener) {
+  let wcResizeTimer = 0;
+  window.addEventListener('resize', () => {
+    clearTimeout(wcResizeTimer);
+    wcResizeTimer = setTimeout(() => wcSyncThumbs(false), 80);
+  });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => wcSyncThumbs(false));
+}
+
+// Header + tab bar active state. Split out of renderNow() so render() can update
+// it (and start the thumbs sliding) on the very frame of the tap, instead of after
+// the view transition has captured the old page and rebuilt the new one.
+function syncNavState() {
   const activeTab = activeTopLevelTab();
+
   TOP_LEVEL_TABS.forEach(sport => {
     const isActive = activeTab === sport;
     const button = document.getElementById(`sport-${sport}`);
@@ -8133,6 +8603,17 @@ function renderNow(main) {
     timelineNav.style.display = activeRegion === 'au' ? '' : 'none';
     timelineNav.className = onTimeline ? 'nav-pill nav-pill--active' : 'nav-pill';
   }
+}
+
+function renderNow(main) {
+  // Card ids are random per render, so every re-render used to leave its
+  // entries behind: measured six race switches taking the map from 5 to 78.
+  // The DOM those ids refer to is about to be replaced, so drop them now.
+  // The fetched bundles (ANALYSIS_BUNDLES) are deliberately NOT cleared --
+  // they are keyed by meeting and are the point of the cache.
+  LAZY_ANALYSIS_CTX.clear();
+  if (analysisSpyCleanup) analysisSpyCleanup();
+  syncNavState();
   if (currentView === 'race') {
     main.innerHTML = renderRaceDetail();
     // The mobile switcher is a one-row scroller, so on R7 of 9 the active pill starts
