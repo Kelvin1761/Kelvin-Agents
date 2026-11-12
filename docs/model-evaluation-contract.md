@@ -35,6 +35,18 @@ CI [−0.0085, +0.0078] —— 嗰個 terminal「改善」係 50 場嘅噪音。
 **推論**：bootstrap 以**賽日**做單位（同日賽事共用場地、偏差、同一次排程 run，
 逐場 bootstrap 會高估信心），2000 次。
 
+### Ranking metric 登記（HKJC）
+
+`hkjc_eval_harness.RANKING_METRICS`：top3 capture@5、NDCG@5、competitive recall@5、頭三平均模型名次，
+同 **`top2_any_hit`（頭二選最少一隻上名，2026-11-12 Kelvin 加）**。
+
+- 點解加：Kelvin 嘅落注用法睇頭二選；「頭二選 0 中變 1 中」係實際改善，但 Gold（前三全部入頭四）同 Good（頭二選兩隻都上名）
+  都唔會記錄到。佢只喺 Gold、Good 都冇跌（第 2 步過咗）先有作用，同其他 ranking metric 一樣要時間塊達標兼 CI 支持。
+- 性質（2026-11-12 量）：baseline 449 場 71.5%；EXP-20261112 系列候選郁 0–17 場、CI 半闊約 1–2pp。
+- 驗證把尺：A/A REJECT；EXP-20261112-02／-04／-05／-08／-09／-12 九個 arm 重判，判決同原本一樣（冇一個因為加咗佢而變）。
+- 加多一個 ranking metric 會令 RANKING_WIN 稍為易過（多重比較）；**之前判咗嘅候選唔追溯改判**。
+- AU 冇加（AU harness 自己嘅 ranking metric 列表唔郁）。
+
 ### 其他規則
 
 - **多重比較**：同一候選家族（同一假設嘅唔同 arm）要登記，用 `holm_adjust` 調整 p 值；

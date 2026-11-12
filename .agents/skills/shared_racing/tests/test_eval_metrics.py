@@ -41,6 +41,17 @@ class RaceMetricsTests(unittest.TestCase):
         self.assertEqual(row["exclusive_label"], "Pass")
         self.assertFalse(row["winner_in_top3"])
 
+    def test_top2_any_hit(self) -> None:
+        # 頭二選最少一隻上名（Kelvin 2026-11-12）
+        self.assertTrue(race_metrics(["A", "B", "C"], ["B", "X", "Y"])["top2_any_hit"])
+        self.assertFalse(race_metrics(["A", "B", "C"], ["C", "X", "Y"])["top2_any_hit"])
+        self.assertFalse(race_metrics(["A"], ["A", "X", "Y"])["top2_any_hit"])
+
+    def test_top2_any_hit_is_a_registered_ranking_metric(self) -> None:
+        from model_evaluation_decision import METRIC_DIRECTIONS, RANKING_KEYS
+        self.assertIn("top2_any_hit", RANKING_KEYS)
+        self.assertTrue(METRIC_DIRECTIONS["top2_any_hit"])
+
     def test_champion_and_winner_rank(self) -> None:
         actual_pos = {4: 1, 8: 2, 1: 3, 6: 4}
         row = race_metrics([4, 8, 1, 6], [4, 8, 1], actual_pos=actual_pos)

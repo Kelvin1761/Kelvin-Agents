@@ -65,6 +65,7 @@ RANKING_KEYS = frozenset(
         "competitive_recall_at5",
         "ndcg_at5",
         "top5_pairwise_auc",
+        "top2_any_hit",
     }
 )
 
@@ -76,6 +77,7 @@ METRIC_DIRECTIONS = {
     "competitive_recall_at5": True,
     "ndcg_at5": True,
     "top5_pairwise_auc": True,
+    "top2_any_hit": True,
 }
 
 

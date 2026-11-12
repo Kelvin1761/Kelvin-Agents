@@ -249,6 +249,9 @@ def race_metrics(
         "good_positional": len(picks) >= 2 and picks[0] in actual_set and picks[1] in actual_set,
         "pass": hits >= 2,
         "any1": hits >= 1,
+        # 頭二選最少一隻上名（Kelvin 2026-11-12：「頭二選 0 中 → 1 中」都係改善）。
+        # HKJC v3 嘅 ranking metric；Gold／Good 冇跌先有份判（見 model-evaluation-contract.md）。
+        "top2_any_hit": len(picks) >= 2 and top2_hits >= 1,
         # Compatibility aliases for archived HKJC/AU research scripts. New AU
         # reports must use ``pass`` and must not surface these retired labels.
         "good_any2": hits >= 2,
@@ -276,6 +279,7 @@ def summarize_races(race_rows: Sequence[Mapping[str, Any]]) -> dict:
         "good_positional": sum(bool(row["good_positional"]) for row in race_rows),
         "pass": sum(bool(row["pass"]) for row in race_rows),
         "any1": sum(bool(row["any1"]) for row in race_rows),
+        "top2_any_hit": sum(bool(row.get("top2_any_hit")) for row in race_rows),
         "good_any2": sum(bool(row["good_any2"]) for row in race_rows),
         "pass_any1": sum(bool(row["pass_any1"]) for row in race_rows),
         "champion": sum(bool(row["champion"]) for row in race_rows),

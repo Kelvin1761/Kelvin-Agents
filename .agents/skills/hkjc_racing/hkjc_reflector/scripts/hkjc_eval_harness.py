@@ -49,7 +49,8 @@ for path in (SCRIPTS, AUTO_SCRIPTS, REPO, SHARED):
         sys.path.insert(0, str(path))
 
 MEETING_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})_(ShaTin|HappyValley)$")
-RANKING_METRICS = ("top3_capture_at5", "ndcg_at5", "competitive_recall_at5", "mean_top3_model_rank")
+# top2_any_hit（頭二選最少一隻上名）：Kelvin 2026-11-12 加；見 docs/model-evaluation-contract.md v3「ranking metric」。
+RANKING_METRICS = ("top3_capture_at5", "ndcg_at5", "competitive_recall_at5", "mean_top3_model_rank", "top2_any_hit")
 
 
 def _default_root() -> Path:
