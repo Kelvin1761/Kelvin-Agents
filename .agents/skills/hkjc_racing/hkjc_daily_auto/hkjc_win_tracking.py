@@ -42,7 +42,7 @@ def race_rows(meeting_dir: Path) -> list[dict]:
     if monitor.is_excluded("hkjc", meeting_dir):  # live record invalid
         return []
 
-    snapshot, _manifest = monitor._latest_snapshot(meeting_dir)
+    snapshot, _manifest = monitor._prerace_snapshot(meeting_dir)
     results = json.loads(monitor._results_file(meeting_dir).read_text(encoding="utf-8"))
     rows = []
     for logic_path in sorted(snapshot.glob("Race_*_Logic.json")):

@@ -127,3 +127,46 @@ def test_whole_field_rollback_gate_requires_80_races_and_two_primary_wins() -> N
     assert profile["status"] == "ready_for_locked_review"
     assert profile["rollback_gate"]["status"] == "recommend_rollback"
     assert profile["rollback_gate"]["automatic_activation"] is False
+
+
+def _add_snapshot(meeting: Path, name: str, created_at: str) -> Path:
+    """Copy the fixture snapshot under a new name / created_at."""
+    source = next((meeting / "Prediction_Snapshots").glob("*/manifest.json")).parent
+    target = meeting / "Prediction_Snapshots" / name
+    target.mkdir()
+    for path in source.iterdir():
+        (target / path.name).write_bytes(path.read_bytes())
+    manifest = json.loads((target / "manifest.json").read_text(encoding="utf-8"))
+    manifest["created_at"] = created_at
+    (target / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    return target
+
+
+def _racecard(meeting: Path, hhmm: str) -> None:
+    (meeting / "10-01 Race 1 排位表.md").write_text(f"# R1\n時間: {hhmm}\n", encoding="utf-8")
+
+
+def test_monitor_grades_the_last_snapshot_before_first_post(tmp_path: Path) -> None:
+    # Fixture snapshot 12:00 AEST = 10:00 HKT.  First post 18:40 HKT = 20:40 AEST.
+    meeting = _fixture(tmp_path)
+    _racecard(meeting, "18:40")
+    evening = _add_snapshot(meeting, "20261001T203000+1000", "2026-10-01T20:30:00+10:00")
+    _add_snapshot(meeting, "20261001T234800+1000", "2026-10-01T23:48:00+10:00")  # mid-card
+
+    folder, manifest = monitor._prerace_snapshot(meeting)
+    assert folder == evening
+    rows = monitor.settle_meeting(meeting)
+    assert {row["snapshot"] for row in rows} == {evening.name}
+
+
+def test_monitor_refuses_when_every_snapshot_is_after_first_post(tmp_path: Path) -> None:
+    meeting = _fixture(tmp_path)
+    _racecard(meeting, "09:00")   # 09:00 HKT = 11:00 AEST, before the 12:00 snapshot
+    with pytest.raises(RuntimeError, match="before first post"):
+        monitor._prerace_snapshot(meeting)
+
+
+def test_monitor_without_racecard_time_keeps_latest_like_the_reflector(tmp_path: Path) -> None:
+    meeting = _fixture(tmp_path)
+    late = _add_snapshot(meeting, "20261001T234800+1000", "2026-10-01T23:48:00+10:00")
+    assert monitor._prerace_snapshot(meeting)[0] == late

@@ -161,7 +161,7 @@ class HkjcOffloadTest(unittest.TestCase):
 
         sys.path.insert(0, str(REPO / ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts"))
         import hkjc_shadow_monitor
-        folder, manifest = hkjc_shadow_monitor._latest_snapshot(self.meeting)
+        folder, manifest = hkjc_shadow_monitor._prerace_snapshot(self.meeting)
         self.assertEqual(folder, dest / self.snap.name)
         self.assertTrue(manifest["immutable_prediction_snapshot"])
 

@@ -13,6 +13,7 @@ import json
 import os
 import sys
 import tempfile
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -58,12 +59,46 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _latest_snapshot(meeting_dir: Path) -> tuple[Path, dict[str, Any]]:
+def _first_post_time(meeting_dir: Path) -> datetime | None:
+    """Same cutoff the reflector grades against (unified_reflector_core.first_post_time)."""
+    core_dir = SHARED_RACING / "race_reflector" / "scripts"
+    if str(core_dir) not in sys.path:
+        sys.path.insert(0, str(core_dir))
+    import unified_reflector_core as core
+
+    return core.first_post_time(meeting_dir)
+
+
+def _prerace_snapshot(meeting_dir: Path) -> tuple[Path, dict[str, Any]]:
+    """Latest immutable snapshot created before the first race's post time.
+
+    Not simply the latest: HKJC keeps snapshotting after the card starts (a
+    Sha Tin day meeting's last one is often from the evening, after every race
+    has run).  Grading those as "pre-race" mixed post-start runs into the
+    shadow ledger for 12 of 15 meetings (2026-09-06 → 11-11) while the
+    reflector graded the same meetings on a pre-race snapshot.  Both now use
+    the reflector's cutoff.  No racecard post time → no cutoff, as in the
+    reflector.
+    """
     manifests = sorted(prediction_snapshot_dir(meeting_dir, "Prediction_Snapshots").glob("*/manifest.json"))
     if not manifests:
         raise RuntimeError("immutable prediction snapshot missing")
-    manifest_path = manifests[-1]
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    post = _first_post_time(meeting_dir)
+    manifest_path = manifest = None
+    for candidate in reversed(manifests):
+        payload = json.loads(candidate.read_text(encoding="utf-8"))
+        if post is None:
+            manifest_path, manifest = candidate, payload
+            break
+        try:
+            created = datetime.fromisoformat(str(payload.get("created_at")))
+        except ValueError:
+            continue
+        if created < post:
+            manifest_path, manifest = candidate, payload
+            break
+    if manifest_path is None:
+        raise RuntimeError(f"no prediction snapshot before first post {post}")
     if manifest.get("immutable_prediction_snapshot") is not True:
         raise RuntimeError("prediction snapshot is not marked immutable")
     expected = {
@@ -135,7 +170,7 @@ def _metrics(picks: list[int], actual_pos: dict[int, int]) -> dict[str, float]:
 def settle_meeting(meeting_dir: Path) -> list[dict[str, Any]]:
     if is_excluded("hkjc", meeting_dir):  # live record invalid (live_record_exclusions.json)
         return []
-    snapshot_dir, manifest = _latest_snapshot(meeting_dir)
+    snapshot_dir, manifest = _prerace_snapshot(meeting_dir)
     result_path = _results_file(meeting_dir)
     results = _load_results(result_path)
     rows: list[dict[str, Any]] = []
