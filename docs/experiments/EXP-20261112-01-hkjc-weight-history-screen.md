@@ -74,7 +74,7 @@ unproven（今仗 ≥130 而近 6 仗冇喺「今仗−2 磅」或以上上名�
 3. 證據強度：預先登記嗰條 Holm 0.070；其餘係事後切法。係 cohort 差距，**未係可上線嘅改善** ——
    未做 A/B，未過 Stage 4。
 
-**決定**：MEASUREMENT／NEEDS MORE TESTING（下一步係預先登記一個 arm 行 `hkjc_eval_harness compare`）
+**決定**：MEASUREMENT（A/B 已做：EXP-20261112-02，兩個 arm REJECT）
 **commit**：未 commit 任何 model code
 
 ## 重跑
