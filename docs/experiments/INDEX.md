@@ -4,6 +4,9 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261112-09](EXP-20261112-09-hkjc-std-sectional-pace-weight.md) | 2026-11-12 | HKJC | 步速修正偏差改為逐段對馬會標準＋近 6 仗＋負磅換算（取代或加入現行等級） | **REJECT（5 個 arm）**：取代 P0／P1／P2 Gold −1.54／−1.03／−0.77（每步好啲但都差過現行）；加入版 Gold 0、Good −0.26～−0.51 跨零。現行項其實係「輸頭馬幾多秒」，但預測力好過所有時間替代品；ρ=0.382 |
+| [EXP-20261112-08](EXP-20261112-08-hkjc-fig-level-input.md) | 2026-11-12 | HKJC | 「步速修正等級」輸入換做近 6 仗 PIT 表現數字（U 唔換算／W 按負磅換算） | **REJECT**：U Gold −1.29／Good −0.26；W Gold −1.54／Good +0.77；W 嘅 Good 好過 U ~1pp，但取代現行輸入 Gold 跌 |
+| [EXP-20261112-07](EXP-20261112-07-hkjc-margin-field-weight-converted.md) | 2026-11-12 | HKJC | 現有 `finish_time_adj` 逐仗按負磅換算 | **REJECT**：Gold −0.77／Good −0.77（＋L400：−1.29／−0.51）；發現 `finish_time_adj` = 輸頭馬幾多秒（V5.1 減頭馬偏差），相對數按絕對負磅換算會雙重罰降班馬 |
 | [EXP-20261112-06](EXP-20261112-06-hkjc-weight-effect-panel.md) | 2026-11-12 | HKJC | 負磅對完成時間有直接影響；近 6 仗表現按當時負磅換算到今仗預測力更好；換算後表現數字加落總分排名改善 | **MEASUREMENT 成立／overlay REJECT**：70,628 匹次，每磅 0.01123 s/km [0.0104,0.0121]（10 磅 ≈ 1 馬位／1400m）；「加磅＝近況好」唔成立（控制評分係數不變）；負磅抵銷 ~70% 評分優勢；PIT AUC 0.6647→0.6728（換算），反推每磅 0.0133 吻合；但冇時間數字時負磅項係零；overlay holdout Gold −2.69 CI 全負 |
 | [EXP-20261112-05](EXP-20261112-05-hkjc-l400-weight-adjusted-by-distance.md) | 2026-11-12 | HKJC | 上仗 L400 按負磅差調整，C 跟路程（0.007／0.016／0.021 秒／磅，EXP-04 實測） | **REJECT / ranking_evidence_too_weak（交 Kelvin 決定 §7）**：389 場、73 場郁；Gold 0、Good +0.51pp [0,+1.30]，冇 primary／分層為負，排名證據全跨零；比固定 C 乾淨但差距只係 1–3 場 |
 | [EXP-20261112-04](EXP-20261112-04-hkjc-l400-weight-adjusted.md) | 2026-11-12 | HKJC | 上仗 L400 按今仗−上仗負磅調整（C 秒／磅）再過門檻，排名會改善 | **REJECT（判唔到）**：同馬比較每磅 L400 慢 +0.0127s [+0.0103,+0.0151]（物理效應真，長途更大）；但 C=0.02 102 場郁、Gold 0／Good +0.26 全跨零（ranking_evidence_too_weak），C=0.04 微負；加磅嘅快馬反而 +5pp（加磅＝近況好） |

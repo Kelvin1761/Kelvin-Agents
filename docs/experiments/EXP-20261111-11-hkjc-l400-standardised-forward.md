@@ -25,3 +25,14 @@
 已標 decided）夠 60 場時仍然會對住**已改咗嘅 live** 跑 arm，再發「建議上線／維持現狀」—— 誤導。
 而家 `decided` 一律唔再自動判（同欄位註解「之後只顯示，唔再提醒」一致）。測試：`test_decided_harness_ab_is_never_auto_judged`；
 另加 `test_post_live_revert_says_old_version_did_not_lose`（EXP-20261111-10 上線後 forward 嘅字眼）。
+
+## Forward 結果（2026-11-12，登記命令原封跑；排程每週 review 會自己再凍結一次）
+since 2026-10-11，99 場（門檻 60）、67 場排名有變，baseline origin/main `4e6dae6a`：
+
+| 指標 | Δ | 95% CI |
+|---|---|---|
+| Gold | −2.02pp（少 2 場） | [−5.00, 0.00] |
+| Good 位置 | +1.01pp（多 1 場） | [0.00, +3.09] |
+| NDCG@5 | −0.0036 | [−0.02, +0.01] |
+
+過關條件係三樣全部 ≥ 0 → **唔過，維持絕對值**。回放時 Gold +1.40／Good −0.35，forward 調轉咗符號 —— 回放嗰個 Gold 升幅冇延續。
