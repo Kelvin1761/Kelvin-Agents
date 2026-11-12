@@ -314,13 +314,13 @@ class NarrativeMixin:
                 if "查冊失敗" in nr:
                     failed += 1
             if wins >= 2:
-                frank = f"兌現度高：{len(rows)}場當中{wins}場嘅對手其後再勝，條線已受賽果驗證。"
+                frank = f"兌現度高：{len(rows)} 個對手當中 {wins} 個其後再勝，條線已受賽果驗證。"
             elif wins == 1:
-                frank = f"{len(rows)}場當中有1場嘅對手其後再勝，條線有基本背書。"
+                frank = f"{len(rows)} 個對手當中有 1 個其後再勝，條線有基本背書。"
             elif failed == len(rows):
-                frank = f"{len(rows)}場嘅對手後續查冊失敗，兌現度暫時無法驗證。"
+                frank = f"{len(rows)} 個對手嘅後續查冊失敗，兌現度暫時無法驗證。"
             else:
-                frank = f"{len(rows)}場嘅對手其後未有再勝，條線暫未有賽果背書。"
+                frank = f"{len(rows)} 個對手其後未有再勝，條線暫未有賽果背書。"
 
         details = []
         if headwinner:
@@ -460,7 +460,7 @@ class NarrativeMixin:
         if key in MATRIX_LABELS:
             return MATRIX_LABELS[key]
         return {
-            "stability": "狀態與穩定性",
+            "stability": "近績穩定性",
             "pace_perf": "速度考驗背景",
             # 舊 key 保留畀歷史 Logic 檔顯示
             "sectional": "段速與引擎",
@@ -519,8 +519,29 @@ class NarrativeMixin:
             "|:---|---:|---:|---:|:---:|",
             *lines,
         ])
+        # 每個 overlay 屬於一個維度嘅題目（renderer.OVERLAYS）。濕地往績調整同場地維度用同一批
+        # 軟／重地往績（EXP-20261113-21：兩份都要留 —— 剷任何一份 Gold 都跌），所以要擺埋一齊
+        # 睇：「呢匹馬場地／地況總共攞幾多」。純顯示，唔改任何分數。
+        overlay_values = {"track": ("濕地往績調整", wet_form_feature),
+                          "class_weight": ("高班實績證明", class_proof_feature),
+                          "pace_perf": ("逐駒全程速度", full_time_speed_feature),
+                          "race_shape": ("大場次檔位", draw_feature)}
+        contrib = {row["key"]: row["contribution"] for row in rows}
+        grouped = []
+        for key, (olabel, value) in overlay_values.items():
+            value = float(value or 0.0)
+            if abs(value) < 0.005:
+                continue
+            if key not in contrib:   # 冇六維係數（檔位形勢）：成份都係個調整
+                grouped.append(f"{self._matrix_label(key)} {value:+.2f}（全部來自{olabel}）")
+                continue
+            dim = contrib[key]
+            grouped.append(f"{self._matrix_label(key)} {dim + value:+.2f}"
+                           f"（維度 {dim:+.2f} ＋ {olabel} {value:+.2f}）")
+        group_line = ("\n**🧩 按維度合計（維度貢獻＋屬於佢嘅調整）：** " + "；".join(grouped) + "\n"
+                      if grouped else "")
         summary = (
-            f"{table}\n\n"
+            f"{table}\n{group_line}\n"
             f"**→ 60 ＋ 各項貢獻 = {base_7d_score:.2f} 分；"
             f"濕地往績調整 {float(wet_form_feature):+.2f}；"
             f"高班實績證明 {float(class_proof_feature):+.2f}；"

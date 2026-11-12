@@ -136,7 +136,7 @@
     "distance_score": "路程分",
     "track_score": "同場／地況往績分",
     "formline_score": "賽績線分",
-    "consistency_score": "穩定性分",
+    "consistency_score": "近績穩定性分",
     "performance_quality_score": "表現質素分",
     "health_score": "出賽間隔分",
     "confidence_score": "資料覆蓋分",
@@ -146,7 +146,7 @@
     "trial_speed_score": "試閘 L600 分"
   },
   "MATRIX_LABELS": {
-    "stability": "狀態與穩定性",
+    "stability": "近績穩定性",
     "pace_perf": "速度考驗背景",
     "race_shape": "檔位形勢",
     "jockey_trainer": "騎練訊號",

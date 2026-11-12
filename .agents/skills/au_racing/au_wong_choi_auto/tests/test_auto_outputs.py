@@ -123,7 +123,7 @@ class AuAutoOutputTests(unittest.TestCase):
             [],
             [],
         )
-        self.assertIn("狀態與穩定性（70）最強", core)
+        self.assertIn("近績穩定性（70）最強", core)
         self.assertIn("場地與地況適性（45）最弱", core)
         self.assertNotIn("賽績線（99）", core)
 

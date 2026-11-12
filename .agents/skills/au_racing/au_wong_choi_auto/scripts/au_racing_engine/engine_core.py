@@ -728,7 +728,7 @@ class RacingEngine(NarrativeMixin):
             )
             feature_notes["performance_quality_score"] = (
                 "未有最少兩場同時包含輸距、獎金及出馬數嘅完整近績；"
-                f"沿用跑法穩定性 {feature_scores['performance_quality_score']:.1f} 分。"
+                f"沿用近績穩定性 {feature_scores['performance_quality_score']:.1f} 分。"
             )
             detail = getattr(self, "performance_quality_detail", {}) or {}
             detail["final"] = round(feature_scores["performance_quality_score"], 2)
@@ -2219,7 +2219,11 @@ class RacingEngine(NarrativeMixin):
             if not capture or not text.startswith("|") or "對手後續成績" in text or "強度評估" in text or "---" in text:
                 continue
             cols = [col.strip() for col in text.strip("|").split("|")]
-            offset = 1 if cols and (cols[0] == "#" or cols[0].isdigit()) else 0
+            # 有「#」欄嘅表係 8 欄。同一場第 2、3 個對手嗰行 # 係空白 —— 舊版只認數字，
+            # 空白就當冇 # 欄，成行錯位一格（強度評估讀咗做對手後續成績），每場只有頭一個
+            # 對手讀得啱（AU 標籤審計跟進 2026-11-13：「極強 4/3」但引擎話「多屬弱組」）。
+            offset = 1 if cols and (cols[0] == "#" or cols[0].isdigit()
+                                    or (cols[0] == "" and len(cols) >= 8)) else 0
             if len(cols) >= offset + 7:
                 rows.append({
                     "date": cols[offset],
@@ -2433,7 +2437,7 @@ class RacingEngine(NarrativeMixin):
         return ""
 
     def _repeatability_brief(self):
-        # ⚠️ 入分（跑法穩定性「重複交代獎勵」+2）。「同場同程: 1:」只認啱啱 1 戰、唔理有冇上名 ——
+        # ⚠️ 入分（近績穩定性「重複交代獎勵」+2）。「同場同程: 1:」只認啱啱 1 戰、唔理有冇上名 ——
         # 已知怪，但改佢係模型改動，要另行 A/B（EXP-20261103-02 記錄）。
         track_line = str(self.data.get("track_record_line") or "")
         if "同場同程: 1:" in track_line:
@@ -2935,7 +2939,7 @@ class RacingEngine(NarrativeMixin):
             detail["base"] = round(base0, 2)
             detail["base_label"] = "初出馬固定分（以備戰完整度代替穩定樣本）"
             detail["final"] = round(clip_score(base0), 2)
-            return base0, f"初出馬以備戰完整度代替穩定樣本，跑法穩定性 {clip_score(base0):.1f} 分。", "career_tag"
+            return base0, f"初出馬以備戰完整度代替穩定樣本，近績穩定性 {clip_score(base0):.1f} 分。", "career_tag"
 
         score = w.get("base", 58.0)
         detail["base"] = round(score, 2)
@@ -3026,7 +3030,7 @@ class RacingEngine(NarrativeMixin):
 
         detail["final"] = round(clip_score(score), 2)
         note_str = "；".join(notes) if notes else "未見特別跑法或表現穩定特徵"
-        return score, f"{note_str}。跑法穩定性 {clip_score(score):.1f} 分。", "run_style+sectional_trend+repeatability"
+        return score, f"{note_str}。近績穩定性 {clip_score(score):.1f} 分。", "run_style+sectional_trend+repeatability"
 
     def _form_quality_score(self):
         """Dispatcher placeholder: the real leaf needs the final form / PQ leaves,
@@ -3172,7 +3176,7 @@ class RacingEngine(NarrativeMixin):
             or field_stdev is None
             or field_stdev <= 0
         ):
-            return 60.0, "完整表現質素樣本不足，稍後沿用跑法穩定性分。", "consistency_fallback"
+            return 60.0, "完整表現質素樣本不足，稍後沿用近績穩定性分。", "consistency_fallback"
         z_score = (raw - field_mean) / field_stdev
         score = clip_score(60.0 + 20.0 * z_score)
         self.performance_quality_detail.update(

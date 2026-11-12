@@ -1099,7 +1099,7 @@ def _au_formline_table_lines(auto):
             verdict = "對手後續全部查冊失敗，未能驗證"
         else:
             verdict = "暫未有對手後續勝出背書"
-        lines.insert(0, f"賽績線兌現度: {validated}/{n} 場嘅對手其後再勝 → {verdict}")
+        lines.insert(0, f"賽績線兌現度: {validated}/{n} 個對手其後再勝 → {verdict}")
     return lines
 
 

@@ -84,3 +84,24 @@ def test_dashboard_still_recognises_both_tags():
     for tag in ("（參考·不入排名）", renderer._reference_tag("race_shape")):
         m = re.match(pat, f"**檔位形勢：60.0 分　➖ 中性**　{tag}")
         assert m and m.group(5) == tag
+
+
+def test_formline_continuation_rows_are_not_shifted():
+    """跟進 2026-11-13：同一場第 2、3 個對手嗰行 # 欄空白，舊 parser 錯位一格，超強組對手全部漏計。"""
+    facts = "\n".join([
+        "- **🔗 賽績線 (近 5 場正式賽事，Top-3 對手追蹤):**",
+        "  - **綜合評估:** ✅✅ 極強 (強組比例: 4/3)",
+        "| # | 日期 | 賽事 | 我嘅名次 | 對手 | 後續比賽Class | 對手後續成績 | 強度評估 |",
+        "|---|------|------|----------|------|---------------|--------------|----------|",
+        "| 1 | 2026-02-24 | Kembla Grange R2 | 4 (-7.8L) | [1] Duck For Cover (頭馬) | 省賽 | 出 6 次: 0 勝 | ❌ 弱組 |",
+        "|  |  |  |  | [2] Buckeye (亞軍) | Metro+省 | 出 8 次: 3 勝 | ✅✅ 超強組 |",
+        "|  |  |  |  | [3] Crusader Voyage (季軍) | Metro+省 | 出 9 次: 2 勝 | ✅✅ 超強組 |",
+        "- **🔧 引擎與距離**",
+    ])
+    horse = {"horse_name": "T", "horse_number": "1", "barrier": 4, "weight": 57.0,
+             "jockey": "A Rider", "trainer": "A Stable", "_data": {"formline_line": "✅✅ 極強 (強組比例: 4/3)"}}
+    eng = RacingEngine(horse, dict(CTX), facts_section=facts)
+    rows = eng._formline_rows()
+    assert [r["strength"] for r in rows] == ["❌ 弱組", "✅✅ 超強組", "✅✅ 超強組"]
+    assert rows[1]["opponent"].startswith("[2] Buckeye") and rows[1]["next_result"] == "出 8 次: 3 勝"
+    assert eng._formline_support_summary() == (4.0, 3)
