@@ -121,7 +121,13 @@ def main():
             p1 = np.array([u["dev"] - (1 - rho) * u["early"] for u in use])
             p2 = p1 + np.array([BETA_KM * u["dist"] / 1000.0 * (today_w - u["w"]) for u in use])
             vals = [float((v * wt).sum() / wt.sum()) for v in (p0, p1, p2)]
-            out[str(n)] = [round(v, 4) for v in vals]
+            # 診斷用（EXP-20261112-10）：最近 3 仗、平均權重（同現行 P3 一樣嘅窗）
+            u3 = use[:3]
+            q0 = np.array([u["dev"] for u in u3])
+            q1 = np.array([u["dev"] - (1 - rho) * u["early"] for u in u3])
+            q2 = q1 + np.array([BETA_KM * u["dist"] / 1000.0 * (today_w - u["w"]) for u in u3])
+            vals3 = [float(v.mean()) for v in (q0, q1, q2)]
+            out[str(n)] = [round(v, 4) for v in (*vals, *vals3)]
             if cur is not None and date < SPLIT:
                 for i in range(3):
                     dev_vals[i].append((vals[i], cur))

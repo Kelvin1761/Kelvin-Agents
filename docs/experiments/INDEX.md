@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261112-10](EXP-20261112-10-hkjc-pace-leaf-blend-and-null.md) | 2026-11-12 | HKJC | 步速修正等級用 P3（輸頭馬）同 P0–P2／表現數字加權混合；負磅擺喺輸頭馬上；跌 Gold 係咪任何改動都會 | **混合 REJECT（dev 冇合格）**；leaf 層：P3 0.648 > P0 0.630 > P2 0.612（對標準唔知當日場地快慢），表現數字 W 0.669（兩半都贏、包含 P3）；負磅喺輸頭馬上冇用；null：同幅度隨機改動 Gold −1.7pp，W 嘅 Good 贏晒 200 次但 Gold 同隨機一樣 → 建議 forward |
 | [EXP-20261112-09](EXP-20261112-09-hkjc-std-sectional-pace-weight.md) | 2026-11-12 | HKJC | 步速修正偏差改為逐段對馬會標準＋近 6 仗＋負磅換算（取代或加入現行等級） | **REJECT（5 個 arm）**：取代 P0／P1／P2 Gold −1.54／−1.03／−0.77（每步好啲但都差過現行）；加入版 Gold 0、Good −0.26～−0.51 跨零。現行項其實係「輸頭馬幾多秒」，但預測力好過所有時間替代品；ρ=0.382 |
 | [EXP-20261112-08](EXP-20261112-08-hkjc-fig-level-input.md) | 2026-11-12 | HKJC | 「步速修正等級」輸入換做近 6 仗 PIT 表現數字（U 唔換算／W 按負磅換算） | **REJECT**：U Gold −1.29／Good −0.26；W Gold −1.54／Good +0.77；W 嘅 Good 好過 U ~1pp，但取代現行輸入 Gold 跌 |
 | [EXP-20261112-07](EXP-20261112-07-hkjc-margin-field-weight-converted.md) | 2026-11-12 | HKJC | 現有 `finish_time_adj` 逐仗按負磅換算 | **REJECT**：Gold −0.77／Good −0.77（＋L400：−1.29／−0.51）；發現 `finish_time_adj` = 輸頭馬幾多秒（V5.1 減頭馬偏差），相對數按絕對負磅換算會雙重罰降班馬 |
