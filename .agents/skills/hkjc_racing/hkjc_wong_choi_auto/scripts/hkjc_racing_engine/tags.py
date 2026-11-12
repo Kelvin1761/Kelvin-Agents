@@ -296,7 +296,9 @@ def _driver_label(key: str, good: bool, horse: dict, auto: dict) -> str:
             if not re.search(r"末段|段速|L400|速", why):
                 why = "段速" + why
             value = str(top.get("value") or "")
-            value = f"L400 {value}" if re.fullmatch(r"\d{2}\.\d{2}s", value) else ""
+            # L400 值可能帶負磅換算尾巴（「23.64s，上仗 23.27s 按負磅換算 +0.37s」）；標籤只要入分用嗰個數。
+            m_l400 = re.match(r"(\d{2}\.\d{2})s(?:$|，)", value) if str(top.get("factor") or "").startswith("L400") else None
+            value = f"L400 {m_l400.group(1)}s" if m_l400 else ""
             return why + (f"（{value}）" if value else "")
         return "段速好" if good else "段速弱"
     if key == "trainer_signal":

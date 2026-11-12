@@ -596,6 +596,19 @@ test("sectional and pace timelines display oldest to latest without changing the
   assert.equal((futureRich.match(/class="chronology"/g) || []).length, 2);
   assert.ok(futureRich.indexOf("22.56s") < futureRich.indexOf("23.39s"));
 
+  // EXP-20261112-13：「步速修正」改名「輸頭馬差距」（數值係輸頭馬秒數）；L400 負磅換算同對馬會標準唔可以當走勢串。
+  const marginRich = formatRichSection(`- **輸頭馬差距:**
+- （最舊 → 最新）1.19s[極慢]→0.55s[偏慢]→0.43s→0.21s[偏快]
+- ➖ 輸頭馬中等（0.3–0.8 秒） (近 3 仗平均輸頭馬 0.55 秒)
+- L400 負磅換算: 上仗 23.27s（1650m 負 110 磅）；今仗負 133 磅，重 23 磅 × 0.016 秒 ＝ +0.37s；入分用 23.64s
+- 對馬會標準（未入分）: 近 6 仗加權：對標準 +0.56s｜扣步速 +0.31s｜再換算今仗負磅 +0.35s（越細越快；未入分，forward 觀察中）`);
+  assert.match(marginRich, /rich-subheading">輸頭馬差距</);
+  assert.equal((marginRich.match(/class="chronology"/g) || []).length, 1);
+  assert.match(marginRich, /秒數越低越好/);
+  assert.match(marginRich, /入分用 23\.64s/);
+  assert.match(marginRich, /再換算今仗負磅/);
+  assert.doesNotMatch(marginRich, /\+0\.\d+s<\/span>[\s\S]*最新 3 仗平均[\s\S]*\+/);
+
   const preview = renderDataReadoutItem({
     band: "⚠️",
     label: "段速趨勢",
@@ -1956,6 +1969,8 @@ test("speed signal scores stay separate from signed seconds in the value", () =>
     ["· 頭段速度（+0.10s） 0　第一段接近標準", "0", "flat", "頭段速度（+0.10s）"],
     ["· 步速修正等級（近 3 仗修正平均: +1.4s） +0.7　接近標準平均", "+0.7", "up", "步速修正等級（近 3 仗修正平均: +1.4s）"],
     ["· L400 絕對值（23.86s） 0　末段一般（23.6–24.0s）", "0", "flat", "L400 絕對值（23.86s）"],
+    ["· L400 絕對值（23.64s，上仗 23.27s 按負磅換算 +0.37s） 0　末段一般（23.6–24.0s）", "0", "flat", "L400 絕對值（23.64s，上仗 23.27s 按負磅換算 +0.37s）"],
+    ["· 輸頭馬差距（近 3 仗平均 0.55 秒） +1.4　輸頭馬中等（0.3–0.8 秒）", "+1.4", "up", "輸頭馬差距（近 3 仗平均 0.55 秒）"],
     ["· 頭段速度(-0.17s) +2.0 第一段曾快過標準", "+2.0", "up", "頭段速度(-0.17s)"],
   ]) {
     const html = renderSubScoreDetails([{ text: line }], "");

@@ -367,6 +367,22 @@ JOCKEY_MICRO_WEIGHTS = {
     "overseas_base": 70.0
 }
 
+# 段速分「L400 絕對值」按負磅換算（EXP-20261112-05 → -13；Kelvin 2026-11-12 決定上線，§7 正確性修正，**未證實改善**）。
+# 上仗 L400 換算到今仗負磅：L400 + 係數 ×（今仗實際負磅 − 上仗實際負磅），先至過五級門檻。
+# 係數 = 同一匹馬唔同仗比較量出嚟嘅每磅慢幾多秒（EXP-20261112-04，按上仗路程）。回放 389 場 Gold 0、Good +0.51pp，冇分層為負。
+# 開關畀 forward 退回 arm 用（hkjc_arm_revert_l400_weight.py，forward `l400_weight_post_live`）。
+L400_WEIGHT_ADJUST = True
+L400_WEIGHT_SECONDS_PER_LB = ((1200, 0.007), (1799, 0.016), (None, 0.021))   # (上仗路程上限 m, 秒／磅)
+
+
+def l400_weight_seconds_per_lb(distance) -> float:
+    d = float(distance)
+    for upper, coef in L400_WEIGHT_SECONDS_PER_LB:
+        if upper is None or d <= upper:
+            return coef
+    return L400_WEIGHT_SECONDS_PER_LB[-1][1]
+
+
 SPEED_MICRO_WEIGHTS = {
     "base": 60.0,
     "l400_22_4_bonus": 8.62,

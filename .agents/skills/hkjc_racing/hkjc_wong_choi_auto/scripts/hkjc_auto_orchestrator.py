@@ -45,6 +45,7 @@ from hkjc_racing_engine.scoring import (
     to_display_scale,
 )
 from hkjc_racing_engine import overlays as overlay_registry
+from hkjc_racing_engine import past_runs
 from hkjc_racing_engine.validation import validate_engine_scripts, validate_logic_data
 from wongchoi_paths import is_materialized_file
 
@@ -491,6 +492,23 @@ def _trackwork_path_for_logic(logic_path, race_number):
     return _unique_materialized_match(
         logic_path, f"*Race {race_number} 晨操.md", "trackwork"
     )
+
+
+def _formguide_path_for_logic(logic_path, race_number):
+    if race_number in (None, ""):
+        return None
+    return _unique_materialized_match(
+        logic_path, f"*Race {race_number} 賽績.md", "formguide"
+    )
+
+
+def _attach_past_runs(logic_path, race_context, horses, meeting_date):
+    """逐仗負磅／路程／分段時間由賽績檔寫入 `_data`（hkjc_racing_engine.past_runs）。
+    冇賽績檔 = 唔寫，段速分照舊（冇負磅換算、冇對標準顯示）。"""
+    path = _formguide_path_for_logic(logic_path, race_context.get("race_number"))
+    if not path or not path.exists():
+        return 0
+    return past_runs.attach(path.read_text(encoding="utf-8"), horses, race_context, meeting_date)
 
 
 def _racecard_path_for_logic(logic_path, race_number):
@@ -1054,6 +1072,8 @@ class HKJCAutoOrchestrator:
                 if venue:
                     race_context["venue"] = venue
             _enrich_profile_history(horses, as_of_date=meeting_date)
+            # 段速維度：L400 按負磅換算（入分）＋ 對馬會標準（只顯示）—— EXP-20261112-13
+            _attach_past_runs(race_file, race_context, horses, meeting_date)
         formline_summaries = _load_formline_opponent_summaries(race_file, race_context, horses)
         for h_num, summary in formline_summaries.items():
             horse_obj = horses.get(h_num)

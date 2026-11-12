@@ -49,7 +49,7 @@
 按規則係 REJECT（證據太弱），唔係「有害」。形狀同 §7 正確性修正一樣（方向有物理根據、冇分層負、未證實改善）——
 上唔上線係 Kelvin 決定。上線要改管線（Logic 帶上仗負磅同路程）、加 forward 登記、重錄 golden、重新 calibrate。
 
-**決定**：REJECT（按 `fixed_rule`）／交 Kelvin 決定係咪行 §7
+**決定**：REJECT（按 `fixed_rule`）→ Kelvin 2026-11-12 決定行 §7 上線（EXP-20261112-13）
 **commit**：未 commit 任何 model code
 
 ## 重跑

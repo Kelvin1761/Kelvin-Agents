@@ -1893,7 +1893,7 @@ function chronologyAverage(points, label) {
   if (!values.length) return '';
   const average = values.reduce((sum, value) => sum + value, 0) / values.length;
   const isSeconds = label !== '能量';
-  const signed = label === '步速修正' && average > 0 ? '+' : '';
+  const signed = label === '步速修正' && average > 0 ? '+' : '';  // 輸頭馬差距一定係正數，唔加 +
   return `${signed}${average.toFixed(label === '能量' ? 1 : 2)}${isSeconds ? 's' : ''}`;
 }
 
@@ -1903,7 +1903,7 @@ function renderChronologySeries(text, label) {
   const title = label === 'L400' ? 'L400 走勢' : `${label}走勢`;
   const readingHint = label === 'L400'
     ? '秒數越低越快'
-    : (label === '步速修正' ? '偏差越低越快' : '按較舊／最新平均判讀');
+    : (label === '步速修正' ? '偏差越低越快' : (label === '輸頭馬差距' ? '秒數越低越好（輸得越少）' : '按較舊／最新平均判讀'));
   const splitAt = Math.floor(parsed.points.length / 2);
   const older = parsed.points.slice(0, splitAt || 1);
   const latest = parsed.points.slice(splitAt || 1);
@@ -2008,11 +2008,12 @@ function formatRichSection(text) {
     if (line.startsWith('- ') || line.startsWith('* ')) {
       const inner = line.slice(2);
       const plain = inner.replace(/\*+/g, '').trim();
-      const directChronology = plain.match(/^(L400\s*走勢|能量走勢|步速修正偏差)[（(]最舊\s*→\s*最新[）)][: ：]+(.+)$/);
+      const directChronology = plain.match(/^(L400\s*走勢|能量走勢|步速修正偏差|輸頭馬秒數)[（(]最舊\s*→\s*最新[）)][: ：]+(.+)$/);
       if (directChronology) {
         const label = directChronology[1].startsWith('L400')
           ? 'L400'
-          : (directChronology[1].startsWith('能量') ? '能量' : '步速修正');
+          : (directChronology[1].startsWith('能量') ? '能量'
+            : (directChronology[1].startsWith('輸頭馬') ? '輸頭馬差距' : '步速修正'));
         const chronology = renderChronologySeries(`（最舊 → 最新）${directChronology[2]}`, label);
         if (chronology) {
           html += chronology;
@@ -2025,16 +2026,20 @@ function formatRichSection(text) {
         html += '<div class="rich-subheading">L400 與能量走勢</div>';
         continue;
       }
-      if (/^步速修正[:：]?$/.test(plain)) {
-        chronologyContext = 'pace';
+      // 「步速修正」= 舊報告；2026-11-12 起改名「輸頭馬差距」（數值其實係輸頭馬秒數，EXP-20261112-07）。
+      const paceHeading = plain.match(/^(步速修正|輸頭馬差距)[:：]?$/);
+      if (paceHeading) {
+        chronologyContext = paceHeading[1] === '輸頭馬差距' ? 'margin' : 'pace';
         chronologySeriesCount = 0;
-        html += '<div class="rich-subheading">步速修正</div>';
+        html += `<div class="rich-subheading">${paceHeading[1]}</div>`;
         continue;
       }
       if (chronologyContext && plain.includes('→')) {
         const label = chronologyContext === 'pace'
           ? '步速修正'
-          : (chronologySeriesCount === 0 ? 'L400' : '能量');
+          : (chronologyContext === 'margin'
+            ? '輸頭馬差距'
+            : (chronologySeriesCount === 0 ? 'L400' : '能量'));
         const chronology = renderChronologySeries(plain, label);
         if (chronology) {
           html += chronology;
@@ -6772,7 +6777,7 @@ const DATA_ROUTES = [
                   [/檔位-走位匹配度|走位PI/, '走位匹配分'],
                   [/檔位\s*\/\s*跑法|場地偏差/, '檔位分']]],
   [/賽績線/, [[/賽績線明細|賽績線強度/, '賽績線強度分']]],
-  [/段速表現/, [[/引擎分佈|最佳路程|L400|能量趨勢|步速修正|完成時間/, '速度分']]],
+  [/段速表現/, [[/引擎分佈|最佳路程|L400|能量趨勢|步速修正|輸頭馬|負磅換算|對馬會標準|完成時間/, '速度分']]],
   // 2026-11-11「級數優勢」改名「評分與經驗」，班次分改名經驗與季內分（EXP-20261111-13）；舊場次照用舊名。
   [/評分與經驗/, [[/評分\s*\/\s*經驗背景/, '經驗與季內分']]],
   [/級數優勢/, [[/班次\s*\/\s*評分背景/, '班次分']]],

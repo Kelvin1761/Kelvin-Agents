@@ -71,6 +71,19 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 since="2026-10-11", arm="docs/experiments/patches/hkjc_arm_l400_standardised.py",
                 action="自動判：forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議上線；否則維持絕對值",
                 extra={"pass_verdict": "建議上線（等你決定）"}),
+    # EXP-20261112-13（Kelvin 2026-11-12 決定上線，§7）：段速分 L400 按今仗負磅換算（按上仗路程 0.007／0.016／0.021 秒／磅）。
+    # 回放 389 場 Gold 0、Good +0.51pp、冇分層為負，未證實改善。同一批 live 場次用 arm 退返舊版，Δ = 舊版 − live。
+    ForwardTest("l400_weight_post_live", "L400 負磅換算上線後 vs 舊版", "EXP-20261112-13", "harness_ab", 60,
+                since="2026-11-13", arm="docs/experiments/patches/hkjc_arm_revert_l400_weight.py",
+                action="自動判：同一批 live 場次，舊版 − live 嘅 Gold／Good／NDCG@5 全部 ≥ 0 → 問你退唔退；否則保留負磅換算",
+                extra={"pass_verdict": "舊版唔輸（等你決定退唔退）"}),
+    # EXP-20261112-13：「對馬會標準」新數值（逐段對標準、扣步速、換算今仗負磅）只顯示唔入分；
+    # 夠數用 arm 將佢代替「輸頭馬差距」入分，Δ = 新數值 − live。回放（EXP-09 P2）Gold −0.77／Good −0.51，
+    # 同一批 389 場已經跑咗 30 幾個 arm，所以要新場次判；細樣本 Gold 好嘈，最少 150 場。
+    ForwardTest("std_pace_shadow", "對馬會標準段速（新數值）入分", "EXP-20261112-13", "harness_ab", 150,
+                since="2026-11-13", arm="docs/experiments/patches/hkjc_arm_std_pace_shadow.py",
+                action="自動判：forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議入分；否則維持只顯示",
+                extra={"pass_verdict": "建議入分（等你決定）"}),
     ForwardTest("first_section", "頭段速度（已退回）", "EXP-20261016-53", "state_judge", 150,
                 state_key="first_section_forward_final", action="每週自動判，見前速 forward 一段"),
     ForwardTest("official_injury", "官方傷患紀錄 B1", "EXP-20261020-02", "state_judge", 60,

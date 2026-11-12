@@ -881,8 +881,12 @@ def _matrix_fact_lines(key: str, horse: dict) -> list[str]:
              (horse.get("python_auto") or {}).get("margin_trend") or data.get("margin_trend"), 180),
         )
     if key == "sectional":
+        from hkjc_racing_engine.features.speed import (
+            l400_weight_display, margin_level_display, margin_series_display, std_pace_display)
+        # 「步速修正偏差」其實係輸頭馬秒數（EXP-20261112-07）；顯示用啱嘅名，數字唔郁。
         finish_time = " | ".join(
-            part for part in (data.get("finish_time_adj"), data.get("finish_time_adj_level")) if part
+            part for part in (margin_series_display(data.get("finish_time_adj")),
+                              margin_level_display(data.get("finish_time_adj_level"))) if part
         )
         # 純速度錨點。場地偏差（track_bias）唔喺度顯示：佢係 draw/course 訊號，
         # 已於「檔位與走位」維度嘅數據錨點顯示，唔重複。
@@ -890,7 +894,11 @@ def _matrix_fact_lines(key: str, horse: dict) -> list[str]:
             ("引擎分佈", data.get("engine_type"), 220),
             ("最佳路程", data.get("best_distance"), 160),
             ("L400 / 能量趨勢", _join_nonempty(data.get("raw_l400"), data.get("l400_trend"), data.get("energy_trend"), sep=" | "), 320),
-            ("步速修正", finish_time, 260),
+            # 入分（EXP-20261112-13）：上仗 L400 換算到今仗負磅先過門檻。
+            ("L400 負磅換算", l400_weight_display(data), 260),
+            ("輸頭馬差距", finish_time, 260),
+            # 純顯示（EXP-20261112-09／-13）：forward shadow 夠數先判入唔入分。
+            ("對馬會標準（未入分）", std_pace_display(data), 260),
             # 純顯示（EXP-20261025-08 入分 REJECT）：引擎冇讀呢個欄位。
             ("同程最佳時間", data.get("same_course_best_time"), 200),
         )
