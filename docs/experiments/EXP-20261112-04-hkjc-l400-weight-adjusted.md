@@ -46,6 +46,9 @@
 | 頭三換入／換出上名 | 6／18 vs 5／18 | 8／31 vs 11／31 |
 | **判決** | **REJECT / ranking_evidence_too_weak** | **REJECT / primary_regression** |
 
+> **更正（EXP-20261112-06）**：上面「加磅＝近況好，抵銷物理效應」嘅解讀唔成立 —— 控制評分後負磅係數不變，加磅之後表現數字係跌。
+> 「加磅快馬 +5pp」只係相對現行模型預期嘅殘差。
+
 ## 檢查
 - **leakage-audit**：PASS —— 負磅同 L400 全部來自賽前賽績檔，歷史仗用賽日過濾
 - **wiring**：兩個 arm 段速分都有幾百匹郁；**golden_scoring**：冇郁；**退步**：live 冇改
