@@ -4,6 +4,8 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261112-15](EXP-20261112-15-hkjc-true-pace-correction-concept.md) | 2026-11-12 | HKJC | 真步速修正（全場領放馬分段量步速、對標準、扣當日場地快慢、換算負磅）贏輸頭馬秒數 | **REJECT**：5,161 場 AUC 對標準 0.636 → 步速修正 0.643 → 當日快慢 0.659，追返輸頭馬 0.660 但冇贏；負磅換算反而跌；k = 0.633 |
+| [EXP-20261112-14](EXP-20261112-14-hkjc-race-class-parse-fix.md) | 2026-11-12 | HKJC | 今仗班次解析：Facts 中文數字班次、排位表空白班次行 | **KEEP（§7，排名 0 差）**：所有非第四班讓磅賽 Facts／Logic 一律寫成 C4（78／450）；新馬賽排位表班次捉咗下一行標題 |
 | [EXP-20261112-13](EXP-20261112-13-hkjc-l400-weight-live-and-std-pace-display.md) | 2026-11-12 | HKJC | 上線 L400 按今仗負磅換算（§7）；「步速修正」改名「輸頭馬差距」；對馬會標準只顯示 | **KEEP（§7，Kelvin 決定，未證實改善）**：production 449 場 picks 同 EXP-05 arm 449/449 一樣；forward `l400_weight_post_live`（60 場退回判）、`std_pace_shadow`（150 場入分判）；發現 EXP-09 表 18% 場次用錯班次標準，shadow 門檻喺 live 數值重計 |
 | [EXP-20261112-12](EXP-20261112-12-hkjc-fig-added-engine.md) | 2026-11-12 | HKJC | 真引擎保留輸頭馬等級，另加表現數字＋負磅換算等級（半分） | **REJECT**：389 場 Gold −0.51、Good −1.03 [−2.04,−0.25]；holdout Gold 0／Good −0.54；隨機加項對照百分位 Gold 87%／Good 69%／NDCG 33%。EXP-11 簡化模型嘅改善喺真引擎冇重現（引擎已有重疊 leaf） |
 | [EXP-20261112-11](EXP-20261112-11-hkjc-figure-concept-walkforward.md) | 2026-11-12 | HKJC | 概念測試：賽果庫 2019 起 5,206 場逐季 walk-forward，簡化模型入面輸頭馬秒數換做表現數字＋負磅換算 | **概念唔成立（按規則）**：B − A Gold +0.12／Good +0.25（CI 跨零，5/7 季）；leaf AUC 0.6688 vs 0.6603，6/7 季贏；β(2019/20)=0.0094；兩樣都放 capture@5 +0.39 [+0.02,+0.74]、NDCG +0.003、Good 7/7 季 ≥0 —— 非主 arm，留做候選 |

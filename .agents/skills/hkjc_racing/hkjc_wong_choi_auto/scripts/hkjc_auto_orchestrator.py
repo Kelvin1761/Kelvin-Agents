@@ -551,7 +551,9 @@ def _parse_racecard_meta(text):
     last-race delta (previous rating = current - change) — more reliable than the
     rating_trend tail, which is ordered newest→oldest."""
     race_class = ""
-    cm = re.search(r"班次:\s*(.+)", text)
+    # 唔可以跨行：新馬／平磅賽嘅「班次:」係空，`\s*` 會食咗換行，捉到下一行
+    # 「#### 第二部分：馬匹資料」做班次（報告賽事格局就咁顯示，EXP-20261112-14）。
+    cm = re.search(r"^班次:[ \t]*(\S.*)$", text, re.M)
     if cm and cm.group(1).strip():
         race_class = cm.group(1).strip()
     info = {}

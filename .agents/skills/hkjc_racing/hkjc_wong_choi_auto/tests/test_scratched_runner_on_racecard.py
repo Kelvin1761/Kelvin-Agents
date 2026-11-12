@@ -28,3 +28,16 @@ def test_racecard_runner_set_ignores_scratched_runner():
     _, info = orch._parse_racecard_meta(card)
     official = {k for k, e in info.items() if str(k).isdigit() and not orch._is_withdrawn_runner(e)}
     assert official == {"1"}
+
+
+
+def test_empty_class_line_does_not_swallow_next_line():
+    """EXP-20261112-14：空白「班次:」唔可以食咗下一行做班次。"""
+    text = "#### 第一部分：賽事資料 (Race Info)\n場次: 第1場\n班次: \n\n#### 第二部分：馬匹資料 (Horse Info)\n馬號: 1\n馬名: 甲\n"
+    race_class, _info = orch._parse_racecard_meta(text)
+    assert race_class == ""
+
+
+def test_class_line_value():
+    race_class, _info = orch._parse_racecard_meta("班次: 第三班\n馬號: 1\n馬名: 甲\n")
+    assert race_class == "第三班"

@@ -3147,9 +3147,11 @@ def extract_race_context(text: str) -> dict:
         g = re.search(r'(?:Group|Grade|G)\s*([123])', overview, re.I).group(1)
         ctx['class'] = '一二三'[int(g) - 1] + '級賽'
     else:
-        cm = re.search(r'第(\d)班', overview)
+        # 賽績檔寫「第三班」（中文數字）。以前只認阿拉伯數字，所以所有班次靜靜跌落預設 C4 ——
+        # 2026-04 起 78／450 場 Logic 班次錯（EXP-20261112-14）。
+        cm = re.search(r'第([1-5一二三四五])班', overview)
         if cm:
-            ctx['class'] = f"C{cm.group(1)}"
+            ctx['class'] = f"C{'一二三四五'.index(cm.group(1)) + 1 if cm.group(1) in '一二三四五' else cm.group(1)}"
         elif '分級賽' in overview or 'Group' in overview:
             ctx['class'] = 'G'
         elif '新馬' in overview or 'Griffin' in overview:

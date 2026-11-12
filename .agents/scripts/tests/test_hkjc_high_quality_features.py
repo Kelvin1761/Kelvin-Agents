@@ -119,6 +119,15 @@ class HighQualityFeatureTests(unittest.TestCase):
         self.assertEqual(turf["surface"], "Turf")
         self.assertEqual(turf["course"], "C+3")
 
+    def test_race_context_reads_chinese_numeral_class(self) -> None:
+        # 賽績檔寫中文數字；以前一律跌落預設 C4（EXP-20261112-14）
+        for text, code in (("第三班", "C3"), ("第五班", "C5"), ("第1班", "C1"), ("第四班", "C4")):
+            ctx = extract_race_context(
+                f"- 賽事日期 / 場次 / 跑道及場地狀況: 12/04/2026 / 第10場 / 沙田 草地 - C 賽道 {text} 080-060 1200米 白加士讓賽\n")
+            self.assertEqual(ctx["class"], code, text)
+        graded = extract_race_context("- 賽事日期 / 場次 / 跑道及場地狀況: 01/05/2026 / 第8場 / 沙田 草地 - A 賽道 三級賽 1400米\n")
+        self.assertEqual(graded["class"], "三級賽")
+
     def test_logic_header_propagates_surface_and_course(self) -> None:
         header = skeleton.extract_race_header(
             "場地: 跑馬地 | 跑道: Turf | 賽道: C+3 | "
