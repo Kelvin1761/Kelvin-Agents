@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261113-04](EXP-20261113-04-hkjc-front-section-component.md) | 2026-11-13 | HKJC | 前段（L400 之前各段）對馬會標準做段速維度獨立組件，加喺 speed_score 上（b 0.25／0.5，唔減其他） | **REJECT（兩個）**：Gold −2.06／−1.54、Good −1.54／−1.03；b=0.5 recall@5 +0.87 CI 全正，但 Gold 同隨機擾動 null 分唔開 |
 | [EXP-20261113-03](EXP-20261113-03-hkjc-figure-and-standard-into-sectional.md) | 2026-11-13 | HKJC | 表現數字／全程對馬會標準 混合入 speed_score（a 0.33／0.5，段速權重唔郁） | **REJECT（四個）**：Gold −1.54 至 −2.06 CI 全負；capture@5、頭二選有中輕微升 —— 同權重遷移一樣嘅形狀 |
 | [EXP-20261113-02](EXP-20261113-02-hkjc-per-section-vs-standard-screen.md) | 2026-11-13 | HKJC | 逐段段速對馬會標準（第一段、前段、L800、L400、後勁、全程）有冇模型之上增量 | **診斷**：L400／L800／後勁模型已食晒（ρ 0.5+、係數跨零）；前段同全程對標準有增量（Holm 0.007–0.009）；表現數字最強 |
 | [EXP-20261113-01](EXP-20261113-01-hkjc-results-db-signal-screen.md) | 2026-11-13 | HKJC | 賽果庫六個訊號：步速×跑法、體重變化、降班、騎師／練馬師手風、上仗受阻 | **REJECT 全部**：F1／F1b／F5 係數過 Holm 但 Gold／Good 冇一個 CI 全正，幅度 < 0.4pp；其餘冇訊號 |
