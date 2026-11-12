@@ -4,6 +4,8 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261113-06](EXP-20261113-06-hkjc-front-section-oneside-pace.md) | 2026-11-13 | HKJC | 前段組件 Gold 跌嘅原因＋單邊（慢前段唔扣）／單邊＋步速（快馬多就減）修正 | **REJECT**：換出頭四嘅馬入位率 33% > 換入 25%；單邊令 Good 唔跌但 holdout Gold 喺 null 0–7 百分位；V2 dev 正 holdout 失效 |
+| [EXP-20261113-05](EXP-20261113-05-hkjc-weights-insample-check.md) | 2026-11-13 | HKJC | 外層權重係咪喺同一批場次揀出嚟（Gold 遇擾動就跌） | **唔係樣本內**：權重 2026-07-10 定，之後嘅 C 段擾動 Gold 跌得更多（−1.38 vs −0.83）；隨機錨點附近擾動 Gold 只 −0.18 → 現行權重係真 Gold 尖峰；capture@5／頭二隨機擾動都 +0.3 |
 | [EXP-20261113-04](EXP-20261113-04-hkjc-front-section-component.md) | 2026-11-13 | HKJC | 前段（L400 之前各段）對馬會標準做段速維度獨立組件，加喺 speed_score 上（b 0.25／0.5，唔減其他） | **REJECT（兩個）**：Gold −2.06／−1.54、Good −1.54／−1.03；b=0.5 recall@5 +0.87 CI 全正，但 Gold 同隨機擾動 null 分唔開 |
 | [EXP-20261113-03](EXP-20261113-03-hkjc-figure-and-standard-into-sectional.md) | 2026-11-13 | HKJC | 表現數字／全程對馬會標準 混合入 speed_score（a 0.33／0.5，段速權重唔郁） | **REJECT（四個）**：Gold −1.54 至 −2.06 CI 全負；capture@5、頭二選有中輕微升 —— 同權重遷移一樣嘅形狀 |
 | [EXP-20261113-02](EXP-20261113-02-hkjc-per-section-vs-standard-screen.md) | 2026-11-13 | HKJC | 逐段段速對馬會標準（第一段、前段、L800、L400、後勁、全程）有冇模型之上增量 | **診斷**：L400／L800／後勁模型已食晒（ρ 0.5+、係數跨零）；前段同全程對標準有增量（Holm 0.007–0.009）；表現數字最強 |
