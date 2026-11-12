@@ -268,7 +268,8 @@ class AuAutoOutputTests(unittest.TestCase):
         self.assertIn("#### 主要優勢", report)
         self.assertIn("#### 主要風險", report)
         self.assertIn("若", report)
-        self.assertIn("信心分", report)
+        self.assertIn("資料覆蓋分", report)
+        self.assertNotRegex(report, r"信心分\s*[\d.]+")  # 「信心分層」係另一樣嘢
         self.assertNotIn("速度分 60.0", report)
 
 

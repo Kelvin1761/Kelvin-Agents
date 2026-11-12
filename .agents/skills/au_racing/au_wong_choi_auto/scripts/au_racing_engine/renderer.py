@@ -14,6 +14,16 @@ from .scoring import clip_score, score_band
 from .full_time_speed import render_detail as render_full_time_detail
 from .matrix_mapper import MATRIX_FORMULAS
 from . import track_going as _track
+
+
+def _reference_tag(key):
+    """參考維度 tag。檔位形勢冇六維係數，但佢個檔位分經「大場次檔位」直接加落綜合分，
+    唔可以照寫「不入排名」（AU 標籤審計 2026-11-13 #5）。dashboard `parser_au` 認「（參考…）」。"""
+    from . import draw as _draw_mod
+    if key in {"race_shape", "pace_map_score"} and _draw_mod.DRAW_LIVE:
+        from .dimensions import ranking_dimension_numeral
+        return f"（參考·不入{ranking_dimension_numeral()}維，檔位分經大場次檔位入綜合分）"
+    return "（參考·不入排名）"
 # 市場參考層：純顯示（D1）。只有 renderer 可以 import，引擎／評分唔准。
 from .market_reference import build_market_reference, horse_line as _market_ref_line, method_note as _market_ref_note
 from .market_reference import divergence_lines as _market_divergence_lines
@@ -870,7 +880,10 @@ def _jt_detail_lines(auto, name):
         for a in adjustments:
             ev = f" ← {a['evidence']}" if a.get("evidence") else ""
             lines.append(f"{a['factor']} {float(a['delta']):+.1f}{ev}")
-        if not adjustments:
+        if not adjustments and d.get("no_evidence_default"):
+            lines.append("實證調整：無觸發（試閘／人馬往績／換騎訊號均未達門檻）")
+            lines.append(f"呢批馬實測前三率低過平均 → 定為 {float(d.get('final', 58.0)):.1f}（唔係 60）")
+        elif not adjustments:
             lines.append("實證調整：無觸發（試閘／人馬往績／換騎訊號均未達門檻）")
         elif d.get("final") is not None:
             lines.append(f"合計（0-100 封頂）＝ {float(d['final']):.1f}")
@@ -980,7 +993,7 @@ def _render_horse_section(horse_num, horse, auto, market_line=None):
         reason_bundle = auto.get("matrix_reasoning", {}).get(key, {})
         lines.append("")
         lines.append(f"##### {label}：{score:.1f} 分　{_band_label(score)}"
-                     + ("　（參考·不入排名）" if key in _zero_weight_dimensions() else ""))
+                     + ("　" + _reference_tag(key) if key in _zero_weight_dimensions() else ""))
         comp = _matrix_composition_line(key, auto)
         if comp:
             lines.append(f"  - **評分構成：** {comp}")
@@ -1776,7 +1789,7 @@ def _seven_d_matrix_digest_lines(auto: dict) -> list[str]:
         if not isinstance(rb, dict):
             continue
         score = _as_float(mscores.get(key, rb.get("score", 60)), 60)
-        dim_tag = "　（參考·不入排名）" if key in zero_dims else ""
+        dim_tag = "　" + _reference_tag(key) if key in zero_dims else ""
         out.append(f"**{label}：{score:.1f} 分　{_band_label(score)}**{dim_tag}")
         comps = rb.get("components") or []
         if comps:
@@ -1804,7 +1817,7 @@ def _seven_d_matrix_digest_lines(auto: dict) -> list[str]:
                     continue
                 if not in_rank and abs(cv - 60.0) < 0.05:
                     continue
-                tag = "" if in_rank else "（參考·不入排名）"
+                tag = "" if in_rank else _reference_tag(leaf_key)
                 out.append(f"- {cl} {cv:.0f}{tag}" + (f" ← {note}" if note else ""))
         else:
             # 單 leaf 維度（如場地適性）— 用判讀短句

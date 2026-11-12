@@ -89,7 +89,7 @@ def test_ability_score_parity(parsed_meeting):
 
 def test_confidence_score_parity(parsed_meeting):
     _, horses, blocks = parsed_meeting
-    _parity(blocks, horses, r'信心分\s*[\d.]+', 'confidence_score')
+    _parity(blocks, horses, r'(?:資料覆蓋分|信心分)\s*[\d.]+', 'confidence_score')
 
 
 def test_advantage_parity(parsed_meeting):

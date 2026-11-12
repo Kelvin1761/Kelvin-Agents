@@ -58,8 +58,8 @@ LEAF_SPECS = (
     LeafSpec('formline_score', '賽績線分', None, True, False),
     LeafSpec('consistency_score', '穩定性分', None, True, False),
     LeafSpec('performance_quality_score', '表現質素分', 1, False, True),
-    LeafSpec('health_score', '備戰完整度分', None, True, False),
-    LeafSpec('confidence_score', '信心分', None, True, False),
+    LeafSpec('health_score', '出賽間隔分', None, True, False),
+    LeafSpec('confidence_score', '資料覆蓋分', None, True, False),
     LeafSpec('pace_figure_score', 'L600 環境分', 2, False, True),
     LeafSpec('preparation_score', '試閘備戰分', 10, False, False),
     # EXP-20261016-06 (user-approved 2026-10-16): replaces the 0.6 form + 0.4 PQ mix in

@@ -633,6 +633,14 @@ _HANDICAP_TITLE_RE = re.compile(r"\b(?:handicap|hcp|hcap|h'cap|benchmark|bm\s*\d
 _TRUNCATED_HANDICAP_RE = re.compile(r"\bh(?:a(?:n(?:d(?:i(?:c(?:a(?:p)?)?)?)?)?)?)\s*$", re.I)
 
 
+_FORMLINE_STATS_RE = re.compile(r"[(（|｜]?\s*強組比例.*$")
+
+
+def formline_headline(text) -> str:
+    """賽績線標題去走「強組比例: a/b」尾巴（嗰度有個「強」字，唔係級別）。"""
+    return _FORMLINE_STATS_RE.sub("", str(text or "")).strip()
+
+
 def _is_handicap_title(title) -> bool:
     text = " ".join(str(title or "").replace("&amp;", "&").split())
     return bool(_HANDICAP_TITLE_RE.search(text)
@@ -1823,8 +1831,12 @@ class RacingEngine(NarrativeMixin):
             score += float(delta)
         if not adjustments and not self.preparation_parts:
             score = _jt.FIT_NO_EVIDENCE
-            notes.append("並無任何人馬配搭紀錄（新配搭／輕出賽馬），按實測低於中性處理")
-        self.jt_fit_detail = {"base": 60.0, "final": round(clip_score(score), 2), "adjustments": adjustments}
+            # 觸發條件係「冇任何一項調整中」，唔係「冇配搭紀錄」—— 有往績但未達門檻嘅馬一樣去 58，
+            # 舊字眼同上面「歷來最佳配搭…」並排出現會自相矛盾（AU 標籤審計 2026-11-13 #4）。
+            notes.append(f"人馬配搭各項調整都未觸發（新配搭／輕出賽馬多屬此類），"
+                         f"呢批馬實測前三率低過平均，定為 {_jt.FIT_NO_EVIDENCE:.0f} 分")
+        self.jt_fit_detail = {"base": 60.0, "final": round(clip_score(score), 2), "adjustments": adjustments,
+                              "no_evidence_default": bool(not adjustments and not self.preparation_parts)}
         note = "；".join(notes) if notes else "未見特別人馬部署訊號"
         return score, f"{note}。人馬配搭分 {clip_score(score):.1f}。", \
             "jockey_trainer_fit+stage_stats+trial_continuity+formguide_jockey_history+track_combo_stats"
@@ -2462,7 +2474,7 @@ class RacingEngine(NarrativeMixin):
         clean = str(text or "")
         return bool(
             re.search(r"強組比例:\s*0(?:\.0)?/1", clean)
-            and any(token in clean for token in ("強", "極強"))
+            and any(token in formline_headline(clean) for token in ("強", "極強"))
             and self._formline_support_summary()[0] < 1.0
         )
 
@@ -2602,11 +2614,13 @@ class RacingEngine(NarrativeMixin):
         return score, line
 
     def _pace_figure_score(self):
-        """L600 context: field-relative historical-race L600-vs-benchmark.
+        """L600 環境分: field-relative L600-vs-benchmark of the horse's past runs.
 
-        Sportsbet values are race-level and identical for runners from the same
-        historical race. They describe speed tests faced, not the horse's own
-        individual sectional.
+        Preferred basis is the per-runner estimate `own_l600_delta` = race-level
+        L600 vs benchmark + the horse's FINAL beaten margin × 0.17 s (so it also
+        carries ground lost before the 600m — it is not a measured sectional).
+        Falls back to the race-level value (identical for every runner from the
+        same past race) when fewer than three runners in today's field have it.
         Lower l600_delta (faster than the race benchmark) → higher score. Neutral
         60 when the runner has no PF data or the field has <3 with data (→ this
         component is rank-neutral on no-PF races). scale 20 reproduces the
@@ -2794,26 +2808,29 @@ class RacingEngine(NarrativeMixin):
 
     def _formline_signal(self):
         text = str(self.data.get("formline_line") or "")
+        # 分級只睇標題本身。上游標題係「❌ 弱 (強組比例: 0/3)」，舊版直接喺成句搵「強」，
+        # 「強組比例」四個字令弱賽績線 93% 被讀成「強」（AU 標籤審計 2026-11-13 #1）。
+        headline = formline_headline(text)
         has_rows = bool(self._formline_rows())
         if has_rows and self._is_misleading_formline_headline(text):
             inferred = self._formline_inferred_signal()
             if inferred:
                 return inferred
-        if "極強" in text or "超強組" in text:
+        if "極強" in headline or "超強組" in headline:
             return "elite"
-        elif "中強" in text:
+        elif "中強" in headline:
             return "medium_strong"
-        elif "中組" in text:
+        elif "中組" in headline:
             return "medium"
-        elif "中弱" in text:
+        elif "中弱" in headline:
             return "medium_weak"
-        elif "強" in text:
+        elif "強" in headline:
             return "strong"
-        elif "弱" in text:
+        elif "弱" in headline:
             return "weak"
-        elif "待驗證" in text:
+        elif "待驗證" in headline:
             return "neutral"
-        elif "無資料" in text or "未有出賽" in text:
+        elif "無資料" in headline or "未有出賽" in headline:
             if has_rows:
                 return "neutral"
             return "unknown"
