@@ -104,6 +104,9 @@ class SpeedScorer(BaseScorer):
         delta, why = first_section_delta(m)
         if delta is None:
             return score, note
+        if not delta and not any(scoring.SPEED_MICRO_WEIGHTS.get(k) for k in (
+                "first_section_fast_bonus", "first_section_quick_bonus", "first_section_slowish_pen", "first_section_slow_pen")):
+            return score, note      # 頭段速度權重全部係 0（forward 照跑）：唔顯示一行 0 分
         self.detail = list(getattr(self, "detail", []) or []) + [
             {"factor": "頭段速度", "value": f"{float(m):+.2f}s", "delta": round(delta, 2), "why": why}]
         return clip_score(score + delta), note
@@ -116,6 +119,7 @@ class SpeedScorer(BaseScorer):
         reasons = []
         # 逐項結構化明細（同騎練訊號一致）：每個訊號 factor / 原始值 / ±分 / 白話
         self.detail = []
+        self.route_fit = None
 
         def add(factor, value, delta, why):
             score_ref[0] += delta
@@ -195,14 +199,14 @@ class SpeedScorer(BaseScorer):
             reasons.append(f"L400趨勢={l400_trend}")
             ltail = l400_trend.split("趨勢:")[-1].strip() if "趨勢" in l400_trend else l400_trend
             if "上升" in l400_trend and "✅" in l400_trend:
-                add("L400 趨勢", ltail, scoring.SPEED_MICRO_WEIGHTS.get("l400_trend_up_bonus", 3.0), "末段速度走勢改善")
+                add("L400 原始走勢", ltail, scoring.SPEED_MICRO_WEIGHTS.get("l400_trend_up_bonus", 3.0), "末段速度走勢改善")
                 strong_signals += 1
             elif "穩定" in l400_trend:
-                add("L400 趨勢", ltail, scoring.SPEED_MICRO_WEIGHTS.get("l400_trend_steady_bonus", 1.5), "末段速度平穩")
+                add("L400 原始走勢", ltail, scoring.SPEED_MICRO_WEIGHTS.get("l400_trend_steady_bonus", 1.5), "末段速度平穩")
             elif "波動" in l400_trend:
-                add("L400 趨勢", ltail, scoring.SPEED_MICRO_WEIGHTS.get("l400_trend_fluctuate_pen", -1.0), "末段速度波動")
+                add("L400 原始走勢", ltail, scoring.SPEED_MICRO_WEIGHTS.get("l400_trend_fluctuate_pen", -1.0), "末段速度波動")
             elif "衰退中" in l400_trend:
-                add("L400 趨勢", ltail, scoring.SPEED_MICRO_WEIGHTS.get("l400_trend_decline_pen", -4.0), "末段速度衰退")
+                add("L400 原始走勢", ltail, scoring.SPEED_MICRO_WEIGHTS.get("l400_trend_decline_pen", -4.0), "末段速度衰退")
                 strong_signals += 1
 
         engine_type = str(data.get("engine_type") or "").strip()
@@ -211,28 +215,31 @@ class SpeedScorer(BaseScorer):
             reasons.append(f"引擎={engine_type}")
             etype = engine_type.split("|")[0].strip()
             if "漸進加速型" in engine_type:
-                add("引擎型態", etype, scoring.SPEED_MICRO_WEIGHTS.get("engine_progressive_bonus", 3.0), "漸進加速型")
+                add("分段形態", etype, scoring.SPEED_MICRO_WEIGHTS.get("engine_progressive_bonus", 3.0), "原始分段後段快過前段（受路程影響）")
                 strong_signals += 1
             elif "均速型" in engine_type:
-                add("引擎型態", etype, scoring.SPEED_MICRO_WEIGHTS.get("engine_steady_bonus", 1.5), "均速型")
+                add("分段形態", etype, scoring.SPEED_MICRO_WEIGHTS.get("engine_steady_bonus", 1.5), "原始分段前後均速（受路程影響）")
             elif "混合型" in engine_type and "信心: 低" in engine_type:
-                add("引擎型態", etype, scoring.SPEED_MICRO_WEIGHTS.get("engine_mixed_low_conf_pen", -2.0), "混合型＋低信心")
+                add("分段形態", etype, scoring.SPEED_MICRO_WEIGHTS.get("engine_mixed_low_conf_pen", -2.0), "分段形態唔一致＋樣本少")
             elif "快開慢收型" in engine_type:
-                add("引擎型態", etype, scoring.SPEED_MICRO_WEIGHTS.get("engine_fast_slow_pen", -2.5), "快開慢收型")
+                add("分段形態", etype, scoring.SPEED_MICRO_WEIGHTS.get("engine_fast_slow_pen", -2.5), "原始分段前段快過後段（受路程影響）")
                 strong_signals += 1
-            if "信心: 低" in engine_type:
+            # 引擎信心權重係 0（死值）：唔再顯示一行 0 分。
+            if "信心: 低" in engine_type and scoring.SPEED_MICRO_WEIGHTS.get("engine_low_conf_pen", -1.0):
                 add("引擎信心", "低", scoring.SPEED_MICRO_WEIGHTS.get("engine_low_conf_pen", -1.0), "剖面樣本不足")
 
         distance_text = str(data.get("best_distance") or "").strip()
         distance = str(self.race_context.get("distance") or "").replace("m", "").strip()
         if distance_text and distance:
             signals += 1
+            # 「今程跑過」±1.5 由段速表現搬去同程表現（EXP-20261112-19，Kelvin 決定）：
+            # 段速分唔再加；分數記低畀 engine 加落同程表現 leaf（同一個 leaf 分）。訊號數目照計，同測試嘅 arm 一樣。
             if distance_text.startswith(f"{distance}m") or f"今仗 {distance}m =" in distance_text:
-                add("路程配合", f"{distance}m", scoring.SPEED_MICRO_WEIGHTS.get("dist_match_bonus", 1.5), "今程有往績")
-                reasons.append(f"路程配合={distance}m")
+                self.route_fit = (scoring.SPEED_MICRO_WEIGHTS.get("dist_match_bonus", 1.5), f"今程 {distance}m 跑過")
+                reasons.append(f"今程跑過={distance}m")
             elif "未跑過" in distance_text:
-                add("路程配合", f"{distance}m 未跑過", scoring.SPEED_MICRO_WEIGHTS.get("dist_unproven_pen", -1.5), "今程未有往績")
-                reasons.append("路程=未跑過")
+                self.route_fit = (scoring.SPEED_MICRO_WEIGHTS.get("dist_unproven_pen", -1.5), f"今程 {distance}m 未跑過")
+                reasons.append("今程未跑過")
 
         score = score_ref[0]
 

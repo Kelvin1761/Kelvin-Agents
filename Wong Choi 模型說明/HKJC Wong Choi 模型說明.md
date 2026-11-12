@@ -94,7 +94,7 @@
 | 基礎分 | 喺呢個維度佔 |
 |---|---:|
 | 近績分 `form_score` | 55.6% |
-| 穩定性分 `consistency_score` | 44.4% |
+| 上名／大敗紀錄分 `consistency_score` | 44.4% |
 
 實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 **9.79 分**；**0.1%** 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。
 
@@ -110,7 +110,7 @@
 
 | 基礎分 | 喺呢個維度佔 |
 |---|---:|
-| 風險分 `risk_score` | 100.0% |
+| 健康分 `risk_score` | 100.0% |
 
 實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 **3.53 分**；**0.1%** 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。
 
@@ -213,12 +213,12 @@ Grade 只係一個閱讀標籤，排名純粹按分數高低，唔會因為 Grad
 
 ## 呢份文件由邊度嚟
 
-- 生成時間：`2026-11-12 19:04 AEDT`
-- Git commit：`fb5c03ed`
+- 生成時間：`2026-11-12 21:50 AEDT`
+- Git commit：`74d8c248`
 - Scoring contract：`HKJC_9D_CONTRACT_2026_10_10_REGISTRY_TRACKWORK_DISTANCE_FIT_RACE_SHAPE_ROBUST_WINSOR10_PIT_RAIL_DRAW_V2_DISTANCE_COMPONENT_V1`
-- `scoring.py` 指紋：`8b4157ff7c20`
+- `scoring.py` 指紋：`24a8890202ee`
 - `matrix_mapper.py` 指紋：`a675ec199a4c`
-- `renderer.py` 指紋：`7ecae448e7f8`
+- `renderer.py` 指紋：`e07926aa2737`
 - 實測樣本：**99 場、1209 匹馬**，由 `2026-10-11_ShaTin` 到 `2026-11-11_HappyValley`（跳過 351 個舊格式檔案）
 
 重新生成：

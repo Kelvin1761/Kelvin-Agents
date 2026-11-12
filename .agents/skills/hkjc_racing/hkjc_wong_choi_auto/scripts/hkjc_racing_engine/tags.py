@@ -303,7 +303,7 @@ def _driver_label(key: str, good: bool, horse: dict, auto: dict) -> str:
         return "段速好" if good else "段速弱"
     if key == "trainer_signal":
         jockey = str(horse.get("jockey") or "").strip()
-        return f"騎師實績{'強' if good else '弱'}" + (f"（{jockey}）" if jockey else "")
+        return f"騎練實績{'強' if good else '弱'}" + (f"（{jockey}）" if jockey else "")
     if key == "form_line":
         return "賽績線強" if good else "賽績線弱"
     if key == "class_advantage":

@@ -72,6 +72,8 @@ class RacingEngine(HorseFacts, LeafScores, ShadowProfiles, Explanations):
         self.trainer_signal_detail = None
         # 速度分逐項訊號明細（L400／步速修正／能量／引擎／路程）— 供報告完整追溯
         self.speed_detail = None
+        self.route_fit = None
+        self.leaf_calc = {}
         # 檔位與走位逐項明細（檔位分／走位匹配分／近仗消耗分 或 跑馬地情境修正）
         self.race_shape_detail = None
 
@@ -93,6 +95,9 @@ class RacingEngine(HorseFacts, LeafScores, ShadowProfiles, Explanations):
             self.provenance[name] = self._source_for(name)
             if name == "speed_score":
                 self.speed_detail = getattr(scorer, "detail", None)
+                self.route_fit = getattr(scorer, "route_fit", None)
+            if name == "form_score" and getattr(scorer, "calc", None):
+                self.leaf_calc["form_score"] = scorer.calc
 
         for name, func in {
             "class_score": self._class_score,
@@ -133,8 +138,16 @@ class RacingEngine(HorseFacts, LeafScores, ShadowProfiles, Explanations):
         # 同程表現（9D，2026-10-10）：之前係 7D 以外嘅獨立 raw 調整，而家係一個
         # centred 維度。leaf = 60 + 調整 ÷ 權重，所以 權重 × (leaf − 60) 等於原本嘅調整。
         distance_suitability = self._distance_suitability_adjustment(feature_scores, matrix_scores)
-        self.distance_suitability_adjustment = distance_suitability
         distance_weight = CENTRED_MATRIX_WEIGHTS.get("distance_fit")
+        route_fit = getattr(self, "route_fit", None)
+        if route_fit and distance_weight:
+            # 「今程跑過」±1.5 leaf 分（EXP-20261112-19，由段速表現搬入）
+            distance_suitability = dict(distance_suitability)
+            distance_suitability["route_fit_points"] = float(route_fit[0])
+            distance_suitability["route_fit_label"] = route_fit[1]
+            distance_suitability["raw_adjustment"] = round(
+                float(distance_suitability.get("raw_adjustment") or 0.0) + float(route_fit[0]) * distance_weight, 6)
+        self.distance_suitability_adjustment = distance_suitability
         if distance_weight:
             distance_leaf = 60.0 + float(distance_suitability["raw_adjustment"]) / distance_weight
             feature_scores["distance_fit_score"] = distance_leaf
@@ -183,6 +196,8 @@ class RacingEngine(HorseFacts, LeafScores, ShadowProfiles, Explanations):
             "grade_transparency": grade_transparency,
             "trainer_signal_detail": self.trainer_signal_detail,
             "speed_detail": getattr(self, "speed_detail", None),
+            # 逐個分項嘅計法（純顯示，EXP-20261112-24）
+            "leaf_calc": dict(getattr(self, "leaf_calc", {}) or {}),
             "race_shape_detail": getattr(self, "race_shape_detail", None),
             "distance_suitability_adjustment": distance_suitability,
             "trackwork_read": self._trackwork_interpretation(),

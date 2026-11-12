@@ -26,12 +26,12 @@ class TrainerScorer(BaseScorer):
                 has_g1 = any("G1" in str(r.get("class_level", "")).upper() or "1級" in str(r.get("class_level", "")) for r in pdf_races)
                 if has_g1:
                     self.score = scoring.TRAINER_MICRO_WEIGHTS.get("overseas_g1_base", 85.0)
-                    self.reason = "Overseas Trainer (G1 Level)"
+                    self.reason = "冇練馬師評級，以匹馬海外 G1 往績代替（85）"
                 else:
                     has_g23 = any("G2" in str(r.get("class_level", "")).upper() or "2級" in str(r.get("class_level", "")) or "G3" in str(r.get("class_level", "")).upper() or "3級" in str(r.get("class_level", "")) for r in pdf_races)
                     if has_g23:
                         self.score = scoring.TRAINER_MICRO_WEIGHTS.get("overseas_g23_base", 75.0)
-                        self.reason = "Overseas Trainer (G2/G3 Level)"
+                        self.reason = "冇練馬師評級，以匹馬海外 G2／G3 往績代替（75）"
                     else:
                         jockey_score, _ = score_tier(
                             "jockey", self.horse_data.get("jockey", ""), "Neutral Jockey",
@@ -39,9 +39,9 @@ class TrainerScorer(BaseScorer):
                         )
                         if jockey_score > 60.0:
                             self.score = jockey_score
-                            self.reason = "Overseas Trainer (Aligns with Jockey Tier)"
+                            self.reason = "冇練馬師評級，借用騎師評級"
                         else:
                             self.score = scoring.TRAINER_MICRO_WEIGHTS.get("overseas_base", 70.0)
-                            self.reason = "Overseas Trainer"
+                            self.reason = "冇練馬師評級，以匹馬海外往績代替（70）"
                             
         return self.score, self.reason

@@ -973,10 +973,10 @@ class Explanations:
             "distance_score": "路程分",
             "track_going_score": "場地分",
             "weight_score": "官方評分分",
-            "consistency_score": "穩定性分",
+            "consistency_score": "上名／大敗紀錄分",
             "trackwork_trend_score": "操練趨勢分",
             "race_shape_context_score": "檔位走位情境分",
-            "risk_score": "風險分",
+            "risk_score": "健康分",
             "confidence_score": "信心分",
             "formline_strength_score": "賽績線強度分",
             "margin_trend_score": "輸距走勢分",
@@ -1211,7 +1211,7 @@ class Explanations:
         if features.get("form_score", 60) >= 78 and features.get("consistency_score", 60) >= 75:
             lead = f"{seq_txt}場場前列，狀態實在"
         elif features.get("form_score", 60) < 52 or features.get("consistency_score", 60) < 52:
-            lead = f"{seq_txt}名次反覆，前列支撐不足"
+            lead = f"{seq_txt}名次多數偏後，前列支撐不足"
         elif recent_trend == "warming":
             lead = f"{seq_txt}近三仗轉好，回勇中"
         elif recent_trend == "cooling":
@@ -1349,11 +1349,11 @@ class Explanations:
         if days is None:
             freshness = "；休賽間隔不明"
         elif days <= 14:
-            freshness = f"；休後{int(days)}日快出，回氣要留意"
+            freshness = f"；休後{int(days)}日再出（評分當正常間隔，冇扣分）"
         elif days <= 45:
             freshness = f"；休後{int(days)}日，間隔正常"
         else:
-            freshness = f"；休後{int(days)}日，實戰感成疑"
+            freshness = (f"；休後{int(days)}日，長休扣分" if days > 75 else f"；休後{int(days)}日（評分唔加唔扣）")
         if span is not None:
             weight_txt = f"；體重波幅{span:.0f}lb正常" if span <= 14 else f"；體重波幅{span:.0f}lb偏大"
         else:
@@ -1378,7 +1378,7 @@ class Explanations:
         if fl and fl.get("n"):
             v, n = fl["validated"], fl["n"]
             if v >= 2:
-                frank = f"；兌現度高（{v}/{n}仗對手其後再贏）"
+                frank = f"；兌現度高（{v}/{n} 行對手其後再贏）"
             elif v == 1:
                 frank = f"；有基本背書（1/{n}仗對手再贏）"
             else:

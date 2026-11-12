@@ -472,7 +472,8 @@ HORSE_HEALTH_CONTEXT_WEIGHTS = {
     "days_le_21_bonus": 2.0,
     "days_le_45_bonus": 1.0,
     "days_gt_75_pen": -3.0,
-    "weight_micro_bonus": 1.0,
+    # EXP-20261112-18：上游「微增／微減」其實係波幅 > 5 磅；方向錯、冇訊號，剷走（A/B 指標零差）。
+    "weight_micro_bonus": 0.0,
     "weight_sharp_change_pen": -5.0,
     "weight_drop_pen": -3.0,
     "weight_gain_pen": -2.0,

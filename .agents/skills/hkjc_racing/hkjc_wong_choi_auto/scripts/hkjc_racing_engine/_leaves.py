@@ -29,36 +29,57 @@ def _consumption_label(part, mapping):
     return None
 
 
+def _calc_line(base, items, final):
+    """「60 ＋ 有香港出賽紀錄 +4 − 樣本薄 2 ＝ 62」—— 報告用嘅計法字串（純顯示）。"""
+    parts = [f"{base:g}"]
+    for label, delta in items:
+        if delta:
+            parts.append(f"{'＋' if delta > 0 else '−'} {label} {abs(delta):g}")
+    return " ".join(parts) + f" ＝ {final:.1f}"
+
+
 class LeafScores:
+    def _set_calc(self, key, text):
+        """逐個分項嘅計法字串（純顯示，報告「計法」行），唔影響分數。"""
+        if text:
+            self.__dict__.setdefault("leaf_calc", {})[key] = text
+
     def _class_score(self, _features):
         if self._is_debut():
             self.reason_codes.append("debut_class_unknown")
             return 60, "初出馬未有正式賽績，經驗與季內分暫按中性60分。", "career_tag"
         score = 60
         notes = []
+        items = []
         starts = parse_float(self._value("career_race_starts") or self.horse_data.get("career_race_starts"))
         season = self._season_record()
         career_tag = self._clean(self._value("career_tag") or self.horse_data.get("career_tag") or "")
         if career_tag == "ESTABLISHED":
             score += scoring.CLASS_MICRO_WEIGHTS.get("established_bonus", 4.0)
-            notes.append("已建立賽駒")
+            notes.append("有香港出賽紀錄")
+            items.append(("有香港出賽紀錄", scoring.CLASS_MICRO_WEIGHTS.get("established_bonus", 4.0)))
         if starts is not None:
             if starts >= 20:
                 score += scoring.CLASS_MICRO_WEIGHTS.get("starts_20_bonus", 4.0)
                 notes.append("經驗充足")
+                items.append((f"出賽 {starts:.0f} 次（≥20）", scoring.CLASS_MICRO_WEIGHTS.get("starts_20_bonus", 4.0)))
             elif starts <= 8:
                 score += scoring.CLASS_MICRO_WEIGHTS.get("starts_8_pen", -2.0)
                 notes.append("樣本薄")
+                items.append((f"出賽 {starts:.0f} 次（≤8）", scoring.CLASS_MICRO_WEIGHTS.get("starts_8_pen", -2.0)))
         # A new season's 0-0-0-0 is no evidence, not an unsuccessful campaign.
         if season and season["starts"] > 0:
             if season["places"] >= 3:
                 score += scoring.CLASS_MICRO_WEIGHTS.get("season_place_3_bonus", 4.0)
                 notes.append("季內有交代")
+                items.append((f"季內上名 {season['places']} 次（≥3）", scoring.CLASS_MICRO_WEIGHTS.get("season_place_3_bonus", 4.0)))
             elif season["places"] == 0:
                 score += scoring.CLASS_MICRO_WEIGHTS.get("season_place_0_pen", -4.0)
+                items.append((f"季內 {season['starts']} 戰未上名", scoring.CLASS_MICRO_WEIGHTS.get("season_place_0_pen", -4.0)))
                 self.risk_flags.append("class_edge_unproven")
                 notes.append("季內未上名")
         # 短而準：分數行頭，訊號做 tag；無訊號＝各項中性
+        self._set_calc("class_score", _calc_line(60, items, clip_score(score)))
         note = f"經驗與季內分{clip_score(score):.0f}：" + ("、".join(notes) if notes else "經驗／季內均中性")
         return clip_score(score), note, "career_context"
 
@@ -192,6 +213,8 @@ class LeafScores:
         # 讓磅賽入面兩者幾乎一樣；分別喺頂磅 135 唔係 133、同埋冇馬負到 132 嘅場次。
         gap = parse_float(self._value("rating_gap"))
         if gap is not None:
+            self._set_calc("weight_score", f"官方評分距全場最高 {gap:.0f} 分：≤{scoring.WEIGHT_RATING_GAP_HEAVY:g} 分 → 70；"
+                                           f"≥{scoring.WEIGHT_RATING_GAP_LIGHT:g} 分 → 54；其餘 64")
             rating = self._value("current_rating")
             score = scoring.WEIGHT_MICRO_WEIGHTS.get("base", 64.0)
             note = (f"官方評分{rating}，距全場最高{gap:.0f}分，屬中游，讓磅官冇特別意見，"
@@ -203,7 +226,7 @@ class LeafScores:
             elif gap <= scoring.WEIGHT_RATING_GAP_HEAVY:
                 score = scoring.WEIGHT_MICRO_WEIGHTS.get("heavy_weight_base", 70.0)
                 note = (f"官方評分{rating}，全場最高或只差{gap:.0f}分 —— 讓磅官視佢為全場最好嘅馬，"
-                        f"而實測加磅加得唔夠狠（0.389 分/kg vs 慣例 0.5），官方評分分{score:.0f}分。")
+                        f"而實測讓磅官每 1 分評分只加約 0.39 kg 負磅（慣例 0.5 kg），官方評分分{score:.0f}分。")
             return clip_score(score), note, "rating_gap"
         weight = parse_float(self._value("weight_carried") or self._value("weight"))
         if weight is None:
@@ -221,7 +244,7 @@ class LeafScores:
         elif carried >= scoring.WEIGHT_DECLARED_HEAVY:
             score = scoring.WEIGHT_MICRO_WEIGHTS.get("heavy_weight_base", 70.0)
             note = (f"今仗宣佈負磅{carried:.0f}磅{claim}屬頂磅 —— 讓磅官視佢為全場最好嘅馬，"
-                    f"而實測加磅加得唔夠狠（0.389 分/kg vs 慣例 0.5），"
+                    f"而實測讓磅官每 1 分評分只加約 0.39 kg 負磅（慣例 0.5 kg），"
                     f"官方評分分{score:.0f}分。")
         return clip_score(score), note, "weight_carried"
 
@@ -231,17 +254,18 @@ class LeafScores:
         if self._is_debut():
             prep = self._prep_score()
             score = scoring.CONSISTENCY_MICRO_WEIGHTS.get("debut_base", 58.0) + (prep - 60) * scoring.CONSISTENCY_MICRO_WEIGHTS.get("debut_prep_mult", 0.35)
-            note = f"初出馬以晨操備戰穩定性代替正式近績，備戰分{prep:.0f}，穩定性分{score:.1f}。"
+            note = f"初出馬以晨操備戰穩定性代替正式近績，備戰分{prep:.0f}，上名／大敗紀錄分{score:.1f}。"
             return score, note, "trackwork_digest"
         if len(finishes) >= 3:
             places = sum(1 for rank in finishes if 1 <= rank <= 3)
             poor = sum(1 for rank in finishes if rank >= 8)
             score = scoring.CONSISTENCY_MICRO_WEIGHTS.get("base", 58.0) + places * scoring.CONSISTENCY_MICRO_WEIGHTS.get("place_mult", 7.0) - poor * scoring.CONSISTENCY_MICRO_WEIGHTS.get("poor_mult", 5.0)
-            note = f"近{len(finishes)}仗有{places}次前三、{poor}次八名或以後，穩定性分{clip_score(score):.1f}。"
+            note = f"近{len(finishes)}仗有{places}次前三、{poor}次八名或以後，上名／大敗紀錄分{clip_score(score):.1f}。"
+            self._set_calc("consistency_score", f"58 ＋ 7 × 前三 {places} 次 − 5 × 八名或以後 {poor} 次 ＝ {clip_score(score):.1f}")
             return score, note, "last_6_finishes"
         if features.get("form_score", 60) >= 70:
-            return scoring.CONSISTENCY_MICRO_WEIGHTS.get("good_form_base", 66.0), "近績樣本少但名次訊號正面，穩定性分66分。", "last_6_finishes"
-        return scoring.CONSISTENCY_MICRO_WEIGHTS.get("neutral_base", 60.0), "近績樣本不足，穩定性分60分。", "missing_neutral"
+            return scoring.CONSISTENCY_MICRO_WEIGHTS.get("good_form_base", 66.0), "近績樣本少但名次訊號正面，上名／大敗紀錄分66分。", "last_6_finishes"
+        return scoring.CONSISTENCY_MICRO_WEIGHTS.get("neutral_base", 60.0), "近績樣本不足，上名／大敗紀錄分60分。", "missing_neutral"
 
     def _risk_score(self, features):
         """馬匹健康 leaf（`risk_score`）＝醫療＋休賽日數＋體重（`_candidate_health_risk_score`）。
@@ -256,7 +280,7 @@ class LeafScores:
         health_score, health_note = self._candidate_health_risk_score()
         # 說明只講真正入分嘅嘢（2026-11-05）。舊版前面接住篩查說明（「檔位分偏低、
         # 同程紀錄未見上名」），但篩查分由來冇入風險分，令人以為檔位同同程會扣健康分。
-        note = f"{self._risk_medical_note()}；{health_note}重算風險分{clip_score(health_score):.1f}。"
+        note = f"{self._risk_medical_note()}；{health_note}重算健康分{clip_score(health_score):.1f}。"
         return clip_score(health_score), note, "th01_health_context"
 
     def _risk_medical_note(self):
@@ -306,7 +330,7 @@ class LeafScores:
             else:
                 self.risk_flags.append("distance_unproven")
                 notes.append("路程證明不足")
-        return clip_score(score), "、".join(notes) + f"，風險分{clip_score(score):.1f}。"
+        return clip_score(score), "、".join(notes) + f"，健康分{clip_score(score):.1f}。"
 
     def _confidence_score(self, features):
         present = 0
@@ -327,7 +351,7 @@ class LeafScores:
         if getattr(self, "_risk_screen_score", 60.0) < 55:
             pen = scoring.CONFIDENCE_MICRO_WEIGHTS.get("high_risk_pen", -5.0)
             score += pen
-            bits.append(f"風險分偏低再扣（{pen:.0f}）")
+            bits.append(f"健康分偏低再扣（{pen:.0f}）")
         if self._is_foreign_runner():
             # Don't dock a visiting runner for lacking HKJC-only coverage fields;
             # floor at neutral so foreign horses aren't structurally low-confidence.
@@ -361,8 +385,15 @@ class LeafScores:
         same_count = int(parse_float(same) or 0)
         lower_count = int(parse_float(lower) or 0)
         bonus = min(8, higher_count * 3 + same_count * 1 - lower_count * 1)
+        label_cn = {"elite": "極強", "strong": "強", "weak": "弱", "neutral": "中", "unknown": "未有資料"}[signal]
+        calc_items = [(f"對手之後跑過高過今仗班次（有贏馬）{higher_count} 匹（每匹 3 分）", higher_count * 3),
+                      (f"同班再贏 {same_count} 匹（每匹 1 分）", same_count), (f"低班再贏 {lower_count} 匹（每匹 1 分）", -lower_count)]
+        calc_text = _calc_line(score, calc_items, clip_score(score + bonus)).replace(f"{score:g}", f"賽績線「{label_cn}」{score:g}", 1)
+        if bonus == 8 and higher_count * 3 + same_count - lower_count > 8:
+            calc_text += "（加分上限 +8）"
+        self._set_calc("formline_strength_score", calc_text)
         if higher_count:
-            note_map[signal] += f" 對手後續有{higher_count}匹於更高班再贏，含金量可再上調。"
+            note_map[signal] += f" 對手之後有{higher_count}匹跑過高過今仗嘅班次（有贏馬），含金量可再上調。"
         elif same_count and not lower_count:
             note_map[signal] += f" 對手後續有{same_count}匹於同班再贏，證明基本線索有兌現。"
         elif lower_count and not higher_count:
@@ -378,6 +409,7 @@ class LeafScores:
             if not any(o["competitive"] for o in ops):
                 final = 60.0
                 note_map[signal] = "曾碰強陣但今馬每仗都跑唔近（大敗收場），賽績線含金量存疑，按中性60分。"
+                self._set_calc("formline_strength_score", calc_text + " → 但每仗都跑唔近（≤6名兼輸≤5個馬位一次都冇），封頂 60")
         return final, note_map[signal], "formline_strength"
 
     def _margin_trend_score(self):
@@ -626,9 +658,9 @@ class LeafScores:
             self.risk_flags.append("needs_active_slotting")
             add("走位匹配", weights["active_slot_pen"], "需要主動切入")
         if "上升軌" in text:
-            add("走位PI", weights["pi_up_bonus"], "走位 PI 上升")
+            add("走位PI（追前位數）", weights["pi_up_bonus"], "近仗追前位數上升")
         elif "衰退中" in text:
-            add("走位PI", weights["pi_down_pen"], "走位 PI 衰退")
+            add("走位PI（追前位數）", weights["pi_down_pen"], "近仗追前位數下降")
         recent = _consumption_label(
             self._clean(self._value("position_window") or "").split("|")[0],
             scoring.RACE_SHAPE_TRIP_CONSUMPTION_SCORES,
@@ -670,12 +702,13 @@ class LeafScores:
         shadow = self._consistency_from_runs()
         if shadow is not None:
             updated["consistency_score"] = clip_score(shadow["score"])
+            self._set_calc("consistency_score", shadow["calc"])
             shift_txt = {"recovering": "，且近三仗名次好過再之前", "declining": "，但近三仗名次差過再之前"}.get(shadow["recent_shift"], "")
             notes["consistency_score"] = self._append_note(
-                self._strip_embedded_score(feature_notes.get("consistency_score"), "穩定性分"),
+                self._strip_embedded_score(feature_notes.get("consistency_score"), "上名／大敗紀錄分"),
                 (
                     f"逐仗連輸距覆核：近{shadow['n']}仗有{shadow['close_runs']}仗跑近前列、"
-                    f"{shadow['poor_runs']}仗明顯敗陣{shift_txt}，穩定性分定為{clip_score(shadow['score']):.1f}。"
+                    f"{shadow['poor_runs']}仗明顯敗陣{shift_txt}，上名／大敗紀錄分定為{clip_score(shadow['score']):.1f}。"
                 ),
             )
             sources["consistency_score"] = "cx01_consistency_context"
@@ -835,7 +868,9 @@ class LeafScores:
 
 
     def _candidate_health_risk_score(self):
-        score = scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["base"]
+        base = scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["base"]
+        score = base
+        items = []
         medical = self._text("medical_flags")
         weight_trend = self._text("weight_trend")
         days = self._days_since_last()
@@ -849,47 +884,48 @@ class LeafScores:
         if "✅ 無醫療事故記錄" in medical and official and mode == "no_clear":
             pass                      # 唔再俾「醫療清白」+2
         elif "✅ 無醫療事故記錄" in medical:
-            score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["medical_clear_bonus"]
+            score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["medical_clear_bonus"]; items.append(("醫療紀錄乾淨", scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["medical_clear_bonus"]))
         elif medical and medical != "N/A":
-            score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["medical_issue_pen"]
+            score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["medical_issue_pen"]; items.append(("有醫療事故紀錄", scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["medical_issue_pen"]))
             if self._has_recovery_evidence():
-                score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["medical_recovery_bonus"]
+                score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["medical_recovery_bonus"]; items.append(("有康復證據", scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["medical_recovery_bonus"]))
         else:
-            score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["medical_unknown_pen"]
+            score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["medical_unknown_pen"]; items.append(("醫療資料不明", scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["medical_unknown_pen"]))
 
         if days is not None:
             if days <= 7:
                 if weight_span is not None and weight_span <= 14.0:
-                    score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["days_le_7_stable_bonus"]
+                    score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["days_le_7_stable_bonus"]; items.append((f"休 {days:.0f} 日（≤7，體重穩）", scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["days_le_7_stable_bonus"]))
                 else:
-                    score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["days_le_7_unstable_pen"]
+                    score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["days_le_7_unstable_pen"]; items.append((f"休 {days:.0f} 日（≤7，體重唔穩）", scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["days_le_7_unstable_pen"]))
             elif days <= 21:
-                score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["days_le_21_bonus"]
+                score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["days_le_21_bonus"]; items.append((f"休 {days:.0f} 日（8–21）", scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["days_le_21_bonus"]))
             elif days <= 45:
-                score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["days_le_45_bonus"]
+                score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["days_le_45_bonus"]; items.append((f"休 {days:.0f} 日（22–45）", scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["days_le_45_bonus"]))
             elif days > 75:
-                score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["days_gt_75_pen"]
+                score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["days_gt_75_pen"]; items.append((f"休 {days:.0f} 日（>75）", scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["days_gt_75_pen"]))
 
         if any(token in weight_trend for token in ("急劇變化", "急增", "急減")):
-            score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["weight_sharp_change_pen"]
+            score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["weight_sharp_change_pen"]; items.append(("體重急劇變化", scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["weight_sharp_change_pen"]))
         elif any(token in weight_trend for token in ("顯著轉輕", "大減")):
-            score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["weight_drop_pen"]
+            score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["weight_drop_pen"]; items.append(("體重顯著轉輕", scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["weight_drop_pen"]))
         elif any(token in weight_trend for token in ("顯著轉重", "大增")):
-            score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["weight_gain_pen"]
+            score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["weight_gain_pen"]; items.append(("體重顯著轉重", scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["weight_gain_pen"]))
         elif any(token in weight_trend for token in ("微增", "微減")):
-            score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["weight_micro_bonus"]
+            score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["weight_micro_bonus"]; items.append(("體重微增／微減", scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["weight_micro_bonus"]))
 
         if weight_span is not None:
             if weight_span <= 12.0:
-                score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["span_le_12_bonus"]
+                score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["span_le_12_bonus"]; items.append((f"體重波幅 {weight_span:.0f} 磅（≤12）", scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["span_le_12_bonus"]))
             elif weight_span <= 18.0:
-                score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["span_le_18_bonus"]
+                score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["span_le_18_bonus"]; items.append((f"體重波幅 {weight_span:.0f} 磅（≤18）", scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["span_le_18_bonus"]))
             elif weight_span <= 32.0:
-                score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["span_le_32_pen"]
+                score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["span_le_32_pen"]; items.append((f"體重波幅 {weight_span:.0f} 磅（≤32）", scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["span_le_32_pen"]))
             else:
-                score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["span_gt_32_pen"]
+                score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["span_gt_32_pen"]; items.append((f"體重波幅 {weight_span:.0f} 磅（>32）", scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["span_gt_32_pen"]))
 
         note = "已再綜合醫療紀錄、休賽日數同體重波幅，"
+        self._set_calc("risk_score", _calc_line(base, items, clip_score(score)))
         return clip_score(score), note
 
 
@@ -959,8 +995,14 @@ class LeafScores:
                 score -= 3.0
                 recent_shift = "declining"
 
+        shift_pts = 3.0 if recent_shift == "recovering" else (-3.0 if recent_shift == "declining" else 0.0)
+        calc = (f"58 ＋ 18 × 跑近前列比例 {close_ratio:.2f} − 14 × 明顯敗陣比例 {poor_ratio:.2f} − 10 × 大敗比例 {severe_ratio:.2f}"
+                + (f" {'＋' if shift_pts > 0 else '−'} 近三仗{'好過' if shift_pts > 0 else '差過'}之前 3" if shift_pts else "")
+                + f" ＝ {clip_score(score):.1f}（近仗權重 1.00／0.85／0.70／0.55／0.45／0.35；跑近前列＝前三，或前五輸≤3 個馬位、前七輸≤2.5 個馬位；"
+                  "明顯敗陣＝八名後輸≥5 個馬位，或六名後輸≥7 個馬位；大敗＝十名後輸≥8 個馬位）")
         return {
             "score": clip_score(score),
+            "calc": calc,
             "n": len(runs[:6]),
             "close_runs": close_runs,
             "poor_runs": poor_runs,

@@ -5460,7 +5460,7 @@ function sanitizeBattlefieldOverviewText(text) {
     if (!skippingAutoSummary) withoutAutoSummary.push(line);
   });
 
-  const unwantedHeaders = new Set(['資料完整度', '風險分', '情境標記']);
+  const unwantedHeaders = new Set(['資料完整度', '風險分', '健康分', '情境標記']);
   const output = [];
   for (let i = 0; i < withoutAutoSummary.length;) {
     if (!withoutAutoSummary[i].trim().startsWith('|')) {
@@ -6772,12 +6772,13 @@ const DATA_ROUTES = [
   [/晨操狀態/, [[/晨操分析/, '操練趨勢分']]],
   [/同程表現/, [[/同程紀錄/, '同程表現分']]],
   [/狀態與穩定性/, [[/近6場數據/, '近績分'], [/晨操分析/, '操練趨勢分']]],
-  [/馬匹健康/, [[/休賽|體重趨勢|健康掃描|健康解讀/, '風險分']]],
+  // 2026-11-12「風險分」改名「健康分」（EXP-20261112-24）；舊場次照用舊名。
+  [/馬匹健康/, [[/休賽|體重趨勢|健康掃描|健康解讀/, '健康分']]],
   [/檔位與走位/, [[/走位窗口/, '近仗消耗分'],
                   [/檔位-走位匹配度|走位PI/, '走位匹配分'],
-                  [/檔位\s*\/\s*跑法|場地偏差/, '檔位分']]],
+                  [/檔位\s*\/\s*跑法|場地偏差|長期檔位統計/, '檔位分']]],
   [/賽績線/, [[/賽績線明細|賽績線強度/, '賽績線強度分']]],
-  [/段速表現/, [[/引擎分佈|最佳路程|L400|能量趨勢|步速修正|輸頭馬|負磅換算|對馬會標準|完成時間/, '速度分']]],
+  [/段速表現/, [[/引擎分佈|分段形態|最佳路程|L400|能量趨勢|步速修正|輸頭馬|負磅換算|對馬會標準|完成時間/, '速度分']]],
   // 2026-11-11「級數優勢」改名「評分與經驗」，班次分改名經驗與季內分（EXP-20261111-13）；舊場次照用舊名。
   [/評分與經驗/, [[/評分\s*\/\s*經驗背景/, '經驗與季內分']]],
   [/級數優勢/, [[/班次\s*\/\s*評分背景/, '班次分']]],
@@ -6792,6 +6793,12 @@ const DATA_DROP = [
   // them, so these three restate it in aggregate.
   [/賽績線/, /賽績線兌現度|對手陣容強度|上仗結果/],
 ];
+
+// 2026-11-12 改名（EXP-20261112-24）：舊報告個格仔仲叫舊名，路由用新名，兩邊都要搵到。
+const BOX_ALIASES = { '風險分': '健康分', '穩定性分': '上名／大敗紀錄分' };
+function routedFor(routed, name) {
+  return routed.get(name) || routed.get(BOX_ALIASES[name]) || undefined;
+}
 
 function dataRouteFor(dimensionTitle, label) {
   for (const [dim, rules] of DATA_ROUTES) {
@@ -7386,8 +7393,8 @@ function renderDimensionBody(content, dimensionTitle) {
     if (formula.children.length) {
       const { subs, unrouted, notes } = classifyFormulaChildren(formula.children);
       if (subs.length) {
-        subs.forEach(x => (x.components || []).forEach(c => { c.routed = routed.get(c.name); }));
-        h += `<div class="dim-subs">${subs.map(x => renderSubScore(x.node, x, routed.get(x.name))).join('')}</div>`;
+        subs.forEach(x => (x.components || []).forEach(c => { c.routed = routedFor(routed, c.name); }));
+        h += `<div class="dim-subs">${subs.map(x => renderSubScore(x.node, x, routedFor(routed, x.name))).join('')}</div>`;
       }
       // Anything that names no sub-score is a dimension-level adjustment; it
       // scores, so it gets the same box as every other scoring component.

@@ -22,8 +22,8 @@ FEATURE_LABELS = {
     "distance_score": "路程分",
     "track_going_score": "場地分",
     "weight_score": "官方評分分",
-    "consistency_score": "穩定性分",
-    "risk_score": "風險分",
+    "consistency_score": "上名／大敗紀錄分",
+    "risk_score": "健康分",
     "confidence_score": "資料完整度",
 }
 
@@ -545,7 +545,7 @@ def _render_horse_section(horse_num: str, horse: dict, auto: dict) -> list[str]:
         f"- **近六場:** {_fmt(horse.get('last_6_finishes'))} (左=剛戰 → 右=最舊)",
         f"- **休後復出:** {_rest_days(horse, data) if _rest_days(horse, data) is not None else '—'} 日",
         f"- **統計:** {_fmt(horse.get('season_stats') or data.get('season_stats_line'))}",
-        f"- **近績分 / 穩定性分:** {float(features.get('form_score', 60)):.1f} / {float(features.get('consistency_score', 60)):.1f}",
+        f"- **近績分 / 上名／大敗紀錄分:** {float(features.get('form_score', 60)):.1f} / {float(features.get('consistency_score', 60)):.1f}",
         "",
         f"#### 🧮 {DIM_TAG} 評分矩陣逐項拆解",
         "> 每個維度：**評分構成**（sub分 × 權重點砌出嚟）→ 每個 sub分嘅來源 → **實證調整** → **判讀** → **數據**。",
@@ -621,6 +621,31 @@ def _render_blind_spots() -> list[str]:
     ]
 
 
+def _trackwork_is_dead(components) -> bool:
+    """晨操維度關咗（TRACKWORK_SCORING="off"）：所有分項都係 60。"""
+    from . import scoring
+    return getattr(scoring, "TRACKWORK_SCORING", "") == "off" and all(
+        abs(float(c.get("score", 60)) - 60.0) < 1e-9 for c in components or [])
+
+
+def _dimension_calc_line(key: str, auto: dict) -> str:
+    """維度層計法：原始分 → 顯示尺；權重同對綜合分嘅貢獻（純顯示）。"""
+    from . import scoring
+    raw = (auto.get("matrix_scores") or {}).get(key)
+    disp = (auto.get("matrix_scores_display") or {}).get(key)
+    debut = any("debut" in str(c).lower() for c in auto.get("reason_codes") or [])
+    table = getattr(scoring, "DEBUT_MATRIX_WEIGHTS", {}) if debut else getattr(scoring, "MATRIX_WEIGHTS", {})
+    weight = (table or {}).get(key)
+    if weight is None:
+        weight = (getattr(scoring, "CENTRED_MATRIX_WEIGHTS", {}) or {}).get(key)
+    if raw is None or weight is None:
+        return ""
+    text = f"分項加權 ＝ 原始 {float(raw):.1f}"
+    if disp is not None:
+        text += f"（顯示尺 {float(disp):.1f}）"
+    return text + f"；佔綜合分 {float(weight) * 100:.1f}%，貢獻 {float(weight):.4f} ×（{float(raw):.1f} − 60）＝ {float(weight) * (float(raw) - 60):+.2f} 分"
+
+
 def _matrix_lines(horse: dict, auto: dict) -> list[str]:
     matrix = auto.get("matrix", {})
     # 標題同 band 用**顯示尺**（七個維度同一把尺，見 scoring.to_dimension_display）。
@@ -645,13 +670,25 @@ def _matrix_lines(horse: dict, auto: dict) -> list[str]:
         else:
             header = f"##### {label}：`N/A`"
         lines.append(header)
-        lines.append(f"  - **評分構成:** {component_line}")
-        # 逐個 sub分點解：用 leaf scorer 自己嘅 note 解釋『點解係呢個分』。
+        if key == "trackwork" and _trackwork_is_dead(components):
+            # 晨操退出排名（EXP-20261029-02）：維度分係常數，唔再扮有分（EXP-20261112-24）。
+            lines[-1] = f"##### {label}（只作參考，未入分）"
+        else:
+            lines.append(f"  - **評分構成:** {component_line}")
+            dim_line = _dimension_calc_line(key, auto)
+            if dim_line:
+                lines.append(f"  - **維度計法:** {dim_line}")
+        calc = auto.get("leaf_calc") or {}
+        # 逐個 sub分點解：用 leaf scorer 自己嘅 note 解釋『點解係呢個分』，再列計法。
         for comp in components:
+            if key == "trackwork" and _trackwork_is_dead(components):
+                break
             clbl = comp.get("label", "分項")
             csc = float(comp.get("score", 60))
             cnote = _clean_subscore_note(comp.get("note", ""))
             lines.append(f"    - {clbl} {csc:.0f} ← {cnote}" if cnote else f"    - {clbl} {csc:.0f}")
+            if calc.get(comp.get("key")):
+                lines.append(f"      · 計法：{calc[comp.get('key')]}")
         adjustment = reasoning.get("adjustment") if isinstance(reasoning, dict) else None
         if adjustment:
             lines.append(f"    - {adjustment}")
@@ -677,6 +714,10 @@ def _matrix_lines(horse: dict, auto: dict) -> list[str]:
                     f"{int(detail.get('same_distance_places', 0) or 0)} 次上名；"
                     f"原始分貢獻 {float(detail.get('raw_adjustment', 0.0) or 0.0):+.2f}"
                 )
+                if detail.get("route_fit_points") is not None:
+                    # EXP-20261112-19：由段速表現搬入（以前叫「路程配合」）
+                    lines.append(f"  - **今程跑過:** {detail.get('route_fit_label', '')} → 同程表現分 "
+                                 f"{float(detail['route_fit_points']):+.1f}（已包喺上面嘅原始分貢獻）")
         if key == "stability":
             overseas = auto.get("overseas_form_read")
             if isinstance(overseas, dict):
@@ -848,12 +889,12 @@ def _formline_table_lines(horse: dict) -> list[str]:
         n = len(lines)
         verdict = ("已受賽果驗證（franked）" if validated >= 2 else
                    ("有基本背書" if validated == 1 else "暫未有對手後續勝出背書"))
-        lines.insert(0, f"賽績線兌現度: {validated}/{n} 場嘅對手其後再勝 → {verdict}")
+        lines.insert(0, f"賽績線兌現度: {validated}/{n} 行對手（每場最多 3 行）其後再勝 → {verdict}")
         # 對手陣容強度（強組比例）——事實描述，補回逐場強組別嘅總覽（display-only）
         ratio_m = re.search(r"強組比例:\s*(\d+)\s*/\s*(\d+)", str(data.get("formline_strength") or ""))
         if ratio_m:
             # 官方「強組比例」= 強組對手數／仗數（一仗可遇多個強組對手，故可 >1）
-            lines.insert(1, f"對手陣容強度: 強組對手比例 {ratio_m.group(1)}/{ratio_m.group(2)}（強組對手數／仗數）")
+            lines.insert(1, f"對手陣容強度: 強組分數 {ratio_m.group(1)}／對手行數 {ratio_m.group(2)}（超強組計 2 分；強組＝對手之後跑過第一至三班或分級賽）")
     return lines
 
 
@@ -891,7 +932,7 @@ def _matrix_fact_lines(key: str, horse: dict) -> list[str]:
         # 純速度錨點。場地偏差（track_bias）唔喺度顯示：佢係 draw/course 訊號，
         # 已於「檔位與走位」維度嘅數據錨點顯示，唔重複。
         return _compact_fact_lines(
-            ("引擎分佈", data.get("engine_type"), 220),
+            ("分段形態（原始分段，受路程影響）", data.get("engine_type"), 220),
             ("最佳路程", data.get("best_distance"), 160),
             ("L400 / 能量趨勢", _join_nonempty(data.get("raw_l400"), data.get("l400_trend"), data.get("energy_trend"), sep=" | "), 320),
             # 入分（EXP-20261112-13）：上仗 L400 換算到今仗負磅先過門檻。
@@ -912,7 +953,7 @@ def _matrix_fact_lines(key: str, horse: dict) -> list[str]:
             ("近3-5仗走位窗口", data.get("position_window"), 360),
             ("檔位 / 歷史走位", draw_running, 360),
             ("檔位-歷史走位匹配度", data.get("draw_position_fit"), 320),
-            ("場地偏差", data.get("track_bias"), 180),
+            ("馬會長期檔位統計（唔係當日偏差，未入分）", data.get("track_bias"), 180),
         )
     if key == "trainer_signal":
         combo_lines = _jockey_combo_snapshot(data.get("jockey_combo_block"))
@@ -1417,7 +1458,7 @@ def _summary_banner(auto: dict, features: dict) -> str:
     parts.extend(
         [
             f"資料完整度 `{float(features.get('confidence_score', 60)):.1f}`",
-            f"風險分 `{float(features.get('risk_score', 60)):.1f}`",
+            f"健康分 `{float(features.get('risk_score', 60)):.1f}`",
         ]
     )
     tags = _context_tags_display(auto)

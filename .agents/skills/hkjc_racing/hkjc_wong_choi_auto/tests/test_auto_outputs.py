@@ -769,8 +769,11 @@ class AutoOutputTests(unittest.TestCase):
                 "best_distance": "1650m | 今仗 1650m = 同程適配",
             }
         }
-        score, reason = SpeedScorer(horse, {"distance": "1650m"}).compute()
-        self.assertAlmostEqual(score, 75.86, places=2)
+        scorer = SpeedScorer(horse, {"distance": "1650m"})
+        score, reason = scorer.compute()
+        # EXP-20261112-19：「今程跑過」+1.5 搬咗去同程表現，段速分唔再加（以前 75.86）
+        self.assertAlmostEqual(score, 74.36, places=2)
+        self.assertEqual(scorer.route_fit[0], 1.5)
         self.assertIn("Positive race sectional profile", reason)
         self.assertIn("L400=23.17", reason)
 

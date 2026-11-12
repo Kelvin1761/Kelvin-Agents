@@ -73,9 +73,9 @@ class JockeyScorer(BaseScorer):
                 has_g1 = any("G1" in str(r.get("class_level", "")).upper() or "1級" in str(r.get("class_level", "")) for r in pdf_races)
                 if has_g1:
                     self.score = scoring.JOCKEY_MICRO_WEIGHTS.get("overseas_g1_base", 85.0)
-                    self.reason = "Overseas Jockey (G1 Level)"
+                    self.reason = "冇騎師評級，以匹馬海外 G1 往績代替（85）"
                 else:
                     self.score = scoring.JOCKEY_MICRO_WEIGHTS.get("overseas_base", 70.0)
-                    self.reason = "Overseas Jockey"
+                    self.reason = "冇騎師評級，以匹馬海外往績代替（70）"
                     
         return self.score, self.reason

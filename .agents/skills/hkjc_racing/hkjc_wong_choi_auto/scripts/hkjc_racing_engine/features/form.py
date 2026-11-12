@@ -61,6 +61,10 @@ class FormScorer(BaseScorer):
                 weighted_sum += s * weight
                 total_weight += weight
             self.score = weighted_sum / total_weight
+            # 計法（純顯示）：名次分（1名100、2名85、3名75、4–5名60、其餘40）× 越近越重（1、1/2、1/3…）
+            pts = " ＋ ".join(f"{s:g}×{1 if i == 0 else f'1/{i + 1}'}" for i, s in enumerate(scores[:6]))
+            self.calc = (f"名次分：1名100、2名85、3名75、4–5名60、其餘40；越近權重越大（上仗 1、之前 1/2、1/3…）："
+                         f"（{pts}）÷ {total_weight:.2f} ＝ {self.score:.1f}")
 
             # Build a SPECIFIC Chinese note (finishes + top3/win counts). No filler
             # like 越近仗權重越高 (計法解釋唔幫到落注)。海外賽績唔混入呢句 —
