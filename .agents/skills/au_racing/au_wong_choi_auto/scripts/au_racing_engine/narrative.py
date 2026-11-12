@@ -374,7 +374,7 @@ class NarrativeMixin:
             )
         if key == "jockey_trainer":
             return self._anchor_lines(
-                ("Section內部權重", "騎師 28% / 練馬師 20% / 人馬歷史與換騎 52%"),
+                ("Section內部權重", self._jockey_trainer_weights_text()),
                 ("騎師 / 練馬師", self._jockey_trainer_pair_text()),
                 ("人馬歷史", self._current_jockey_history_brief()),
                 ("上仗正式賽騎師", self._latest_official_jockey_brief()),
@@ -530,7 +530,8 @@ class NarrativeMixin:
         )
         # 有計但唔直接入六維公式嘅分數 — 一併展示，唔收埋
         ref_bits = []
-        for ref_key, ref_label in (("distance_score", "路程分"), ("confidence_score", "信心分")):
+        # confidence_score 計嘅係資料錨點數目（30 ＋ 4×有值欄位…），唔係預測信心 → 叫「資料覆蓋分」。
+        for ref_key, ref_label in (("distance_score", "路程分"), ("confidence_score", "資料覆蓋分")):
             val = feature_scores.get(ref_key)
             if isinstance(val, (int, float)):
                 ref_bits.append(f"{ref_label} {float(val):.1f}")
@@ -549,7 +550,8 @@ class NarrativeMixin:
             skip = ("未見明確健康或備戰扣分訊號", "")
             if reason and reason not in skip:
                 direction = "⚠️" if float(health) < 60.0 else "＋"
-                ref_bits.append(f"備戰 {direction}{reason}")
+                # health_score 唯一輸入係距上仗日數 → 叫「出賽間隔」，唔好叫「備戰」。
+                ref_bits.append(f"出賽間隔 {direction}{reason}")
         if ref_bits:
             from .dimensions import ranking_dimension_numeral
             summary += f"\n**📎 參考分（不直接入{ranking_dimension_numeral(MATRIX_WEIGHTS)}維公式）：** " + "、".join(ref_bits)
@@ -563,8 +565,16 @@ class NarrativeMixin:
                 summary += "\n\n**⚠️ 風險標記:**\n" + "\n".join(flag_descriptions)
         return {"detail_lines": lines, "rows": rows, "weighted_sum": round(weighted_sum, 2), "summary": summary}
 
+    def _jockey_trainer_weights_text(self):
+        """由 MATRIX_FORMULAS 生成，唔好再寫死（舊字串 28/20/52 同真公式 33/29/38 唔一樣）。"""
+        names = {"jockey_score": "騎師", "trainer_score": "練馬師", "jockey_horse_fit_score": "人馬配搭"}
+        parts = MATRIX_FORMULAS.get("jockey_trainer") or ()
+        total = sum(float(w) for _, w in parts) or 1.0
+        return " / ".join(f"{names.get(k, k)} {float(w) / total:.1%}" for k, w in parts)
+
     def _au_risk_flag_description(self, flag):
         mapping = {
+            "form_flattered": "近仗有場次名次好睇但實際居後半或輸超過 5 個馬位（只作標示，不入分）",
             "high_consumption_load": "近仗走位消耗偏高，末段續航能力要再觀察",
             "top_weight": "頂磅環境要自己讓人，發揮要求更高",
             "pace_burn_risk": "若早段互燒，末段有機會先消耗後失速",
@@ -972,7 +982,9 @@ class NarrativeMixin:
             return "待驗證 (有對手線，未有後續承接)"
         if self._formline_rows() and self._is_misleading_formline_headline(text):
             return self._formline_inferred_level() or text
-        return text
+        # 上游「強組比例 a/b」嘅 a 係分數加總（超強 2、強 1、中 0.5），唔係「幾多個強組」，
+        # 可以大過 b（AU 標籤審計 2026-11-13 #2）。顯示改講真意思；Facts 原文唔郁。
+        return re.sub(r"強組比例[:：]\s*([\d.]+/\d+)", r"對手強度分 \1，超強2·強1·中0.5", text)
 
     def _formline_support_text(self, support, valid):
         if valid <= 0:

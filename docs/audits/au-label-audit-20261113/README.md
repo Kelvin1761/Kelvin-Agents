@@ -115,3 +115,23 @@ python3 -I docs/audits/au-label-audit-20261113/measure_leaves.py corpus.json
 python3 -I docs/audits/au-label-audit-20261113/formline_crosstab.py
 ```
 資料根：`~/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing`（腳本入面寫死）。基於 origin/main 5674bd8d。
+
+## 已修（2026-11-13，純顯示，Kelvin：「做顯示修正」）
+
+golden 120 匹全部一致；Eagle Farm R5 重新出報告，排名、綜合戰力分、`formline_score`、人馬配搭分零差。
+
+| # | 改咗咩 |
+|---|---|
+| 1 | `formline_headline()` 先剝走「(強組比例 …)」再分級；`_is_misleading_formline_headline` 嘅級別判斷同用 |
+| 2 | 報告「賽績線級別」行改寫成「對手強度分 a/b，超強2·強1·中0.5」（Facts 原文唔郁，HKJC 唔郁） |
+| 3 | 騎練「Section內部權重」由 `MATRIX_FORMULAS` 生成（33.3% / 28.6% / 38.1%） |
+| 4 | 人馬配搭 58：字眼改「各項調整都未觸發 … 定為 58 分」；拆解加一行「定為 58.0（唔係 60）」 |
+| 5 | 檔位形勢 tag 改「（參考·不入六維，檔位分經大場次檔位入綜合分）」；dashboard `parser_au` 改認「（參考…）」 |
+| 9 | `form_flattered` 加中文描述 |
+| 10／11 | `health_score` → 出賽間隔分、`confidence_score` → 資料覆蓋分；參考分行「備戰」→「出賽間隔」；dashboard 新舊名都認 |
+| 8 | `_pace_figure_score` docstring 改講真計法（標籤唔改，免 dashboard 斷） |
+
+未做（要 Kelvin 決定）：#6／#7「穩定性」改咩名、#7 賽績線 ✅✅ 門檻、入分候選 8–10。
+
+重出報告時新見到：「賽績線屬『極強 (對手強度分 4/3…)』」同「對手後續支持力弱」並排 —— 上游標題用 Facts 對手表計 4/3，
+但引擎嘅 `_formline_support_summary` 計到唔夠證據，`formline_score` ≤56。兩邊用唔同 population，未查。

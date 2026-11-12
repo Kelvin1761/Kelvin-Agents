@@ -45,7 +45,7 @@ class TestNoEvidenceSitsBelowNeutral:
         score, note, _src = eng._jockey_horse_fit_score()
         assert score == pytest.approx(jt.FIT_NO_EVIDENCE)
         assert score < 60.0
-        assert "並無任何人馬配搭紀錄" in note
+        assert "各項調整都未觸發" in note and "低過平均" in note
 
     def test_detail_records_no_adjustments(self):
         eng = engine()
