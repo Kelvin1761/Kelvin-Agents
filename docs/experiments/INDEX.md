@@ -4,6 +4,10 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261113-03](EXP-20261113-03-hkjc-figure-and-standard-into-sectional.md) | 2026-11-13 | HKJC | 表現數字／全程對馬會標準 混合入 speed_score（a 0.33／0.5，段速權重唔郁） | **REJECT（四個）**：Gold −1.54 至 −2.06 CI 全負；capture@5、頭二選有中輕微升 —— 同權重遷移一樣嘅形狀 |
+| [EXP-20261113-02](EXP-20261113-02-hkjc-per-section-vs-standard-screen.md) | 2026-11-13 | HKJC | 逐段段速對馬會標準（第一段、前段、L800、L400、後勁、全程）有冇模型之上增量 | **診斷**：L400／L800／後勁模型已食晒（ρ 0.5+、係數跨零）；前段同全程對標準有增量（Holm 0.007–0.009）；表現數字最強 |
+| [EXP-20261113-01](EXP-20261113-01-hkjc-results-db-signal-screen.md) | 2026-11-13 | HKJC | 賽果庫六個訊號：步速×跑法、體重變化、降班、騎師／練馬師手風、上仗受阻 | **REJECT 全部**：F1／F1b／F5 係數過 Holm 但 Gold／Good 冇一個 CI 全正，幅度 < 0.4pp；其餘冇訊號 |
+| [EXP-20261112-26](EXP-20261112-26-hkjc-weight-transfer-keep-class-sectional.md) | 2026-11-13 | HKJC | 權重遷移保留評分與經驗（K）／再保留段速（S） | **REJECT（四個）**：S100 Gold −3.08、Good −4.63 CI 全負；S50 Gold −1.80；K 版 recall@5 升但 Gold／Good 跌 |
 | [EXP-20261112-25](EXP-20261112-25-hkjc-weight-transfer-from-results-db.md) | 2026-11-12 | HKJC | 用賽果庫 5,528 場（同引擎語料唔重疊）估各維度份量，搬落真引擎外層權重 | **REJECT（T100、T50）**：狀態 8.8%→26%、檔位 27%→16%、評分與經驗→0；T100 頭二選有中 +3.60 CI 全正但 Good −3.86 CI 全負；T50 recall@5／頭三平均名次 CI 支持但 Gold −2.31。廣義排序改善、全中（Gold／Good）跌 |
 | [EXP-20261112-24](EXP-20261112-24-hkjc-label-renames-and-component-audit.md) | 2026-11-12 | HKJC | 留低但名不副實嘅標籤改名；33 個組件訊號審計 | **KEEP（純顯示）**：穩定性分→上名／大敗紀錄分、風險分→健康分、引擎型態→分段形態等 13 項；審計：狀態類用少咗、檔位類用多咗，但單一組件 A/B 全部唔過 |
 | [EXP-20261112-23](EXP-20261112-23-hkjc-st-trip-consumption.md) | 2026-11-12 | HKJC | 沙田近仗消耗分（AUC 0.468）剷走／調轉 | **REJECT（兩個）**：剷走 Gold −1.03；調轉 Good −2.06 CI 全負 |
