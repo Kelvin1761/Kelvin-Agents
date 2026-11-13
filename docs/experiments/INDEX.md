@@ -492,3 +492,4 @@
 - [EXP-20261113-08](EXP-20261113-08-hkjc-historic-sectional-screen.md) — HKJC 歷史逐匹分段 6,036 場（2019 起，同 formguide 10,047 匹次 0 差異）：**段速概念 PASS**。整組喺評分＋輸頭馬＋表現數字之上 +0.145／SD、頭二選有中 +0.74pp CI 全正，Gold／Good 冇跌；有用嘅係前段／全程對標準扣當日快慢＋前段走位，L400 已被食晒。下一步引擎 A/B
 - [EXP-20261113-09](EXP-20261113-09-hkjc-hist-sectional-engine-ab.md) — HKJC 引擎 A/B：歷史標準前段／全程對標準入段速（b=0.5，三個 arm）：**REJECT**（389 場 Gold −1.3、Good −1.0~−2.3）；但 Gold 跌幅同場內洗牌 null 一樣（38–51 百分位），capture@5／競爭 recall CI 全正、F 高過 97.5% null。呢個語料判唔到；要歷史回放或 forward
 - [EXP-20261113-41](EXP-20261113-41-au-short-straight-front-walkforward-results.md) — AU 短直路（<375m）前置馬加分，幅度 walk-forward 擬合（β ≈ 2.2，同人手 L2 一樣）：**REJECT / primary_regression**（Gold +0.08、Good −0.05 3/6 塊）；只有 top5 AUC +0.11 CI 全正 —— 頭 5 名排序準咗但換唔到 Gold／Good
+- [EXP-20261113-42](EXP-20261113-42-au-track-geometry-fill.md) — AU 賽道直路補齊：85 → 108 個場地；racinglife 回防機械人頁，加 horise 做第二來源（justhorseracing 有過期數，Gawler 2030/220 vs 官方 1840/300）；生成器 `--fill-missing` 唔再洗走級別；全語料排名零差

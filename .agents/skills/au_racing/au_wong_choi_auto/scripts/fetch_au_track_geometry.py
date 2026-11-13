@@ -11,13 +11,23 @@
   justhorseracing.com.au —— `<meta name=description>` 入面
                              `State: … Circumference: … Direction: … Straight: … <評語>`
 
-racinglife 做主，justhorseracing 補漏兼覆核。實測 justhorseracing 有幾個
+racinglife 做主，justhorseracing 補漏兼覆核。
+  horise.com          —— 2026-11-13 加：「circumference of 1,840m … 300m home straight」文字。
+                         racinglife 回防機械人頁之後，補數改為 horise 做主。
+
+次序：racinglife → horise → justhorseracing。justhorseracing 實測有過期數（Gawler 寫 2030／220，
+馬會官方同 horise 都係 1840／300），所以只有前兩個都冇先用佢。實測 justhorseracing 有幾個
 **過期**條目（Pakenham 仲係搬去 Tynong 之前嘅 1400m 舊場、Rockhampton 1600m），
 所以分歧一律以 racinglife 為準，同時將兩邊數字都寫入 `conflict` 留低證據。
 
     python3 fetch_au_track_geometry.py                 # 全部場地
     python3 fetch_au_track_geometry.py --venue Wyong   # 單一場地，覆核用
     python3 fetch_au_track_geometry.py --dry-run       # 唔寫檔，只印
+    python3 fetch_au_track_geometry.py --fill-missing  # 只補現有檔入面冇直路／周長嘅場地（唔郁其他行）
+
+⚠️ 全量重跑會用今次抓到嘅數覆蓋成個檔，包括 `backfill_track_classification_from_ra.py`
+補落去嘅級別。2026-11-13 racinglife 回防機械人頁（~100 bytes），全量重跑會洗走大部分數據 ——
+所以補數一律用 `--fill-missing`；`--venue` 亦只會更新嗰幾行（以前會將成個檔寫剩嗰幾行）。
 """
 from __future__ import annotations
 
@@ -45,7 +55,13 @@ SLUG_OVERRIDES = {
         "Canterbury": ["canterbury", "canterbury-park"],
         "Mount Gambier": ["mount-gambier", "mt-gambier"],
     },
+    "horise": {
+        "Launceston": ["launceston", "mowbray"],
+        "Rosehill Gardens": ["rosehill-gardens", "rosehill"],
+        "Mt Isa": ["mount-isa", "mt-isa"],
+    },
     "justhorseracing": {
+        "Launceston": ["launceston", "mowbray"],
         "Sandown": ["sandown-hillside"],
         "Mt Isa": ["mount-isa", "mt-isa"],
         "Devonport": ["devonport-synthetic", "devonport"],
@@ -76,6 +92,12 @@ VENUES = [
     "Tuncurry", "Wagga", "Wangaratta", "Warracknabeal", "Warrnambool", "Warwick Farm",
     "Wellington", "Wodonga", "Wyong",
 ]
+
+# racinglife 2026-11 起對 script 回 ~100 bytes 嘅防機械人頁（200 狀態碼）。當冇資料，唔好當「冇周長」。
+RACINGLIFE_MIN_BODY = 2000
+
+# 補數時要保留嘅欄位（由其他腳本寫入，生成器唔知）。
+PRESERVE_FIELDS = ("classification", "classification_source")
 
 # 分歧門檻：低過呢個當量度差異，唔算衝突。
 CIRC_TOLERANCE_M = 60
@@ -136,7 +158,7 @@ def _first_int(text: str) -> int | None:
 def fetch_racinglife(venue: str) -> dict:
     for slug in SLUG_OVERRIDES["racinglife"].get(venue, [slugify(venue)]):
         code, body = curl(f"https://www.racinglife.com.au/tracks/{slug}")
-        if code != "200":
+        if code != "200" or len(body) < RACINGLIFE_MIN_BODY:
             continue
         fields = {}
         for label in ("Classification", "Direction", "Surface", "Circumference", "Home straight", "Region"):
@@ -153,6 +175,37 @@ def fetch_racinglife(venue: str) -> dict:
                 "surface": fields.get("Surface", ""),
                 "region": fields.get("Region", ""),
             }
+    return {}
+
+
+# horise 句式唔統一（「circumference of around 1,600m」「1,735m in circumference」「home straight measuring close to 300m」）。
+# 直路一定要見到「home straight」先收，避免「600m 位入直路」呢類句誤當直路長度。
+HORISE_CIRC = (re.compile(r"(?<![\d,])circumference of (?:about |approximately |around |roughly |just over |just under )?([\d,]{3,5}) ?m", re.I),
+               re.compile(r"(?<![\d,])([\d,]{3,5}) ?m(?:etres?)? (?:in )?circumference", re.I))
+HORISE_STRAIGHT = (re.compile(r"(?<![\d,])([\d,]{3}) ?m(?:etres?)? (?:(?!(?:and|or|with|into|onto|to|the|from|of|at|on|in|down|along|before|after)\b)[a-z-]+ ){0,3}home straight", re.I),
+                   re.compile(r"home straight (?:of|measuring|measures|that measures|is|which is|stretching)"
+                              r"(?: (?:about|approximately|around|roughly|close to|just over|just under|some))? (?<![\d,])([\d,]{3}) ?m", re.I))
+
+
+def _first(patterns, text):
+    for pat in patterns:
+        m = pat.search(text)
+        if m:
+            return int(m.group(1).replace(",", ""))
+    return None
+
+
+def fetch_horise(venue: str) -> dict:
+    for slug in SLUG_OVERRIDES["horise"].get(venue, [slugify(venue)]):
+        code, body = curl(f"https://www.horise.com/track/{slug}/")
+        if code != "200":
+            continue
+        text = re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", body)))
+        circ, straight = _first(HORISE_CIRC, text), _first(HORISE_STRAIGHT, text)
+        if circ and straight and 1000 <= circ <= 3500 and 150 <= straight <= 700:
+            direction = ("anticlockwise" if re.search(r"anti-?clockwise|left-handed", text, re.I)
+                         else "clockwise" if re.search(r"\bclockwise|right-handed", text, re.I) else "")
+            return {"slug": slug, "circumference_m": circ, "straight_m": straight, "direction": direction}
     return {}
 
 
@@ -183,7 +236,7 @@ def fetch_justhorseracing(venue: str) -> dict:
     return {}
 
 
-def merge(venue: str, primary: dict, secondary: dict) -> dict:
+def merge(venue: str, primary: dict, secondary: dict, tertiary: dict | None = None) -> dict:
     """racinglife 做主。分歧唔靜靜取其一 —— 兩邊都寫低。"""
     row = {
         "venue": venue,
@@ -210,6 +263,13 @@ def merge(venue: str, primary: dict, secondary: dict) -> dict:
         # 唔好因為主源缺一格就整個場地當冇資料。
         if not row["straight_m"] and secondary.get("straight_m"):
             row["straight_m"] = secondary["straight_m"]
+    elif tertiary and tertiary.get("circumference_m"):
+        row.update({
+            "circumference_m": tertiary["circumference_m"],
+            "straight_m": tertiary.get("straight_m") or 0,
+            "direction": normalise_direction(tertiary.get("direction")) or normalise_direction(secondary.get("direction")),
+        })
+        row["sources"].append("horise")
     elif secondary.get("circumference_m"):
         row.update({
             "circumference_m": secondary["circumference_m"],
@@ -236,14 +296,16 @@ def merge(venue: str, primary: dict, secondary: dict) -> dict:
     if not row["circumference_m"] and venue in KNOWN_UNDOCUMENTED:
         row["undocumented"] = True
 
-    if primary.get("circumference_m") and secondary.get("circumference_m"):
-        d_circ = abs(primary["circumference_m"] - secondary["circumference_m"])
-        d_str = abs((primary.get("straight_m") or 0) - (secondary.get("straight_m") or 0))
-        if d_circ > CIRC_TOLERANCE_M or d_str > STRAIGHT_TOLERANCE_M:
-            row["conflict"] = {
-                "racinglife": [primary["circumference_m"], primary.get("straight_m")],
-                "justhorseracing": [secondary["circumference_m"], secondary.get("straight_m")],
-            }
+    seen = {name: src for name, src in (("racinglife", primary), ("horise", tertiary or {}),
+                                         ("justhorseracing", secondary)) if src.get("circumference_m")}
+    if len(seen) >= 2:
+        vals = {name: [src["circumference_m"], src.get("straight_m")] for name, src in seen.items()}
+        circs = [v[0] for v in vals.values()]
+        straights = [v[1] or 0 for v in vals.values()]
+        if max(circs) - min(circs) > CIRC_TOLERANCE_M or max(straights) - min(straights) > STRAIGHT_TOLERANCE_M:
+            row["conflict"] = vals
+    if tertiary and tertiary.get("circumference_m") and "horise" not in row["sources"]:
+        row["sources"].append("horise")
     return row
 
 
@@ -252,16 +314,33 @@ def main() -> int:
     parser.add_argument("--venue", action="append", help="只抽呢個場地（可重複）")
     parser.add_argument("--dry-run", action="store_true", help="唔寫檔")
     parser.add_argument("--sleep", type=float, default=0.3)
+    parser.add_argument("--fill-missing", action="store_true",
+                        help="只抽現有檔入面未有周長＋直路嘅場地，其他行原封不動")
     args = parser.parse_args()
 
-    venues = args.venue or VENUES
+    existing = {}
+    if RESOURCE_PATH.exists():
+        existing = json.loads(RESOURCE_PATH.read_text(encoding="utf-8")).get("venues", {})
+    if args.fill_missing:
+        venues = [row.get("venue") or key for key, row in sorted(existing.items())
+                  if not (row.get("circumference_m") and row.get("straight_m"))]
+    else:
+        venues = args.venue or VENUES
     rows = {}
     for i, venue in enumerate(venues, 1):
         primary = fetch_racinglife(venue)
         time.sleep(args.sleep)
         secondary = fetch_justhorseracing(venue)
         time.sleep(args.sleep)
-        row = merge(venue, primary, secondary)
+        tertiary = fetch_horise(venue)
+        time.sleep(args.sleep)
+        row = merge(venue, primary, secondary, tertiary)
+        prev = existing.get(slugify(venue)) or {}
+        for field in PRESERVE_FIELDS:
+            if prev.get(field) and not row.get(field):
+                row[field] = prev[field]
+        if (args.fill_missing or args.venue) and prev.get("circumference_m") and not row["circumference_m"]:
+            row = prev  # 今次抓唔到 → 保留舊行，唔好用空行蓋過
         rows[slugify(venue)] = row
         flag = "⚠" if row["conflict"] else ("✓" if row["circumference_m"] else "✗")
         print(
@@ -271,6 +350,8 @@ def main() -> int:
             file=sys.stderr, flush=True,
         )
 
+    if args.fill_missing or args.venue:
+        rows = {**existing, **rows}  # 部分更新：未抽嘅場地原封不動
     known = sum(1 for r in rows.values() if r["circumference_m"] and r["straight_m"])
     payload = {
         "generated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),

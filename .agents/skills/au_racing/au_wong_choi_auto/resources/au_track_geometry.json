@@ -1,12 +1,12 @@
 {
- "generated_utc": "2026-09-02T02:28:31Z",
+ "generated_utc": "2026-11-13T06:49:26Z",
  "sources": {
   "racinglife": "https://www.racinglife.com.au/tracks/<slug>",
   "justhorseracing": "https://www.justhorseracing.com.au/tracks/<slug>-racecourse"
  },
  "resolution_rule": "racinglife 做主；justhorseracing 補漏兼覆核；分歧記入 conflict 但採用 racinglife",
  "venues_total": 133,
- "venues_with_geometry": 85,
+ "venues_with_geometry": 108,
  "venues": {
   "albury": {
    "venue": "Albury",
@@ -49,14 +49,16 @@
   },
   "armidale": {
    "venue": "Armidale",
-   "circumference_m": 0,
-   "straight_m": 0,
-   "direction": "",
+   "circumference_m": 1600,
+   "straight_m": 320,
+   "direction": "clockwise",
    "classification": "Country",
    "surface": "",
-   "state": "",
-   "note": "",
-   "sources": [],
+   "state": "NSW",
+   "note": "Long, sharp home downhill home turn. Uphill to finish.",
+   "sources": [
+    "justhorseracing"
+   ],
    "conflict": null,
    "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
   },
@@ -77,27 +79,32 @@
   },
   "bairnsdale": {
    "venue": "Bairnsdale",
-   "circumference_m": 0,
-   "straight_m": 0,
-   "direction": "",
+   "circumference_m": 1800,
+   "straight_m": 280,
+   "direction": "anticlockwise",
    "classification": "Country",
    "surface": "",
-   "state": "",
-   "note": "",
-   "sources": [],
+   "state": "VIC",
+   "note": "Sweeping home turn with short run home.",
+   "sources": [
+    "justhorseracing"
+   ],
    "conflict": null,
    "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 2"
   },
   "balaklava": {
    "venue": "Balaklava",
-   "circumference_m": 0,
-   "straight_m": 0,
-   "direction": "",
+   "circumference_m": 2053,
+   "straight_m": 453,
+   "direction": "anticlockwise",
    "classification": "Provincial",
    "surface": "",
-   "state": "",
-   "note": "",
-   "sources": [],
+   "state": "SA",
+   "note": "Excellent track favoured by the top stables. Cambered sweeping home turn.",
+   "sources": [
+    "horise",
+    "justhorseracing"
+   ],
    "conflict": null,
    "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Provincial 2"
   },
@@ -445,14 +452,16 @@
   },
   "cootamundra": {
    "venue": "Cootamundra",
-   "circumference_m": 0,
-   "straight_m": 0,
-   "direction": "",
+   "circumference_m": 1820,
+   "straight_m": 350,
+   "direction": "clockwise",
    "classification": "Country",
    "surface": "",
-   "state": "",
-   "note": "",
-   "sources": [],
+   "state": "NSW",
+   "note": "Shute starts allow for short runs to turns.",
+   "sources": [
+    "justhorseracing"
+   ],
    "conflict": null,
    "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
   },
@@ -518,14 +527,16 @@
   },
   "donald": {
    "venue": "Donald",
-   "circumference_m": 0,
-   "straight_m": 0,
-   "direction": "",
+   "circumference_m": 1747,
+   "straight_m": 350,
+   "direction": "anticlockwise",
    "classification": "Country",
    "surface": "",
-   "state": "",
-   "note": "",
-   "sources": [],
+   "state": "VIC",
+   "note": "Long sweeping home turn. Inside draws an advantage.",
+   "sources": [
+    "justhorseracing"
+   ],
    "conflict": null,
    "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
   },
@@ -633,28 +644,42 @@
   },
   "gatton": {
    "venue": "Gatton",
-   "circumference_m": 0,
-   "straight_m": 0,
-   "direction": "",
+   "circumference_m": 1700,
+   "straight_m": 300,
+   "direction": "clockwise",
    "classification": "Country",
    "surface": "",
-   "state": "",
-   "note": "",
-   "sources": [],
+   "state": "QLD",
+   "note": "Always turning. Nightmare out wide. Suits smart jockeys",
+   "sources": [
+    "justhorseracing"
+   ],
    "conflict": null,
    "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
   },
   "gawler": {
    "venue": "Gawler",
-   "circumference_m": 0,
-   "straight_m": 0,
-   "direction": "",
+   "circumference_m": 1840,
+   "straight_m": 300,
+   "direction": "anticlockwise",
    "classification": "Provincial",
    "surface": "",
-   "state": "",
-   "note": "",
-   "sources": [],
-   "conflict": null,
+   "state": "SA",
+   "note": "Turning track with tricky short turn home. Wide draws a distinct worry",
+   "sources": [
+    "horise",
+    "justhorseracing"
+   ],
+   "conflict": {
+    "horise": [
+     1840,
+     300
+    ],
+    "justhorseracing": [
+     2030,
+     220
+    ]
+   },
    "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Provincial 2"
   },
   "geelong": {
@@ -674,14 +699,16 @@
   },
   "geraldton": {
    "venue": "Geraldton",
-   "circumference_m": 0,
-   "straight_m": 0,
+   "circumference_m": 1600,
+   "straight_m": 300,
    "direction": "",
    "classification": "Provincial",
    "surface": "",
    "state": "",
    "note": "",
-   "sources": [],
+   "sources": [
+    "horise"
+   ],
    "conflict": null,
    "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Provincial 1"
   },
@@ -773,14 +800,16 @@
   },
   "gundagai": {
    "venue": "Gundagai",
-   "circumference_m": 0,
-   "straight_m": 0,
-   "direction": "",
+   "circumference_m": 1900,
+   "straight_m": 300,
+   "direction": "clockwise",
    "classification": "Country",
    "surface": "",
-   "state": "",
-   "note": "",
-   "sources": [],
+   "state": "NSW",
+   "note": "Tricky, turning track. Wide draws less disadvantaged by starts from 1000m to 1180m.",
+   "sources": [
+    "justhorseracing"
+   ],
    "conflict": null,
    "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
   },
@@ -815,14 +844,16 @@
   },
   "hamilton": {
    "venue": "Hamilton",
-   "circumference_m": 0,
-   "straight_m": 0,
-   "direction": "",
+   "circumference_m": 2030,
+   "straight_m": 400,
+   "direction": "anticlockwise",
    "classification": "Country",
    "surface": "",
-   "state": "",
-   "note": "",
-   "sources": [],
+   "state": "VIC",
+   "note": "Long straights, tightish turns. Steep climb from 1600m to 900m.",
+   "sources": [
+    "justhorseracing"
+   ],
    "conflict": null,
    "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 2"
   },
@@ -924,14 +955,16 @@
   },
   "kempsey": {
    "venue": "Kempsey",
-   "circumference_m": 0,
-   "straight_m": 0,
-   "direction": "",
+   "circumference_m": 1580,
+   "straight_m": 300,
+   "direction": "clockwise",
    "classification": "Country",
    "surface": "",
-   "state": "",
-   "note": "",
-   "sources": [],
+   "state": "NSW",
+   "note": "Undulating track. Dips at the 1000m. Rises on the home turn.",
+   "sources": [
+    "justhorseracing"
+   ],
    "conflict": null,
    "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
   },
@@ -966,66 +999,78 @@
   },
   "kilmore": {
    "venue": "Kilmore",
-   "circumference_m": 0,
-   "straight_m": 0,
-   "direction": "",
+   "circumference_m": 1735,
+   "straight_m": 320,
+   "direction": "anticlockwise",
    "classification": "Country",
    "surface": "",
-   "state": "",
-   "note": "",
-   "sources": [],
+   "state": "VIC",
+   "note": "Tightish home turn. Tough to be drawn wide from 1600m start. Uphill run home.,",
+   "sources": [
+    "horise",
+    "justhorseracing"
+   ],
    "conflict": null,
    "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 3"
   },
   "kyneton": {
    "venue": "Kyneton",
-   "circumference_m": 0,
-   "straight_m": 0,
-   "direction": "",
+   "circumference_m": 1610,
+   "straight_m": 320,
+   "direction": "anticlockwise",
    "classification": "Country",
    "surface": "",
-   "state": "",
-   "note": "",
-   "sources": [],
+   "state": "VIC",
+   "note": "Circular, picturesque track. Best to be on the fence.",
+   "sources": [
+    "justhorseracing"
+   ],
    "conflict": null,
    "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
   },
   "launceston": {
    "venue": "Launceston",
-   "circumference_m": 0,
-   "straight_m": 0,
-   "direction": "",
+   "circumference_m": 1830,
+   "straight_m": 230,
+   "direction": "anticlockwise",
    "classification": "Metropolitan",
    "surface": "",
-   "state": "",
-   "note": "",
-   "sources": [],
+   "state": "TAS",
+   "note": "Unusual shape with short run home. Inside draws a big advantage from 1200m start",
+   "sources": [
+    "justhorseracing"
+   ],
    "conflict": null,
    "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Metropolitan 1"
   },
   "leeton": {
    "venue": "Leeton",
-   "circumference_m": 0,
-   "straight_m": 0,
-   "direction": "",
+   "circumference_m": 1600,
+   "straight_m": 380,
+   "direction": "clockwise",
    "classification": "Country",
    "surface": "",
-   "state": "",
-   "note": "",
-   "sources": [],
+   "state": "NSW",
+   "note": "Square shaped track with tight turns.",
+   "sources": [
+    "justhorseracing"
+   ],
    "conflict": null,
    "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
   },
   "lismore": {
    "venue": "Lismore",
-   "circumference_m": 0,
-   "straight_m": 0,
-   "direction": "",
+   "circumference_m": 1600,
+   "straight_m": 400,
+   "direction": "clockwise",
    "classification": "Country",
    "surface": "",
-   "state": "",
-   "note": "",
-   "sources": [],
+   "state": "NSW",
+   "note": "Fairest starts are from 1400m and 1500m shutes.",
+   "sources": [
+    "horise",
+    "justhorseracing"
+   ],
    "conflict": null,
    "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 2"
   },
@@ -1118,14 +1163,17 @@
   },
   "mornington": {
    "venue": "Mornington",
-   "circumference_m": 0,
-   "straight_m": 0,
-   "direction": "",
+   "circumference_m": 1800,
+   "straight_m": 210,
+   "direction": "anticlockwise",
    "classification": "Country",
    "surface": "",
-   "state": "",
-   "note": "",
-   "sources": [],
+   "state": "VIC",
+   "note": "Unusul shape, famous for its figure-8 'chase circuit. Local knowledge an advantage. They get going wide along side straight.",
+   "sources": [
+    "horise",
+    "justhorseracing"
+   ],
    "conflict": null,
    "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 2, Metropolitan 1"
   },
@@ -1146,14 +1194,16 @@
   },
   "morphettville-parks": {
    "venue": "Morphettville Parks",
-   "circumference_m": 0,
-   "straight_m": 0,
+   "circumference_m": 2100,
+   "straight_m": 320,
    "direction": "",
    "classification": "Metropolitan",
    "surface": "",
    "state": "",
    "note": "",
-   "sources": [],
+   "sources": [
+    "horise"
+   ],
    "conflict": null,
    "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Metropolitan 3"
   },
@@ -1358,14 +1408,16 @@
   },
   "orange": {
    "venue": "Orange",
-   "circumference_m": 0,
-   "straight_m": 0,
-   "direction": "",
+   "circumference_m": 1800,
+   "straight_m": 350,
+   "direction": "clockwise",
    "classification": "Country",
    "surface": "",
-   "state": "",
-   "note": "",
-   "sources": [],
+   "state": "NSW",
+   "note": "Circular track. Tough drawn out wide. Downhill from 1600m.",
+   "sources": [
+    "justhorseracing"
+   ],
    "conflict": null,
    "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
   },
@@ -1452,14 +1504,16 @@
   },
   "port-lincoln": {
    "venue": "Port Lincoln",
-   "circumference_m": 0,
-   "straight_m": 0,
-   "direction": "",
+   "circumference_m": 1550,
+   "straight_m": 280,
+   "direction": "anticlockwise",
    "classification": "Country",
    "surface": "",
-   "state": "",
-   "note": "",
-   "sources": [],
+   "state": "SA",
+   "note": "Short run home. Long sweeping turn from 900. Inside big advantage",
+   "sources": [
+    "justhorseracing"
+   ],
    "conflict": null,
    "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
   },
@@ -1479,14 +1533,16 @@
   },
   "queanbeyan": {
    "venue": "Queanbeyan",
-   "circumference_m": 0,
-   "straight_m": 0,
-   "direction": "",
+   "circumference_m": 1745,
+   "straight_m": 350,
+   "direction": "clockwise",
    "classification": "Country",
    "surface": "",
-   "state": "",
-   "note": "",
-   "sources": [],
+   "state": "NSW",
+   "note": "Circular track with rise in straight from 200m to post.",
+   "sources": [
+    "justhorseracing"
+   ],
    "conflict": null,
    "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
   },
@@ -1686,14 +1742,16 @@
   },
   "swan-hill": {
    "venue": "Swan Hill",
-   "circumference_m": 0,
-   "straight_m": 0,
+   "circumference_m": 1900,
+   "straight_m": 475,
    "direction": "",
    "classification": "Country",
    "surface": "",
    "state": "",
    "note": "",
-   "sources": [],
+   "sources": [
+    "horise"
+   ],
    "conflict": null,
    "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
   },
@@ -1729,14 +1787,16 @@
   },
   "tatura": {
    "venue": "Tatura",
-   "circumference_m": 0,
-   "straight_m": 0,
-   "direction": "",
+   "circumference_m": 1600,
+   "straight_m": 220,
+   "direction": "anticlockwise",
    "classification": "Country",
    "surface": "",
-   "state": "",
-   "note": "",
-   "sources": [],
+   "state": "VIC",
+   "note": "Long sweeping home turn, short run home.",
+   "sources": [
+    "justhorseracing"
+   ],
    "conflict": null,
    "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 2"
   },
