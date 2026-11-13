@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 import unittest
+from unittest import mock
 from pathlib import Path
 
 
@@ -62,6 +63,13 @@ class ProvenClassFeatureTests(unittest.TestCase):
         self.assertEqual(last, 0.0)
         self.assertEqual(maiden, 0.0)
 
+    def test_retired_by_default(self) -> None:
+        """EXP-20261113-22（用戶 2026-11-13 剷走）：預設永遠 0；`WC_AU_PROVEN_CLASS_LIVE=1` 先回退。"""
+        from au_racing_engine import class_rating
+        self.assertFalse(class_rating.PROVEN_CLASS_LIVE)
+        self.assertEqual(class_rating.proven_class_overlay(1.5), 0.0)
+
+    @mock.patch("au_racing_engine.class_rating.PROVEN_CLASS_LIVE", True)
     def test_field_relative_overlay_is_applied_and_missing_is_neutral(self) -> None:
         horses = {
             "1": _horse("1", "BM78"),

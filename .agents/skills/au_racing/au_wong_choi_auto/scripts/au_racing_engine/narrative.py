@@ -523,7 +523,7 @@ class NarrativeMixin:
         # 軟／重地往績（EXP-20261113-21：兩份都要留 —— 剷任何一份 Gold 都跌），所以要擺埋一齊
         # 睇：「呢匹馬場地／地況總共攞幾多」。純顯示，唔改任何分數。
         overlay_values = {"track": ("濕地往績調整", wet_form_feature),
-                          "class_weight": ("高班實績證明", class_proof_feature),
+                          "class_weight": ("高班實績證明", class_proof_feature),  # 已剷（EXP-20261113-22）→ 0，唔會出
                           "pace_perf": ("逐駒全程速度", full_time_speed_feature),
                           "race_shape": ("大場次檔位", draw_feature)}
         contrib = {row["key"]: row["contribution"] for row in rows}
@@ -544,8 +544,8 @@ class NarrativeMixin:
             f"{table}\n{group_line}\n"
             f"**→ 60 ＋ 各項貢獻 = {base_7d_score:.2f} 分；"
             f"濕地往績調整 {float(wet_form_feature):+.2f}；"
-            f"高班實績證明 {float(class_proof_feature):+.2f}；"
-            f"逐駒全程速度 {float(full_time_speed_feature):+.4f}；"
+            + (f"高班實績證明 {float(class_proof_feature):+.2f}；" if abs(float(class_proof_feature or 0)) >= 0.005 else "")
+            + f"逐駒全程速度 {float(full_time_speed_feature):+.4f}；"
             f"大場次檔位 {float(draw_feature):+.2f}；"
             f"綜合戰力分 = {ability_score:.2f} 分 → Grade = [{grade}]**"
         )

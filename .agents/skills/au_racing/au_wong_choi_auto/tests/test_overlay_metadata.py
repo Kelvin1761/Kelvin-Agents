@@ -20,7 +20,8 @@ def _horse(pure, wet, proven, full, trip=None):
 
 class OverlayMetadataTests(unittest.TestCase):
     def test_overlays_add_up_to_ability(self):
-        meta = overlay_metadata({"1": _horse(70.1234, 0.5, -0.25, 1.1)})
+        # 高班實績證明 2026-11-13 退出（EXP-20261113-22）→ 引擎永遠 0
+        meta = overlay_metadata({"1": _horse(70.1234, 0.5, 0.0, 1.1)})
         h = meta["horses"]["1"]
         self.assertEqual(meta["schema"], "au/overlays-v1")
         self.assertAlmostEqual(h["pure_7d_score"] + sum(o["value"] for o in h["overlays"]), h["ability_score"], places=4)
@@ -29,6 +30,7 @@ class OverlayMetadataTests(unittest.TestCase):
         h = overlay_metadata({"1": _horse(60, 0, 0, 0)})["horses"]["1"]
         self.assertEqual([o["key"] for o in h["overlays"]], [k for k, *_ in OVERLAYS])
         self.assertTrue(all(o["dimension"] for o in h["overlays"]))
+        self.assertNotIn("proven_class", [o["key"] for o in h["overlays"]])
 
     def test_trip_change_is_flagged_not_added(self):
         trip = {"today": 1600, "last": 1100.0, "delta": -5.0}

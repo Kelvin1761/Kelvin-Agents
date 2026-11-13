@@ -58,3 +58,13 @@ python3 scratch/au_noise_judge_20261113.py "$D/BASE.json" "$D/arms22" 22        
 python3 scratch/au_track_rebuild_judge_20261102.py "$D/BASE.json" "$D/P1.json" OUT  # P1／T1／T2（dump 要研究開關，已拆）
 python3 scratch/au_formline_consistency_20261113.py 2026-11-01
 ```
+
+## 用戶決定（2026-11-13）：剷走高班實績證明
+
+Kelvin：「剷走」。改動：`class_rating.PROVEN_CLASS_LIVE = False`（`WC_AU_PROVEN_CLASS_LIVE=1` 即時回退）—— `proven_class_overlay` 永遠回 0；
+欄位 `proven_class_feature` 保留（評估工具、forward、dashboard 唔使改）。報告公式行、overlay metadata、`RANKING_OVERLAYS`（模型說明）唔再列；
+數據合約唔再觀察佢（永遠 0 唔係死欄位），並已重新 `--calibrate`。
+
+**真引擎驗證**：用新 code 重評全 archive（`FINAL.json`），對 `BASE − proven_class` 最大差 0.0001，冇一匹馬仲有非零值；
+判決同離線 arm 一樣：Gold +0.134 [−0.161, +0.417] 5/6、Good +0.054 [−0.330, +0.417] 4/6，top5 AUC −0.002，分層冇 CI 全負
+（`EXP-20261113-22-evidence/FINAL_proven_class_removed.verdict.json`）。性質係**冇代價簡化**，唔係改善。golden 唔覆蓋 overlay，所以 120/120 不變係預期。

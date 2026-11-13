@@ -4,7 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
-| [EXP-20261113-22](EXP-20261113-22-au-trial-wet-improve-and-loo-results.md) | 2026-11-13 | AU | 試閘只計今次備戰期、場地×濕地重疊減半、其餘每個入分組件逐個剷走 | **改善 arm 全 REJECT**（只計今次令試閘覆蓋跌到 95–97% 中性）；消融：每個組件都蝕，**只有高班實績證明剷咗唔蝕**（Gold +0.13、Good +0.05，CI 跨零）→ 交用戶決定；dashboard overlay 歸組顯示 |
+| [EXP-20261113-22](EXP-20261113-22-au-trial-wet-improve-and-loo-results.md) | 2026-11-13 | AU | 試閘只計今次備戰期、場地×濕地重疊減半、其餘每個入分組件逐個剷走 | **改善 arm 全 REJECT**（只計今次令試閘覆蓋跌到 95–97% 中性）；消融：每個組件都蝕，**只有高班實績證明剷咗唔蝕**（Gold +0.13、Good +0.05，CI 跨零）→ **用戶決定剷走**（`PROVEN_CLASS_LIVE=False`，真引擎重評驗證一致）；dashboard overlay 歸組顯示 |
 | [EXP-20261113-21](EXP-20261113-21-au-noise-and-double-count-results.md) | 2026-11-13 | AU | 標籤審計嘅噪音嫌疑訊號（試閘 L600、試閘備戰、級數分、場地維度）同場地×濕地重複計分係咪可以剷 | **六個 arm 全部 REJECT，全部保留**（窄而唔係嘈：剷試閘短賠首選 Gold CI 全負；剷濕地 overlay Good +0.70 但 Gold −0.48 CI 全負）；重複計分改為「按維度合計」顯示；同改：近績穩定性改名、賽績線延續行 parser 修正（每場只讀到頭一個對手） |
 | [EXP-20261113-07](EXP-20261113-07-hkjc-front-section-no-weight.md) | 2026-11-13 | HKJC | 前段組件唔換算負磅（雙向／單邊，b 0.25／0.5） | **REJECT**：有／冇負磅相關 0.990，結果幾乎一樣；holdout Gold 0–21 百分位；前段同檔位走位維度完全正交（ρ 0.00）—— 模型真係冇睇前段，但放入排名唔改善 Gold／Good |
 | [EXP-20261113-06](EXP-20261113-06-hkjc-front-section-oneside-pace.md) | 2026-11-13 | HKJC | 前段組件 Gold 跌嘅原因＋單邊（慢前段唔扣）／單邊＋步速（快馬多就減）修正 | **REJECT**：換出頭四嘅馬入位率 33% > 換入 25%；單邊令 Good 唔跌但 holdout Gold 喺 null 0–7 百分位；V2 dev 正 holdout 失效 |

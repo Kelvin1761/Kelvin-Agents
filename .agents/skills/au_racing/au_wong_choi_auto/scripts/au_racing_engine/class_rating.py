@@ -30,6 +30,8 @@
 """
 from __future__ import annotations
 
+import os
+
 from .dimensions import CLASS_SCORE_LIVE, CLASS_SCORE_LIVE_WEIGHT, RATING_SCORE_SHARE
 from .scoring import CLASS_MICRO_WEIGHTS, PROVEN_CLASS_Z_WEIGHT, clip_score
 
@@ -105,8 +107,14 @@ def proven_class_z(raw, count, mean, stdev):
     return (raw - mean) / stdev
 
 
+# EXP-20261113-22（用戶 2026-11-13「剷走」）：逐個消融入面唯一剷咗唔蝕嘅組件 —— 3,736 場 Gold +0.13pp、
+# Good +0.05pp（CI 跨零），冇 ranking metric 或分層 CI 全負。係「冇代價簡化」，唔係改善。
+# 欄位 `proven_class_feature` 保留但永遠 0（舊工具／dashboard 唔使改）；`WC_AU_PROVEN_CLASS_LIVE=1` 即時回退。
+PROVEN_CLASS_LIVE = os.environ.get("WC_AU_PROVEN_CLASS_LIVE", "0") != "0"
+
+
 def proven_class_overlay(z):
-    if z is None:
+    if z is None or not PROVEN_CLASS_LIVE:
         return 0.0
     return PROVEN_CLASS_Z_WEIGHT * z
 
