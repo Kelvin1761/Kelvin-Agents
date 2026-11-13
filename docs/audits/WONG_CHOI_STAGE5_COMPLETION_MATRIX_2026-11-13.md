@@ -89,3 +89,46 @@ time, report the precise dependency and stop under Goal blocked-audit rules.
 Do not recreate heartbeat polling, add placeholder frameworks or mark Stage5
 complete because fixtures pass. No new automatic delegation is authorized beyond
 the same previously approved read-only reviewer.
+
+
+## Goal execution updates after the initial audit
+
+The observations above retain their original audit boundary. The following
+session engineering changes supersede the earlier absence-of-implementation
+statements only; no Task6–10 completion checkbox is granted.
+
+- Private Dashboard seven-path slice7c06dad5f79aec093ee7b6156cfaaf60beed7224
+  passed the real clean immutable full gate1914.605s, same-process receipt plus
+  independent clean quick24.1s, pushed/merged and activation_succeeded on
+  2026-11-13 at11:06:49Z. Dashboard deploy exit0, installers empty. Independent
+  checks found all seven files exact, all four required-file verifiers aligned
+  and actual installed/loaded four-domain+Central paths aligned/attention empty.
+  Ordinary primary Telegram success already sent one part/one target; never
+  duplicate. Follow-up owned nonmain documentation checkpoint372e5479 retains
+  the evidence. Live homepage and research API both returned the same non-JSON
+  403 to anonymous HTTP inspection, so authenticated live feed/publication
+  acceptance remains unverified. Do not bypass access or create credentials.
+- Task6 full-model replay inspection with the same authorized reviewer ruled
+  out matrix-only/compact composition as complete AU/HKJC replay. HKJC full
+  production enrichment, SIP, field robustness, overlays, display rounding,
+  official ranking and verdict must remain together; AU also rebuilds
+  Facts/resource/field-relative features. Numeric/category generic projections
+  cannot carry the necessary full raw-resource boundary by hiding JSON blobs.
+- Actual HKJC production writer now delegates to the complete shared
+  score_logic_data entry in owned nonmain checkpoint
+  21529318e488df09c865857bc70c28cc16b33744, branch
+  codex-stage5-domain-replay-boundary-20261113. RED4 reproduced; pre-edit
+  eight-horse scoring fingerprint retained, focused94 tests and full HKJC auto
+  301 tests pass; quick/goldens unchanged. Same reviewer found no extraction
+  must-fix by source inspection only. This is clean pushed WIP, not released,
+  not an offline/PIT sandbox, and it does not unlock power parent/worker guards.
+- Continue real AU/HKJC audited pre-decision resource materializers, canonical
+  seven-metric measurement and supervised integration. Actual preregistered
+  datasets/protocol/comparator and separate reviewed power authority remain
+  required before corpus execution. Frozen Stage5 v2 and newer production v3
+  evaluation boundaries must not be silently reconciled by this engineering.
+- Existing forward native executor remains hard disabled. Trusted exact-source
+  review publication, target/dependency provenance and foreign-cadence holds
+  remain unresolved. Notification5045844e remains after cadence only. All
+  incident freezes, original pilots/SLO/exit requirements and deleted-automation
+  prohibition remain unchanged.
