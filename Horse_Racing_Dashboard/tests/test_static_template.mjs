@@ -2103,9 +2103,8 @@ test("NBA dashboard embeds periods and counts only verified paper results", () =
   assert.equal(metrics.profit,.5);assert.equal(metrics.roi,25);
   assert.equal(metrics.legN,3);assert.equal(metrics.legWins,2);
   const html=api.renderSportsWorkspace('nba');
-  // Kelvin 2026-11-13: the main page switches between today, week, month and all time.
-  for(const period of ['day','week','month','all']) assert.ok(html.includes("setNbaPeriod('today','"+period+"')"),period);
-  assert.match(html,/今日投注表現/);assert.match(html,/\+25%/);
+  // Kelvin 2026-11-13: the main page shows today only.
+  assert.doesNotMatch(html,/class="dashboard-periods"|setNbaPeriod/);assert.match(html,/今日投注表現/);assert.match(html,/\+25%/);
   assert.match(html,/每注 \$1/);assert.doesNotMatch(html,/<script>alert/);
   assert.match(html,/&lt;script&gt;/);assert.doesNotMatch(html,/示範結算/);
 });
@@ -2873,7 +2872,7 @@ test("AU overlay is shown beside the dimension it belongs to (EXP-20261113-21)",
   assert.doesNotMatch(html.split("騎練訊號")[1].split("dim-row")[0], /連濕地/);
 });
 
-test('NBA main page switches periods for SGM and 大細盤精選 together and carries the pregame analysis',()=>{
+test('NBA main page is today only for SGM and 大細盤精選, the 精選 tab switches periods, and the pregame analysis is on the main page',()=>{
   const day=new Intl.DateTimeFormat('en-CA',{timeZone:'Australia/Sydney'}).format(new Date());
   const old='2026-10-26';   // after the tracking start, before any current week
   const sgm=(id,d)=>({id,day:d,event_name:'BOS @ NYK',game_tag:'BOS_NYK',stake:1,odds:2.5,state:'won',legs:[{player:'A',stat:'PTS',line:20,state:'won',actual:25}]});
@@ -2882,12 +2881,13 @@ test('NBA main page switches periods for SGM and 大細盤精選 together and ca
   api.showSport('nba');
   let html=api.renderSportsWorkspace('nba');
   assert.match(html,/今日投注表現/);assert.match(html,/今日精選表現/);
+  assert.doesNotMatch(html,/setNbaPeriod|dashboard-chart/);              // no period buttons, no curve on the main page
   assert.match(html,/id="nba-pregame"/);assert.match(html,/onclick="nbaOpenPregame\(\)"/);assert.match(html,/2 個 SGM 候選/);
-  assert.doesNotMatch(html,/dashboard-chart/);                        // a single day has no curve
-  api.setNbaPeriod('today','all');html=api.renderSportsWorkspace('nba');
-  assert.match(html,/累計投注表現/);assert.match(html,/累計精選表現/);assert.match(html,/dashboard-chart/);
-  assert.match(html,/2<small>張<\/small>/);assert.match(html,/2<small>注<\/small>/);   // both days counted
-  api.setNbaPeriod('today','bogus');assert.match(api.renderSportsWorkspace('nba'),/累計投注表現/);
+  api.setNbaPeriod('today','all');assert.match(api.renderSportsWorkspace('nba'),/今日投注表現/);   // the main page ignores a period
+  api.setSportsTabForTest('featured');html=api.renderSportsWorkspace('nba');
+  for(const period of ['day','week','month','all']) assert.ok(html.includes("setNbaPeriod('featured','"+period+"')"),period);
+  assert.match(html,/累計精選表現/);assert.match(html,/2<small>注<\/small>/);
+  api.setNbaPeriod('featured','day');assert.match(api.renderSportsWorkspace('nba'),/今日精選表現/);
   api.setSportsTab('roi');assert.equal(api.getSportsTabForTest(),'history');
   api.setSportsTab('bets');assert.equal(api.getSportsTabForTest(),'history');
 });
