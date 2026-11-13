@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261113-30](EXP-20261113-30-hkjc-long-history-results.md) | 2026-11-13 | HKJC | 狀態／輸距穩定性延長至十二仗、同程調整改同場同程；四 arm＋對稱 walk-forward refit | **未證實改善，live 不改**：290場；單獨延長窗 Good各−0.34pp；合併 Gold／Good打和、微弱排序訊號 family Holm p=0.384；同場同程 Good−1.03pp，泥地僅7場 |
 | [EXP-20261113-24](EXP-20261113-24-au-l600-weight-conversion-results.md) | 2026-11-13 | AU | HKJC L400 負磅換算搬去 AU：L600 環境分逐仗按今仗－該仗負磅換算（係數用判決窗前 84,677 仗量） | **REJECT ×2，效果近乎零**：AU 每 kg 只多輸 0.004 秒（長途 0.026），HKJC 約 0.035；Gold／Good 只差 1 場 |
 | [EXP-20261113-23](EXP-20261113-23-au-new-components-results.md) | 2026-11-13 | AU | 新計分組件：騎練 point-in-time 情境率（近期／地況／路程／休後）、試閘覆蓋擴闊、長途段速、短直路前置加分 | **十個 arm 全部 REJECT**：情境率覆蓋 ~90% 但冇好過 LY 整體率；試閘擴闊覆蓋反而蝕；長途段速同短直路前置打和 |
 | [EXP-20261113-22](EXP-20261113-22-au-trial-wet-improve-and-loo-results.md) | 2026-11-13 | AU | 試閘只計今次備戰期、場地×濕地重疊減半、其餘每個入分組件逐個剷走 | **改善 arm 全 REJECT**（只計今次令試閘覆蓋跌到 95–97% 中性）；消融：每個組件都蝕，**只有高班實績證明剷咗唔蝕**（Gold +0.13、Good +0.05，CI 跨零）→ **用戶決定剷走**（`PROVEN_CLASS_LIVE=False`，真引擎重評驗證一致）；dashboard overlay 歸組顯示 |
