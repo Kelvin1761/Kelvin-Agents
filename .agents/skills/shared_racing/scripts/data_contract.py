@@ -254,8 +254,8 @@ def observe(paths, platform: str | None = None,
                 pa = h.get("python_auto") or {}
                 if wet_applicable and "wet_form_feature" in pa:
                     row["wet_form_feature"] = pa["wet_form_feature"]
-                if "proven_class_feature" in pa:
-                    row["proven_class_feature"] = pa["proven_class_feature"]
+                # proven_class_feature 2026-11-13 退出綜合分（EXP-20261113-22），永遠 0 係正確行為，唔觀察，
+                # 否則會被當死欄位攔住發佈。`WC_AU_PROVEN_CLASS_LIVE=1` 回退嘅話要加返呢兩行。
         if len(rows) < 3:
             continue
         races += 1

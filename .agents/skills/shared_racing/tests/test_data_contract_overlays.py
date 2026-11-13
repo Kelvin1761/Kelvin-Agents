@@ -79,8 +79,8 @@ class OverlayObservationTests(unittest.TestCase):
             fields, races, horses, bad = observe([path])
         self.assertNotIn("wet_form_feature", fields,
                          "乾地場次唔應該觀察濕地 overlay")
-        # proven_class 冇地況條件，照觀察
-        self.assertIn("proven_class_feature", fields)
+        # proven_class 2026-11-13 退出綜合分（EXP-20261113-22），永遠 0，唔再觀察
+        self.assertNotIn("proven_class_feature", fields)
 
     def test_leaves_still_observed_unchanged(self):
         with tempfile.TemporaryDirectory() as t:
