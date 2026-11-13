@@ -40,6 +40,7 @@ def test_horse_profile_runs_and_static_fields_only():
     d = b.parse_horse(_read("horse_HK_2016_A277.html.gz"))
     assert d["profile"]["父系"] == "Savabeel" and d["profile"]["出生地"] == "紐西蘭"
     assert "最後評分" not in d["profile"]          # 今日快照唔取（防洩漏）
+    assert "最後評分" in d["snapshot"] and "總獎金*" in d["snapshot"]   # 快照分開保存
     assert len(d["runs"]) == 26
     r = d["runs"][0]
     assert (r["date"], r["rating"], r["gear"], r["body_wt"], r["season"]) == ("21/12/2019", "28", "SR/TT", "1195", "19/20")

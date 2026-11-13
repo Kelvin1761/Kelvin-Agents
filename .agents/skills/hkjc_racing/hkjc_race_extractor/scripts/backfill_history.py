@@ -276,7 +276,11 @@ def parse_horse(html: str) -> dict | None:
         return None
     cells = [_txt(td) for td in prof.find_all("td") if td.find("td") is None]
     kv = {cells[i - 1]: cells[i + 1] for i in range(1, len(cells) - 1) if cells[i] == ":"}
-    profile = {k: kv.get(k) for k in ("出生地", "毛色 / 性別", "進口類別", "父系", "母系", "外祖父")}   # 只用靜態欄；「最後評分」等今日快照唔取
+    static = ("出生地", "毛色 / 性別", "進口類別", "父系", "母系", "外祖父")
+    profile = {k: kv.get(k) for k in static}
+    # 其餘欄（總獎金、冠-亞-季-總出賽次數、現時／季初／最後評分、馬主、同父系馬…）係「抓取當日」快照：
+    # 回測用會有前視，所以分開放；季初評分、各跑道成績要由 runs 按賽日 as-of 計
+    snapshot = {k: v for k, v in kv.items() if k not in static}
     runs, season = [], None
     if runs_t is not None:
         for tr in runs_t.find_all("tr"):
@@ -290,7 +294,7 @@ def parse_horse(html: str) -> dict | None:
                          "going": c[5], "class": c[6], "draw": c[7], "rating": c[8], "trainer": c[9], "jockey": c[10],
                          "lbw": c[11], "win_odds": c[12], "actual_wt": c[13], "running_pos": c[14], "finish_time": c[15],
                          "body_wt": c[16], "gear": c[17]})
-    return {"profile": profile, "runs": runs}
+    return {"profile": profile, "snapshot": snapshot, "runs": runs}
 
 
 def cmd_parse(_args) -> None:
