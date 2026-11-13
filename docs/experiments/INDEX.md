@@ -490,3 +490,4 @@
 - [EXP-20261110-05](EXP-20261110-05-au-pf-coverage-alert-debut.md) — AU PF 覆蓋警報唔再將初出馬當缺數據（診斷修正，排名零差；原編號 -03 同 tennis 撞號）：舊警報 402 場 → 92 場；失手體檢 ledger 用新規則重寫 199 場；剩低缺口（Port Lincoln 等 18 個場地）係 Sportsbet 本身冇 600m 段速，唔係管線問題
 - [EXP-20261111-31](EXP-20261111-31-au-form-quality-scale-results.md) — AU 狀態與穩定性場內 SD 放大（Warwick Farm R1 Shahaameh 94.6）：SD 下限 F1／固定尺 F2 **兩個都 REJECT**（Gold／Good 點估計負，只有 top3@5 +0.3）；細 SD 場次 ≥85 首選跑少 4–6pp 但 CI 跨零
 - [EXP-20261113-08](EXP-20261113-08-hkjc-historic-sectional-screen.md) — HKJC 歷史逐匹分段 6,036 場（2019 起，同 formguide 10,047 匹次 0 差異）：**段速概念 PASS**。整組喺評分＋輸頭馬＋表現數字之上 +0.145／SD、頭二選有中 +0.74pp CI 全正，Gold／Good 冇跌；有用嘅係前段／全程對標準扣當日快慢＋前段走位，L400 已被食晒。下一步引擎 A/B
+- [EXP-20261113-09](EXP-20261113-09-hkjc-hist-sectional-engine-ab.md) — HKJC 引擎 A/B：歷史標準前段／全程對標準入段速（b=0.5，三個 arm）：**REJECT**（389 場 Gold −1.3、Good −1.0~−2.3）；但 Gold 跌幅同場內洗牌 null 一樣（38–51 百分位），capture@5／競爭 recall CI 全正、F 高過 97.5% null。呢個語料判唔到；要歷史回放或 forward
