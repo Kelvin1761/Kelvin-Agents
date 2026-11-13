@@ -153,6 +153,7 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
       sportsReferencePicks: typeof sportsReferencePicks === "function" ? sportsReferencePicks : null,
       calibrationBadge: typeof calibrationBadge === "function" ? calibrationBadge : null,
       dataRouteFor: typeof dataRouteFor === "function" ? dataRouteFor : null,
+      renderDimensionBody: typeof renderDimensionBody === "function" ? renderDimensionBody : null,
     };
   `;
   vm.runInContext(source, context);
@@ -2890,4 +2891,21 @@ test('NBA main page is today only for SGM and 大細盤精選, the 精選 tab sw
   api.setNbaPeriod('featured','day');assert.match(api.renderSportsWorkspace('nba'),/今日精選表現/);
   api.setSportsTab('roi');assert.equal(api.getSportsTabForTest(),'history');
   api.setSportsTab('bets');assert.equal(api.getSportsTabForTest(),'history');
+});
+
+test("HKJC 維度計法 line does not swallow the sub-score boxes (936f3d9b format)", () => {
+  const { renderDimensionBody } = loadTemplateFunctions();
+  const content = [
+    "- **評分構成:** 騎師分 83.0 x 55%、練馬師分 67.0 x 45%",
+    "  - **維度計法:** 分項加權 ＝ 原始 75.8（顯示尺 92.5）；佔綜合分 23.6%，貢獻 0.2362 ×（75.8 − 60）＝ +3.73 分",
+    "    - 騎師分 83 ← 潘頓兩季832仗：勝率21%、上名率49%",
+    "    - 練馬師分 67 ← 呂健威兩季加權269仗：勝率10%、上名率34%",
+    "    - 騎師同程（騎師分）+3.0 ← 潘頓於1200米往績551仗：勝率24.3%、上名率52.1%",
+    "  - **判讀:** 潘頓（強）配呂健威（強） → 93分，加分位。",
+  ].join("\n");
+  const html = renderDimensionBody(content, "騎練訊號");
+  assert.match(html, /dim-sub__name">騎師分/);
+  assert.match(html, /dim-sub__name">練馬師分/);
+  assert.match(html, /對綜合分<\/span>分項加權/);
+  assert.doesNotMatch(html, /dim-sub__name">維度計法/);
 });

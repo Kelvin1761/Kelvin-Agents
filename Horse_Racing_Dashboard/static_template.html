@@ -7376,6 +7376,15 @@ function renderDimensionBody(content, dimensionTitle) {
   const formula = find(/評分構成/);
   const verdict = find(/判讀/);
   const data = find(/數據|資料錨點/);
+  // HKJC 2026-11-12 (936f3d9b) prints 「維度計法」 as a sibling of 評分構成 and
+  // nests every sub-score under IT. Read as its own block, the sub-scores never
+  // reached the formula, so each one lost its box and the dimension collapsed
+  // into a plain 「參考」 list. Its children are the formula's children.
+  const calc = find(/^維度計法$/);
+  if (formula && calc) {
+    formula.children = [...formula.children, ...calc.children];
+    calc.children = [];
+  }
 
   // Pull the data groups each sub-score consumed out of 數據 / 健康解讀 /
   // 晨操分析 so they render inside that box (see DATA_ROUTES).
@@ -7415,6 +7424,10 @@ function renderDimensionBody(content, dimensionTitle) {
     h += `<div class="dim-formula">`
       + (finalScore ? `<span class="dim-formula__result">${esc(finalScore[1])}</span>` : '')
       + `<span class="dim-formula__body"><span class="dim-formula__label">點計出嚟</span>${esc(workings)}</span></div>`;
+    if (calc && calc.text) {
+      h += `<div class="dim-formula dim-formula--calc"><span class="dim-formula__body">`
+        + `<span class="dim-formula__label">對綜合分</span>${esc(calc.text)}</span></div>`;
+    }
     if (formula.children.length) {
       const { subs, unrouted, notes } = classifyFormulaChildren(formula.children);
       if (subs.length) {
@@ -7459,7 +7472,7 @@ function renderDimensionBody(content, dimensionTitle) {
       }
     }
   }
-  const claimed = new Set([formula, verdict, data].filter(Boolean));
+  const claimed = new Set([formula, verdict, data, formula ? calc : null].filter(Boolean));
   const rest = blocks.filter(b => !claimed.has(b));
   // HKJC prints a whole 晨操分析 block (workload, who rode work, deployment
   // flags) that AU has no equivalent for. It has no value of its own, only
