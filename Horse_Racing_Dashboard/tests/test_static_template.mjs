@@ -2842,3 +2842,19 @@ test('NBA SGM leg expands into a plain-language reason built from the saved pric
   assert.match(html,/籃板 6\+ · 預計 7\.3 <b class="edge-tag neg">edge −7\.9pp<\/b>/);   // 0.69 − 1/1.3
   assert.match(html,/模型 40% · 市場 41\.7% · <b class="edge-tag neg">edge −1\.7pp<\/b>/);  // SGM: 0.40 − 1/2.4
 });
+
+test("AU overlay is shown beside the dimension it belongs to (EXP-20261113-21)", () => {
+  const { renderDimensionStrip } = loadTemplateFunctions();
+  const html = renderDimensionStrip({
+    dimension_details: [
+      { name: "場地與地況適性", score: 74.4, weight_pct: 9.6, impact: 1.38, ranking_weighted: true },
+      { name: "騎練訊號", score: 66.8, weight_pct: 84.2, impact: 5.69, ranking_weighted: true },
+    ],
+    score_overlays: {
+      pure_7d_score: 82.56, ability_score: 87.2,
+      overlays: [{ key: "wet_form", label: "濕地往績調整", dimension: "場地與地況適性", value: 4.64 }],
+    },
+  });
+  assert.match(html, /連濕地往績調整 \+4\.6 ＝ 合計 \+6\.0/);
+  assert.doesNotMatch(html.split("騎練訊號")[1].split("dim-row")[0], /連濕地/);
+});

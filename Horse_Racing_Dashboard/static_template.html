@@ -6299,8 +6299,20 @@ function renderDimensionStrip(horse) {
   // Row order stays weight-descending for every horse so the rows can be
   // compared down a column of cards; the bars carry the per-horse story.
   const ordered = [...ranked].sort((a, b) => dimFactor(b) - dimFactor(a));
+  // AU overlay 答緊某個維度嘅題目（例如濕地往績調整 → 場地與地況適性）。EXP-20261113-21：
+  // 兩份都要留，所以喺嗰個維度行度一齊顯示合計，唔好分開兩處睇。數值由報告帶過嚟。
+  const overlayByDim = {};
+  ((horse.score_overlays && horse.score_overlays.overlays) || []).forEach(o => {
+    const v = Number(o.value || 0);
+    if (o.dimension && Math.abs(v) >= 0.005) (overlayByDim[o.dimension] = overlayByDim[o.dimension] || []).push({label: o.label, v});
+  });
   ordered.forEach(d => {
     const impact = impactOf(d);
+    const extra = overlayByDim[d.name] || [];
+    const extraSum = extra.reduce((acc, o) => acc + o.v, 0);
+    const extraText = extra.length
+      ? ` · 連${extra.map(o => `${esc(o.label)} ${o.v >= 0 ? '+' : ''}${o.v.toFixed(1)}`).join('、')} ＝ 合計 ${impact + extraSum >= 0 ? '+' : ''}${(impact + extraSum).toFixed(1)}`
+      : '';
     const dev = d.score != null ? d.score - NEUTRAL_SCORE : 0;
     const colour = dev >= 0 ? '#059669' : '#DC2626';
     const half = +(Math.min(Math.abs(dev) / SCORE_SPAN, 1) * 50).toFixed(2);
@@ -6310,7 +6322,7 @@ function renderDimensionStrip(horse) {
     h += `<span class="dim-row__name" title="${esc(d.name)}">${esc(d.name)}</span>`;
     h += `<span class="dim-row__score" style="color:${DIM_SYMBOL_COLOR[d.symbol] || 'var(--color-text-secondary)'}">${d.score != null ? d.score.toFixed(1) : '—'}</span>`;
     h += `<span class="dim-row__track" title="${esc(d.name)} ${d.score != null ? d.score.toFixed(1) : '—'} 分（中性 60）；對總分影響 ${impact >= 0 ? '+' : ''}${impact.toFixed(1)}（${dimFactorLabel(d)} 合成係數）"><span class="dim-row__fill" style="${side};background:${colour}"></span></span>`;
-    h += `<span class="dim-row__meta">${impact >= 0 ? '+' : ''}<b>${impact.toFixed(1)}</b> · ${dimFactorLabel(d)}${evidence ? ' · ' + esc(evidence) : ''}</span>`;
+    h += `<span class="dim-row__meta">${impact >= 0 ? '+' : ''}<b>${impact.toFixed(1)}</b> · ${dimFactorLabel(d)}${evidence ? ' · ' + esc(evidence) : ''}${extraText}</span>`;
     h += '</div>';
   });
 

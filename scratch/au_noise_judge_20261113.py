@@ -44,12 +44,26 @@ def arm_rows(row, arm):
         f["class_score"] = 60.0
     elif arm == "N4_track":
         f["track_score"] = 60.0
+    # ── EXP-20261113-22 ──
+    elif arm == "W1_going_half":
+        f["track_score"] = clip_score(f["track_score"] - 0.5 * (row.get("track_going_adj") or 0.0))
+    elif arm == "W2_wet_half":
+        wet = 0.5 * wet
+    elif arm.startswith("LOO_"):
+        key = arm[4:]
+        if key in ("proven_class", "full_time", "draw"):
+            r2 = dict(row); r2[key] = 0.0
+            return ability(r2, f, wet)
+        f[key] = 60.0
     else:
         raise ValueError(arm)
     return ability(row, f, wet)
 
 
 ARMS = ("AA", "D1_GO", "D2_WO", "N1_trial_speed", "N2_preparation", "N3_class", "N4_track")
+ARMS_22 = ("W1_going_half", "W2_wet_half", "LOO_form_quality_score", "LOO_pace_figure_score", "LOO_jockey_score",
+           "LOO_trainer_score", "LOO_jockey_horse_fit_score", "LOO_rating_score", "LOO_proven_class",
+           "LOO_full_time", "LOO_draw")
 
 
 def main():
@@ -63,7 +77,7 @@ def main():
     clipped = sum(1 for race in data["races"] for r in race["rows"]
                   if r.get("track_going_adj") and r["features"]["track_score"] in (0.0, 100.0))
     print(f"track_score clipped with going adj (D1 approx): {clipped}")
-    for arm in ARMS:
+    for arm in (ARMS_22 if len(sys.argv) > 3 and sys.argv[3] == "22" else ARMS):
         d = copy.deepcopy(data)
         for race in d["races"]:
             for r in race["rows"]:
