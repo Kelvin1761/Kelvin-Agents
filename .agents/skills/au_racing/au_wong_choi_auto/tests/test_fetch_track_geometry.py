@@ -43,3 +43,31 @@ def test_agreeing_sources_are_not_a_conflict():
     row = F.merge("Kilmore", {}, {"circumference_m": 1735, "straight_m": 320, "direction": "anticlockwise"},
                   {"circumference_m": 1735, "straight_m": 320, "direction": ""})
     assert row["conflict"] is None
+
+
+def _sb_page(venue, straight, circ):
+    return (f"<div><h3>Track Details</h3><p>Conditions: Good 4</p><p>Track: {venue}, {venue}, Australia</p>"
+            f"<p>Rail Position: True</p><p>Straight: <b>{straight}</b> metres</p><p>Circumference: {circ}</p></div>")
+
+
+def test_sportsbet_cache_index_needs_consistent_plausible_pages(tmp_path, monkeypatch):
+    for i in range(4):
+        (tmp_path / f"w{i}.html").write_text(_sb_page("Warwick", 340, "1,750"))
+    for i in range(4):  # Gunnedah 實測 200/200：周長唔合理 → 唔收
+        (tmp_path / f"g{i}.html").write_text(_sb_page("Gunnedah", 200, 200))
+    (tmp_path / "y0.html").write_text(_sb_page("York", 300, 1550))  # 得一頁 → 唔夠證據
+    for i, val in enumerate([(300, 1700), (300, 1700), (350, 1800), (350, 1800)]):  # 唔一致 → 唔收
+        (tmp_path / f"r{i}.html").write_text(_sb_page("Griffith", *val))
+    monkeypatch.setattr(F, "_SB_INDEX", None)
+    index = F.sportsbet_cache_index(tmp_path)
+    assert index["warwick"]["straight_m"] == 340 and index["warwick"]["circumference_m"] == 1750
+    assert "gunnedah" not in index and "york" not in index and "griffith" not in index
+
+
+def test_sportsbet_only_fills_gaps(monkeypatch):
+    monkeypatch.setattr(F, "_SB_INDEX", {"gawler": {"straight_m": 220, "circumference_m": 2000, "pages": 29, "share": 1.0},
+                                         "warwick": {"straight_m": 340, "circumference_m": 1750, "pages": 22, "share": 1.0}})
+    row = F.merge("Gawler", {}, {}, {"circumference_m": 1840, "straight_m": 300, "direction": ""})
+    assert (row["circumference_m"], row["straight_m"]) == (1840, 300) and "sportsbet" not in row["sources"]
+    row = F.merge("Warwick", {}, {}, {})
+    assert (row["circumference_m"], row["straight_m"], row["sources"]) == (1750, 340, ["sportsbet"])

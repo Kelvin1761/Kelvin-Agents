@@ -61,7 +61,7 @@ EXPECTED = {
 }
 
 # 兩個來源同人手都查唔到嘅場地。要報冇資料，唔准借人哋嘅數填。
-UNKNOWN_VENUES = ("Broome", "Carnarvon", "Katherine", "Mt Isa", "Roma", "Tuncurry")
+UNKNOWN_VENUES = ("Broome", "Carnarvon", "Katherine", "Mt Isa", "Roma")  # Tuncurry 2026-11-13 由 Sportsbet cache 補咗（EXP-20261113-42）
 
 
 def _load_inject_module():

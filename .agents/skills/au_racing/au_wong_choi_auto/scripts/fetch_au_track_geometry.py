@@ -15,7 +15,12 @@ racinglife 做主，justhorseracing 補漏兼覆核。
   horise.com          —— 2026-11-13 加：「circumference of 1,840m … 300m home straight」文字。
                          racinglife 回防機械人頁之後，補數改為 horise 做主。
 
-次序：racinglife → horise → justhorseracing。justhorseracing 實測有過期數（Gawler 寫 2030／220，
+  Sportsbet cache   —— 2026-11-13 加：賽事頁「Track Details … Straight: N metres Circumference: N」，
+                         由本機 sportsbetform cache 讀，**唔發請求**。實測同現有數只有 68/97 喺容差內
+                         （Gunnedah 寫 200/200、Northam 1500、Gawler 2000/220），所以**只補其他三個都冇嘅空格**，
+                         而且要過合理範圍同「同一場地多頁一致」。
+
+次序：racinglife → horise → justhorseracing → Sportsbet cache（只補空格）。justhorseracing 實測有過期數（Gawler 寫 2030／220，
 馬會官方同 horise 都係 1840／300），所以只有前兩個都冇先用佢。實測 justhorseracing 有幾個
 **過期**條目（Pakenham 仲係搬去 Tynong 之前嘅 1400m 舊場、Rockhampton 1600m），
 所以分歧一律以 racinglife 為準，同時將兩邊數字都寫入 `conflict` 留低證據。
@@ -34,6 +39,7 @@ from __future__ import annotations
 import argparse
 import html
 import json
+import os
 import re
 import subprocess
 import sys
@@ -122,8 +128,8 @@ MANUAL_OVERRIDES = {
 
 # 兩邊都搵唔到、人手都查唔到嘅場地。寫低係為咗唔好次次重新查一次。
 KNOWN_UNDOCUMENTED = {
-    "Broome", "Carnarvon", "Caulfield Heath", "Emerald", "Gympie", "Katherine",
-    "Mt Isa", "Narrandera", "Roma", "Tuncurry",
+    "Broome", "Carnarvon", "Emerald", "Gympie", "Katherine",
+    "Mt Isa", "Narrandera", "Roma",  # Caulfield Heath、Tuncurry 2026-11-13 由 Sportsbet cache 補咗
 }
 
 
@@ -209,6 +215,45 @@ def fetch_horise(venue: str) -> dict:
     return {}
 
 
+SPORTSBET_CACHE = Path(os.environ.get("WC_SB_CACHE") or (Path(__file__).resolve().parents[2] / ".sportsbet_cache"))
+SB_TRACK = re.compile(r"Track:\s*([^,]+),.{0,120}?Straight:\s*([\d,]+)\s*metres\s*Circumference:\s*([\d,]+)")
+SB_MIN_PAGES = 3
+SB_MIN_SHARE = 0.8
+_SB_INDEX: dict | None = None
+
+
+def sportsbet_cache_index(cache_dir: Path = SPORTSBET_CACHE) -> dict:
+    """{場地 slug: {"straight_m", "circumference_m", "pages", "share"}}；唔一致／唔合理嘅場地唔收。"""
+    global _SB_INDEX
+    if _SB_INDEX is not None:
+        return _SB_INDEX
+    counts: dict = {}
+    if cache_dir.is_dir():
+        for path in cache_dir.glob("*.html"):
+            try:
+                text = path.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            at = text.find("Circumference")
+            if at < 0:
+                continue
+            seg = re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", text[max(0, at - 1500):at + 200])))
+            m = SB_TRACK.search(seg)
+            if m:
+                key = slugify(m.group(1).strip())
+                val = (int(m.group(2).replace(",", "")), int(m.group(3).replace(",", "")))
+                counts.setdefault(key, {}).setdefault(val, 0)
+                counts[key][val] += 1
+    index = {}
+    for key, vals in counts.items():
+        (straight, circ), top = max(vals.items(), key=lambda kv: kv[1])
+        total = sum(vals.values())
+        if total >= SB_MIN_PAGES and top / total >= SB_MIN_SHARE and 1000 <= circ <= 3500 and 150 <= straight <= 700:
+            index[key] = {"straight_m": straight, "circumference_m": circ, "pages": total, "share": round(top / total, 3)}
+    _SB_INDEX = index
+    return index
+
+
 JHR_SPEC = re.compile(
     r"State:\s*(?P<state>\w+)\s*Circumference:\s*(?P<circ>[\d,]+)\s*"
     r"Direction:\s*(?P<direction>[\w\s-]+?)\s*Straight:\s*(?P<straight>[\d,]+)\s*(?P<note>.*)$"
@@ -283,6 +328,19 @@ def merge(venue: str, primary: dict, secondary: dict, tertiary: dict | None = No
         row["note"] = secondary.get("note", "") or row["note"]
         if "justhorseracing" not in row["sources"]:
             row["sources"].append("justhorseracing")
+
+    if not row["circumference_m"]:
+        sb = sportsbet_cache_index().get(slugify(venue))
+        if sb:
+            row.update({"circumference_m": sb["circumference_m"], "straight_m": sb["straight_m"]})
+            row["sources"].append("sportsbet")
+            row["sportsbet_pages"] = sb["pages"]
+    elif not row["straight_m"]:
+        sb = sportsbet_cache_index().get(slugify(venue))
+        if sb and abs(sb["circumference_m"] - row["circumference_m"]) <= CIRC_TOLERANCE_M:
+            row["straight_m"] = sb["straight_m"]
+            row["sources"].append("sportsbet")
+            row["sportsbet_pages"] = sb["pages"]
 
     override = MANUAL_OVERRIDES.get(venue)
     if override and not row["circumference_m"]:

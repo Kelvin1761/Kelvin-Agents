@@ -1,12 +1,12 @@
 {
- "generated_utc": "2026-11-13T06:49:26Z",
+ "generated_utc": "2026-11-13T07:46:16Z",
  "sources": {
   "racinglife": "https://www.racinglife.com.au/tracks/<slug>",
   "justhorseracing": "https://www.justhorseracing.com.au/tracks/<slug>-racecourse"
  },
  "resolution_rule": "racinglife 做主；justhorseracing 補漏兼覆核；分歧記入 conflict 但採用 racinglife",
  "venues_total": 133,
- "venues_with_geometry": 108,
+ "venues_with_geometry": 120,
  "venues": {
   "albury": {
    "venue": "Albury",
@@ -214,28 +214,34 @@
   },
   "birdsville": {
    "venue": "Birdsville",
-   "circumference_m": 0,
-   "straight_m": 0,
+   "circumference_m": 2000,
+   "straight_m": 500,
    "direction": "",
    "classification": "Country",
    "surface": "",
    "state": "",
    "note": "",
-   "sources": [],
+   "sources": [
+    "sportsbet"
+   ],
    "conflict": null,
+   "sportsbet_pages": 13,
    "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 2"
   },
   "bordertown": {
    "venue": "Bordertown",
-   "circumference_m": 0,
-   "straight_m": 0,
+   "circumference_m": 1600,
+   "straight_m": 290,
    "direction": "",
    "classification": "Country",
    "surface": "",
    "state": "",
    "note": "",
-   "sources": [],
+   "sources": [
+    "sportsbet"
+   ],
    "conflict": null,
+   "sportsbet_pages": 16,
    "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
   },
   "bowen": {
@@ -253,15 +259,18 @@
   },
   "bowraville": {
    "venue": "Bowraville",
-   "circumference_m": 0,
-   "straight_m": 0,
+   "circumference_m": 1200,
+   "straight_m": 220,
    "direction": "",
    "classification": "Country",
    "surface": "",
    "state": "",
    "note": "",
-   "sources": [],
+   "sources": [
+    "sportsbet"
+   ],
    "conflict": null,
+   "sportsbet_pages": 7,
    "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
   },
   "broome": {
@@ -398,16 +407,18 @@
   },
   "caulfield-heath": {
    "venue": "Caulfield Heath",
-   "circumference_m": 0,
-   "straight_m": 0,
+   "circumference_m": 1870,
+   "straight_m": 308,
    "direction": "",
    "classification": "",
    "surface": "",
    "state": "",
    "note": "",
-   "sources": [],
+   "sources": [
+    "sportsbet"
+   ],
    "conflict": null,
-   "undocumented": true
+   "sportsbet_pages": 24
   },
   "cloncurry": {
    "venue": "Cloncurry",
@@ -439,15 +450,18 @@
   },
   "coleraine": {
    "venue": "Coleraine",
-   "circumference_m": 0,
-   "straight_m": 0,
+   "circumference_m": 2040,
+   "straight_m": 305,
    "direction": "",
    "classification": "Country",
    "surface": "",
    "state": "",
    "note": "",
-   "sources": [],
+   "sources": [
+    "sportsbet"
+   ],
    "conflict": null,
+   "sportsbet_pages": 8,
    "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
   },
   "cootamundra": {
@@ -774,28 +788,34 @@
   },
   "griffith": {
    "venue": "Griffith",
-   "circumference_m": 0,
-   "straight_m": 0,
+   "circumference_m": 1700,
+   "straight_m": 300,
    "direction": "",
    "classification": "Country",
    "surface": "",
    "state": "",
    "note": "",
-   "sources": [],
+   "sources": [
+    "sportsbet"
+   ],
    "conflict": null,
+   "sportsbet_pages": 6,
    "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
   },
   "gunbower": {
    "venue": "Gunbower",
-   "circumference_m": 0,
-   "straight_m": 0,
+   "circumference_m": 1600,
+   "straight_m": 350,
    "direction": "",
    "classification": "Country",
    "surface": "",
    "state": "",
    "note": "",
-   "sources": [],
+   "sources": [
+    "sportsbet"
+   ],
    "conflict": null,
+   "sportsbet_pages": 8,
    "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
   },
   "gundagai": {
@@ -1447,17 +1467,18 @@
   },
   "pakenham-synthetic": {
    "venue": "Pakenham Synthetic",
-   "circumference_m": 2000,
-   "straight_m": 0,
-   "direction": "anticlockwise",
+   "circumference_m": 1974,
+   "straight_m": 378,
+   "direction": "",
    "classification": "",
    "surface": "",
    "state": "",
-   "note": "2014 Tynong 新場公告：合成跑道周長 2000m，1400/1600m 有 chute；直路長度未見公佈",
+   "note": "",
    "sources": [
-    "manual"
+    "sportsbet"
    ],
-   "conflict": null
+   "conflict": null,
+   "sportsbet_pages": 9
   },
   "pinjarra": {
    "venue": "Pinjarra",
@@ -1815,15 +1836,18 @@
   },
   "toodyay": {
    "venue": "Toodyay",
-   "circumference_m": 0,
-   "straight_m": 0,
+   "circumference_m": 1650,
+   "straight_m": 200,
    "direction": "",
    "classification": "Country",
    "surface": "",
    "state": "",
    "note": "",
-   "sources": [],
+   "sources": [
+    "sportsbet"
+   ],
    "conflict": null,
+   "sportsbet_pages": 8,
    "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
   },
   "toowoomba": {
@@ -1858,16 +1882,18 @@
   },
   "tuncurry": {
    "venue": "Tuncurry",
-   "circumference_m": 0,
-   "straight_m": 0,
+   "circumference_m": 1772,
+   "straight_m": 400,
    "direction": "",
    "classification": "Country",
    "surface": "",
    "state": "",
    "note": "",
-   "sources": [],
+   "sources": [
+    "sportsbet"
+   ],
    "conflict": null,
-   "undocumented": true,
+   "sportsbet_pages": 8,
    "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 2"
   },
   "wagga": {
@@ -1940,15 +1966,18 @@
   },
   "warwick": {
    "venue": "Warwick",
-   "circumference_m": 0,
-   "straight_m": 0,
+   "circumference_m": 1750,
+   "straight_m": 340,
    "direction": "",
    "classification": "Country",
    "surface": "",
    "state": "",
    "note": "",
-   "sources": [],
+   "sources": [
+    "sportsbet"
+   ],
    "conflict": null,
+   "sportsbet_pages": 22,
    "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 2"
   },
   "warwick-farm": {
@@ -2013,15 +2042,18 @@
   },
   "york": {
    "venue": "York",
-   "circumference_m": 0,
-   "straight_m": 0,
+   "circumference_m": 1550,
+   "straight_m": 300,
    "direction": "",
    "classification": "Provincial",
    "surface": "",
    "state": "",
    "note": "",
-   "sources": [],
+   "sources": [
+    "sportsbet"
+   ],
    "conflict": null,
+   "sportsbet_pages": 15,
    "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Provincial 1"
   }
  }

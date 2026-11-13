@@ -35,11 +35,28 @@
 
 ## 未做
 
-- 25 個場地三個來源都冇：Birdsville、Bordertown、Bowen、Bowraville、Broome、Carnarvon、Caulfield Heath、Cloncurry、Coleraine、
+- （已由下面 Sportsbet 跟進補咗 12 個）25 個場地三個來源都冇：Birdsville、Bordertown、Bowen、Bowraville、Broome、Carnarvon、Caulfield Heath、Cloncurry、Coleraine、
   Emerald、Ewan、Griffith、Gunbower、Gympie、Katherine、Longreach、Mt Isa、Narrandera、Roma、Thangool、Toodyay、Tuncurry、
   Warwick、York，加 Pakenham Synthetic（只有周長）。
 - 只有 justhorseracing 一個來源嘅場地（今次 16 個）冇第二來源覆核；justhorseracing 實測約 12% 分歧。
 - 冇用補完嘅數據重做 EXP-20261113-41（要另開預先登記）。
+
+## 跟進（同日）：Sportsbet cache 做第四來源
+
+用戶指出 Sportsbet 有場地資料。sportsbetform 賽事頁有「Track Details … Straight: N metres Circumference: N」，
+本機 cache（12,062 頁）有 3,909 頁有，覆蓋 131 個場地 —— **唔使發新請求**。
+
+- **準確度**：同已有數據比，97 個場地只有 68 個喺容差內（70%；horise 對 racinglife 係 88%）。明顯錯例：
+  Gunnedah 200/200、Northam 1500（人手查證 2017）、Morphettville Parks 1440、Gawler 2000/220（同 justhorseracing 舊數一樣，
+  馬會官方 1840/300）。所以**唔用嚟改已有數據**，只補其他三個來源都冇嘅空格。
+- **收錄條件**：同一場地 ≥ 3 頁、最常見值佔 ≥ 80%、周長 1000–3500m、直路 150–700m（Gunnedah 因此唔收）。
+  已有周長但冇直路嘅（Pakenham Synthetic）要周長喺容差內先補直路。來源標 `sportsbet`，另記 `sportsbet_pages`。
+- **補咗 12 個**：Birdsville、Bordertown、Bowraville、Caulfield Heath、Coleraine、Griffith、Gunbower、Pakenham Synthetic（直路 378）、
+  Toodyay、Tuncurry、Warwick、York。有幾何場地 **108 → 120／133**。
+- **場次覆蓋**（08-05 起 3,736 場）：有直路 2,857（76%）→ horise 後 3,329（89%）→ Sportsbet 後 **3,473（93%）**。
+- 仍然冇：Bowen、Broome、Carnarvon、Cloncurry、Emerald、Ewan、Gympie、Katherine、Longreach、Mt Isa、Narrandera、Roma、Thangool。
+- 排名：同一條純報告路徑（上面 4,539 場零差已證），golden 通過。
+- 重跑時 worktree 冇 cache，要 `WC_SB_CACHE=<主 checkout>/.agents/skills/au_racing/.sportsbet_cache`。
 
 ## 重跑
 
