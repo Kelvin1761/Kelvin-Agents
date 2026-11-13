@@ -1582,6 +1582,7 @@ dialog.roi-modal-dialog::backdrop { background: rgba(11,18,32,.42); -webkit-back
   <div class="app-layout">
     <header class="app-header">
       <div class="app-header__left">
+        <button type="button" class="nav-pill" onclick="openResearchFeed()" aria-haspopup="dialog">研究紀錄</button>
         <!-- Split into spans so the title can be sized independently of
              .app-header__logo, which index.css pins with !important at mobile
              widths. "Dashboard" is dropped below 520px — it is filler once the
@@ -1617,6 +1618,10 @@ dialog.roi-modal-dialog::backdrop { background: rgba(11,18,32,.42); -webkit-back
     </footer>
   </div>
 </div>
+<dialog id="research-feed-dialog" aria-labelledby="research-feed-title" style="width:min(920px,92vw);max-height:88vh;border:1px solid #cbd5e1;border-radius:16px;padding:24px;color:#17243a;background:white">
+  <header style="display:flex;justify-content:space-between;gap:16px;align-items:center"><h2 id="research-feed-title">研究紀錄（私人）</h2><button type="button" class="nav-pill" onclick="document.getElementById('research-feed-dialog').close()">關閉</button></header>
+  <div id="research-feed-content" aria-live="polite"></div>
+</dialog>
 <!-- Floating mobile navigation. Mirrors the header sport-switcher (hidden at
      ≤768px) so the five destinations stay one thumb away in standalone mode.
      Labels match the desktop switcher on purpose. -->
@@ -2211,6 +2216,79 @@ function setSyncToken(token) {
     else sessionStorage.removeItem('wc_sync_token');
   } catch(e) {}
 }
+
+// BEGIN PRIVATE RESEARCH VIEW — all evidence strings are rendered as text.
+let researchFetchGeneration = 0;
+function renderResearchFeed(container, payload) {
+  container.replaceChildren();
+  if (!payload || payload.schema_version !== 'wong-choi-private-research-list/v1' ||
+      payload.current_state_verified !== false || payload.model_promotion_allowed !== false ||
+      !Array.isArray(payload.snapshots) || !Array.isArray(payload.missing) || payload.snapshots.length > 4) throw new Error('invalid feed');
+  const names = {au: 'AU', hkjc: 'HKJC', tennis: 'Tennis', nba: 'NBA'};
+  const seen = new Set();
+  for (const item of payload.snapshots) {
+    const publication = item.publication, view = publication?.projection;
+    if (!view || !names[view.domain] || seen.has(view.domain) || publication.domain !== view.domain ||
+        publication.as_of !== view.as_of || publication.model_promotion_allowed !== false ||
+        publication.current_state_verified !== false || view.model_promotion_allowed !== false ||
+        view.safety_recomputed !== false || view.verified_monitoring_samples !== null ||
+        typeof view.freeze_research_required !== 'boolean' || !Array.isArray(view.freeze_reasons) || !Array.isArray(view.findings) ||
+        !Array.isArray(view.experiments) || !Array.isArray(view.queue) || !view.counts ||
+        !/^[a-f0-9]{64}$/.test(item.sha256)) throw new Error('invalid snapshot');
+    seen.add(view.domain);
+  }
+  const add = (parent, tag, text) => { const node = document.createElement(tag); node.textContent = text; parent.appendChild(node); return node; };
+  add(container, 'p', '只讀研究紀錄快照；唔代表即時健康、模型改善、部署批准或下注建議。合格樣本未核實，紀錄行數唔等於有效樣本。');
+  for (const item of payload.snapshots) {
+    const view = item.publication.projection;
+    const card = document.createElement('section'); card.style.cssText = 'border-top:1px solid #e2e8f0;padding:16px 0'; container.appendChild(card);
+    add(card, 'h3', names[view.domain] + '｜截至 ' + view.as_of);
+    add(card, 'p', view.freeze_research_required ? '研究凍結／需要人手覆核' : '檢視證據後再決定；此頁唔批准 promotion');
+    add(card, 'p', '已登記實驗：' + view.counts.experiments + '；執行紀錄：' + view.counts.runs + '；判決紀錄：' + JSON.stringify(view.counts.decisions || {}));
+    add(card, 'p', '儲存：' + (view.storage_health || '未接入') + '；生產日：' + (view.production_day_evidence_status || '未接入') + '；drift：' + (view.live_drift_evidence_status || '未接入'));
+    add(card, 'p', '證據範圍：發布端報告已核對 receipt 快照 hash 及關聯；Dashboard API 只核對發布內容 hash，未獨立驗證 receipt 關聯、全部來源或重算安全檢查。');
+    for (const experiment of view.experiments) {
+      const detail = document.createElement('details'); card.appendChild(detail);
+      add(detail, 'summary', experiment.spec_id + '｜' + experiment.hypothesis);
+      const pre = add(detail, 'pre', JSON.stringify(experiment, null, 2));
+      pre.style.cssText = 'white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px';
+    }
+    const queue = document.createElement('details'); card.appendChild(queue);
+    add(queue, 'summary', '排隊／執行紀錄（唔等於已驗證程序存活）');
+    const queueText = add(queue, 'pre', JSON.stringify(view.queue, null, 2));
+    queueText.style.cssText = 'white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px';
+    const evidence = document.createElement('details'); card.appendChild(evidence);
+    add(evidence, 'summary', '證據參照、drift 及待處理事項');
+    const refs = add(evidence, 'pre', JSON.stringify({request_id: view.request_id, receipt_hash: view.receipt_hash,
+      projection_hash: view.content_hash, publication_sha256: item.sha256, review_ruler_digest: view.review_ruler_digest,
+      freeze_reasons: view.freeze_reasons, findings: view.findings, live_drift: view.live_drift,
+      storage: view.storage_evidence, production_day: view.production_day_evidence}, null, 2));
+    refs.style.cssText = 'white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px';
+  }
+  if (payload.missing.length) add(container, 'p', '未有發布研究快照：' + payload.missing.map(name => names[name] || '未知 domain').join('、') + '。唔代表研究已完成或冇失敗紀錄。');
+  if (!payload.snapshots.length) add(container, 'p', '目前未有可展示嘅研究快照。');
+}
+async function openResearchFeed() {
+  const dialog = document.getElementById('research-feed-dialog'), container = document.getElementById('research-feed-content');
+  if (!dialog || !container) return;
+  const generation = ++researchFetchGeneration;
+  container.replaceChildren(); container.textContent = '正在核對私人研究紀錄…';
+  if (!dialog.open) dialog.showModal();
+  try {
+    if (window.location.protocol !== 'https:') throw new Error('secure access required');
+    const response = await authorizedFetch('/api/research', {cache: 'no-store', redirect: 'error'});
+    if (generation !== researchFetchGeneration) return;
+    if (!response.ok) throw new Error('private feed unavailable');
+    const raw = await response.text();
+    if (raw.length > 4 * 256 * 1024 + 4096) throw new Error('feed bound');
+    if (generation !== researchFetchGeneration) return;
+    renderResearchFeed(container, JSON.parse(raw));
+  } catch (_) {
+    if (generation !== researchFetchGeneration) return;
+    container.replaceChildren(); container.textContent = '私人研究紀錄未能載入。請確認已獲授權登入及研究快照已發布；此狀態唔代表研究健康。';
+  }
+}
+// END PRIVATE RESEARCH VIEW
 
 async function authorizedFetch(url, options = {}, allowPrompt = true) {
   const token = getSyncToken();
