@@ -12,6 +12,7 @@ import argparse
 import re
 import tempfile
 from collections import Counter
+from copy import deepcopy
 from datetime import date, datetime
 from pathlib import Path
 
@@ -1062,6 +1063,34 @@ class HKJCAutoOrchestrator:
             print(f"❌ Failed to load {race_file}: {e}")
             return
 
+        logic_data = self.score_logic_data(race_file, logic_data, event_sink=self._emit_event)
+        if logic_data is None:
+            return None
+
+        # Build and validate every derived artifact before replacing any
+        # last-known-good file.
+        try:
+            prepared_outputs = prepare_race_outputs(race_file, logic_data)
+            _atomic_write_json(race_file, logic_data)
+            print(f"   ✅ Updated {race_file.name}")
+            md_path, csv_path = write_prepared_race_outputs(prepared_outputs)
+            print(f"   📄 Markdown: {md_path.name}")
+            print(f"   📄 CSV: {csv_path.name}")
+            return logic_data
+        except Exception as e:
+            print(f"❌ Failed to write outputs for {race_file}: {e}")
+            return None
+
+    def score_logic_data(self, race_file, logic_data, *, event_sink=None):
+        """Run complete production scoring without publishing race outputs.
+
+        Input data is copied; Logic/Markdown/CSV, event logs and meeting results
+        are not written here. Existing source readers/enrichment remain active:
+        this is NOT an offline/PIT resource sandbox. A research caller must bind
+        every source and any enrichment/cache behavior before corpus execution.
+        Ordinary score_race supplies its existing event writer explicitly.
+        """
+        logic_data = deepcopy(logic_data)
         race_context = logic_data.get("race_analysis", {})
         horses = logic_data.get("horses", {})
         if isinstance(race_context, dict):
@@ -1119,21 +1148,22 @@ class HKJCAutoOrchestrator:
                 result.setdefault("shadow_profiles", {})[shadow["profile"]] = shadow
 
             h_obj["python_auto"] = result
-            self._emit_event(
-                "horse_scored",
-                race_file=race_file.name,
-                race_number=race_context.get("race_number"),
-                horse_number=str(h_num),
-                horse_name=h_name,
-                ability_score=result.get("ability_score"),
-                grade=result.get("grade"),
-                shadow_profile=shadows[0]["profile"] if len(shadows) == 1 else "",
-                shadow_profiles=[shadow["profile"] for shadow in shadows],
-                shadow_ability_scores={
-                    shadow["profile"]: shadow.get("ability_score")
-                    for shadow in shadows
-                },
-            )
+            if event_sink is not None:
+                event_sink(
+                    "horse_scored",
+                    race_file=race_file.name,
+                    race_number=race_context.get("race_number"),
+                    horse_number=str(h_num),
+                    horse_name=h_name,
+                    ability_score=result.get("ability_score"),
+                    grade=result.get("grade"),
+                    shadow_profile=shadows[0]["profile"] if len(shadows) == 1 else "",
+                    shadow_profiles=[shadow["profile"] for shadow in shadows],
+                    shadow_ability_scores={
+                        shadow["profile"]: shadow.get("ability_score")
+                        for shadow in shadows
+                    },
+                )
             # Also update the classic matrix if requested (optional rule)
             # h_obj["matrix"] = result["matrix"]
 
@@ -1157,19 +1187,7 @@ class HKJCAutoOrchestrator:
                 print(f"   - {error}")
             return None
 
-        # Build and validate every derived artifact before replacing any
-        # last-known-good file.
-        try:
-            prepared_outputs = prepare_race_outputs(race_file, logic_data)
-            _atomic_write_json(race_file, logic_data)
-            print(f"   ✅ Updated {race_file.name}")
-            md_path, csv_path = write_prepared_race_outputs(prepared_outputs)
-            print(f"   📄 Markdown: {md_path.name}")
-            print(f"   📄 CSV: {csv_path.name}")
-            return logic_data
-        except Exception as e:
-            print(f"❌ Failed to write outputs for {race_file}: {e}")
-            return None
+        return logic_data
 
     def _emit_event(self, event_type, **payload):
         record = {"event_type": event_type, **payload}
