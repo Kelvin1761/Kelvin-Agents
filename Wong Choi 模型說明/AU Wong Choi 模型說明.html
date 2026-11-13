@@ -68,7 +68,7 @@ ul, ol { padding-left:1.5rem; }
 <tr>
 <td>官方評分對位 <code>class_weight</code></td>
 <td>0.3759</td>
-<td>9.1%</td>
+<td>9.0%</td>
 <td>██··················</td>
 </tr>
 <tr>
@@ -227,7 +227,7 @@ ul, ol { padding-left:1.5rem; }
 <td>100.0%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>11.96 分</strong>；<strong>6.1%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>11.89 分</strong>；<strong>6.1%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
 <h3>檔位形勢　<code>race_shape</code>　— 合成係數 0.0000（唔入排名）</h3>
 <table><thead><tr>
 <th>基礎分</th>
@@ -238,7 +238,7 @@ ul, ol { padding-left:1.5rem; }
 <td>100.0%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>1.12 分</strong>；<strong>18.2%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>1.12 分</strong>；<strong>18.1%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
 <h2>3. 個分點樣讀</h2>
 <p><strong>60 分永遠代表「中性 / 冇證據」</strong>，唔係「合格」。高過 60 = 有正面證據，低過 60 = 有負面證據。</p>
 <h3>報告入面嘅符號</h3>
@@ -350,15 +350,15 @@ ul, ol { padding-left:1.5rem; }
 <li>推算前三／前四：由市場勝率經 discounted Harville（λ 0.754／0.649／0.549）推出，係<strong>市場推算，唔係模型預測</strong></li></ul>
 <p>去水用共用 <code>shared_racing/scripts/devig.py</code>；實作喺 <code>au_racing_engine/market_reference.py</code>。</p>
 <h2>呢份文件由邊度嚟</h2>
-<ul><li>生成時間：<code>2026-11-13 11:22 AEDT</code></li>
-<li>Git commit：<code>941e9c89</code></li>
+<ul><li>生成時間：<code>2026-11-13 12:34 AEDT</code></li>
+<li>Git commit：<code>a4df98a0</code></li>
 <li>Scoring contract：<code>au/raw-matrix-preparation-v2</code></li>
 <li><code>__init__.py</code> 指紋：<code>7546bcfb74f5</code></li>
 <li><code>class_rating.py</code> 指紋：<code>d9d48a2ab037</code></li>
 <li><code>data_prep.py</code> 指紋：<code>772604479d6f</code></li>
 <li><code>dimensions.py</code> 指紋：<code>c59954ceb2e0</code></li>
 <li><code>draw.py</code> 指紋：<code>fdd62d01acdd</code></li>
-<li><code>engine_core.py</code> 指紋：<code>3920bd4c32be</code></li>
+<li><code>engine_core.py</code> 指紋：<code>eb0898a282ee</code></li>
 <li><code>full_time_speed.py</code> 指紋：<code>cde292260587</code></li>
 <li><code>io_utils.py</code> 指紋：<code>e797e808d6f6</code></li>
 <li><code>jockey_trainer.py</code> 指紋：<code>49652509d61f</code></li>
@@ -368,14 +368,15 @@ ul, ol { padding-left:1.5rem; }
 <li><code>overseas.py</code> 指紋：<code>b0211a36381d</code></li>
 <li><code>pit.py</code> 指紋：<code>2f1c747dd2ff</code></li>
 <li><code>preparation_cycle.py</code> 指紋：<code>221b8c3a3d90</code></li>
-<li><code>renderer.py</code> 指紋：<code>28d1a69dc622</code></li>
+<li><code>renderer.py</code> 指紋：<code>9482e63c5ede</code></li>
 <li><code>scoring.py</code> 指紋：<code>3ce03484f01a</code></li>
 <li><code>source_alignment.py</code> 指紋：<code>a8fb592ab72e</code></li>
 <li><code>speed.py</code> 指紋：<code>c928d5f4c771</code></li>
 <li><code>stability.py</code> 指紋：<code>11b1846453fe</code></li>
+<li><code>tags.py</code> 指紋：<code>d6ed4b8df896</code></li>
 <li><code>track_going.py</code> 指紋：<code>cad196ff0290</code></li>
 <li><code>validation.py</code> 指紋：<code>87915194a043</code></li>
-<li>實測樣本：<strong>500 場、4734 匹馬</strong>，由 <code>2026-11-03 Hobart Race 1-8</code> 到 <code>2026-11-13 Sunshine Coast Race 1-8</code>（跳過 0 個舊格式檔案）</li></ul>
+<li>實測樣本：<strong>500 場、4730 匹馬</strong>，由 <code>2026-11-03 Hobart Race 1-8</code> 到 <code>2026-11-13 Sunshine Coast Race 1-8</code>（跳過 0 個舊格式檔案）</li></ul>
 <p>重新生成：</p>
 <pre><code>
 python3 .agents/skills/shared_racing/scripts/explain_model.py --platform au
