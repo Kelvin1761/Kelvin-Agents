@@ -294,9 +294,17 @@ def render_race_markdown(logic_data: dict, meeting_dir: Path | None = None) -> s
         separators=(",", ":"), ensure_ascii=True, allow_nan=False).encode()).decode("ascii")
     encoded_overlays = base64.b64encode(json.dumps(overlay_metadata(horses), sort_keys=True,
         separators=(",", ":"), ensure_ascii=True, allow_nan=False).encode()).decode("ascii")
+    tag_metadata = {"schema": "au/tags-v1", "horses": {
+        str(n): {"name": h.get("horse_name"), "tags": (h.get("python_auto") or {}).get("tags")}
+        for n, h in horses.items()
+        if isinstance((h.get("python_auto") or {}).get("tags"), dict)
+        and "_error" not in (h.get("python_auto") or {}).get("tags")}}
+    encoded_tags = base64.b64encode(json.dumps(tag_metadata, sort_keys=True,
+        separators=(",", ":"), ensure_ascii=True, allow_nan=False).encode()).decode("ascii")
     lines = [
         f"<!-- wc-au-full-time:v1:{encoded_time} -->",
         f"<!-- wc-au-overlays:v1:{encoded_overlays} -->",
+        f"<!-- wc-au-tags:v1:{encoded_tags} -->",
         f"<!-- wc-au-dimensions:v1:{encoded_registry} -->",
         _panorama(race, verdict, horses, divergence),
         "",
@@ -1872,9 +1880,23 @@ def _data_readout_lines(auto: dict) -> list[str]:
     if not summary and not digest:
         return []
     lines = list(summary) if summary else ["#### 📊 數據判讀", ""]
+    lines.extend(_tag_lines(auto))
     lines.extend(digest)
     lines.append("")
     return lines
+
+
+def _tag_lines(auto: dict) -> list[str]:
+    """標籤（`tags.py`，純顯示）：✅ 加分位／⚠️ 扣分位／📌 留意；冇入分嘅寫明（未入分）。"""
+    tags = auto.get("tags") or {}
+    if not isinstance(tags, dict) or "_error" in tags:
+        return []
+    text = lambda t: t["label"] + ("" if t.get("scored") else "（未入分）")  # noqa: E731
+    out = []
+    for icon, tone, name in (("✅", "good", "加分位"), ("⚠️", "bad", "扣分位"), ("📌", "note", "留意")):
+        if tags.get(tone):
+            out.append(f"- {icon} **{name}**：{'、'.join(text(t) for t in tags[tone])}")
+    return out
 
 
 def _render_core_logic(horse: dict, auto: dict) -> str:

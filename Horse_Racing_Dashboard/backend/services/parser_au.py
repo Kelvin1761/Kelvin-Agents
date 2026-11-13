@@ -10,6 +10,7 @@ from typing import Optional
 from .au_dimension_registry import read_registry_metadata
 from .au_full_time_metadata import read_time_metadata
 from .au_overlay_metadata import read_overlay_metadata
+from .au_tag_metadata import read_tag_metadata
 
 
 def _parse_data_readout(block: str) -> Optional[list]:
@@ -1333,6 +1334,7 @@ def parse_au_analysis(filepath: str) -> Optional[RaceAnalysis]:
     
     time_metadata, text = read_time_metadata(text)
     overlay_metadata, text = read_overlay_metadata(text)
+    tag_metadata, text = read_tag_metadata(text)
     dimension_registry, text = read_registry_metadata(text)
 
     race_num_m = re.search(r'Race\s+(\d+)', path.name, re.IGNORECASE)
@@ -1395,6 +1397,14 @@ def parse_au_analysis(filepath: str) -> Optional[RaceAnalysis]:
             captured = (overlay_metadata.get("horses") or {}).get(str(horse.horse_number)) or {}
             if captured and clean_name(captured.get("name")) == clean_name(horse.horse_name):
                 horse.score_overlays = {k: captured.get(k) for k in ("pure_7d_score", "ability_score", "overlays", "trip_change")}
+    if tag_metadata:
+        # 同 HKJC 一樣經 analysis_summary.tags 畫 chip（renderTagChips）；名對唔上就唔掛，免得掛錯馬。
+        clean_name = lambda value: re.sub(r"[^a-z0-9]", "", re.sub(r"\([^)]*\)", "", str(value or "").lower()))
+        for horse in horses:
+            captured = (tag_metadata.get("horses") or {}).get(str(horse.horse_number)) or {}
+            tags = captured.get("tags")
+            if captured and isinstance(tags, dict) and clean_name(captured.get("name")) == clean_name(horse.horse_name):
+                horse.analysis_summary = {**(horse.analysis_summary or {}), "tags": tags}
     return RaceAnalysis(
         full_time_speed=time_metadata.get("race") if time_metadata else None,
         race_number=race_number,

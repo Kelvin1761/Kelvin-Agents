@@ -18,6 +18,7 @@ from . import speed as _speed
 from . import class_rating as _class
 from . import draw as _draw
 from . import stability as _stab
+from . import tags as _tags
 from . import overseas as _overseas
 from . import track_going as _track
 from . import jockey_trainer as _jt
@@ -900,6 +901,8 @@ class RacingEngine(NarrativeMixin):
             "disadvantages": disadvantages,
             "grade_transparency": grade_transparency,
             "jt_fit_detail": self.jt_fit_detail,
+            # 純顯示標籤（同 HKJC tags.py 同一格式），評分完先砌，唔郁分數；出錯 → {"_error": …}
+            "tags": _tags.build(self, matrix_scores, wet_feature=wet_form_feat, draw_feature=draw_feature),
             "preparation_detail": getattr(self, "preparation_detail", None),
             "trial_speed_detail": getattr(self, "trial_speed_detail", None),
             "stability_detail": {
