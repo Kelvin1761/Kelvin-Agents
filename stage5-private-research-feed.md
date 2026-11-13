@@ -1,6 +1,6 @@
-# Stage5 private research projection — unfinished source
+# Stage5 private research projection — deployed, live acceptance pending
 
-This branch starts at e6e45aa1d131f5e9e3787c340304e7c4ddfc1587 and implements an explicit receipt publisher, private API and actual Dashboard template view. It does not complete Task7 or Stage5.
+This branch starts at e6e45aa1d131f5e9e3787c340304e7c4ddfc1587 and implements an explicit receipt publisher, private API and actual Dashboard template view. The seven-path slice was released at 7c06dad5f79aec093ee7b6156cfaaf60beed7224. It does not complete Task7 or Stage5.
 
 The foreground Python publisher uses the existing receipt presentation verifier, one HTTPS POST, no redirects and the existing WC_SYNC_TOKEN. There is no new credential, background schedule or live upload. Ambiguous responses require reconciliation, never automatic retry.
 
@@ -18,4 +18,12 @@ Receipt lineage is publisher-reported. API body-hash validation does not indepen
 - The same authorized independent reviewer completed the full seven-path source review at local merge 6a6b9a7edceb3de8699fc35afb114f24d29bf5b8 (plus this plan's browser-evidence addition), finding no must-fix. This was source inspection only, not independent test execution, release approval, native authorization or production acceptance.
 - Fresh Central dry-run against fa31d4568542244e7fe6e4c28c675321097f69b6 proves exactly seven release/activation paths, full gate, all four code-sync domains, Dashboard deploy, installers empty and no manual action. The three intervening HKJC documents are observed only and excluded from this slice. Production was observed at fa31d456 with only its two existing allowlisted mutable mapping files dirty; no other release controller was observed.
 - Fresh full/immutable gates and authorized private deployment/publication acceptance remain outstanding. The next action is the normal exact-scope controller, retaining its SHA/ref/lock/rollback checks. Manual publisher source is not proof of unattended bounded execution.
-- No deployment, live publication, Telegram, native job, model, database or historical evidence mutation has been performed.
+- The pre-release statements above describe their recorded observation boundaries. Final release and post-release evidence follow; no live research projection publication, native job, model, database or historical evidence mutation was performed.
+
+## Actual release and independent acceptance — 2026-11-13 UTC
+
+Normal Central controller completed successfully (session24906 exited0; never restart). Release `wc-release:7c06dad5f79a:2026-11-13T110346.698393_0000` passed the real clean immutable candidate full gate in1914.605s with all16 suites green, then same-process full receipt verification and independent clean quick in24.1s. Push exited0, approval recorded11:04:36Z, merge11:04:38Z and activation_succeeded11:06:49Z. The ordinary primary release result Telegram was sent once (one part/one target); do not duplicate it. Full log: `/private/tmp/stage5-dashboard-release.log`.
+
+Activation synced production fa31d456 to7c06dad5 and deployed Dashboard with exit0; installers remained empty. Independent post-release verification found source and production at exact7c06dad5, all seven release files byte-identical, all four required-file verifiers aligned and actual four-domain/Central installed/loaded paths aligned with no attention. Reports: `/private/tmp/stage5-dashboard-files-postrelease.json` and `/private/tmp/stage5-dashboard-runtime-postrelease.json`. These checks do not establish new calendar/native firing acceptance or authorize the separate forward installer workflow.
+
+Live anonymous HTTP verification of both the homepage and `/api/research` returned the same non-JSON403 response. This does not prove the new application API's401/503 behavior, authenticated private view or real receipt publication. Deployment success is established; live application acceptance remains unverified behind the observed access boundary. Report: `/private/tmp/stage5-dashboard-live-anonymous.json`. Do not bypass that boundary or create credentials. Resume live acceptance only through legitimate existing access; preserve the explicit missing/pending state and do not mark Task7 or Stage5 complete.
