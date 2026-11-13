@@ -19,6 +19,18 @@ TENNISDATA_METADATA_PROVIDER = "tennisdata_tournament_index"
 # 125K"). Level/tour only — a name never proves the surface, so surface stays
 # None (honest) and the segment-risk discount for low tiers still applies.
 NAME_HEURISTIC_METADATA_PROVIDER = "competition_name_heuristic"
+# ATP Challenger court from the season calendar (sources/challenger_calendar.py).
+CHALLENGER_CALENDAR_PROVIDER = "wikipedia_atp_challenger_calendar"
+_CALENDAR_CACHE: dict[int, tuple] = {}
+
+
+def _challenger_events(year: int) -> tuple:
+    """(events, raw_response_id, error), fetched once per process per season."""
+    if year not in _CALENDAR_CACHE:
+        from tennis_wc.sources.challenger_calendar import load_events
+
+        _CALENDAR_CACHE[year] = load_events(year)
+    return _CALENDAR_CACHE[year]
 
 
 def tennisdata_competition_meta(competition: str | None, tour: str | None) -> dict | None:
@@ -316,6 +328,7 @@ def backfill_confirmed_metadata_for_date(match_date: str) -> dict:
     )
     now = utc_now()
     applied = []
+    calendar = None  # loaded only when the date carries a Challenger
     with get_connection() as conn:
         tournament_rows = conn.execute(
             """
@@ -339,6 +352,13 @@ def backfill_confirmed_metadata_for_date(match_date: str) -> dict:
                 source_url = meta.source_url
             else:
                 td = tennisdata_competition_meta(name, match_tour)
+                if td is None and "challenger" in str(name or "").lower():
+                    if calendar is None:
+                        try:
+                            calendar = _challenger_events(int(match_date[:4]))
+                        except Exception as exc:  # noqa: BLE001 - leaves surfaces as they were
+                            calendar = ([], None, f"{type(exc).__name__}: {exc}")
+                    _apply_challenger_calendar(conn, row, match_date, calendar[0], calendar[1], now, applied)
                 if td is not None:
                     resolved_tour, level, surface, indoor = td["tour"], td["level"], td["surface"], None
                     source = TENNISDATA_METADATA_PROVIDER
@@ -415,10 +435,52 @@ def backfill_confirmed_metadata_for_date(match_date: str) -> dict:
     return {
         "date": match_date,
         "applied": applied,
+        "challenger_calendar": None if calendar is None else {
+            "events": len(calendar[0]), "raw_response_id": calendar[1], "error": calendar[2]},
         "raw_response_id": raw_id,
         "remaining_gaps": audit["summary"],
         "rounds_from_qualifier_label": len(qualifier_rows) if "qualifier_rows" in locals() else 0,
     }
+
+
+def _apply_challenger_calendar(conn, row, match_date, events, raw_id, now, applied) -> None:
+    """Write (or clear) this tournament's court from the Challenger calendar.
+
+    A Sportsbet competition id can be reused for a later edition, so a week
+    that does not resolve removes the row instead of keeping last week's court.
+    The name-heuristic row (level only, no surface) is written beside it as before.
+    """
+    from tennis_wc.sources.challenger_calendar import resolve
+
+    event = resolve(events, row["tournament_name"], match_date) if raw_id is not None else None
+    tournament_id = int(row["tournament_id"])
+    tour = row["match_tour"] if str(row["match_tour"] or "").upper() in {"ATP", "WTA"} else "ATP"
+    if event is None:
+        if raw_id is not None:
+            conn.execute("DELETE FROM tournament_levels WHERE tournament_id = ? AND source_provider = ?",
+                         (tournament_id, CHALLENGER_CALENDAR_PROVIDER))
+        return
+    conn.execute(
+        """
+        INSERT INTO tournament_levels (
+            tournament_id, tour, level, surface, indoor_outdoor,
+            source_provider, raw_response_id, created_at, updated_at
+        )
+        VALUES (?, ?, 'CHALLENGER', ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(tournament_id, tour, source_provider) DO UPDATE SET
+            level = excluded.level,
+            surface = excluded.surface,
+            indoor_outdoor = excluded.indoor_outdoor,
+            raw_response_id = excluded.raw_response_id,
+            updated_at = excluded.updated_at
+        """,
+        (tournament_id, tour, event.surface, "indoor" if event.indoor else "outdoor",
+         CHALLENGER_CALENDAR_PROVIDER, raw_id, now, now),
+    )
+    applied.append({"tournament": row["tournament_name"], "tour": tour, "level": "CHALLENGER",
+                    "surface": event.surface, "source": CHALLENGER_CALENDAR_PROVIDER,
+                    "source_url": f"{event.week_start.year} ATP Challenger Tour (Wikipedia): "
+                                  f"{event.name}, {event.city}, week of {event.week_start}"})
 
 
 def metadata_audit_for_date(match_date: str) -> dict:
@@ -460,7 +522,8 @@ def metadata_audit_for_date(match_date: str) -> dict:
     summary = {"matches": len(rows), "missing_level": 0, "missing_surface": 0, "missing_round": 0}
     for row in rows:
         missing = []
-        reliable_tournament_metadata = row["metadata_source"] in {CONFIRMED_METADATA_PROVIDER, TENNISDATA_METADATA_PROVIDER}
+        reliable_tournament_metadata = row["metadata_source"] in {
+            CONFIRMED_METADATA_PROVIDER, TENNISDATA_METADATA_PROVIDER, CHALLENGER_CALENDAR_PROVIDER}
         if row["metadata_source"] == CONFIRMED_METADATA_PROVIDER and outside_confirmed_metadata_dates(
             row["tournament"], row["tour"], match_date
         ):

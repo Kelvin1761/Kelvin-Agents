@@ -91,6 +91,22 @@ def _prediction_at(rows, featured_at):
     return usable[-1] if usable else None
 
 
+def _courts(c):
+    """(tournament_id, tour) -> surface ("" if unknown), same row order as the feature builder."""
+    rows = _rows(c, "tournament_levels")
+    if rows is None:
+        return {}
+    best = {}
+    rank = lambda r: (r.get("source_provider") == "curated_tournament_metadata",
+                      r.get("level") not in (None, "", "UNKNOWN", "未確認"),
+                      r.get("surface") not in (None, ""), r.get("id") or 0)
+    for r in rows:
+        key = (r.get("tournament_id"), r.get("tour"))
+        if key not in best or rank(r) > rank(best[key]):
+            best[key] = r
+    return {key: str(r.get("surface") or "") for key, r in best.items()}
+
+
 def export_tennis_tracking(db_path):
     result = {
         "status": "unavailable",
@@ -110,6 +126,7 @@ def export_tennis_tracking(db_path):
             # One read transaction: counts, results and identities share a view.
             c.execute("BEGIN")
             matches = {r["id"]: r for r in (_rows(c, "matches") or [])}
+            courts = _courts(c)
             players = {r["id"]: r.get("name", "") for r in (_rows(c, "players") or [])}
             sources = {
                 name: _rows(c, name)
@@ -222,9 +239,11 @@ def export_tennis_tracking(db_path):
                 # blended value on the prop row is the market for some families.
                 if _number(f.get("model_prob")) is not None:
                     record["model_probability"] = _number(f.get("model_prob"))
+                fixture = matches.get(f.get("match_id"), {})
                 record["reasons"] = pick_reasons(
-                    f, base, matches.get(f.get("match_id"), {}), players,
-                    _prediction_at(match_preds.get(f.get("match_id")), f.get("featured_at")))
+                    f, base, fixture, players,
+                    _prediction_at(match_preds.get(f.get("match_id")), f.get("featured_at")),
+                    courts.get((fixture.get("tournament_id"), fixture.get("tour"))))
                 records.append(record)
             props = {r["id"]: r for r in sources["prop_tracker"] or []}
             for r in sources["prop_live_bets"] or []:

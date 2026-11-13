@@ -64,6 +64,9 @@ def _isolate_scheduler_log() -> None:
 
 
 _isolate_scheduler_log()
+# No test reaches Wikipedia: the Challenger calendar falls back to the stored
+# copy (none in a test database). Calendar tests pass their own fetcher.
+os.environ.setdefault("TENNIS_CHALLENGER_CALENDAR_OFFLINE", "1")
 
 
 def pytest_configure(config) -> None:

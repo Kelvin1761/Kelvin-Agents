@@ -33,6 +33,8 @@ RELIABLE_TOURNAMENT_METADATA_SOURCES = {
     # competition names ("... Challenger", "ITF ...", "UTR", "125K"). Level is
     # trustworthy; it never claims a surface (stored as NULL).
     "competition_name_heuristic",
+    # ATP Challenger court + level from the season calendar (EXP-20261113-30).
+    "wikipedia_atp_challenger_calendar",
     "bsd_tennis",
     "espn",
     "statsperform",

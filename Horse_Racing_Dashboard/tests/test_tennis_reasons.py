@@ -40,7 +40,14 @@ def test_handicap_pick_explains_price_margin_and_form_from_the_picked_side():
     assert "Gaston 贏嘅機會係 62%（市場估 59%）" in text
     assert "Martineau 發球強好多，Gaston 破發強好多" in text
     assert "Gaston 嘅數字係對住較強對手打出嚟" in text
-    assert "數據完整度 65/100" in text
+    assert "數據完整度" not in text  # always 65 = the entry bar; said nothing
+
+
+def test_unknown_court_is_named_and_a_known_one_is_not():
+    unknown = "\n".join(pick_reasons(FEATURED, handicap_prop(), MATCH, PLAYERS, court=""))
+    assert "場地未知" in unknown
+    known = "\n".join(pick_reasons(FEATURED, handicap_prop(), MATCH, PLAYERS, court="Hard"))
+    assert "場地未知" not in known
 
 
 def test_receiving_handicap_reads_as_lose_by_less_than():
