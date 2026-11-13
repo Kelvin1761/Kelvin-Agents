@@ -244,3 +244,22 @@ def test_prepare_result_uses_the_replayed_manifest_and_gate(repo, monkeypatch):
         assert result[key] == manifest[key], key
     assert result["gate"]["commit"] == result["commit"]
     assert result["rollback_target"] == moved[0]
+
+
+def test_previously_pushed_work_branch_is_renamed_before_gate(repo):
+    """2026-11-13：工作分支 push 過之後 reset --soft origin/main 再保存 —— 舊版 gate 完先 non-fast-forward 失敗。"""
+    git(repo, "checkout", "-b", "claude-work")
+    (repo / "notes.md").write_text("wip\n")
+    git(repo, "add", "notes.md")
+    git(repo, "commit", "-m", "wip")
+    git(repo, "push", "-u", "origin", "claude-work")
+    git(repo, "reset", "--soft", "origin/main")
+    git(repo, "reset")
+    (repo / "notes.md").unlink()
+    result = save(repo)
+    assert result["automation_status"] == "completed", result.get("error")
+    assert result["branch"].startswith("claude-work-release-")
+    assert result["push_exit_code"] == 0
+    assert git(repo.parent / "remote.git", "rev-parse", "main") == result["commit"]
+    # 遠端舊分支冇被改寫
+    assert git(repo.parent / "remote.git", "log", "-1", "--format=%s", "claude-work") == "wip"

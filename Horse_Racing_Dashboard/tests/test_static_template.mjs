@@ -2457,7 +2457,16 @@ test("corrupt packed tennis tracking surfaces a warning instead of an empty ledg
   const data = {meetings: [], races: {}, consensus: {}, roi: {},
     sports_feed: {sports: {tennis: {tracking: {status: "valid", records_gzip: "bm90LWd6aXA="}}}}};
   const api = loadTemplateFunctions(data);
-  await api.unpackDashboardData();
+  // 呢個測試故意餵壞資料；接住 console.warn，唔好喺 release gate log 印出一段似真錯誤嘅 stack（2026-11-13）。
+  const warned = [];
+  const realWarn = console.warn;
+  console.warn = (...args) => warned.push(String(args[0]));
+  try {
+    await api.unpackDashboardData();
+  } finally {
+    console.warn = realWarn;
+  }
+  assert.deepEqual(warned, ["packed tennis tracking failed"]);
   assert.equal(api.tennisRows().length, 0);
   assert.ok(api.tennisTrackingFeed().warnings.includes("tracking_records_unpack_failed"));
 });

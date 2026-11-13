@@ -387,6 +387,17 @@ def prepare_release(
         if conflicts:
             raise ReleaseError(f"remote branch namespace conflict: {branch} vs {conflicts}; "
                                "rename this worktree branch before running the gate")
+        # 同名遠端分支已經有 commit，而而家個 HEAD 唔係由佢落嚟（典型：收工時 `git push -u` 保存過，
+        # 之後 `reset --soft origin/main` 再交 ./保存.sh）。publish 嗰步只做普通 push，冇 force，
+        # 所以會喺 ~14 分鐘 gate 之後先 non-fast-forward 失敗（2026-11-13 中咗三次）。
+        # 喺 gate 之前轉去一個新分支名：唔郁遠端、唔郁舊本地分支，成個 release 照常行。
+        if branch in names and _run(repo, "git", "merge-base", "--is-ancestor",
+                                    f"origin/{branch}", head, check=False).returncode != 0:
+            renamed = f"{branch}-release-" + datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+            _git(repo, "checkout", "-b", renamed)
+            print(f"ℹ️ origin/{branch} 同而家歷史分叉（之前 push 過嘅工作分支）—— 改用新分支 {renamed} 發佈",
+                  file=sys.stderr)
+            branch = renamed
 
     from .release_candidate import freeze_candidate, publish_candidate, supported
     from .release_gate import run_gate
