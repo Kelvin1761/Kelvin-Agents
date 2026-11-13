@@ -511,3 +511,159 @@ def test_status_rejects_rehashed_but_inconsistent_attempt_history(tmp_path, faul
     verified = review_runtime_status(**roots, now=NOW, receipt_path=target)
     assert verified["status"] == "blocked"
     assert "attempt" in verified["receipt_error"]
+
+
+def test_notification_pass_disabled_before_context_or_worker(tmp_path, monkeypatch):
+    from shared_wong_choi.research_notifications import TelegramRoute
+    monkeypatch.setattr(review_module, "_context", lambda **kw: pytest.fail("context allocated"))
+    result = review_module.run_notification_pass(
+        **_roots(tmp_path), route=TelegramRoute(),
+        runner_factory=lambda *a: pytest.fail("worker allocated"))
+    assert result["status"] == "deferred"
+    assert result["reason"] == "disabled"
+    assert result["domains"] == {}
+    assert result["telegram_delivery_confirmed"] is False
+    assert not list(tmp_path.rglob("intent.json"))
+
+
+def test_notification_pass_uses_actual_supervisor_and_deduplicates(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    shared_tests = str(SHARED_ROOT / "tests")
+    monkeypatch.syspath_prepend(shared_tests)
+    from test_research_notification_runtime import setup
+    from test_research_notifications import route
+    from shared_wong_choi.research_notification_runtime import ResearchNotificationRunner
+    runtime, registry, ids, helper, marker = setup(tmp_path)
+    monkeypatch.setattr(review_module, "_context", lambda **kw: SimpleNamespace(runtime=runtime, registry=registry))
+    class BoundRunner(ResearchNotificationRunner):
+        def catch_up(self, **kwargs):
+            return super().catch_up(**kwargs, helper_path=helper)
+    options = dict(repo_root=REPO_ROOT, state_root=runtime.state_root, warm_root=runtime.warm_root,
+                   production_lock_paths=runtime.production_lock_paths, route=route(),
+                   runner_factory=BoundRunner, scan_limit=1)
+    original = {p: p.read_bytes() for p in (runtime.warm_root / "research-reviews").rglob("*.json")}
+    first = review_module.run_notification_pass(**options)
+    second = review_module.run_notification_pass(**options)
+    assert first["domains"]["au"]["disposition"] == "succeeded"
+    assert second["domains"]["au"]["disposition"] == "succeeded"
+    assert marker.read_text().splitlines() == ["sent"]
+    assert original == {p: p.read_bytes() for p in original}
+    assert first["telegram_delivery_confirmed"] is False
+    assert first["model_promotion_allowed"] is False
+    assert "dummy-secret" not in json.dumps(first)
+    assert not list(runtime.state_root.rglob("*cursor*.sqlite3"))
+
+
+@pytest.mark.parametrize("limit", [0, 51, True, "1"])
+def test_notification_pass_rejects_bad_bound_before_allocation(tmp_path, limit):
+    with pytest.raises(ValueError, match="scan limit"):
+        review_module.run_notification_pass(**_roots(tmp_path), scan_limit=limit)
+
+
+def test_notification_pass_keeps_reconcile_and_exception_visible(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    from shared_wong_choi.research_notifications import TelegramRoute
+    calls = []
+    class Runner:
+        def catch_up(self, **kwargs):
+            calls.append(kwargs)
+            if len(calls) == 2:
+                raise RuntimeError("must-not-leak-credentials")
+            return SimpleNamespace(disposition=ResearchDisposition.SUCCEEDED,
+                status="notification_page_reconcile_required", attempt_path=None, report_path=None, content_hash=None)
+    result = review_module.run_notification_pass(**_roots(tmp_path),
+        route=TelegramRoute(token="123456:dummy-secret", primary_chat_id="98765", authorized_chat_id="98765", enabled=True),
+        runner_factory=lambda *a: Runner())
+    assert len(calls) == 4
+    assert result["status"] == "reconcile_required"
+    assert result["domains"]["hkjc"]["status"] == "notification_exception:RuntimeError"
+    assert "must-not-leak" not in json.dumps(result)
+
+
+def test_notification_pass_caps_total_budget_without_retry(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    from dataclasses import replace
+    from shared_wong_choi.research_notifications import TelegramRoute
+    ticks = [0.0]
+    contract = replace(load_runtime_contract(), timeout_seconds_per_domain=2.0)
+    monkeypatch.setattr(review_module, "load_runtime_contract", lambda *a, **kw: contract)
+    monkeypatch.setattr(review_module.time, "monotonic", lambda: ticks[0])
+    calls = []
+    class Runner:
+        def catch_up(self, **kwargs):
+            calls.append(kwargs)
+            ticks[0] += 7.0 if len(calls) == 1 else 2.0
+            return SimpleNamespace(disposition=ResearchDisposition.DEFERRED, status="production_active",
+                                   attempt_path=None, report_path=None, content_hash=None)
+    result = review_module.run_notification_pass(**_roots(tmp_path),
+        route=TelegramRoute(token="123456:dummy-secret", primary_chat_id="98765", authorized_chat_id="98765", enabled=True),
+        runner_factory=lambda *a: Runner())
+    assert [c["timeout_seconds"] for c in calls] == [2.0, 1.0]
+    assert result["status"] == "deferred"
+    assert result["domains"]["nba"]["status"] == "pass_time_budget_exhausted"
+
+
+@pytest.mark.parametrize("flags", [["--status", "--notify-catch-up"],
+    ["--initialize", "--notify-catch-up"], ["--notification-scan-limit", "1"],
+    ["--notify-catch-up", "--receipt", "some.json"]])
+def test_notification_cli_rejects_mixed_modes(monkeypatch, flags):
+    monkeypatch.setattr(sys, "argv", ["review", "--production-lock", "/unused.lock", *flags])
+    with pytest.raises(SystemExit) as exc:
+        review_module.main()
+    assert exc.value.code == 2
+
+
+def test_notification_cli_consumes_only_explicit_route_environment(tmp_path, monkeypatch, capsys):
+    from shared_wong_choi.research_notification_runtime import _ENV
+    for key, value in zip(_ENV, ("1", "123456:dummy-secret", "98765", "98765")):
+        monkeypatch.setenv(key, value)
+    monkeypatch.setattr(review_module, "run_review_pass", lambda **kw: pytest.fail("ordinary review invoked"))
+    seen = []
+    def fake_pass(**kw):
+        seen.append(kw)
+        return {"status": "deferred", "telegram_delivery_confirmed": False, "model_promotion_allowed": False}
+    monkeypatch.setattr(review_module, "run_notification_pass", fake_pass)
+    monkeypatch.setattr(sys, "argv", ["review", "--production-lock", str(tmp_path / "unused"),
+                                      "--notify-catch-up", "--notification-scan-limit", "2"])
+    assert review_module.main() == 0
+    assert seen[0]["scan_limit"] == 2
+    assert seen[0]["route"].blocked_reason() is None
+    assert all(key not in review_module.os.environ for key in _ENV)
+    assert "dummy-secret" not in capsys.readouterr().out
+
+
+def test_notification_entry_interruption_after_intent_requires_reconciliation(tmp_path, monkeypatch):
+    from dataclasses import replace
+    from types import SimpleNamespace
+    monkeypatch.syspath_prepend(str(SHARED_ROOT / "tests"))
+    from test_research_notification_runtime import setup
+    from test_research_notifications import route
+    from shared_wong_choi.research_notification_runtime import ResearchNotificationRunner
+    from shared_wong_choi.research_runner import SubprocessResearchExecutor
+    runtime, registry, ids, helper, marker = setup(tmp_path)
+    helper.write_text("import time\nfrom pathlib import Path\n" +
+                      f"with Path({str(marker)!r}).open('a') as h: h.write('attempted\\n')\n" +
+                      "time.sleep(60)\n")
+    class Interrupt(SubprocessResearchExecutor):
+        def run(self, invocation, **kwargs):
+            return super().run(invocation, timeout_seconds=min(5, kwargs["timeout_seconds"]),
+                               production_active=kwargs["production_active"])
+    interrupted = replace(runtime, executor=Interrupt(poll_seconds=0.02, terminate_grace=0.1))
+    current = [interrupted]
+    monkeypatch.setattr(review_module, "_context", lambda **kw: SimpleNamespace(runtime=current[0], registry=registry))
+    class BoundRunner(ResearchNotificationRunner):
+        def catch_up(self, **kw):
+            return super().catch_up(**kw, helper_path=helper)
+    options = dict(repo_root=REPO_ROOT, state_root=runtime.state_root, warm_root=runtime.warm_root,
+                   production_lock_paths=runtime.production_lock_paths, route=route(),
+                   runner_factory=BoundRunner, scan_limit=1)
+    first = review_module.run_notification_pass(**options)
+    assert marker.read_text().splitlines() == ["attempted"]
+    assert list((runtime.state_root / "research-notifications").rglob("intent.json"))
+    assert first["domains"]["au"]["disposition"] == "timed_out"
+    assert first["status"] == "reconcile_required"
+    assert first["domains"]["au"]["reconciliation_required"] is True
+    current[0] = runtime
+    second = review_module.run_notification_pass(**options)
+    assert second["status"] == "reconcile_required"
+    assert marker.read_text().splitlines() == ["attempted"]

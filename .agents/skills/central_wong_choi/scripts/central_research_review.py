@@ -615,6 +615,67 @@ def run_review_pass(
     return _write_run(run_path, payload)
 
 
+def run_notification_pass(
+    *, repo_root: Path, state_root: Path, warm_root: Path,
+    production_lock_paths: tuple[Path, ...], route=None, scan_limit: int = 10,
+    contract_path: Path = CONTRACT_PATH, ruler_root: Path = DEFAULT_RULER_ROOT,
+    runner_factory=None,
+) -> dict[str, Any]:
+    """Explicit bounded catch-up of recorded reviews, separate from review runs.
+
+    Deployment supplies an already authorized route. No cursor, route, outbox
+    root or scheduler is initialized here. The existing supervisor owns resource,
+    production-preemption and durable uncertain-send handling.
+    """
+    from shared_wong_choi.research_notifications import TelegramRoute
+    from shared_wong_choi.research_notification_runtime import ResearchNotificationRunner
+
+    if type(scan_limit) is not int or not 1 <= scan_limit <= 50:
+        raise ValueError("notification scan limit must be an integer from 1 to 50")
+    route = TelegramRoute() if route is None else route
+    if not isinstance(route, TelegramRoute):
+        raise ValueError("trusted TelegramRoute configuration required")
+    result = {"status": "deferred", "domains": {}, "model_promotion_allowed": False,
+              "telegram_delivery_confirmed": False}
+    blocked = route.blocked_reason()
+    if blocked:
+        return {**result, "reason": blocked}
+    contract = load_runtime_contract(contract_path, ruler_root=ruler_root)
+    context = _context(repo_root=repo_root, state_root=state_root, warm_root=warm_root,
+                       production_lock_paths=production_lock_paths, contract=contract)
+    runner = (runner_factory or ResearchNotificationRunner)(context.runtime, context.registry)
+    deadline = time.monotonic() + contract.timeout_seconds_per_domain * len(contract.domains)
+    for binding in contract.domains.values():
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            outcome = {"disposition": "deferred", "status": "pass_time_budget_exhausted",
+                       "attempt_path": None, "report_path": None, "content_hash": None,
+                       "reconciliation_required": False}
+        else:
+            try:
+                item = runner.catch_up(domain=binding.domain, route=route, scan_limit=scan_limit,
+                                       estimated_bytes=contract.estimated_bytes,
+                                       timeout_seconds=min(contract.timeout_seconds_per_domain, remaining))
+                outcome = {"disposition": item.disposition.value, "status": item.status,
+                           "attempt_path": str(item.attempt_path) if item.attempt_path else None,
+                           "report_path": str(item.report_path) if item.report_path else None,
+                           "content_hash": item.content_hash,
+                           "reconciliation_required": (
+                               item.status == "notification_page_reconcile_required" or
+                               (item.attempt_path is not None and
+                                item.disposition is not ResearchDisposition.SUCCEEDED))}
+            except Exception as exc:
+                # Persist no exception text: transport errors can contain tokens.
+                outcome = {"disposition": "blocked", "status": f"notification_exception:{type(exc).__name__}",
+                           "attempt_path": None, "report_path": None, "content_hash": None,
+                           "reconciliation_required": True}
+        result["domains"][binding.domain.value] = outcome
+    result["status"] = ("reconcile_required" if any(
+        item["reconciliation_required"]
+        for item in result["domains"].values()) else _overall_status(result["domains"]))
+    return result
+
+
 def review_runtime_status(
     *,
     repo_root: Path,
@@ -730,8 +791,12 @@ def review_runtime_status(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--initialize", action="store_true")
-    parser.add_argument("--status", action="store_true", help="read-only cursor/receipt inspection")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--initialize", action="store_true")
+    mode.add_argument("--status", action="store_true", help="read-only cursor/receipt inspection")
+    mode.add_argument("--notify-catch-up", action="store_true",
+                      help="explicit supervised notification pass; requires configured authorized route")
+    parser.add_argument("--notification-scan-limit", type=int, default=None)
     parser.add_argument("--receipt", type=Path, help="explicit receipt to verify with --status")
     parser.add_argument(
         "--repo",
@@ -762,8 +827,8 @@ def main() -> int:
     )
     parser.add_argument("--contract", type=Path, default=CONTRACT_PATH)
     args = parser.parse_args()
-    if args.status and args.initialize:
-        parser.error("--status and --initialize are mutually exclusive")
+    if args.notification_scan_limit is not None and not args.notify_catch_up:
+        parser.error("--notification-scan-limit requires --notify-catch-up")
     if args.receipt is not None and not args.status:
         parser.error("--receipt requires --status")
     options = {
@@ -773,13 +838,22 @@ def main() -> int:
         "production_lock_paths": tuple(args.production_lock),
         "contract_path": args.contract,
     }
-    result = (
-        review_runtime_status(**options, receipt_path=args.receipt)
-        if args.status
-        else initialize_review_state(**options)
-        if args.initialize
-        else run_review_pass(**options)
-    )
+    if args.notify_catch_up:
+        from shared_wong_choi.research_notifications import TelegramRoute
+        from shared_wong_choi.research_notification_runtime import _ENV
+        enabled, token, primary, authorized = (os.environ.pop(key, "") for key in _ENV)
+        result = run_notification_pass(
+            **options, scan_limit=args.notification_scan_limit if args.notification_scan_limit is not None else 10,
+            route=TelegramRoute(token=token, primary_chat_id=primary,
+                                authorized_chat_id=authorized, enabled=enabled == "1"))
+    else:
+        result = (
+            review_runtime_status(**options, receipt_path=args.receipt)
+            if args.status
+            else initialize_review_state(**options)
+            if args.initialize
+            else run_review_pass(**options)
+        )
     print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
     return 0 if result["status"] in {"initialized", "verified", "succeeded", "partial", "deferred"} else 1
 
