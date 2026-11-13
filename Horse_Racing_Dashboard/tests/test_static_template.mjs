@@ -72,7 +72,7 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
       setTennisQueryForTest: (query) => { tennisSearch = query; },
       setTennisLimitForTest: (limit) => { tennisLimit = limit; },
       renderHkjcInsights, setInsights, nbaStats, nbaRecords, nbaRenderBets, nbaDashboard, nbaSelectRows, nbaPeriodsNow, nbaPeriodRange, nbaRenderMonths, nbaShortDate, nbaJersey,
-      nbaShouldAutoRefresh, racingShouldAutoRefresh, checkForNewSnapshot,
+      nbaShouldAutoRefresh, racingShouldAutoRefresh, checkForNewSnapshot, setNbaPeriod, setSportsTab,
       setPendingBetSyncForTest: (value) => { hasPendingCommittedChanges = value; }, reloadSnapshot, restoreNbaTrackingView,
       getSportsTabForTest: () => activeSportsTab,
       setFetchForTest: (fn) => { fetch = fn; },
@@ -1685,7 +1685,8 @@ test("ROI explains that new analysis replaces recommendations but never confirme
   };
   const { renderSportsWorkspace, setSportsTabForTest } = loadTemplateFunctions(data);
   setSportsTabForTest("bets");
-  const html = renderSportsWorkspace("nba");
+  // 2026-11-13: NBA has no 實際投注 tab; the shared ROI page still serves tennis.
+  const html = renderSportsWorkspace("tennis");
 
   assert.match(html, /新分析只會替換「今日建議」/);
   assert.match(html, /已確認投注同 ROI 永久保留/);
@@ -2102,7 +2103,9 @@ test("NBA dashboard embeds periods and counts only verified paper results", () =
   assert.equal(metrics.profit,.5);assert.equal(metrics.roi,25);
   assert.equal(metrics.legN,3);assert.equal(metrics.legWins,2);
   const html=api.renderSportsWorkspace('nba');
-  assert.doesNotMatch(html,/class="dashboard-periods"|setNbaPeriod/);assert.match(html,/\+25%/);
+  // Kelvin 2026-11-13: the main page switches between today, week, month and all time.
+  for(const period of ['day','week','month','all']) assert.ok(html.includes("setNbaPeriod('today','"+period+"')"),period);
+  assert.match(html,/今日投注表現/);assert.match(html,/\+25%/);
   assert.match(html,/每注 \$1/);assert.doesNotMatch(html,/<script>alert/);
   assert.match(html,/&lt;script&gt;/);assert.doesNotMatch(html,/示範結算/);
 });
@@ -2215,7 +2218,7 @@ test("new NBA analysis reloads an open pregame view once and restores that tab",
  let reloads=0;api.setReloadForTest(()=>{reloads++});
  api.setFetchForTest(async()=>new Response(JSON.stringify({generated_at:'2000-01-02T00:00:00'}),{status:200}));
  await api.checkForNewSnapshot();assert.equal(reloads,1);
- api.showSport('nba');api.restoreNbaTrackingView();assert.equal(api.getSportsTabForTest(),'roi');
+ api.showSport('nba');api.restoreNbaTrackingView();assert.equal(api.getSportsTabForTest(),'history');   // 賽前分析 lives on the main page now
  api.resetSnapshotClockForTest();await api.checkForNewSnapshot();assert.equal(reloads,1);
 });
 
@@ -2224,7 +2227,7 @@ test("manual NBA snapshot refresh restores the pregame tab",async()=>{
  api.showSport('nba');api.setSportsTabForTest('roi');
  let reloads=0;api.setReloadForTest(()=>{reloads++});
  await api.reloadSnapshot();assert.equal(reloads,1);
- api.showSport('nba');api.restoreNbaTrackingView();assert.equal(api.getSportsTabForTest(),'roi');
+ api.showSport('nba');api.restoreNbaTrackingView();assert.equal(api.getSportsTabForTest(),'history');   // 賽前分析 lives on the main page now
 });
 
 test("race pattern labels the HKJC track segment as 場地", () => {
@@ -2833,9 +2836,11 @@ test('NBA 大細盤精選 has its own tab and names bets the way Sportsbet lists
   const rec=(id,day,state,side,stat,actual)=>({id,day,event_name:'OKC @ POR',game_tag:'OKC_POR',start_time_utc:'2099-01-01T00:00:00Z',sportsbet_event_id:'11148389',odds:1.8,stake:1,tracking_kind:'featured',edge:0.0967,p_model:0.6179,p_fair:0.5213,state,legs:[{player:'Mikal Bridges',team:'NYK',market:'pts',stat,ou_line:9.5,side,price:1.8,state,actual}]});
   const api=loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,sports_feed:{sports:{nba:{tracking:{status:'valid',records:[],featured_inception_date:'2026-11-11',featured_records:[rec('a','2026-11-11','won','under','PTS',8),rec('b','2026-11-11','lost','over','3PM',1),rec('c','2026-11-12','pending','under','PTS',null)]}}}}});
   api.setSportsTabForTest('history');let html=api.renderSportsWorkspace('nba');
-  assert.match(html,/⭐ 大細盤精選<\/button>/);assert.match(html,/ou-mini/);assert.match(html,/完整 dashboard/);
+  assert.match(html,/⭐ 大細盤精選<\/button>/);assert.match(html,/今日精選表現/);assert.match(html,/完整紀錄 →/);
+  assert.doesNotMatch(html,/賽前分析<\/button>|實際投注<\/button>/);
   api.setSportsTabForTest('featured');html=api.renderSportsWorkspace('nba');
-  for(const text of ['大細盤精選總覽','Mikal Bridges - Points','Under 9.5','Mikal Bridges - Made Threes','Over 9.5','前向測試進度','喺 Sportsbet 點搵','過往精選','https://www.sportsbet.com.au/betting/basketball-us/nba/okc-at-por-11148389','data-copy="Mikal Bridges - Points"'])assert.ok(html.includes(text),text);
+  for(const text of ['累計精選表現','Mikal Bridges - Points','Under 9.5','Mikal Bridges - Made Threes','Over 9.5','前向測試進度','喺 Sportsbet 點搵','過往精選','https://www.sportsbet.com.au/betting/basketball-us/nba/okc-at-por-11148389'])assert.ok(html.includes(text),text);
+  assert.doesNotMatch(html,/複製 market 名|data-copy=/);
   assert.doesNotMatch(html,/得分|細 9\.5/);
   assert.match(html,/2<small>\/ 250 注<\/small>/);      // two settled, one pending
   assert.match(html,/−\$0\.20|-\$0\.20/);                // +0.80 − 1.00
@@ -2866,4 +2871,23 @@ test("AU overlay is shown beside the dimension it belongs to (EXP-20261113-21)",
   });
   assert.match(html, /連濕地往績調整 \+4\.6 ＝ 合計 \+6\.0/);
   assert.doesNotMatch(html.split("騎練訊號")[1].split("dim-row")[0], /連濕地/);
+});
+
+test('NBA main page switches periods for SGM and 大細盤精選 together and carries the pregame analysis',()=>{
+  const day=new Intl.DateTimeFormat('en-CA',{timeZone:'Australia/Sydney'}).format(new Date());
+  const old='2026-10-26';   // after the tracking start, before any current week
+  const sgm=(id,d)=>({id,day:d,event_name:'BOS @ NYK',game_tag:'BOS_NYK',stake:1,odds:2.5,state:'won',legs:[{player:'A',stat:'PTS',line:20,state:'won',actual:25}]});
+  const ou=(id,d)=>({id,day:d,event_name:'OKC @ POR',game_tag:'OKC_POR',start_time_utc:'2000-01-01T00:00:00Z',odds:1.8,stake:1,tracking_kind:'featured',edge:0.05,p_model:0.6,p_fair:0.55,state:'won',legs:[{player:'Mikal Bridges',team:'NYK',market:'pts',stat:'PTS',ou_line:9.5,side:'under',price:1.8,state:'won',actual:8}]});
+  const api=loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,sports_feed:{sports:{nba:{latest_analysis:{event_date:day,coverage:{analysed_games:1,review_candidates:2},games:[{event_name:'BKN @ CLE',status:'analysed'}]},tracking:{status:'valid',records:[sgm('now',day),sgm('old',old)],featured_records:[ou('n',day),ou('o',old)]}}}}});
+  api.showSport('nba');
+  let html=api.renderSportsWorkspace('nba');
+  assert.match(html,/今日投注表現/);assert.match(html,/今日精選表現/);
+  assert.match(html,/id="nba-pregame"/);assert.match(html,/onclick="nbaOpenPregame\(\)"/);assert.match(html,/2 個 SGM 候選/);
+  assert.doesNotMatch(html,/dashboard-chart/);                        // a single day has no curve
+  api.setNbaPeriod('today','all');html=api.renderSportsWorkspace('nba');
+  assert.match(html,/累計投注表現/);assert.match(html,/累計精選表現/);assert.match(html,/dashboard-chart/);
+  assert.match(html,/2<small>張<\/small>/);assert.match(html,/2<small>注<\/small>/);   // both days counted
+  api.setNbaPeriod('today','bogus');assert.match(api.renderSportsWorkspace('nba'),/累計投注表現/);
+  api.setSportsTab('roi');assert.equal(api.getSportsTabForTest(),'history');
+  api.setSportsTab('bets');assert.equal(api.getSportsTabForTest(),'history');
 });
