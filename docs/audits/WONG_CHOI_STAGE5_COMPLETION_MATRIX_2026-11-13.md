@@ -132,3 +132,49 @@ statements only; no Task6–10 completion checkbox is granted.
   remain unresolved. Notification5045844e remains after cadence only. All
   incident freezes, original pilots/SLO/exit requirements and deleted-automation
   prohibition remain unchanged.
+
+
+## 2026-11-15 Sydney — released replay boundary and remaining prerequisites
+
+- The earlier21529318 replay WIP has since been reconciled and released as the
+  exact eleven-path9848e8c3fc3c1dd76d1c22c27ee25b4d119fdc5f engineering slice.
+  Release wc-release:9848e8c3fc3c:2026-11-14T133057.288625_0000 passed a real clean
+  immutable full gate1258.473s (all16 suites), normal same-process receipt plus
+  independent clean quick10.197s; merged13:31:20Z and activation_succeeded
+  13:31:25Z on2026-11-14UTC. Four-domain code sync1c521b63 to9848; installers[]
+  and Dashboardfalse. Normal Telegram already sent1part/1target; no duplicate.
+- Independent postrelease proof found all four99/99 required files aligned,
+  all eleven own bytes exact, clean overlap and actual installed/loaded
+  AU/HKJC/NBA/Tennis+Central aligned/attention[]. This does not prove calendar,
+  native firing, full-model replay or model safety. Reports retained at
+  /private/tmp/stage5-replay-files-postrelease.json and
+  /private/tmp/stage5-replay-runtime-postrelease.json; canonical manifest/events
+  are identified in /private/tmp/stage5-local-validation-result.json.
+- Fresh read-only prerequisite inspection found zero canonical research-registry
+  and research-queue files and0/4 verified power profiles. No pilot, minimum
+  effect, variance or authority was fabricated. Report:
+  /private/tmp/stage5-goal-prerequisites-20261115.json.
+- Read-only status generated2026-11-14T13:44:54.560203Z found30-day AU64/100,
+  HKJC2228/2288, Tennis49/57 and NBA1913/2080 success. Existing95%/min20 rule
+  unchanged; AU/Tennis/NBA still fail. HOT12.14GiB critical under20GiB;
+  WARM mounted766.98GiBfree. Catalog47/47verified and production trace1740/1740
+  do not resolve incident latches or grant storage deletion/migration authority.
+  Report: /private/tmp/stage5-goal-postrelease-status-20261115.json.
+- Same authorized read-only reviewer confirmed no existing audited typed raw
+  artifact/resource hook: number/category scorer projection drops references;
+  postflight reconstructs that same projection. A real raw-resource contract
+  extension needs separate authorization, including audit/trace/verification;
+  hidden closures, event-ID lookups or JSON category blobs cannot substitute.
+- Canonical seven-metric measurement is now being integrated on separate owned
+  branch codex-stage5-racing-measurement-20261115. The existing control rotates
+  complete labels within family; there is no identity remapping/field-size
+  stratification hook. Distinct global IDs or different fields must block before
+  any scorer call. A general heterogeneous pilot needs separately authorized
+  frozen control/label correspondence plus real preregistered data, comparator,
+  predecision provenance and power-method/effect approval. Do not filter races,
+  pad/rename runners, skip controls or claim compatible fixtures complete this.
+
+All original Tasks6–10 checkboxes remain open. Deleted Codex automations remain
+absent. Trusted native review publication, target/cadence provenance, authenticated
+Dashboard acceptance, notification-after-cadence, actual pilots and observation
+windows remain required. No incident unfreeze, model promotion or history rewrite.
