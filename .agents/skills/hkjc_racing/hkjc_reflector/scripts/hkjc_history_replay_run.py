@@ -34,7 +34,7 @@ for p in (str(REPO), str(SCRIPTS), str(SKEL_DIR), str(_HERE.parent)):
 
 BASE = Path("/Volumes/Kelvin Hardisk 1/WongChoi-Archive/hkjc-history")
 RAW = BASE / "raw"
-CACHE_CWD = BASE / "replay_cwd"            # profile scraper 嘅 .hkjc_cache 寫喺呢度（外置碟），唔污染 repo
+CACHE_CWD = BASE / "replay_cwd" / str(os.getpid())   # 每個 process 自己一份 .hkjc_cache（並行時唔會互相寫爛），唔污染 repo
 _RACE_DATE = {"iso": None}
 _INDEX = {}
 

@@ -66,7 +66,17 @@ def metrics(picks, horses):
 def main() -> None:
     real = {(x["meeting"], x["race"]): x for x in map(json.loads, open(sys.argv[1])) if "horses" in x}
     rep = {(x["meeting"], x["race"]): x for x in map(json.loads, open(sys.argv[2])) if "horses" in x}
-    keys = sorted(set(real) & set(rep))
+    # 同 hkjc_eval_harness compare 一樣（預設 --exclude-dead speed_score）：真版段速 leaf 死咗嘅賽日唔比 ——
+    # 嗰啲係真版數據壞（2026-04 幾個賽日 speed_score 全 60），唔係回放錯。
+    dead = {k for k, x in real.items() if "speed_score" in (x.get("meeting_dead_fields") or [])}
+    # 真版舊格式賽日（rescore_backtest.meeting_is_legacy_schema：_data 中位數 < 20 欄，2026-04 至 05 初）
+    # 冇抓馬匹頁、冇醫療／近六仗／賽績線表 —— 真版本身降級，唔可以用嚟量回放忠唔忠實。
+    sys.path.insert(0, str(_HERE.parent))
+    from rescore_backtest import meeting_is_legacy_schema
+    legacy_meet = {m for m in {k[0] for k in real} if meeting_is_legacy_schema(Path(wongchoi_paths.HK_RACING) / m)}
+    legacy = {k for k in real if k[0] in legacy_meet}
+    keys = sorted((set(real) & set(rep)) - dead - legacy)
+    print(f"剔走真版段速死咗嘅場次：{len(dead)}；真版舊格式賽日 {len(legacy_meet)} 個（{len(legacy)} 場）；兩樣合共剔 {len(dead | legacy)} 場")
     print(f"真版 {len(real)} 場、回放 {len(rep)} 場、共同 {len(keys)} 場")
     rho_raw, rho_dim, same_top, M_real, M_rep, runner_mismatch = [], {d: [] for d in DIMS}, 0, [], [], 0
     for k in keys:
