@@ -36,7 +36,7 @@ def run_research_harness(
     evidence: SafetyEvidence,
     role: str,
     scorer: Callable[[dict, tuple[str, ...]], Any],
-    measure: Callable[[Any, Any, dict], Mapping[str, float]],
+    measure: Callable[[Any, Any, dict], Mapping[str, float]] | None = None,
     output_dir: Path,
     command_index: int = 0,
     row_ids: tuple[str, ...] | None = None,
@@ -54,6 +54,10 @@ def run_research_harness(
         or not 0 <= command_index < len(spec.commands)
     ):
         raise ResearchSafetyError("invalid harness role/command index")
+    canonical_racing = measure is None
+    if canonical_racing:
+        from .research_racing_measurement import racing_measurement_for
+        measure = racing_measurement_for(spec)
     audit = audit_research_inputs(
         spec,
         dataset_snapshot=dataset_snapshot,
@@ -80,6 +84,13 @@ def run_research_harness(
         raise ResearchSafetyError("frozen evaluation label missing")
     projected = prepare_scoring_inputs(rows, input_protocol, sources, label_field)
     permutation = development_label_rotation(rows, spec.seed)
+    if canonical_racing:
+        from .research_racing_measurement import validate_racing_outcome
+        for row_id in selected:
+            entities = {e["entity_id"] for e in projected[row_id]["entities"]}
+            validate_racing_outcome(by_id[row_id]["payload"][label_field], entities)
+            if row_id in permutation:
+                validate_racing_outcome(by_id[permutation[row_id]]["payload"][label_field], entities)
 
     def predict(row_id, components):
         case = deepcopy(projected[row_id])

@@ -75,6 +75,30 @@ def _ndcg_at_k(
     return dcg(observed) / ideal_score if ideal_score > 0 else 0.0
 
 
+def top3_pairwise_counts(
+    scored_positions: Sequence[tuple[float, int]], *, top_k: int | None = 5
+) -> tuple[float, int]:
+    """Frozen AU top-3-versus-rest pairs; score ties earn half credit.
+
+    At least one runner must be in the model top K. Stable input order resolves
+    score ties at that boundary, as in the native AU evaluator. None includes
+    every top-3-versus-rest pair. Callers must handle zero comparable pairs.
+    """
+    order = sorted(range(len(scored_positions)), key=lambda i: -scored_positions[i][0])
+    rank = {i: p + 1 for p, i in enumerate(order)}
+    concordant = comparable = 0
+    for i in range(len(scored_positions)):
+        for j in range(len(scored_positions)):
+            if not (scored_positions[i][1] <= 3 and scored_positions[j][1] > 3):
+                continue
+            if top_k is not None and rank[i] > top_k and rank[j] > top_k:
+                continue
+            comparable += 1
+            concordant += (1.0 if scored_positions[i][0] > scored_positions[j][0]
+                          else (0.5 if scored_positions[i][0] == scored_positions[j][0] else 0.0))
+    return concordant, comparable
+
+
 def exclusive_label(top3_hits: int, top2_hits: int, gold: bool | None = None) -> str:
     """Mutually exclusive reflector label.
 

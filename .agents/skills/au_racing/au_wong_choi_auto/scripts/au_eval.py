@@ -63,7 +63,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 sys.path.insert(0, str(SCRIPT_DIR.parents[2] / "shared_racing"))
 
 from au_racing_engine import matrix_mapper  # noqa: E402
-from eval_metrics import race_metrics, summarize_races  # noqa: E402
+from eval_metrics import race_metrics, summarize_races, top3_pairwise_counts  # noqa: E402
 from model_evaluation_decision import (  # noqa: E402
     build_evaluation_input,
     evaluate_candidate,
@@ -198,22 +198,8 @@ def configured_scorer(*, weights=None, wet_scale=1.0, leaf_overrides=None):
 
 def _pairs(races, scorer, top_only):
     """→ 逐場 (concordant, comparable)。留返逐場係為咗配對 bootstrap。"""
-    out = []
-    for r in races:
-        sc = [(scorer(x), x["pos"]) for x in r["rows"]]
-        order = sorted(range(len(sc)), key=lambda i: -sc[i][0])
-        rank = {i: p + 1 for p, i in enumerate(order)}
-        c = n = 0
-        for i in range(len(sc)):
-            for j in range(len(sc)):
-                if not (sc[i][1] <= 3 and sc[j][1] > 3):
-                    continue
-                if top_only and rank[i] > TOP_K and rank[j] > TOP_K:
-                    continue
-                n += 1
-                c += 1.0 if sc[i][0] > sc[j][0] else (0.5 if sc[i][0] == sc[j][0] else 0.0)
-        out.append((c, n))
-    return out
+    return [top3_pairwise_counts([(scorer(x), x["pos"]) for x in r["rows"]],
+                                top_k=TOP_K if top_only else None) for r in races]
 
 
 def _auc(pairs, lo=0, hi=None):

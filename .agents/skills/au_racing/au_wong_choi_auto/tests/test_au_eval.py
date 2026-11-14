@@ -48,6 +48,15 @@ def score(row):
 
 
 class VerdictRuleTests(unittest.TestCase):
+    def test_native_pairwise_extraction_keeps_top5_and_full_universes(self):
+        race = {"rows": [{"_s": s, "pos": p} for s, p in zip(
+            [80, 70, 60, 50, 40, 30, 20, 10], [1, 4, 5, 6, 7, 2, 3, 8]) ]}
+        self.assertEqual(au_eval._pairs([race], score, True), [(5.0, 13)])
+        self.assertEqual(au_eval._pairs([race], score, False), [(7.0, 15)])
+        tied = {"rows": [{"_s": 1, "pos": p} for p in [1, 2, 3, 4]]}
+        self.assertEqual(au_eval._pairs([tied], score, True), [(1.5, 3)])
+        self.assertEqual(au_eval._pairs([{"rows": []}], score, False), [(0, 0)])
+
     def test_date_partition_never_splits_one_meeting_day(self):
         races = [
             {"date": date, "rows": []}
