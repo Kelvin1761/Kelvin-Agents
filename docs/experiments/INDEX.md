@@ -498,3 +498,11 @@
 - [EXP-20261114-04](EXP-20261114-04-hkjc-replay-sectional-arms.md) — HKJC 段速 FT 組件（前段＋全程對 as-of 標準、扣當日快慢）：回放 holdout 方向全正、CI 跨零（邊緣）；**Kelvin 決定上線**＋每日自動更新表＋forward `sectional_ft_post_live`；backfill 兩位數年份修正一齊入
 - [EXP-20261114-06](EXP-20261114-06-hkjc-replay-debut.md) — HKJC 初出馬練馬師初出紀錄：模型之上 dev／holdout 都真；加分邊緣（holdout Good −0.06）→ **Kelvin 決定顯示層（標籤）＋forward shadow `debut_trainer_shadow`**
 - [EXP-20261114-07](EXP-20261114-07-hkjc-replay-international.md) — HKJC 外隊馬：每個模型排名組入位率係本地馬 1.5–2 倍（42 場，描述）；原因係「中性 60」喺精英場次偏低；**Kelvin 決定只標示「外隊馬｜本地資料不足」＋國際賽日提示，唔用外部數據**
+- [EXP-20261114-01](EXP-20261114-01-hkjc-weight-per-section.md) — HKJC 逐段負磅效應（~16,000 對同馬配對）：前段冇影響；L400 ~0.008 秒／磅唔隨路程升；現行中長途 L400 係數可能高估 2–3.5 倍（排名影響實測近零，EXP-20261114-12）
+- [EXP-20261114-02](EXP-20261114-02-hkjc-replay-fidelity-gate.md) — HKJC 歷史引擎回放忠實度閘 **PASS**（378 場：raw 排序 0.973、首選一致 82.5%、Gold −0.79、Good −1.85）；離線真流程 6,047 場 0 失敗；回放 Good／頭二系統性低少少
+- [EXP-20261114-05](EXP-20261114-05-hkjc-replay-awt-straight-experience.md) — HKJC 冇泥地經驗 −9pp（三窗確認，H2 forward PASS）但扣分 REJECT；冇直路經驗 REJECT
+- [EXP-20261114-08](EXP-20261114-08-hkjc-replay-rating-gear-intent.md) — HKJC 評分跌／到贏馬水平、配備、馬房出擊：模型之上只有「換上頂級騎師」真，但加分 holdout Gold −0.88 REJECT
+- [EXP-20261114-09](EXP-20261114-09-hkjc-replay-awt-sectional-and-integration.md) — HKJC 泥地段速（新訊號）holdout Good −1.19 REJECT；整合 refit = S 版
+- [EXP-20261114-10](EXP-20261114-10-hkjc-replay-forward-tests.md) — HKJC 現有 forward 測試回放判：評分差距、L400 負磅換算維持；L400 標準化唔上
+- [EXP-20261114-11](EXP-20261114-11-hkjc-replay-awt-straight-deep.md) — HKJC 泥地／直路深挖（Kelvin 決定 5、7）：直路表現、泥地相對草地、泥地前段係真訊號，但加分 dev 全部 REJECT
+- [EXP-20261114-12](EXP-20261114-12-hkjc-replay-signal-audit-and-retries.md) — HKJC 19 組訊號審計：S 版權重下冇可剷噪音（舊權重下嘅「噪音」係權重錯配）；賽績線「強」字修正唔修；三個重試 REJECT
