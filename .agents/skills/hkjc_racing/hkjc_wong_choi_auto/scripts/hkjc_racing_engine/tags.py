@@ -315,6 +315,24 @@ def _driver_label(key: str, good: bool, horse: dict, auto: dict) -> str:
     return ""
 
 
+FOREIGN_CODE_MIN = 800            # HKJC 畀訪港（外隊）馬嘅烙號數字（例如 J816）
+
+
+def is_foreign(horse: dict) -> bool:
+    code = str(horse.get("horse_code") or horse.get("hkjc_horse_id") or "")   # 後備：HK_2025_J816
+    m = re.search(r"[A-Z](\d{3})$", code)
+    return bool(m and int(m.group(1)) >= FOREIGN_CODE_MIN)
+
+
+def _foreign_tag(horse: dict) -> list[dict]:
+    """外隊馬（Kelvin 2026-11-14 決定 4）：冇本地往績嘅維度用中性 60 —— 標明，唔當差。純顯示，唔郁分。"""
+    if not is_foreign(horse):
+        return []
+    return [_tag("foreign_horse", "外隊馬｜本地資料不足", "note",
+                 why="訪港外隊馬冇香港往績：狀態、同程、賽績線、段速等維度用中性 60，唔代表匹馬差。"
+                     "回放顯示外隊馬喺同一模型排名入位率高過本地馬（EXP-20261114-07）；未入分。")]
+
+
 def _debut_trainer_tag(horse: dict, meta: dict) -> list[dict]:
     """初出馬：練馬師初出紀錄（Kelvin 2026-11-14 決定 3；EXP-20261114-06）—— 未入分，forward shadow 觀察緊。"""
     if not (horse.get("is_debut") or horse.get("debut_runner")) or not meta.get("date"):
@@ -364,7 +382,7 @@ def race_tags(logic_data: dict, meeting_dir: Path | None = None) -> dict:
             for no, items in source.items():
                 extra.setdefault(no, []).extend(items)
         for no, h in horses.items():
-            extra.setdefault(no, []).extend(_debut_trainer_tag(h, meta))
+            extra.setdefault(no, []).extend(_debut_trainer_tag(h, meta) + _foreign_tag(h))
         return {no: horse_tags(no, h, h["python_auto"], runs=runs_by_no.get(no) or [], meta=meta,
                                priority=priorities.get(no, ""), extra=extra.get(no))
                 for no, h in horses.items()}

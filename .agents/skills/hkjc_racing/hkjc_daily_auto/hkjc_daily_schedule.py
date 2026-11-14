@@ -568,6 +568,30 @@ RESULTS_DB_SCRIPTS = PROJECT_ROOT / ".agents/skills/hkjc_racing/hkjc_reflector/s
 COMPREHENSIVE_STATS_SCRIPT = PROJECT_ROOT / ".agents/scripts/build_comprehensive_stats.py"
 
 
+def remind_foreign_horses(state: dict, state_path: Path, key: str, meeting_dir: Path) -> None:
+    """有外隊馬嘅賽日（國際賽日）提一次（Kelvin 2026-11-14 決定 4）：外隊馬冇本地往績、維度用中性；
+    要檢查 HKJC formguide／全日出賽 PDF 有冇海外往績，再諗點用（只用 HKJC 數據）。每個賽日只推一次。"""
+    try:
+        record = state.setdefault("meetings", {}).setdefault(key, {})
+        if record.get("foreign_reminded"):
+            return
+        found = []
+        for lf in sorted(meeting_dir.glob("Race_*_Logic.json")):
+            horses = (json.loads(lf.read_text(encoding="utf-8")).get("horses") or {})
+            for no, h in horses.items():
+                m = re.search(r"[A-Z](\d{3})$", str((h or {}).get("horse_code") or (h or {}).get("hkjc_horse_id") or ""))
+                if m and int(m.group(1)) >= 800:
+                    found.append(f"{lf.stem.split('_')[1]}場 {no}號 {h.get('horse_name', '')}")
+        if found:
+            notify("🌏 HKJC 國際賽日：有外隊馬（本地資料不足，維度用中性 60，已加標籤）\n"
+                   + "\n".join(found[:20])
+                   + "\n👉 記得檢查 HKJC formguide／全日出賽 PDF 有冇佢哋嘅海外往績，再決定點用（只用 HKJC 數據）")
+            record["foreign_reminded"] = True
+            save_state(state_path, state)
+    except Exception as exc:  # 提示失敗唔可以令賽前流程失敗
+        log(f"foreign-horse reminder failed: {exc}")
+
+
 def update_pit_sections_async() -> None:
     """賽果入庫後喺背景更新段速 FT 表（EXP-20261114-04；Kelvin 2026-11-14 決定上線）。
 
@@ -1194,6 +1218,7 @@ def run_prerace(
             f"\nDrive mirror：{mirror['status']}（{mirror['copied']} files）",
             audience="content",
         )
+        remind_foreign_horses(state, state_path, key, meeting_dir)
     else:
         log(f"HKJC unchanged rerun: reuse snapshot {snapshot.name}; Telegram skipped")
     set_control_outcome(
