@@ -13,6 +13,7 @@ Logic 只有近仗字串（L400、名次、輸頭馬），冇逐仗負磅同分�
 from __future__ import annotations
 
 import json
+from .pit_sections import USE_PRODUCTION
 import re
 from datetime import date, datetime
 from functools import lru_cache
@@ -127,7 +128,7 @@ def std_pace(runs: list[dict], today_weight: int | None, today_class: str | None
     return {**avg, "runs": use, "n": len(use)}
 
 
-def attach(formguide_text: str, horses: dict, race_context: dict, race_date: date | None) -> int:
+def attach(formguide_text: str, horses: dict, race_context: dict, race_date: date | None, *, sectional_table=USE_PRODUCTION) -> int:
     """寫入 `_data`：formguide_today_weight、l400_last_run、std_pace。返回處理咗幾多匹。"""
     if race_date is None:
         return 0
@@ -158,18 +159,19 @@ def attach(formguide_text: str, horses: dict, race_context: dict, race_date: dat
         pace = std_pace(runs, entry["today_weight"], today_class, run_classes)
         if pace:
             data["std_pace"] = pace
-        ft = _sectional_ft(runs, race_date, today_class, run_classes)
+        ft = _sectional_ft(runs, race_date, today_class, run_classes, table=sectional_table)
         if ft:
             data["sectional_ft"] = ft
         count += 1
     return count
 
 
-def _sectional_ft(runs: list[dict], race_date: date, today_class: str | None, run_classes: dict) -> dict | None:
+def _sectional_ft(runs: list[dict], race_date: date, today_class: str | None, run_classes: dict, *, table=USE_PRODUCTION) -> dict | None:
     """段速 FT 組件（EXP-20261114-04；Kelvin 2026-11-14 決定上線）：前段＋全程對 as-of 標準、扣當日快慢。
     計法喺 `pit_sections.ft_values`（同離線回放 arm 同一個 function）；冇表（本機資料根冇 pit_sections.json）= 唔計。"""
     from . import pit_sections
-    table = pit_sections.load_table()
+    if table is USE_PRODUCTION:
+        table = pit_sections.load_table()
     if not table:
         return None
     rows = []

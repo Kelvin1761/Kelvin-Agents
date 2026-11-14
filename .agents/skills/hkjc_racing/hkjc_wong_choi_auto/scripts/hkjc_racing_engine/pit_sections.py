@@ -15,6 +15,12 @@
 from __future__ import annotations
 
 import json
+import hashlib
+import math
+import os
+import re
+import stat
+from dataclasses import dataclass
 from pathlib import Path
 
 B = 0.5
@@ -22,6 +28,94 @@ SPEED_SD = 9.45
 CLASS_CODE = {"第一班": "C1", "第二班": "C2", "第三班": "C3", "第四班": "C4", "第五班": "C5",
               "1": "C1", "2": "C2", "3": "C3", "4": "C4", "5": "C5", "C1": "C1", "C2": "C2", "C3": "C3", "C4": "C4", "C5": "C5"}
 _TABLE: dict | None = None
+USE_PRODUCTION = object()
+MAX_SOURCE_BYTES = 16 * 1024 * 1024
+
+
+@dataclass(frozen=True)
+class SectionalSource:
+    """Per-call byte identity only, never historical availability/authority.
+
+    sha256=None declares this exact path absent. Omission of the API argument,
+    rather than absence, selects the unchanged production cache policy.
+    """
+    path: Path
+    sha256: str | None
+
+
+def _source_path(path):
+    path = Path(path)
+    if not path.is_absolute() or ".." in path.parts:
+        raise ValueError("absolute canonical sectional source path required")
+    if any(p.is_symlink() for p in (path, *path.parents)) or not path.parent.is_dir():
+        raise ValueError("symlinked or unavailable sectional source parent")
+    return path
+
+
+def _unique_object(pairs):
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError("duplicate sectional source key")
+        value[key] = item
+    return value
+
+
+def _invalid_constant(value):
+    raise ValueError("nonfinite sectional source value")
+
+
+def _finite_tree(value, depth=0):
+    if depth > 64:
+        raise ValueError("sectional source nesting limit")
+    if isinstance(value, float) and not math.isfinite(value):
+        raise ValueError("nonfinite sectional source value")
+    if isinstance(value, dict):
+        for item in value.values():
+            _finite_tree(item, depth + 1)
+    elif isinstance(value, list):
+        for item in value:
+            _finite_tree(item, depth + 1)
+
+
+def read_bound_table(source: SectionalSource) -> dict | None:
+    """Read verified local bytes without accessing or changing production cache.
+
+    Stable descriptor checks are not an atomic filesystem lease or a PIT proof.
+    This native seam is not connected to the frozen research input protocol.
+    """
+    if not isinstance(source, SectionalSource):
+        raise ValueError("typed sectional source binding required")
+    path = _source_path(source.path)
+    if source.sha256 is None:
+        try:
+            path.lstat()
+        except FileNotFoundError:
+            return None
+        raise ValueError("declared absent sectional source exists")
+    if not isinstance(source.sha256, str) or not re.fullmatch(r"[a-f0-9]{64}", source.sha256):
+        raise ValueError("full sectional source hash required")
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+    with os.fdopen(os.open(path, flags), "rb") as handle:
+        before = os.fstat(handle.fileno())
+        if not stat.S_ISREG(before.st_mode) or not 0 < before.st_size <= MAX_SOURCE_BYTES:
+            raise ValueError("bounded regular sectional source required")
+        raw = handle.read(MAX_SOURCE_BYTES + 1)
+        after = os.fstat(handle.fileno())
+    current = _source_path(path).lstat()
+    def identity(info):
+        return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns, info.st_mode)
+    if (identity(before) != identity(after) or identity(after) != identity(current)
+            or len(raw) != before.st_size or hashlib.sha256(raw).hexdigest() != source.sha256):
+        raise ValueError("sectional source changed or hash differs")
+    try:
+        table = json.loads(raw.decode("utf-8"), object_pairs_hook=_unique_object, parse_constant=_invalid_constant)
+        _finite_tree(table)
+    except (UnicodeError, RecursionError) as exc:
+        raise ValueError("invalid sectional source JSON") from exc
+    if not isinstance(table, dict):
+        raise ValueError("sectional source object required")
+    return table
 
 
 def season_of(iso: str) -> int:

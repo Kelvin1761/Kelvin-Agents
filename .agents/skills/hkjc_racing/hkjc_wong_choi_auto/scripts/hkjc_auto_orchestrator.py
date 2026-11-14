@@ -47,6 +47,7 @@ from hkjc_racing_engine.scoring import (
 )
 from hkjc_racing_engine import overlays as overlay_registry
 from hkjc_racing_engine import past_runs
+from hkjc_racing_engine.pit_sections import USE_PRODUCTION, read_bound_table
 from hkjc_racing_engine.validation import validate_engine_scripts, validate_logic_data
 from wongchoi_paths import is_materialized_file
 
@@ -503,13 +504,14 @@ def _formguide_path_for_logic(logic_path, race_number):
     )
 
 
-def _attach_past_runs(logic_path, race_context, horses, meeting_date):
+def _attach_past_runs(logic_path, race_context, horses, meeting_date, *, sectional_table=USE_PRODUCTION):
     """逐仗負磅／路程／分段時間由賽績檔寫入 `_data`（hkjc_racing_engine.past_runs）。
     冇賽績檔 = 唔寫，段速分照舊（冇負磅換算、冇對標準顯示）。"""
     path = _formguide_path_for_logic(logic_path, race_context.get("race_number"))
     if not path or not path.exists():
         return 0
-    return past_runs.attach(path.read_text(encoding="utf-8"), horses, race_context, meeting_date)
+    return past_runs.attach(path.read_text(encoding="utf-8"), horses, race_context, meeting_date,
+                            sectional_table=sectional_table)
 
 
 def _racecard_path_for_logic(logic_path, race_number):
@@ -1081,7 +1083,7 @@ class HKJCAutoOrchestrator:
             print(f"❌ Failed to write outputs for {race_file}: {e}")
             return None
 
-    def score_logic_data(self, race_file, logic_data, *, event_sink=None):
+    def score_logic_data(self, race_file, logic_data, *, event_sink=None, sectional_source=None):
         """Run complete production scoring without publishing race outputs.
 
         Input data is copied; Logic/Markdown/CSV, event logs and meeting results
@@ -1090,6 +1092,10 @@ class HKJCAutoOrchestrator:
         every source and any enrichment/cache behavior before corpus execution.
         Ordinary score_race supplies its existing event writer explicitly.
         """
+        # Explicit sources are validated before any enrichment, even if no
+        # formguide is present. Failure cannot fall back to live/native state.
+        sectional_kwargs = ({} if sectional_source is None else
+                            {"sectional_table": read_bound_table(sectional_source)})
         logic_data = deepcopy(logic_data)
         race_context = logic_data.get("race_analysis", {})
         horses = logic_data.get("horses", {})
@@ -1104,7 +1110,7 @@ class HKJCAutoOrchestrator:
                     race_context["venue"] = venue
             _enrich_profile_history(horses, as_of_date=meeting_date)
             # 段速維度：L400 按負磅換算（入分）＋ 對馬會標準（只顯示）—— EXP-20261112-13
-            _attach_past_runs(race_file, race_context, horses, meeting_date)
+            _attach_past_runs(race_file, race_context, horses, meeting_date, **sectional_kwargs)
         formline_summaries = _load_formline_opponent_summaries(race_file, race_context, horses)
         for h_num, summary in formline_summaries.items():
             horse_obj = horses.get(h_num)
