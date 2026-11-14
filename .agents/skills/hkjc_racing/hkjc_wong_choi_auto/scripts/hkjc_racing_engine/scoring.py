@@ -372,6 +372,10 @@ JOCKEY_MICRO_WEIGHTS = {
 # 係數 = 同一匹馬唔同仗比較量出嚟嘅每磅慢幾多秒（EXP-20261112-04，按上仗路程）。回放 389 場 Gold 0、Good +0.51pp，冇分層為負。
 # 開關畀 forward 退回 arm 用（hkjc_arm_revert_l400_weight.py，forward `l400_weight_post_live`）。
 L400_WEIGHT_ADJUST = True
+# 段速 FT 組件（EXP-20261114-04；Kelvin 2026-11-14 決定上線）：前段＋全程對 as-of 標準、扣當日快慢，b = 0.5。
+# 表 = 本機資料根 HKJC_Sections/pit_sections.json（每個賽日後由 hkjc_pit_sections_build.py 更新）。冇表 = 唔加分。
+# 開關畀 forward 退回 arm 用（hkjc_arm_revert_sectional_ft.py，forward `sectional_ft_post_live`）。
+SECTIONAL_FT = True
 L400_WEIGHT_SECONDS_PER_LB = ((1200, 0.007), (1799, 0.016), (None, 0.021))   # (上仗路程上限 m, 秒／磅)
 
 

@@ -100,6 +100,7 @@ REVERSE_BIAS_SHADOW = (
 RAIL_DRAW_REFRESH = PROJECT_ROOT / ".agents/scripts/build_rail_draw_dataset.py"
 FAST_RESULTS = EXTRACTOR_SCRIPTS / "fast_extract_results.py"
 SPEEDPRO_COLLECTOR = EXTRACTOR_SCRIPTS / "collect_speedpro.py"
+PIT_SECTIONS_BUILD = EXTRACTOR_SCRIPTS / "hkjc_pit_sections_build.py"
 STATE_DIR = HERE / "state"
 LOG_DIR = HERE / "logs"
 DEFAULT_STATE = STATE_DIR / "hkjc_daily_state.json"
@@ -543,6 +544,45 @@ DASHBOARD_LIVE_URL = os.environ.get(
 
 RESULTS_DB_SCRIPTS = PROJECT_ROOT / ".agents/skills/hkjc_racing/hkjc_reflector/scripts"
 COMPREHENSIVE_STATS_SCRIPT = PROJECT_ROOT / ".agents/scripts/build_comprehensive_stats.py"
+
+
+def remind_foreign_horses(state: dict, state_path: Path, key: str, meeting_dir: Path) -> None:
+    """有外隊馬嘅賽日（國際賽日）提一次（Kelvin 2026-11-14 決定 4）：外隊馬冇本地往績、維度用中性；
+    要檢查 HKJC formguide／全日出賽 PDF 有冇海外往績，再諗點用（只用 HKJC 數據）。每個賽日只推一次。"""
+    try:
+        record = state.setdefault("meetings", {}).setdefault(key, {})
+        if record.get("foreign_reminded"):
+            return
+        found = []
+        for lf in sorted(meeting_dir.glob("Race_*_Logic.json")):
+            horses = (json.loads(lf.read_text(encoding="utf-8")).get("horses") or {})
+            for no, h in horses.items():
+                m = re.search(r"[A-Z](\d{3})$", str((h or {}).get("horse_code") or (h or {}).get("hkjc_horse_id") or ""))
+                if m and int(m.group(1)) >= 800:
+                    found.append(f"{lf.stem.split('_')[1]}場 {no}號 {h.get('horse_name', '')}")
+        if found:
+            notify("🌏 HKJC 國際賽日：有外隊馬（本地資料不足，維度用中性 60，已加標籤）\n"
+                   + "\n".join(found[:20])
+                   + "\n👉 記得檢查 HKJC formguide／全日出賽 PDF 有冇佢哋嘅海外往績，再決定點用（只用 HKJC 數據）")
+            record["foreign_reminded"] = True
+            save_state(state_path, state)
+    except Exception as exc:  # 提示失敗唔可以令賽前流程失敗
+        log(f"foreign-horse reminder failed: {exc}")
+
+
+def update_pit_sections_async() -> None:
+    """賽果入庫後喺背景更新段速 FT 表（EXP-20261114-04；Kelvin 2026-11-14 決定上線）。
+
+    背景跑係因為補抓分段頁會慢速（4–8 秒／頁）而且香港賽馬時段會暫停 —— 唔可以卡住覆盤。
+    失敗／外置碟冇掛載由腳本自己推 Telegram（primary），live 繼續用上一版表。"""
+    try:
+        LOG_DIR.mkdir(parents=True, exist_ok=True)
+        with open(LOG_DIR / "pit_sections_update.log", "a", encoding="utf-8") as fh:
+            subprocess.Popen([sys.executable, str(PIT_SECTIONS_BUILD), "update"], cwd=str(PROJECT_ROOT),
+                             stdout=fh, stderr=subprocess.STDOUT, start_new_session=True)
+        log("pit-sections: 背景更新已開始")
+    except Exception as exc:  # 更新表唔可以令覆盤失敗
+        log(f"pit-sections: 開唔到背景更新：{exc}")
 
 
 def store_meeting_results(meeting_dir: Path) -> dict:
@@ -1156,6 +1196,7 @@ def run_prerace(
             f"\nDrive mirror：{mirror['status']}（{mirror['copied']} files）",
             audience="content",
         )
+        remind_foreign_horses(state, state_path, key, meeting_dir)
     else:
         log(f"HKJC unchanged rerun: reuse snapshot {snapshot.name}; Telegram skipped")
     set_control_outcome(
@@ -1637,6 +1678,7 @@ def run_postrace(state: dict, state_path: Path) -> int:
             )
         if completed:
             forward_tracker_remind(state, state_path)
+            update_pit_sections_async()     # 全部賽日入咗庫先更新一次段速表
     if overall == EXIT_TEMPORARY:
         set_control_outcome("partial", reason="results_pending")
     else:

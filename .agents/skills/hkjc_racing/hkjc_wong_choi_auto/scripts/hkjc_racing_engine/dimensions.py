@@ -77,7 +77,7 @@ DIMENSIONS: tuple[DimensionSpec, ...] = (
         key="sectional", label="段速表現", short_label="段速", role="核心",
         leaves=(("speed_score", 1.00),),
         weight=0.1285, debut_weight=0.0, display_centre=60.0, display_gain=1.1137,
-        description="末段 400 米、完成時間水平同段速走勢。",
+        description="末段 400 米、完成時間水平、段速走勢，同前段／全程對標準時間（扣當日場地快慢）。",
         dashboard_keywords=("段速", "速度"),
     ),
     DimensionSpec(

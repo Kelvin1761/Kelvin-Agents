@@ -97,6 +97,20 @@ class SpeedScorer(BaseScorer):
         return self.horse_data.get("_data", {}) if isinstance(self.horse_data.get("_data"), dict) else {}
 
     def compute(self):
+        score, note = self._compute_with_first_section()
+        # 段速 FT 組件（EXP-20261114-04 FT_b50；Kelvin 2026-11-14 決定上線）：前段＋全程對 as-of 標準、扣當日快慢，
+        # 喺所有其他段速分之後加再 clip —— 同回放 arm（hkjc_replay_sectional_arms.py）次序一樣。
+        ft = self._data().get("sectional_ft") or {}
+        pts = float(ft.get("points") or 0.0)
+        if not scoring.SECTIONAL_FT or not pts:
+            return score, note
+        self.detail = list(getattr(self, "detail", []) or []) + [{
+            "factor": "前段／全程對標準",
+            "value": f"前段 {ft.get('first_v'):+.2f}s／全程 {ft.get('total_v'):+.2f}s（每 400 米，快過標準為正）",
+            "delta": round(pts, 2), "why": "近 6 仗對 as-of 標準時間、扣當日場地快慢"}]
+        return clip_score(score + pts), note
+
+    def _compute_with_first_section(self):
         score, note = self._compute_core()
         # 最快第一段（EXP-20261016-52/53，Kelvin 2026-10-16 決定上線，未證實）：喺所有返回路徑之後加，
         # 唔計入 signals —— 同 A/B arm 一模一樣，排名可以同 arm 逐場對數。
