@@ -386,6 +386,13 @@ class LeafScores:
         lower_count = int(parse_float(lower) or 0)
         bonus = min(8, higher_count * 3 + same_count * 1 - lower_count * 1)
         label_cn = {"elite": "極強", "strong": "強", "weak": "弱", "neutral": "中", "unknown": "未有資料"}[signal]
+        # 顯示修正（Kelvin 2026-11-15，分數唔郁）：標籤「中弱 (強組比例 2/9)」因為有「強組比例」三個字照計 78 ——
+        # EXP-20261114-12 證實呢個怪癖比按標籤計更準，所以分數保留，只係唔好寫成「強」誤導讀者。
+        raw_label = self._clean(self._value("formline_strength") or "").split("(")[0].split("（")[0].strip(" ✅❌⚠️➖")
+        if signal == "strong" and raw_label and "強" not in raw_label:
+            label_cn = f"有對手數據（標籤「{raw_label}」）"
+            note_map["strong"] = (f"賽績線標籤係「{raw_label}」，但有對手後續數據就按 78 計 —— "
+                                  "回放證實咁計比按標籤計準（EXP-20261114-12）。")
         calc_items = [(f"對手之後跑過高過今仗班次（有贏馬）{higher_count} 匹（每匹 3 分）", higher_count * 3),
                       (f"同班再贏 {same_count} 匹（每匹 1 分）", same_count), (f"低班再贏 {lower_count} 匹（每匹 1 分）", -lower_count)]
         calc_text = _calc_line(score, calc_items, clip_score(score + bonus)).replace(f"{score:g}", f"賽績線「{label_cn}」{score:g}", 1)
