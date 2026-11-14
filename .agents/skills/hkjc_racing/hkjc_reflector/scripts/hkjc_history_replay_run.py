@@ -121,9 +121,16 @@ def install() -> None:
     shp._profile_cache = {}
     orig = shp.scrape_horse_profile
 
+    import copy
+    memo = {}
+
     def scrape(hid, timeout=15):
-        shp._profile_cache = {}            # 唔用 48 小時 cache：每場要按賽日重新切三季
-        return _three_seasons(orig(hid, timeout))
+        # 每匹馬嘅完整頁喺 process 入面只解析一次（BS4 解析係瓶頸：賽績線每匹馬要睇 ~60 個對手頁）；
+        # 每次用都 deepcopy 再按賽日切三季 —— 下游改 entry 唔會漏去下一場，輸出同唔 memo 一樣。
+        if hid not in memo:
+            shp._profile_cache = {}
+            memo[hid] = orig(hid, timeout)
+        return _three_seasons(copy.deepcopy(memo[hid]))
     shp.scrape_horse_profile = scrape
     import hkjc_profile_scraper as hps
     hps.requests.get = _offline_get
