@@ -103,13 +103,14 @@ if command -v node >/dev/null 2>&1; then
   for t in Horse_Racing_Dashboard/tests/*.mjs; do
     [ -f "$t" ] || continue
     echo "--- $t"
-    node "$t" | grep -E "^# (pass|fail)" || node_ok=0
-    # shellcheck disable=SC2181
-    if [ "${PIPESTATUS[0]}" -ne 0 ]; then node_ok=0; fi
+    # Node 24 defaults to a different reporter. Do not infer success from text
+    # formatting or discard the diagnostics from a failed assertion.
+    if ! node --test-reporter=tap "$t"; then node_ok=0; fi
   done
   if [ "$node_ok" -eq 1 ]; then PASSED+=("Dashboard (node)"); else FAILED+=("Dashboard (node)"); fi
 else
-  echo "!! node not found — skipped Dashboard (node) suite"
+  echo "!! node not found — Dashboard (node) suite cannot run"
+  FAILED+=("Dashboard (node)")
 fi
 
 echo ""
