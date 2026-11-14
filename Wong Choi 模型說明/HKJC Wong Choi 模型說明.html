@@ -50,57 +50,57 @@ ul, ol { padding-left:1.5rem; }
 <th>佔比圖</th>
 </tr></thead><tbody>
 <tr>
-<td>檔位與走位（不含步速） <code>race_shape</code></td>
-<td>27.4%</td>
-<td>29.4%</td>
-<td>██████··············</td>
-</tr>
-<tr>
 <td>騎練訊號 <code>trainer_signal</code></td>
-<td>23.6%</td>
-<td>13.8%</td>
-<td>███·················</td>
+<td>33.0%</td>
+<td>17.5%</td>
+<td>████················</td>
 </tr>
 <tr>
-<td>評分與經驗 <code>class_advantage</code></td>
-<td>15.9%</td>
-<td>7.6%</td>
-<td>██··················</td>
+<td>狀態與穩定性 <code>stability</code></td>
+<td>24.5%</td>
+<td>33.3%</td>
+<td>███████·············</td>
+</tr>
+<tr>
+<td>檔位與走位（不含步速） <code>race_shape</code></td>
+<td>19.2%</td>
+<td>18.5%</td>
+<td>████················</td>
 </tr>
 <tr>
 <td>段速表現 <code>sectional</code></td>
 <td>12.8%</td>
-<td>17.0%</td>
-<td>███·················</td>
-</tr>
-<tr>
-<td>狀態與穩定性 <code>stability</code></td>
-<td>8.8%</td>
-<td>13.2%</td>
+<td>15.2%</td>
 <td>███·················</td>
 </tr>
 <tr>
 <td>賽績線 <code>form_line</code></td>
-<td>8.0%</td>
-<td>13.4%</td>
-<td>███·················</td>
+<td>7.0%</td>
+<td>10.5%</td>
+<td>██··················</td>
 </tr>
 <tr>
 <td>馬匹健康 / 新鮮感 <code>horse_health</code></td>
-<td>2.5%</td>
-<td>1.3%</td>
+<td>3.4%</td>
+<td>1.7%</td>
 <td>····················</td>
 </tr>
 <tr>
 <td>同程表現 <code>distance_fit</code></td>
 <td>2.0%（以 60 為中心）</td>
-<td>3.6%</td>
+<td>3.3%</td>
 <td>█···················</td>
 </tr>
 <tr>
+<td>評分與經驗 <code>class_advantage</code></td>
+<td><strong>0%（只顯示，唔入排名）</strong></td>
+<td>—</td>
+<td>····················</td>
+</tr>
+<tr>
 <td>晨操狀態 <code>trackwork</code></td>
-<td>1.0%</td>
-<td>0.7%</td>
+<td><strong>0%（只顯示，唔入排名）</strong></td>
+<td>—</td>
 <td>····················</td>
 </tr>
 </tbody></table>
@@ -120,28 +120,17 @@ ul, ol { padding-left:1.5rem; }
 <p>實際跑落去，呢個維度喺同一場馬入面真係拉開幾多分距離 —— 一個權重好高但成場馬</p>
 <p>都畀差唔多分數嘅維度，其實冇乜影響力。兩者差得遠，就代表個維度「有名無實」。</p>
 <p><strong>⚠️ 配方同實際唔夾嘅維度：</strong></p>
-<ul><li><strong>賽績線</strong> — 帳面 8.0%，實際 13.4%（大過帳面 67%）</li>
-<li><strong>評分與經驗</strong> — 帳面 15.9%，實際 7.6%（細過帳面 52%）</li>
-<li><strong>狀態與穩定性</strong> — 帳面 8.8%，實際 13.2%（大過帳面 49%）</li>
-<li><strong>馬匹健康 / 新鮮感</strong> — 帳面 2.5%，實際 1.3%（細過帳面 46%）</li>
-<li><strong>騎練訊號</strong> — 帳面 23.6%，實際 13.8%（細過帳面 42%）</li></ul>
+<ul><li><strong>馬匹健康 / 新鮮感</strong> — 帳面 3.4%，實際 1.7%（細過帳面 51%）</li>
+<li><strong>賽績線</strong> — 帳面 7.0%，實際 10.5%（大過帳面 50%）</li>
+<li><strong>騎練訊號</strong> — 帳面 33.0%，實際 17.5%（細過帳面 47%）</li>
+<li><strong>狀態與穩定性</strong> — 帳面 24.5%，實際 33.3%（大過帳面 36%）</li></ul>
 <p>呢個唔一定係錯，但值得查：通常代表某個維度嘅分數散開程度同當初調校時唔同咗</p>
 <p>（例如換咗數據源、或者有 leaf 退役），權重就冇再對應返佢真正嘅話事權。</p>
 <p>ℹ️ <strong>同程表現</strong> 係「以 60 為中心」嘅維度：貢獻 = 權重 ×（分 − 60），唔佔加埋等於 100% 嘅份額。</p>
 <p>⚠️ <strong>晨操狀態</strong> 已經退出排名：一律 60 分，上面嘅權重對排名冇影響（見第 2 節）。</p>
+<p>⚠️ <strong>晨操狀態、評分與經驗</strong> 喺報告見到，但權重係 0 —— 佢完全唔影響排名，純粹俾你睇。</p>
 <h2>2. 每個維度食緊咩</h2>
-<h3>檔位與走位（不含步速）　<code>race_shape</code>　— 權重 27.4%</h3>
-<table><thead><tr>
-<th>基礎分</th>
-<th>喺呢個維度佔</th>
-</tr></thead><tbody>
-<tr>
-<td><code>race_shape_context_score</code></td>
-<td>100.0%</td>
-</tr>
-</tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>7.06 分</strong>；<strong>0.0%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
-<h3>騎練訊號　<code>trainer_signal</code>　— 權重 23.6%</h3>
+<h3>騎練訊號　<code>trainer_signal</code>　— 權重 33.0%</h3>
 <table><thead><tr>
 <th>基礎分</th>
 <th>喺呢個維度佔</th>
@@ -155,34 +144,8 @@ ul, ol { padding-left:1.5rem; }
 <td>45.0%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>3.83 分</strong>；<strong>0.1%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
-<h3>評分與經驗　<code>class_advantage</code>　— 權重 15.9%</h3>
-<table><thead><tr>
-<th>基礎分</th>
-<th>喺呢個維度佔</th>
-</tr></thead><tbody>
-<tr>
-<td>經驗與季內分 <code>class_score</code></td>
-<td>67.6%</td>
-</tr>
-<tr>
-<td>官方評分分 <code>weight_score</code></td>
-<td>32.4%</td>
-</tr>
-</tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>3.14 分</strong>；<strong>0.4%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
-<h3>段速表現　<code>sectional</code>　— 權重 12.8%</h3>
-<table><thead><tr>
-<th>基礎分</th>
-<th>喺呢個維度佔</th>
-</tr></thead><tbody>
-<tr>
-<td>速度分 <code>speed_score</code></td>
-<td>100.0%</td>
-</tr>
-</tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>8.71 分</strong>；<strong>2.4%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
-<h3>狀態與穩定性　<code>stability</code>　— 權重 8.8%</h3>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>3.86 分</strong>；<strong>0.1%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<h3>狀態與穩定性　<code>stability</code>　— 權重 24.5%</h3>
 <table><thead><tr>
 <th>基礎分</th>
 <th>喺呢個維度佔</th>
@@ -196,8 +159,30 @@ ul, ol { padding-left:1.5rem; }
 <td>44.4%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>9.79 分</strong>；<strong>0.1%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
-<h3>賽績線　<code>form_line</code>　— 權重 8.0%</h3>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>9.88 分</strong>；<strong>0.1%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<h3>檔位與走位（不含步速）　<code>race_shape</code>　— 權重 19.2%</h3>
+<table><thead><tr>
+<th>基礎分</th>
+<th>喺呢個維度佔</th>
+</tr></thead><tbody>
+<tr>
+<td><code>race_shape_context_score</code></td>
+<td>100.0%</td>
+</tr>
+</tbody></table>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>7.00 分</strong>；<strong>0.0%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<h3>段速表現　<code>sectional</code>　— 權重 12.8%</h3>
+<table><thead><tr>
+<th>基礎分</th>
+<th>喺呢個維度佔</th>
+</tr></thead><tbody>
+<tr>
+<td>速度分 <code>speed_score</code></td>
+<td>100.0%</td>
+</tr>
+</tbody></table>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>8.58 分</strong>；<strong>2.8%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<h3>賽績線　<code>form_line</code>　— 權重 7.0%</h3>
 <table><thead><tr>
 <th>基礎分</th>
 <th>喺呢個維度佔</th>
@@ -207,8 +192,8 @@ ul, ol { padding-left:1.5rem; }
 <td>100.0%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>10.97 分</strong>；<strong>20.8%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
-<h3>馬匹健康 / 新鮮感　<code>horse_health</code>　— 權重 2.5%</h3>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>10.93 分</strong>；<strong>21.4%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<h3>馬匹健康 / 新鮮感　<code>horse_health</code>　— 權重 3.4%</h3>
 <table><thead><tr>
 <th>基礎分</th>
 <th>喺呢個維度佔</th>
@@ -218,7 +203,7 @@ ul, ol { padding-left:1.5rem; }
 <td>100.0%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>3.53 分</strong>；<strong>0.1%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>3.59 分</strong>；<strong>0.1%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
 <h3>同程表現　<code>distance_fit</code>　— 權重 2.0%</h3>
 <table><thead><tr>
 <th>基礎分</th>
@@ -229,8 +214,23 @@ ul, ol { padding-left:1.5rem; }
 <td>100.0%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>11.97 分</strong>；<strong>17.7%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
-<h3>晨操狀態　<code>trackwork</code>　— 權重 1.0%（已退出排名）</h3>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>11.93 分</strong>；<strong>16.4%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<h3>評分與經驗　<code>class_advantage</code>　— 權重 0.0%（唔入排名）</h3>
+<table><thead><tr>
+<th>基礎分</th>
+<th>喺呢個維度佔</th>
+</tr></thead><tbody>
+<tr>
+<td>經驗與季內分 <code>class_score</code></td>
+<td>67.6%</td>
+</tr>
+<tr>
+<td>官方評分分 <code>weight_score</code></td>
+<td>32.4%</td>
+</tr>
+</tbody></table>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>3.13 分</strong>；<strong>0.4%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<h3>晨操狀態　<code>trackwork</code>　— 權重 0.0%（唔入排名）（已退出排名）</h3>
 <p>⚠️ 呢個維度已經退出排名（EXP-20261029-02）：每匹馬一律 60 分，權重照留但對排名冇影響；報告入面嘅內容只作顯示參考。下面嘅實測數字係退出之前嘅語料。</p>
 <table><thead><tr>
 <th>基礎分</th>
@@ -241,7 +241,7 @@ ul, ol { padding-left:1.5rem; }
 <td>100.0%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>4.96 分</strong>；<strong>40.0%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>4.46 分</strong>；<strong>46.7%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
 <h2>3. 個分點樣讀</h2>
 <p><strong>60 分永遠代表「中性 / 冇證據」</strong>，唔係「合格」。高過 60 = 有正面證據，低過 60 = 有負面證據。</p>
 <h3>報告入面嘅符號</h3>
@@ -349,29 +349,24 @@ ul, ol { padding-left:1.5rem; }
 <th>gain</th>
 </tr></thead><tbody>
 <tr>
-<td>檔位與走位（不含步速）</td>
-<td>63.0</td>
-<td>0.9852</td>
-</tr>
-<tr>
 <td>騎練訊號</td>
 <td>60.5</td>
 <td>2.1261</td>
 </tr>
 <tr>
-<td>評分與經驗</td>
-<td>63.24</td>
-<td>2.0662</td>
+<td>狀態與穩定性</td>
+<td>56.39</td>
+<td>0.8642</td>
+</tr>
+<tr>
+<td>檔位與走位（不含步速）</td>
+<td>63.0</td>
+<td>0.9852</td>
 </tr>
 <tr>
 <td>段速表現</td>
 <td>60.0</td>
 <td>1.1137</td>
-</tr>
-<tr>
-<td>狀態與穩定性</td>
-<td>56.39</td>
-<td>0.8642</td>
 </tr>
 <tr>
 <td>賽績線</td>
@@ -392,6 +387,11 @@ ul, ol { padding-left:1.5rem; }
 <td>同程表現</td>
 <td>60.0</td>
 <td>0.7375</td>
+</tr>
+<tr>
+<td>評分與經驗</td>
+<td>63.24</td>
+<td>2.0662</td>
 </tr>
 </tbody></table>
 <p><strong>兩把尺都唔加任何資訊，亦唔改任何排名</strong> —— 斜率全部正數、全體同一條式，</p>
@@ -429,13 +429,13 @@ ul, ol { padding-left:1.5rem; }
 </tr>
 </tbody></table>
 <h2>呢份文件由邊度嚟</h2>
-<ul><li>生成時間：<code>2026-11-12 21:50 AEDT</code></li>
-<li>Git commit：<code>74d8c248</code></li>
+<ul><li>生成時間：<code>2026-11-14 17:22 AEDT</code></li>
+<li>Git commit：<code>7c06dad5</code></li>
 <li>Scoring contract：<code>HKJC_9D_CONTRACT_2026_10_10_REGISTRY_TRACKWORK_DISTANCE_FIT_RACE_SHAPE_ROBUST_WINSOR10_PIT_RAIL_DRAW_V2_DISTANCE_COMPONENT_V1</code></li>
 <li><code>scoring.py</code> 指紋：<code>24a8890202ee</code></li>
 <li><code>matrix_mapper.py</code> 指紋：<code>a675ec199a4c</code></li>
 <li><code>renderer.py</code> 指紋：<code>e07926aa2737</code></li>
-<li>實測樣本：<strong>99 場、1209 匹馬</strong>，由 <code>2026-10-11_ShaTin</code> 到 <code>2026-11-11_HappyValley</code>（跳過 351 個舊格式檔案）</li></ul>
+<li>實測樣本：<strong>110 場、1361 匹馬</strong>，由 <code>2026-10-11_ShaTin</code> 到 <code>2026-11-14_ShaTin</code>（跳過 351 個舊格式檔案）</li></ul>
 <p>重新生成：</p>
 <pre><code>
 python3 .agents/skills/shared_racing/scripts/explain_model.py --platform hkjc
