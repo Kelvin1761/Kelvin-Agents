@@ -509,3 +509,4 @@
 - [EXP-20261115-01](EXP-20261115-01-hkjc-course-fit-and-small-fixes.md) — HKJC 泥地／直路轉化（校準加分、分段權重）同一般化場地類型適性（全部場次篩選 CI 全正、δ 穩定）排名都唔過 Gold／Good；結論：把尺同改善幅度唔配（改尺交 Kelvin）；L400 係數改實測、賽績線顯示修正、換騎 forward shadow
 - [EXP-20261115-02](EXP-20261115-02-hkjc-ruler-v4-and-course-fit.md) — **HKJC 歷史回放尺 v4**（Kelvin 決定：主指標 log-loss，Gold／Good CI 下界 > −1pp，贏 null）；A/A REJECT ✅；場地類型適性用 v4 仍然 REJECT（效果本身細）
 - [EXP-20261115-03](EXP-20261115-03-hkjc-leaf-continuous.md) — HKJC 19 組訊號重建第一批：近績／L400／完成時間由階梯改連續，dev 三個都 REJECT（log-loss CI 跨零）；缺口唔喺 leaf 形狀
+- [EXP-20261115-04](EXP-20261115-04-hkjc-signal-interactions.md) — HKJC 訊號 × 情境互動（維度 × 短途／長途／泥地／跑馬地，walk-forward）：dev PASS、holdout Δlog-loss −0.00069 同 dev 一致但 Holm 99% 唔過 → REJECT；交 Kelvin 揀 forward shadow
