@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import fcntl
+from glob import escape as glob_escape
 import hashlib
 import html
 import json
@@ -53,6 +54,7 @@ if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 import hkjc_forward_tracker as forward_tracker  # noqa: E402
 from shared_wong_choi.contracts import Domain  # noqa: E402
+from shared_wong_choi.immutable_snapshot import create_immutable_snapshot  # noqa: E402
 from shared_wong_choi.dashboard_publish_lock import serialized_publication  # noqa: E402
 from shared_wong_choi.domain_evidence import (  # noqa: E402
     record_prediction_decision_if_configured,
@@ -362,11 +364,14 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-SNAPSHOT_PATTERNS = (
+SNAPSHOT_SOURCE_PATTERNS = (
     "* Facts.md",
     "* 排位表.md",
     "* 晨操.md",
     "* 晨操.json",
+)
+SNAPSHOT_PATTERNS = (
+    *SNAPSHOT_SOURCE_PATTERNS,
     "Race_*_Logic.json",
     "Race_*_Auto_Analysis.md",
     "Race_*_Auto_Scoring.csv",
@@ -392,41 +397,14 @@ def create_prediction_snapshot(meeting_dir: Path, *, at: datetime | None = None)
     })
     if not files:
         raise RuntimeError(f"no pre-race artifacts to snapshot in {meeting_dir}")
-    manifest_files = [
-        {"name": path.name, "size": path.stat().st_size, "sha256": _sha256(path)}
-        for path in files
-    ]
-    signature = hashlib.sha256(
-        json.dumps(manifest_files, sort_keys=True).encode("utf-8")
-    ).hexdigest()
-    root = meeting_dir / "Prediction_Snapshots"
-    existing = sorted(root.glob("*/manifest.json")) if root.exists() else []
-    if existing:
-        try:
-            last = json.loads(existing[-1].read_text(encoding="utf-8"))
-            if last.get("signature") == signature:
-                return existing[-1].parent
-        except (OSError, UnicodeError, json.JSONDecodeError):
-            pass
-
-    at = at or now_local()
-    destination = root / at.strftime("%Y%m%dT%H%M%S%z")
-    if destination.exists():
-        raise RuntimeError(f"snapshot destination already exists: {destination}")
-    destination.mkdir(parents=True)
-    for source in files:
-        shutil.copy2(source, destination / source.name)
-    manifest = {
-        "schema_version": 1,
-        "platform": "hkjc",
-        "meeting": meeting_dir.name,
-        "created_at": at.isoformat(timespec="seconds"),
-        "signature": signature,
-        "files": manifest_files,
-        "immutable_prediction_snapshot": True,
-    }
-    _atomic_json(destination / "manifest.json", manifest)
-    return destination
+    return create_immutable_snapshot(
+        meeting_dir, domain="hkjc", event_id=meeting_dir.name,
+        patterns=[glob_escape(source.name) for source in files], root_name="Prediction_Snapshots",
+        at=at or now_local(), capture_file_metadata=True,
+        reuse_latest_only=True,
+        metadata_source_names=sorted({path.name for pattern in SNAPSHOT_SOURCE_PATTERNS
+            for path in meeting_dir.glob(pattern) if path in files}),
+    )
 
 
 ODDS_ALERT_EVERY = 6

@@ -2524,10 +2524,13 @@ def analyse_one_meeting(runlog: RunLog, day: str, plan: dict) -> tuple:
     return folder, complete, len(got) > len(have)
 
 
-AU_EVIDENCE_PATTERNS = (
+AU_REPLAY_SOURCE_PATTERNS = (
     "* Race * Racecard.md",
     "* Race * Formguide.md",
     "* Race * Facts.md",
+)
+AU_EVIDENCE_PATTERNS = (
+    *AU_REPLAY_SOURCE_PATTERNS,
     "Race_*_Logic.json",
     "Race_*_Auto_Analysis.md",
     "Race_*_Auto_Scoring.csv",
@@ -2566,6 +2569,9 @@ def step_prediction_evidence(runlog: RunLog, meeting_dirs: list[Path]) -> bool:
                 recommendations=recommendations,
                 additional_files={PROJECTION_NAME: projection},
                 at=captured_at,
+                capture_file_metadata=True,
+                metadata_source_names=sorted({path.name for pattern in AU_REPLAY_SOURCE_PATTERNS
+                    for path in folder.glob(pattern) if path.is_file() and path.stat().st_size > 0}),
             )
             record = record_prediction_decision_if_configured(
                 domain=Domain.AU,

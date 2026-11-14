@@ -4,10 +4,46 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shutil
+import stat
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping
+
+
+SOURCE_METADATA_NAME = "Research_Source_File_Metadata.json"
+SOURCE_METADATA_SCHEMA = "wong-choi-snapshot-source-metadata/v1"
+MAX_SOURCE_BYTES = 32 * 1024 * 1024
+MAX_TOTAL_SOURCE_BYTES = 512 * 1024 * 1024
+
+
+def _source_record(path: Path, *, max_bytes: int = MAX_SOURCE_BYTES) -> tuple[dict, tuple]:
+    """Observe original filesystem metadata; it is NOT availability evidence."""
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    try:
+        before = os.fstat(fd)
+        if not stat.S_ISREG(before.st_mode) or not 0 <= before.st_size <= max_bytes:
+            raise ValueError("snapshot metadata requires a bounded regular file")
+        digest, count = hashlib.sha256(), 0
+        while True:
+            chunk = os.read(fd, min(1024 * 1024, max_bytes - count + 1))
+            if not chunk:
+                break
+            count += len(chunk)
+            if count > max_bytes:
+                raise ValueError("snapshot source exceeds metadata read bound")
+            digest.update(chunk)
+        after = os.fstat(fd)
+    finally:
+        os.close(fd)
+    def identity(value):
+        return (value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns,
+                value.st_ctime_ns, value.st_mode)
+    if identity(before) != identity(after) or count != before.st_size:
+        raise RuntimeError("snapshot source changed during metadata capture")
+    return {"name": path.name, "bytes": count, "sha256": digest.hexdigest(),
+            "mtime_ns": before.st_mtime_ns, "mode": stat.S_IMODE(before.st_mode)}, identity(after)
 
 
 def _sha256(path: Path) -> str:
@@ -28,7 +64,16 @@ def create_immutable_snapshot(
     additional_files: Mapping[str, bytes] | None = None,
     root_name: str = "_prediction_snapshots",
     at: datetime | None = None,
+    capture_file_metadata: bool = False,
+    metadata_source_names: Iterable[str] | None = None,
+    reuse_latest_only: bool = False,
 ) -> Path:
+    if type(capture_file_metadata) is not bool:
+        raise ValueError("boolean metadata capture flag required")
+    if type(reuse_latest_only) is not bool:
+        raise ValueError("boolean snapshot reuse policy required")
+    if metadata_source_names is not None and not capture_file_metadata:
+        raise ValueError("metadata source selection requires metadata capture")
     source_dir = source_dir.resolve()
     files = sorted(
         {
@@ -50,10 +95,38 @@ def create_immutable_snapshot(
             raise ValueError("additional snapshot files require a safe basename and non-empty bytes")
         generated[name] = raw_payload
     source_names = {path.name for path in files}
+    if len(source_names) != len(files):
+        raise ValueError("snapshot source basenames must be unique")
+    originals, identities = {}, {}
+    if capture_file_metadata:
+        if SOURCE_METADATA_NAME in generated or SOURCE_METADATA_NAME in source_names:
+            raise ValueError("reserved snapshot source metadata filename")
+        if len(files) > 5000:
+            raise ValueError("snapshot metadata source count bound exceeded")
+        source_bytes = 0
+        for path in files:
+            originals[path.name], identities[path.name] = _source_record(
+                path, max_bytes=min(MAX_SOURCE_BYTES, MAX_TOTAL_SOURCE_BYTES - source_bytes),
+            )
+            source_bytes += originals[path.name]["bytes"]
+        selected_names = list(originals) if metadata_source_names is None else list(metadata_source_names)
+        if (any(not isinstance(name, str) or name not in originals for name in selected_names)
+                or len(set(selected_names)) != len(selected_names)):
+            raise ValueError("metadata must select unique captured source basenames")
+        if sum(item["bytes"] for item in originals.values()) > MAX_TOTAL_SOURCE_BYTES:
+            raise ValueError("snapshot metadata total source bound exceeded")
+        generated[SOURCE_METADATA_NAME] = (json.dumps({
+            "schema_version": SOURCE_METADATA_SCHEMA, "domain": domain, "event_id": event_id,
+            "files": [originals[name] for name in sorted(selected_names)], "point_in_time_verified": False,
+            "resource_completeness_verified": False, "model_promotion_allowed": False,
+        }, ensure_ascii=False, sort_keys=True, indent=2) + "\n").encode("utf-8")
     collision = source_names.intersection(generated)
     if collision:
         raise ValueError(f"additional snapshot file collides with source: {sorted(collision)}")
     file_manifest = [
+        {key: item[key] for key in ("name", "bytes", "sha256")}
+        for item in originals.values()
+    ] if capture_file_metadata else [
         {
             "name": path.name,
             "bytes": path.stat().st_size,
@@ -76,9 +149,12 @@ def create_immutable_snapshot(
             ensure_ascii=False,
             sort_keys=True,
             separators=(",", ":"),
+            allow_nan=not capture_file_metadata,
         ).encode("utf-8")
     ).hexdigest()
     root = source_dir / root_name
+    if capture_file_metadata and root.is_symlink():
+        raise ValueError("symlinked snapshot root cannot bind source metadata")
     # Old snapshots moved to the archive disk (wongchoi_paths.SNAPSHOT_OFFLOAD_SUFFIX).
     # A new local folder would shadow them: readers prefer the local one.
     if (source_dir / f"{root_name}.offloaded.json").exists():
@@ -87,12 +163,39 @@ def create_immutable_snapshot(
             "restore first with .agents/scripts/offload_prediction_snapshots.py --restore"
         )
     if root.exists():
-        for manifest_path in sorted(root.glob("*/manifest.json"), reverse=True):
+        manifests = sorted(root.glob("*/manifest.json"), reverse=True)
+        for manifest_path in manifests[:1] if reuse_latest_only else manifests:
+            if capture_file_metadata and (manifest_path.is_symlink() or manifest_path.parent.is_symlink()):
+                raise ValueError("symlinked snapshot cannot bind source metadata")
             try:
                 existing = json.loads(manifest_path.read_text(encoding="utf-8"))
             except (OSError, ValueError):
                 continue
             if existing.get("signature") == signature:
+                if capture_file_metadata:
+                    if (existing.get("schema_version") != "wong-choi-prediction-snapshot/v1"
+                            or existing.get("domain") != domain or existing.get("event_id") != event_id
+                            or existing.get("append_only") is not True):
+                        raise RuntimeError("existing metadata snapshot manifest differs")
+                    for key, expected in (("files", file_manifest), ("recommendations", selected)):
+                        if (json.dumps(existing.get(key), sort_keys=True, allow_nan=False)
+                                != json.dumps(expected, sort_keys=True, allow_nan=False)):
+                            raise RuntimeError("existing metadata snapshot manifest contents differ")
+                    try:
+                        created = datetime.fromisoformat(existing["created_at"])
+                        if created.tzinfo is None or created.utcoffset() is None:
+                            raise ValueError("aware snapshot clock required")
+                    except (KeyError, TypeError, ValueError) as exc:
+                        raise RuntimeError("existing metadata snapshot clock invalid") from exc
+                    expected_name = created.strftime("%Y%m%dT%H%M%S.%f%z") + f"-{signature[:12]}"
+                    if manifest_path.parent.name != expected_name:
+                        raise RuntimeError("existing metadata snapshot clock/path identity differs")
+                    for expected in file_manifest:
+                        actual, _ = _source_record(manifest_path.parent / expected["name"])
+                        if any(actual[key] != expected[key] for key in ("name", "bytes", "sha256")):
+                            raise RuntimeError("existing metadata snapshot bytes differ")
+                        if expected["name"] in selected_names and actual != originals[expected["name"]]:
+                            raise RuntimeError("existing metadata snapshot source metadata differs")
                 return manifest_path.parent
 
     clock = at or datetime.now(timezone.utc)
@@ -108,6 +211,12 @@ def create_immutable_snapshot(
     try:
         for source in files:
             shutil.copy2(source, temporary / source.name)
+            if capture_file_metadata:
+                current, identity = _source_record(source)
+                copied, _ = _source_record(temporary / source.name)
+                if (current != originals[source.name] or identity != identities[source.name]
+                        or copied != originals[source.name]):
+                    raise RuntimeError("snapshot source or copied metadata changed")
         for name, payload in sorted(generated.items()):
             (temporary / name).write_bytes(payload)
         manifest = {
@@ -120,6 +229,8 @@ def create_immutable_snapshot(
             "recommendations": selected,
             "files": file_manifest,
         }
+        if domain == "hkjc":
+            manifest.update(platform="hkjc", meeting=event_id, immutable_prediction_snapshot=True)
         (temporary / "manifest.json").write_text(
             json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
