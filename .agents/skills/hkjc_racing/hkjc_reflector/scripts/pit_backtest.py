@@ -212,9 +212,12 @@ def inject_as_of(all_rows: pd.DataFrame, meeting_date: str):
     # Missing/malformed cutoffs must not accidentally admit the full archive.
     if date.fromisoformat(meeting_date).isoformat() != meeting_date:
         raise ValueError("PIT cutoff must be an ISO meeting date")
-    parsed_dates = pd.to_datetime(all_rows["Date"], errors="raise")
-    if parsed_dates.isna().any():
-        raise ValueError("PIT source contains missing dates")
+    # Lexical cutoff and downstream date sorting require canonical day strings.
+    # Validate every row before publishing either set of production priors.
+    for source_date in all_rows["Date"]:
+        if (not isinstance(source_date, str)
+                or date.fromisoformat(source_date).isoformat() != source_date):
+            raise ValueError("PIT source dates must be ISO meeting dates")
     sub = all_rows[all_rows["Date"] < meeting_date]
     live_priors._JT_RATINGS = _Ratings(
         build_ratings(sub, "jockey", _season_tag(meeting_date)),

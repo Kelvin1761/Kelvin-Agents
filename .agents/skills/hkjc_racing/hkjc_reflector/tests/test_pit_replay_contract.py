@@ -98,6 +98,25 @@ class PointInTimeTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             pit.inject_as_of(self.rows, "2026-04-12")
 
+    def test_noncanonical_source_dates_rejected_before_publishing_priors(self):
+        for value in ("01/01/2027", "2027-1-1", "20270101",
+                      "2026-04-10T12:00:00", " 2026-04-10", "2026-02-30"):
+            with self.subTest(value=value):
+                rows = self.rows.copy()
+                rows.loc[2, "Date"] = value
+                with self.assertRaises(ValueError):
+                    pit.inject_as_of(rows, "2026-04-12")
+                self.assertIs(live_priors._JT_RATINGS, self.old_ratings)
+                self.assertIs(engine_core._TRAINER_SIGNAL_PRIORS, self.old_priors)
+
+    def test_canonical_future_year_is_excluded_without_changing_input(self):
+        rows = self.rows.copy()
+        rows.loc[2, "Date"] = "2027-01-01"
+        before = rows.copy(deep=True)
+        self.assertEqual(pit.inject_as_of(rows, "2026-04-12"), 1)
+        self.assertIsNone(live_priors._JT_RATINGS.lookup("jockey", "B"))
+        pd.testing.assert_frame_equal(rows, before)
+
     def test_unknown_venue_resolved_but_surface_preserved(self):
         md = Path("2026-05-09_ShaTin")
         for missing in (None, "", "Unknown", "N/A"):
