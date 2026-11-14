@@ -91,6 +91,12 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 since="2026-11-15", arm="docs/experiments/patches/hkjc_arm_revert_sectional_ft.py",
                 action="自動判：同一批 live 場次，舊版 − live 嘅 Gold／Good／NDCG@5 全部 ≥ 0 → 問你退唔退；否則保留組件",
                 extra={"pass_verdict": "冇組件唔輸（等你決定退唔退）"}),
+    # EXP-20261114-06（Kelvin 2026-11-14 決定 3：顯示層＋forward）：初出馬「練馬師初出上名率」只顯示（標籤），
+    # shadow arm = 初出馬 raw + 0.75 × z（as-of）。回放 holdout Gold +0.12、Good −0.06（~1 場）、頭二 +0.23 [+0.06,+0.47]。
+    ForwardTest("debut_trainer_shadow", "初出馬練馬師初出紀錄入分（shadow）", "EXP-20261114-06", "harness_ab", 60,
+                since="2026-11-15", arm="docs/experiments/patches/hkjc_arm_debut_trainer_shadow.py",
+                action="自動判：forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議入分（等你決定）；否則維持只顯示",
+                extra={"pass_verdict": "建議入分（等你決定）"}),
     # EXP-20261112-13：「對馬會標準」新數值（逐段對標準、扣步速、換算今仗負磅）只顯示唔入分；
     # 夠數用 arm 將佢代替「輸頭馬差距」入分，Δ = 新數值 − live。回放（EXP-09 P2）Gold −0.77／Good −0.51，
     # 同一批 389 場已經跑咗 30 幾個 arm，所以要新場次判；細樣本 Gold 好嘈，最少 150 場。

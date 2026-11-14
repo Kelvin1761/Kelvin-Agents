@@ -315,6 +315,20 @@ def _driver_label(key: str, good: bool, horse: dict, auto: dict) -> str:
     return ""
 
 
+def _debut_trainer_tag(horse: dict, meta: dict) -> list[dict]:
+    """初出馬：練馬師初出紀錄（Kelvin 2026-11-14 決定 3；EXP-20261114-06）—— 未入分，forward shadow 觀察緊。"""
+    if not (horse.get("is_debut") or horse.get("debut_runner")) or not meta.get("date"):
+        return []
+    from .debut_trainer import rate
+    info = rate(str(horse.get("trainer") or "").strip(), meta["date"])
+    if not info or info["starts"] < 5:
+        return []
+    tone = "good" if info["z"] >= 1 else ("bad" if info["z"] <= -1 else "note")
+    return [_tag("debut_trainer", f"練馬師初出馬上名率 {info['rate'] * 100:.0f}%（{info['places']}/{info['starts']}）", tone,
+                 why="練馬師之前帶初出馬入頭三嘅比率（收縮向 25%）。回放證實喺模型之上有剩餘（EXP-20261114-06）；"
+                     "未入分，forward 觀察緊。")]
+
+
 def horse_tags(no: str, horse: dict, auto: dict, *, runs: list[dict], meta: dict,
                priority: str = "", extra: list | None = None) -> dict:
     special = _trainer_tags(auto) + _jockey_change_tag(horse, auto, runs) + _distance_venue_tags(horse, auto, runs, meta)
@@ -349,6 +363,8 @@ def race_tags(logic_data: dict, meeting_dir: Path | None = None) -> dict:
         for source in (_purton_tags(horses, runs_by_no), _fastest_finisher(horses)):
             for no, items in source.items():
                 extra.setdefault(no, []).extend(items)
+        for no, h in horses.items():
+            extra.setdefault(no, []).extend(_debut_trainer_tag(h, meta))
         return {no: horse_tags(no, h, h["python_auto"], runs=runs_by_no.get(no) or [], meta=meta,
                                priority=priorities.get(no, ""), extra=extra.get(no))
                 for no, h in horses.items()}

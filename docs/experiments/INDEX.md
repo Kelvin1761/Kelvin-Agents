@@ -496,3 +496,4 @@
 - [EXP-20261113-42](EXP-20261113-42-au-track-geometry-fill.md) — AU 賽道直路補齊：85 → 108 → 120 個場地（場次覆蓋 76% → 93%）；Sportsbet cache 準確度 70% 只補空格；racinglife 回防機械人頁，加 horise 做第二來源（justhorseracing 有過期數，Gawler 2030/220 vs 官方 1840/300）；生成器 `--fill-missing` 唔再洗走級別；全語料排名零差
 - [EXP-20261114-03](EXP-20261114-03-hkjc-replay-diagnostic-refit.md) — HKJC 外層權重 S 版（6,047 場歷史回放 dev fit、段速固定）：回放 holdout 1,710 場 Gold +1.93、Good +2.16、capture@5 +1.61、頭二 +2.22（全 CI>0）；live 389 場 fixed_rule REJECT（舊權重調參場次）；**Kelvin 決定上線**＋forward `s_weights_post_live`
 - [EXP-20261114-04](EXP-20261114-04-hkjc-replay-sectional-arms.md) — HKJC 段速 FT 組件（前段＋全程對 as-of 標準、扣當日快慢）：回放 holdout 方向全正、CI 跨零（邊緣）；**Kelvin 決定上線**＋每日自動更新表＋forward `sectional_ft_post_live`；backfill 兩位數年份修正一齊入
+- [EXP-20261114-06](EXP-20261114-06-hkjc-replay-debut.md) — HKJC 初出馬練馬師初出紀錄：模型之上 dev／holdout 都真；加分邊緣（holdout Good −0.06）→ **Kelvin 決定顯示層（標籤）＋forward shadow `debut_trainer_shadow`**
