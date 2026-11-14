@@ -62,3 +62,19 @@ its own audited contract extension too; neither is authorized by this slice.
 No live data, result history, native jobs, configuration, model registry, external
 ledger, credentials or incident latch is written by this work. Previous9848 and
 244 success notifications must not be duplicated.
+
+## Final source checkpoint before formal gates
+
+Final affected research safety/postflight/shared-metric/measurement tests:122
+passed3.46s, /private/tmp/stage5-racing-measurement-final-focused.log. Separate
+legacy AU evaluator:20passed3.22s, /private/tmp/stage5-racing-measurement-au-regression.log.
+Final quick passed with AU/HKJC golden scores unchanged; existing AU stale-baseline
+warning retained without recalibration. Final read-only seven-path review found
+no remaining must-fix; it is source inspection only, not installation approval.
+
+Reviewed own checkpointfaa6ef92 was preserved on the nonmain branch, then disjoint
+origin/main32f259a8 was merged normally into18199dd5. The31 upstream files are
+already production and outside the seven own changed paths; their historical
+HKJC research/model conclusions are observed only, not approved by this chat.
+The normal controller must include the whole seven-path unmerged scope, not
+just this genuinely updated evidence plan. Full immutable gates remain pending.
