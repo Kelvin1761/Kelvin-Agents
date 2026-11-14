@@ -50,3 +50,11 @@ def test_page_validity_rejects_unexpected_pages():
     assert b.looks_valid("sectional", _read("sectional_2019-11-03_R1.html.gz")) == "ok"
     assert b.looks_valid("sectional", "<html>Access Denied</html>") is None
     assert b.looks_valid("horse", "<html>captcha</html>") is None
+
+
+def test_active_horse_two_digit_year_dates():
+    # 現役馬頁面日期係 01/11/26（兩位數年份）；之前 regex 只收四位數，令現役馬 0 仗（2026-11-14 發現）
+    d = b.parse_horse(_read("horse_active_HK_2024_K503.html.gz"))
+    assert len(d["runs"]) >= 10
+    r = d["runs"][0]
+    assert (r["date"], r["pos"], r["rating"], r["season"]) == ("01/11/2026", "01", "40", "26/27")
