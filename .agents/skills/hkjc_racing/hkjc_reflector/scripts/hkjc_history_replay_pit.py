@@ -18,6 +18,7 @@ sys.path.insert(0, str(_HERE.parent))
 import pit_backtest  # noqa: E402
 
 bcs = pit_backtest.bcs
+_ORIGINAL_LOAD_ALL_ROWS = pit_backtest.load_all_rows    # 包裝會換走 pit_backtest.load_all_rows，要留住原版（否則無限遞迴）
 OLD_DIR = bcs.HK_RACING / "_research_old_season_results"
 
 
@@ -48,7 +49,7 @@ def old_season_rows(before: str) -> pd.DataFrame:
 
 
 def load_all_rows_extended() -> pd.DataFrame:
-    cur = pit_backtest.load_all_rows()
+    cur = _ORIGINAL_LOAD_ALL_ROWS()
     first = str(cur["Date"].min())
     old = old_season_rows(first)
     if old.empty:
