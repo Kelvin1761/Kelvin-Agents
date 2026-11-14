@@ -183,19 +183,19 @@ class AutoOutputTests(unittest.TestCase):
     def test_calibrated_matrix_weights_are_locked(self) -> None:
         # 2026-07-10: 場地分全移除，段速維度只剩純速度分；維度權重由 0.1849 下調至
         # 0.65×0.1849 並將 7D 重新歸一（保留原速度影響力、排名等效）。總和仍＝1。
+        # 2026-11-14：外層權重改 S 版（EXP-20261114-03，Kelvin 決定 1A；6,047 場歷史回放 dev fit、段速固定 0.1285）。
         self.assertAlmostEqual(sum(MATRIX_WEIGHTS.values()), 1.0, places=3)
         self.assertEqual(
             MATRIX_WEIGHTS,
             {
                 "sectional": 0.1285,
-                "trainer_signal": 0.2362,
-                "stability": 0.08847,
-                "race_shape": 0.2737,
-                # 2026-11-05：負磅分由健康（0.0404 × 38.9%）搬入級數，總權重不變。
-                "class_advantage": 0.1428 + 0.0404 * 0.389,
-                "horse_health": 0.0404 * 0.611,
-                "form_line": 0.0801,
-                "trackwork": 0.00983,
+                "trainer_signal": 0.3296,
+                "stability": 0.2451,
+                "race_shape": 0.1925,
+                "class_advantage": 0.0,
+                "horse_health": 0.0344,
+                "form_line": 0.0699,
+                "trackwork": 0.0,
             },
         )
 

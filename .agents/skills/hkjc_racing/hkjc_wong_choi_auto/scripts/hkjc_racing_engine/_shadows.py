@@ -16,7 +16,11 @@ from .scoring import (DEBUT_MATRIX_WEIGHTS, MATRIX_KEYS_ALL, MATRIX_WEIGHTS, cli
 
 
 _WEIGHT_REFIT_T02 = {
-    **MATRIX_WEIGHTS,
+    # Frozen candidate = the *pre-2026-11-14* mainline with its overrides. It used to
+    # spread **MATRIX_WEIGHTS, so when the live weights moved to the S version
+    # (EXP-20261114-03) this shadow no longer summed to one and SHADOW-023 failed every race.
+    "trainer_signal": 0.2362, "sectional": 0.1285, "horse_health": 0.0246844,
+    "form_line": 0.0801, "class_advantage": 0.1585156,
     # Frozen 7D candidate (stability 0.1183) split the same way as the 9D
     # mainline: trackwork keeps its 10% share of the old stability weight.
     "stability": 0.1183 * 0.9,

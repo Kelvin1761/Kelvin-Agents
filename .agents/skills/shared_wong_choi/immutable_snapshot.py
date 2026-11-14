@@ -18,12 +18,17 @@ MAX_SOURCE_BYTES = 32 * 1024 * 1024
 MAX_TOTAL_SOURCE_BYTES = 512 * 1024 * 1024
 
 
+def _source_identity(value) -> tuple:
+    return (value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns,
+            value.st_ctime_ns, value.st_mode)
+
+
 def _source_record(path: Path, *, max_bytes: int = MAX_SOURCE_BYTES) -> tuple[dict, tuple]:
     """Observe original filesystem metadata; it is NOT availability evidence."""
     fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
     try:
         before = os.fstat(fd)
-        if not stat.S_ISREG(before.st_mode) or not 0 <= before.st_size <= max_bytes:
+        if not stat.S_ISREG(before.st_mode) or not 0 < before.st_size <= max_bytes:
             raise ValueError("snapshot metadata requires a bounded regular file")
         digest, count = hashlib.sha256(), 0
         while True:
@@ -37,13 +42,52 @@ def _source_record(path: Path, *, max_bytes: int = MAX_SOURCE_BYTES) -> tuple[di
         after = os.fstat(fd)
     finally:
         os.close(fd)
-    def identity(value):
-        return (value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns,
-                value.st_ctime_ns, value.st_mode)
-    if identity(before) != identity(after) or count != before.st_size:
+    if _source_identity(before) != _source_identity(after) or count != before.st_size:
         raise RuntimeError("snapshot source changed during metadata capture")
     return {"name": path.name, "bytes": count, "sha256": digest.hexdigest(),
-            "mtime_ns": before.st_mtime_ns, "mode": stat.S_IMODE(before.st_mode)}, identity(after)
+            "mtime_ns": before.st_mtime_ns, "mode": stat.S_IMODE(before.st_mode)}, _source_identity(after)
+
+
+def _copy_bound_source(source: Path, destination: Path, expected: dict, identity: tuple) -> None:
+    """Copy at most the captured size; growth cannot consume unbounded scratch."""
+    if os.utime not in os.supports_fd:
+        raise RuntimeError("descriptor metadata copy unavailable")
+    source_fd = os.open(source, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    target_fd = None
+    try:
+        before = os.fstat(source_fd)
+        if _source_identity(before) != identity:
+            raise RuntimeError("snapshot source changed before bounded copy")
+        target_fd = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        digest, count = hashlib.sha256(), 0
+        while count < expected["bytes"]:
+            chunk = os.read(source_fd, min(1024 * 1024, expected["bytes"] - count))
+            if not chunk:
+                raise RuntimeError("snapshot source truncated during bounded copy")
+            digest.update(chunk)
+            remaining = memoryview(chunk)
+            while remaining:
+                written = os.write(target_fd, remaining)
+                if written <= 0:
+                    raise OSError("snapshot bounded copy made no progress")
+                remaining = remaining[written:]
+            count += len(chunk)
+        if (os.read(source_fd, 1) or _source_identity(os.fstat(source_fd)) != identity
+                or digest.hexdigest() != expected["sha256"]):
+            raise RuntimeError("snapshot source changed during bounded copy")
+        os.fchmod(target_fd, expected["mode"])
+        os.utime(target_fd, ns=(before.st_atime_ns, expected["mtime_ns"]))
+        os.fsync(target_fd)
+        published = os.stat(destination, follow_symlinks=False)
+        held = os.fstat(target_fd)
+        if (published.st_dev, published.st_ino) != (held.st_dev, held.st_ino):
+            raise RuntimeError("snapshot copied path changed ownership")
+    finally:
+        try:
+            if target_fd is not None:
+                os.close(target_fd)
+        finally:
+            os.close(source_fd)
 
 
 def _sha256(path: Path) -> str:
@@ -210,13 +254,15 @@ def create_immutable_snapshot(
     temporary.mkdir()
     try:
         for source in files:
-            shutil.copy2(source, temporary / source.name)
             if capture_file_metadata:
+                _copy_bound_source(source, temporary / source.name, originals[source.name], identities[source.name])
                 current, identity = _source_record(source)
                 copied, _ = _source_record(temporary / source.name)
                 if (current != originals[source.name] or identity != identities[source.name]
                         or copied != originals[source.name]):
                     raise RuntimeError("snapshot source or copied metadata changed")
+            else:
+                shutil.copy2(source, temporary / source.name)
         for name, payload in sorted(generated.items()):
             (temporary / name).write_bytes(payload)
         manifest = {

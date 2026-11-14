@@ -85,9 +85,10 @@ def test_9d_split_preserves_every_leaf_coefficient():
         for leaf, share in spec.leaves:
             standard[leaf] = standard.get(leaf, 0.0) + spec.weight * share
             debut[leaf] = debut.get(leaf, 0.0) + spec.debut_weight * share
-    assert abs(standard["form_score"] - 0.0983 * 0.50) < 1e-12
-    assert abs(standard["consistency_score"] - 0.0983 * 0.40) < 1e-12
-    assert abs(standard["trackwork_trend_score"] - 0.0983 * 0.10) < 1e-12
+    # 2026-11-14 非初出馬外層權重刻意改 S 版（EXP-20261114-03）：stability 0.2451、trackwork 0；初出馬唔郁。
+    assert abs(standard["form_score"] - 0.2451 * 0.5 / 0.9) < 1e-12
+    assert abs(standard["consistency_score"] - 0.2451 * 0.4 / 0.9) < 1e-12
+    assert abs(standard["trackwork_trend_score"] - 0.0) < 1e-12
     assert abs(debut["form_score"] - 0.15 * 0.50) < 1e-12
     assert abs(debut["consistency_score"] - 0.15 * 0.40) < 1e-12
     assert abs(debut["trackwork_trend_score"] - 0.15 * 0.10) < 1e-12

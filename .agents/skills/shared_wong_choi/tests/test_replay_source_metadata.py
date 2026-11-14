@@ -178,6 +178,65 @@ def test_capture_stops_reading_before_total_source_budget_is_exceeded(tmp_path, 
     assert sum(lengths) == 12
 
 
+def test_capture_never_copies_growth_beyond_the_captured_size(tmp_path, monkeypatch):
+    from shared_wong_choi import immutable_snapshot as native
+    source = tmp_path / 'Facts.md'; source.write_bytes(b'a' * 12)
+    original_record = native._source_record; changed = False
+    def record(path, **kwargs):
+        nonlocal changed
+        result = original_record(path, **kwargs)
+        if path == source and not changed:
+            source.write_bytes(b'b' * 128); changed = True
+        return result
+    monkeypatch.setattr(native, '_source_record', record)
+    original_cleanup = native.shutil.rmtree; staged_sizes = []
+    def cleanup(path, **kwargs):
+        staged_sizes.extend(p.stat().st_size for p in Path(path).rglob('*') if p.is_file())
+        return original_cleanup(path, **kwargs)
+    monkeypatch.setattr(native.shutil, 'rmtree', cleanup)
+    with pytest.raises((ValueError, RuntimeError)):
+        create_immutable_snapshot(tmp_path, domain='au', event_id='fixture',
+            patterns=['*.md'], capture_file_metadata=True, at=AT)
+    assert max(staged_sizes, default=0) <= 12
+
+
+@pytest.mark.parametrize('replacement', [b'b' * 128, b'c' * 6])
+def test_streaming_copy_rejects_growth_or_truncation_after_identity_check(tmp_path, monkeypatch, replacement):
+    from shared_wong_choi import immutable_snapshot as native
+    source = tmp_path / 'Facts.md'; source.write_bytes(b'a' * 12)
+    original_open = native.os.open; changed = False
+    def open_file(path, flags, *args, **kwargs):
+        nonlocal changed
+        if Path(path).name == source.name and flags & os.O_WRONLY and not changed:
+            source.write_bytes(replacement); changed = True
+        return original_open(path, flags, *args, **kwargs)
+    monkeypatch.setattr(native.os, 'open', open_file)
+    original_cleanup = native.shutil.rmtree; staged_sizes = []
+    def cleanup(path, **kwargs):
+        staged_sizes.extend(p.stat().st_size for p in Path(path).rglob('*') if p.is_file())
+        return original_cleanup(path, **kwargs)
+    monkeypatch.setattr(native.shutil, 'rmtree', cleanup)
+    with pytest.raises((ValueError, RuntimeError)):
+        create_immutable_snapshot(tmp_path, domain='au', event_id='fixture',
+            patterns=['*.md'], capture_file_metadata=True, at=AT)
+    assert changed and max(staged_sizes, default=0) <= 12
+
+
+def test_streaming_copy_handles_partial_writes_and_preserves_metadata(tmp_path, monkeypatch):
+    from shared_wong_choi import immutable_snapshot as native
+    source = tmp_path / 'Facts.md'; source.write_bytes(b'original bytes\n')
+    os.chmod(source, 0o640)
+    original_write = native.os.write
+    def partial(fd, value):
+        return original_write(fd, value[:max(1, len(value) // 2)])
+    monkeypatch.setattr(native.os, 'write', partial)
+    snapshot = create_immutable_snapshot(tmp_path, domain='au', event_id='fixture',
+        patterns=['*.md'], capture_file_metadata=True, at=AT)
+    assert (snapshot / source.name).read_bytes() == source.read_bytes()
+    assert (snapshot / source.name).stat().st_mtime_ns == source.stat().st_mtime_ns
+    assert (snapshot / source.name).stat().st_mode & 0o777 == 0o640
+
+
 def test_actual_hkjc_future_writer_is_admitted_by_existing_bundle_verifier(tmp_path):
     meeting = tmp_path / '2026-09-06_ShaTin'; meeting.mkdir()
     (meeting / 'Race_1_Logic.json').write_bytes(b'{"horses":{}}\n')
@@ -197,11 +256,15 @@ def test_metadata_capture_rejects_conflicts_before_publishing(tmp_path, monkeypa
     from shared_wong_choi import immutable_snapshot as native
     source = tmp_path / 'Facts.md'; source.write_bytes(b'before\n')
     if fault == 'source_changed_during_copy':
-        original = native.shutil.copy2
-        def copy(*args, **kwargs):
-            source.write_bytes(b'after!\n')
-            return original(*args, **kwargs)
-        monkeypatch.setattr(native.shutil, 'copy2', copy)
+        original = native._source_record
+        changed = False
+        def observe(path, **kwargs):
+            nonlocal changed
+            result = original(path, **kwargs)
+            if path == source and not changed:
+                source.write_bytes(b'after!\n'); changed = True
+            return result
+        monkeypatch.setattr(native, '_source_record', observe)
         additional = None
     else:
         additional = {NAME: b'{}\n'}

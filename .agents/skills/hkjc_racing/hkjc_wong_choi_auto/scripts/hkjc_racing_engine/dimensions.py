@@ -52,20 +52,24 @@ _CLASS_DEBUT_SHARE = 0.05 * 0.75 / _CLASS_DEBUT_WEIGHT
 
 
 # Order = report display order (Kelvin: 騎練訊號 follows 狀態與穩定性).
+# 2026-11-14 外層權重改用 S 版（EXP-20261114-03，Kelvin 決定 1A）：喺 6,047 場歷史回放 dev fit、段速固定 0.1285；
+# 回放 holdout 1,710 場四指標 CI 全正；live 389 場 fixed_rule REJECT（嗰批係舊權重調參場次）。
+# 舊值：stability 0.08847、trainer 0.2362、race_shape 0.2737、health _HEALTH_WEIGHT、trackwork 0.00983、form_line 0.0801、class _CLASS_WEIGHT。
+# 退回：forward `s_weights_post_live`（docs/experiments/patches/hkjc_arm_revert_s_weights.py）。初出馬權重唔郁。
 DIMENSIONS: tuple[DimensionSpec, ...] = (
     DimensionSpec(
         key="stability", label="狀態與穩定性", short_label="穩定性", role="半核心",
         # 9D split (2026-10-10): trackwork moved to its own dimension; the old
         # 0.5 / 0.4 shares are renormalised so the composite is unchanged.
         leaves=(("form_score", 0.5 / 0.9), ("consistency_score", 0.4 / 0.9)),
-        weight=0.08847, debut_weight=0.135, display_centre=56.39, display_gain=0.8642,
+        weight=0.2451, debut_weight=0.135, display_centre=56.39, display_gain=0.8642,
         description="近仗名次、逐仗輸距同狀態走勢。",
         dashboard_keywords=("狀態", "穩定", "近績"),
     ),
     DimensionSpec(
         key="trainer_signal", label="騎練訊號", short_label="騎練訊號", role="核心",
         leaves=(("jockey_score", 0.55), ("trainer_score", 0.45)),
-        weight=0.2362, debut_weight=0.30, display_centre=60.5, display_gain=2.1261,
+        weight=0.3296, debut_weight=0.30, display_centre=60.5, display_gain=2.1261,
         description="騎師同練馬師實績，加人馬、組合、路程情境。",
         dashboard_keywords=("騎練", "騎師", "練馬師"),
     ),
@@ -79,14 +83,14 @@ DIMENSIONS: tuple[DimensionSpec, ...] = (
     DimensionSpec(
         key="race_shape", label="檔位與走位（不含步速）", short_label="形勢檔位", role="半核心",
         leaves=(("race_shape_context_score", 1.00),),
-        weight=0.2737, debut_weight=0.20, display_centre=63.0, display_gain=0.9852,
+        weight=0.1925, debut_weight=0.20, display_centre=63.0, display_gain=0.9852,
         description="檔位、走位匹配同近仗消耗。",
         dashboard_keywords=("檔位", "走位", "形勢"),
     ),
     DimensionSpec(
         key="horse_health", label="馬匹健康 / 新鮮感", short_label="健康新鮮", role="輔助",
         leaves=(("risk_score", 1.00),),
-        weight=_HEALTH_WEIGHT, debut_weight=_HEALTH_DEBUT_WEIGHT,
+        weight=0.0344, debut_weight=_HEALTH_DEBUT_WEIGHT,
         # Display ruler re-measured after the merge on 5,365 runners (2026-11-05):
         # median 69.00, SD 4.711 (risk_score alone).
         display_centre=69.0, display_gain=2.1228,
@@ -98,7 +102,7 @@ DIMENSIONS: tuple[DimensionSpec, ...] = (
         leaves=(("trackwork_trend_score", 1.00),),
         # Former 10% share of stability (0.0983 × 0.10). Display ruler measured on
         # 4,545 runners (2026-04 → 10): median 63.70, SD 9.59.
-        weight=0.00983, debut_weight=0.015, display_centre=63.7, display_gain=1.0428,
+        weight=0.0, debut_weight=0.015, display_centre=63.7, display_gain=1.0428,
         description="近 21 日快操、試閘同操練趨勢。",
         dashboard_keywords=("晨操", "操練", "試閘"),
     ),
@@ -115,7 +119,7 @@ DIMENSIONS: tuple[DimensionSpec, ...] = (
     DimensionSpec(
         key="form_line", label="賽績線", short_label="賽績線", role="輔助",
         leaves=(("formline_strength_score", 1.00),),
-        weight=0.0801, debut_weight=0.0, display_centre=80.0, display_gain=0.8153,
+        weight=0.0699, debut_weight=0.0, display_centre=80.0, display_gain=0.8153,
         description="之前交手對手之後嘅表現。",
         dashboard_keywords=("賽績線", "對手"),
     ),
@@ -126,7 +130,7 @@ DIMENSIONS: tuple[DimensionSpec, ...] = (
         # 初出馬之前健康佔 0.30，所以搬入嚟嘅負磅份額大好多，要用另一個組合。
         leaves=(("class_score", _CLASS_SHARE), ("weight_score", 1.0 - _CLASS_SHARE)),
         debut_leaves=(("class_score", _CLASS_DEBUT_SHARE), ("weight_score", 1.0 - _CLASS_DEBUT_SHARE)),
-        weight=_CLASS_WEIGHT, debut_weight=_CLASS_DEBUT_WEIGHT,
+        weight=0.0, debut_weight=_CLASS_DEBUT_WEIGHT,
         # Display ruler re-measured after the merge on 5,365 runners (2026-11-05):
         # median 63.24, SD 4.840.
         display_centre=63.24, display_gain=2.0662,

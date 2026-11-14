@@ -39,6 +39,8 @@ def test_complete_scoring_api_preserves_inputs_and_production_result(tmp_path):
     path, logic = fixture(tmp_path)
     runner = auto.HKJCAutoOrchestrator(path)
     original = path.read_bytes()
+    assert hashlib.sha256(json.dumps(logic, ensure_ascii=False).encode()).hexdigest() == \
+        'b1155cc5488ce404a3a17c2d0b02ee757b9d0c33682dd918f7a18b53c8a43e3b'
     with patch.object(auto, '_get_profile_scraper', return_value=None):
         before = {p.name: p.read_bytes() for p in tmp_path.iterdir() if p.is_file()}
         result = runner.score_logic_data(path, logic)
@@ -48,7 +50,8 @@ def test_complete_scoring_api_preserves_inputs_and_production_result(tmp_path):
         assert result is not logic
         expected = runner.score_race(path)
     assert result == expected
-    assert model_fingerprint(result) == '85cd62e4e9a1d66e2decf6d5de6b46d5cec4074c38bd6348cbf5cb6142100159'
+    # Captured from unmodified production2c50 before applying this extraction.
+    assert model_fingerprint(result) == 'ec4b732a725e0f83dd8c617f723d3c18fc3d1df30264056e97cc24ed32f64a63'
     events = [json.loads(line) for line in runner.log_path.read_text().splitlines()]
     assert [e['horse_number'] for e in events if e['event_type'] == 'horse_scored'] == list(logic['horses'])
 

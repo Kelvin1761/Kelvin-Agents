@@ -28,8 +28,10 @@ def legacy_pair(features, debut):
 
 class WeightMergeRankNeutralTests(unittest.TestCase):
     def test_class_plus_health_contribution_is_unchanged(self):
+        # 2026-11-05 合併嘅排名中性；2026-11-14 起非初出馬外層權重刻意改 S 版（EXP-20261114-03），
+        # 所以呢個不變式只再適用初出馬（初出馬權重冇郁）。
         rng = random.Random(20261105)
-        for debut in (False, True):
+        for debut in (True,):
             weights = DEBUT_MATRIX_WEIGHTS if debut else MATRIX_WEIGHTS
             for _ in range(3000):
                 features = {
@@ -48,7 +50,8 @@ class WeightMergeRankNeutralTests(unittest.TestCase):
         self.assertIn("weight_score", dict(dimensions.debut_formulas()["class_advantage"]))
 
     def test_total_weight_on_each_leaf_is_preserved(self):
-        for debut in (False, True):
+        # 同上：2026-11-14 起只適用初出馬。
+        for debut in (True,):
             weights = DEBUT_MATRIX_WEIGHTS if debut else MATRIX_WEIGHTS
             formulas = dimensions.debut_formulas() if debut else dimensions.formulas()
             w_class, w_health = OLD[debut]
