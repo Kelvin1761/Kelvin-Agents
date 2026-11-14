@@ -49,7 +49,7 @@ HKT = dt.timezone(dt.timedelta(hours=8))
 def require_volume() -> None:
     if not os.path.ismount(VOLUME):
         sys.exit(f"❌ 外置碟 {VOLUME} 冇掛載 —— 唔寫（避免靜靜寫返 Mac 內置碟）")
-    for p in (RAW / "sectional", RAW / "horse", PARSED, STATE):
+    for p in (RAW / "sectional", RAW / "horse", RAW / "horse_all", PARSED, STATE):
         p.mkdir(parents=True, exist_ok=True)
 
 
@@ -112,6 +112,10 @@ def horse_path(h: str) -> Path:
     return RAW / "horse" / f"{h}.html.gz"
 
 
+def horse_all_path(h: str) -> Path:
+    return RAW / "horse_all" / f"{h}.html.gz"
+
+
 def horse_ids_from_sectionals() -> list[str]:
     ids = set()
     for p in sorted((RAW / "sectional").rglob("*.html.gz")):
@@ -136,6 +140,8 @@ def looks_valid(kind: str, html: str) -> str | None:
             return "ok"
         if "稍後公佈" in html and "分段時間及位置" in html:
             return "empty"
+        return None
+    if kind == "horse_all" and "所有往績紀錄" not in html:
         return None
     if "horseProfile" in html and "往績紀錄" in html:
         return "ok"
@@ -166,6 +172,14 @@ def cmd_run(args) -> None:
                 p = horse_path(h)
                 if not p.exists() and str(p) not in empty:
                     yield "horse", HORSE_URL.format(h=h), p
+        if "horse_all" in args.kinds:
+            # 現役馬預設只顯示近三季；2024/25 季前已出賽嘅要「所有往績」版（Option=1）。
+            # 清單由 state/horse_all_ids.json 提供（見 EXP-20261113 回放計劃）
+            ids_file = STATE / "horse_all_ids.json"
+            for h in (json.loads(ids_file.read_text()) if ids_file.exists() else []):
+                p = horse_all_path(h)
+                if not p.exists() and str(p) not in empty:
+                    yield "horse_all", HORSE_URL.format(h=h) + "&Option=1", p
 
     kinds = set(args.kinds.split(","))
     log(f"開始：kinds={sorted(kinds)}")
@@ -288,8 +302,11 @@ def parse_horse(html: str) -> dict | None:
             if len(c) == 1 and "馬季" in c[0]:
                 season = c[0].replace("馬季", "").strip()
                 continue
-            if len(c) < 18 or not re.match(r"\d{2}/\d{2}/\d{4}$", c[2] or ""):
+            dm = re.match(r"(\d{2})/(\d{2})/(\d{2}|\d{4})$", c[2] or "") if len(c) >= 18 else None
+            if not dm:
                 continue
+            # 現役馬頁面用兩位數年份（01/11/26），退役馬用四位數 —— 統一做四位數
+            c[2] = f"{dm.group(1)}/{dm.group(2)}/{dm.group(3) if len(dm.group(3)) == 4 else '20' + dm.group(3)}"
             runs.append({"season": season, "race_idx": c[0], "pos": c[1], "date": c[2], "venue_track": c[3], "distance": c[4],
                          "going": c[5], "class": c[6], "draw": c[7], "rating": c[8], "trainer": c[9], "jockey": c[10],
                          "lbw": c[11], "win_odds": c[12], "actual_wt": c[13], "running_pos": c[14], "finish_time": c[15],
@@ -314,7 +331,8 @@ def cmd_parse(_args) -> None:
     n_ok = n_bad = 0
     with gzip.open(PARSED / "horses.jsonl.gz", "wt", encoding="utf-8") as out:
         for p in sorted((RAW / "horse").glob("*.html.gz")):
-            d = parse_horse(gzip.open(p, "rt", encoding="utf-8", errors="ignore").read())
+            full = horse_all_path(p.name.split(".")[0])     # 有「所有往績」版就用佢
+            d = parse_horse(gzip.open(full if full.exists() else p, "rt", encoding="utf-8", errors="ignore").read())
             if not d:
                 n_bad += 1
                 continue

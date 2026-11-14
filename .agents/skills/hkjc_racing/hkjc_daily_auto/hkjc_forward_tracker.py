@@ -84,6 +84,13 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 since="2026-11-15", arm="docs/experiments/patches/hkjc_arm_revert_s_weights.py",
                 action="自動判：同一批 live 場次，舊版 − live 嘅 Gold／Good／NDCG@5 全部 ≥ 0 → 問你退唔退；否則保留 S 版",
                 extra={"pass_verdict": "舊權重唔輸（等你決定退唔退）"}),
+    # EXP-20261114-04（Kelvin 2026-11-14 決定上線）：段速 FT 組件（前段＋全程對 as-of 標準、扣當日快慢，b = 0.5）。
+    # 回放 holdout 1,710 場 Gold +0.18、Good +0.18、capture@5 +0.23、頭二 +0.23（方向全正、CI 跨零）。
+    # 同一批 live 新場次用 arm 關掉組件，Δ = 舊版 − live。
+    ForwardTest("sectional_ft_post_live", "段速 FT 組件上線後 vs 冇組件", "EXP-20261114-04", "harness_ab", 60,
+                since="2026-11-15", arm="docs/experiments/patches/hkjc_arm_revert_sectional_ft.py",
+                action="自動判：同一批 live 場次，舊版 − live 嘅 Gold／Good／NDCG@5 全部 ≥ 0 → 問你退唔退；否則保留組件",
+                extra={"pass_verdict": "冇組件唔輸（等你決定退唔退）"}),
     # EXP-20261112-13：「對馬會標準」新數值（逐段對標準、扣步速、換算今仗負磅）只顯示唔入分；
     # 夠數用 arm 將佢代替「輸頭馬差距」入分，Δ = 新數值 − live。回放（EXP-09 P2）Gold −0.77／Good −0.51，
     # 同一批 389 場已經跑咗 30 幾個 arm，所以要新場次判；細樣本 Gold 好嘈，最少 150 場。

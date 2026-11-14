@@ -158,5 +158,28 @@ def attach(formguide_text: str, horses: dict, race_context: dict, race_date: dat
         pace = std_pace(runs, entry["today_weight"], today_class, run_classes)
         if pace:
             data["std_pace"] = pace
+        ft = _sectional_ft(runs, race_date, today_class, run_classes)
+        if ft:
+            data["sectional_ft"] = ft
         count += 1
     return count
+
+
+def _sectional_ft(runs: list[dict], race_date: date, today_class: str | None, run_classes: dict) -> dict | None:
+    """段速 FT 組件（EXP-20261114-04；Kelvin 2026-11-14 決定上線）：前段＋全程對 as-of 標準、扣當日快慢。
+    計法喺 `pit_sections.ft_values`（同離線回放 arm 同一個 function）；冇表（本機資料根冇 pit_sections.json）= 唔計。"""
+    from . import pit_sections
+    table = pit_sections.load_table()
+    if not table:
+        return None
+    rows = []
+    for r in runs:
+        if not r.get("splits"):
+            continue
+        track = "AWT" if r.get("awt") else ("HV" if "跑馬地" in str(r.get("venue")) else "ST")
+        rows.append({"date": r["date"].isoformat(), "track": track, "dist": r["distance"],
+                     "cls": run_classes.get(r["date"]) or "OT", "secs": r["splits"]})
+    first_v, total_v = pit_sections.ft_values(rows, race_date.isoformat(), today_class, table)
+    if first_v is None and total_v is None:
+        return None
+    return {"first_v": first_v, "total_v": total_v, "points": round(pit_sections.ft_points(first_v, total_v, table), 4)}
