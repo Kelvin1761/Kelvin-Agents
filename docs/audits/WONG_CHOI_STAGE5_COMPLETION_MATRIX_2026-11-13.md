@@ -178,3 +178,50 @@ All original Tasks6–10 checkboxes remain open. Deleted Codex automations remai
 absent. Trusted native review publication, target/cadence provenance, authenticated
 Dashboard acceptance, notification-after-cadence, actual pilots and observation
 windows remain required. No incident unfreeze, model promotion or history rewrite.
+
+
+## 2026-11-15 Sydney — canonical measurement engineering released
+
+- Exact seven-path engineering sliced7565d4042b1f54e94f950fd37998088a6ff7ed6
+  is released: wc-release:d7565d4042b1:2026-11-14T144855.348537_0000.
+  Full clean immutable gate1047.927s passed all16 suites; normal same-process
+  receipt plus independent clean quick3.442s, current refs/rollback checks,
+  approval14:49:05Z, merge14:49:07Z and activation_succeeded14:49:09Z onNov14UTC.
+  Code-only four-domain synchronization32f259a8 to d756; installers[] and
+  Dashboardfalse. Normal Telegram success already sent1part/1target, no repeat.
+- Separate postrelease read-only verification strictly validated all four event
+  schemas/hashes/IDs/actors/aware times/canonical filenames, actual remote main,
+  remote release branch and production exactd756; all seven scoped bytes exact,
+  each domain100/100 required files aligned/no dirty overlap, actual installed
+  and loaded AU/HKJC/NBA/Tennis+Central aligned/attention[]. Report:
+  /private/tmp/stage5-racing-measurement-postrelease.json. Formal session23739
+  is terminal exit0; do not restart. Immutable manifest/event paths and real
+  result retained in /private/tmp/stage5-racing-measurement-release-result.json.
+- The actual harness default now computes the canonical seven metrics after
+  label-separated completed score rows, with stable native ranking tie order,
+  complete outcome/identity checks and unchanged AU top-five/full pairwise math.
+  RED3 reproduced delayed rejection of incompatible controls/missing finishes;
+  final preflight rejects before any scorer call and creates no partial output.
+  Final focused122 and separate AU20 tests pass; quick/goldens unchanged.
+- Same authorized reviewer found no remaining narrow source must-fix, by source
+  inspection only. Full AU/HKJC resource adapter parity, heterogeneous control
+  compatibility, real dev variance and power approval are not supplied by this
+  engineering. Existing parent/worker power guards stay disabled.
+- New proposal WONG_CHOI_STAGE5_CONTRACT_EXTENSION_PROPOSAL_2026-11-15.md is a
+  separately reviewable, nonauthorizing decision: opt-in audited raw-resource
+  projection and explicit heterogeneous roster/control correspondence. Reviewer
+  found no accidental enablement. No frozen input/control/ruler file changed.
+  Implementation/synthetic validation authorization would not authorize real
+  corpus execution, a pilot, model changes, installation or profile publication.
+- Actual Chrome page inspection reached the deployed Dashboard main page through
+  the existing browser. Opening 'research records (private)' displayed the
+  generic load-failure message. This proves a live acceptance failure; its cause
+  is unproven (do not assert auth, cache or publication as established cause).
+  No token/password entered or changed, no API publication or D1 write occurred.
+
+Original Tasks6–10 remain unchecked. Actual registered datasets/protocols and
+comparators, defensible pre-decision availability, reviewed power/effect authority,
+legitimate native review publication, cadence/provenance and authenticated feed
+acceptance, real pilots and SLO/exit evidence remain mandatory. Standalone native
+materializer/synthetic parity engineering may continue within existing authority;
+connecting new contracts or executing pilots cannot be inferred from this release.
