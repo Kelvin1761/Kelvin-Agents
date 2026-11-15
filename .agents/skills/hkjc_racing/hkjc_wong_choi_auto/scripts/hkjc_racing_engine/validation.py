@@ -195,6 +195,8 @@ def _validate_auto_namespace(horse_num: str, auto: dict) -> list[str]:
         try:
             # 上仗賠率組件亦係原始尺（見 hkjc_racing_engine.market_history；EXP-20261115-07）。
             expected += float(auto.get("market_history_delta", 0.0) or 0.0)
+            # 檔位 × 跑法組件亦係原始尺（EXP-20261116-01）。
+            expected += float(auto.get("draw_style_delta", 0.0) or 0.0)
         except (TypeError, ValueError):
             errors.append(f"SCORE-010 horse {horse_num} invalid market history delta")
         if abs(float(ability_raw) - expected) > 0.05:

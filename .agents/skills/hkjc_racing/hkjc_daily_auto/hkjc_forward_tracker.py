@@ -126,12 +126,12 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 since="2026-11-15", arm="docs/experiments/patches/hkjc_arm_energy_off.py",
                 action="自動判：拎走能量嘅版本 forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議拎走能量（等你決定）；否則保留",
                 extra={"pass_verdict": "建議拎走能量（等你決定）"}),
-    # EXP-20261115-18／19（Kelvin 2026-11-15「保留現有檔位分，再加逐檔殘差曲線」）：dev PASS、holdout 同方向但功效唔夠。
-    # 凍結表＋β（hkjc_draw_curve/frozen.json，β 32.4）；Δ = 候選 − live。
-    ForwardTest("draw_curve_shadow", "現有檔位分＋逐檔殘差曲線入分（shadow）", "EXP-20261115-19", "harness_ab", 60,
-                since="2026-11-16", arm="docs/experiments/patches/hkjc_arm_draw_curve_shadow.py",
-                action="自動判：forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議入分（等你決定）；否則維持唔入分",
-                extra={"pass_verdict": "建議入分（等你決定）"}),
+    # EXP-20261116-01（Kelvin 2026-11-16「檔位 × 跑法」＋「證實改善就上線」）：檔位 × 跑法＋逐檔曲線上線（取代 11-15 開嘅
+    # draw_curve_shadow —— 曲線已經包含喺組件入面）。退回 arm = 關掉組件；退回版贏晒 → 建議退回。
+    ForwardTest("draw_style_post_live", "檔位×跑法上線後 vs 冇組件", "EXP-20261116-01", "harness_ab", 60,
+                since="2026-11-16", arm="docs/experiments/patches/hkjc_arm_draw_style_revert.py",
+                action="自動判：退回版 forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議退回（等你決定）；否則保留",
+                extra={"pass_verdict": "建議退回（等你決定）"}),
     # EXP-20261112-13：「對馬會標準」新數值（逐段對標準、扣步速、換算今仗負磅）只顯示唔入分；
     # 夠數用 arm 將佢代替「輸頭馬差距」入分，Δ = 新數值 − live。回放（EXP-09 P2）Gold −0.77／Good −0.51，
     # 同一批 389 場已經跑咗 30 幾個 arm，所以要新場次判；細樣本 Gold 好嘈，最少 150 場。

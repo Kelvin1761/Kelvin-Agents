@@ -48,6 +48,7 @@ from hkjc_racing_engine.scoring import (
 from hkjc_racing_engine import overlays as overlay_registry
 from hkjc_racing_engine import past_runs
 from hkjc_racing_engine import market_history
+from hkjc_racing_engine import draw_style
 from hkjc_racing_engine.validation import validate_engine_scripts, validate_logic_data
 from wongchoi_paths import is_materialized_file
 
@@ -322,6 +323,9 @@ def _refresh_grade_transparency(horses):
         market = float(auto.get("market_history_delta", 0.0) or 0.0)
         if market:
             adjustments.append({"key": "market_history", "label": "上仗市場熱度", "raw": round(market, 2)})
+        dstyle = float(auto.get("draw_style_delta", 0.0) or 0.0)
+        if dstyle:
+            adjustments.append({"key": "draw_style", "label": "檔位×跑法修正", "raw": round(dstyle, 2)})
         transparency["adjustments"] = adjustments
         # 報告「評分總覽」嘅總分係引擎階段（後置調整之前）印嘅：補一行點樣去到最終分，唔然頂部同總覽對唔上。
         summary = transparency.get("summary")
@@ -1187,6 +1191,8 @@ class HKJCAutoOrchestrator:
         self._apply_overlays(horses)
         # 上仗賠率（EXP-20261115-07）：overlays 之後、grade／排名之前（同回放 dump 嘅 raw 一致）
         market_history.apply(horses, race_context.get("race_date"))
+        # 檔位 × 跑法（EXP-20261116-01）：上仗賠率之後、grade／排名之前
+        draw_style.apply(horses, race_context)
         _refresh_grade_transparency(horses)
         self._apply_7d_official_ranking(horses)
         # ensure_verdict owns the single deterministic ranking path, including
