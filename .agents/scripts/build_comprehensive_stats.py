@@ -278,13 +278,57 @@ def result_row(day: str, race_key, race: dict, row: dict, header: dict) -> dict 
     }
 
 
+def _bad_course(value) -> bool:
+    text = str(value)
+    return "賽道" not in text and "全天候" not in text
+
+
+def repair_course_going(df: pd.DataFrame, results_dir: Path) -> pd.DataFrame:
+    """快照 CSV（24/25、25/26 到 2026-05-09）嘅 Course 裝咗賽事名、Going 裝咗「班次 - 路程 - 評分」
+    （舊 snapshot builder 攞錯格，見 race_header）—— 25.5% 行冇跑道欄位同場地狀況（EXP-20261115-08）。
+    逐日用官方 full_day_results.json 嘅 header 重新攞；冇 JSON 嘅日子保留原值。"""
+    if df.empty or "Course" not in df or not results_dir.exists():
+        return df
+    bad = df["Course"].map(_bad_course)
+    if not bad.any():
+        return df
+    df = df.copy()
+    fixes: dict[tuple[str, float], dict] = {}
+    for day in sorted(set(df.loc[bad, "Date"].astype(str))):
+        fp = results_dir / day / "full_day_results.json"
+        if not fp.exists():
+            continue
+        try:
+            data = json.loads(fp.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        for race_key, race in data.items():
+            if not isinstance(race, dict):
+                continue
+            race_no = _num(race.get("race_no")) or _num(race_key)
+            try:
+                header = race_header(race)
+            except (TypeError, ValueError):      # 個別賽日（例如 2026-05-03）冇 header 表，直接有 track／going 欄
+                header = {"Course": "Unknown", "Going": "Unknown"}
+            if _bad_course(header["Course"]) and not _bad_course(race.get("track")):
+                header = {"Course": str(race["track"]).strip(), "Going": str(race.get("going") or "Unknown").strip()}
+            if race_no is not None and not _bad_course(header["Course"]):
+                fixes[(day, float(race_no))] = header
+    for idx in df.index[bad]:
+        h = fixes.get((str(df.at[idx, "Date"]), float(df.at[idx, "RaceNo"])))
+        if h:
+            df.at[idx, "Course"] = h["Course"]
+            df.at[idx, "Going"] = h["Going"]
+    return df
+
+
 def load_base_rows(season_key: str) -> pd.DataFrame:
     config = SEASONS[season_key]
     path = STATS_ROOT / season_key / str(config["csv"])
     if is_materialized_file(path):
         df = pd.read_csv(path, encoding="utf-8-sig")
         df["Date"] = df["Date"].astype(str)
-        return df
+        return repair_course_going(df, DB_ROOT / str(config["results_dir"]))
     if bool(config.get("base_required", False)):
         raise RuntimeError(
             f"HKJC source CSV is not materialized locally: {path}. "
