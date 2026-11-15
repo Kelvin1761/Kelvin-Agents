@@ -529,3 +529,4 @@
 - [EXP-20261116-02](EXP-20261116-02-au-outer-refit-results.md) — AU 外層權重 walk-forward refit（HKJC S 版做法，pace_perf 固定）：**REJECT ×2**：R Gold −0.51、Good −0.78、top5 AUC −0.30 CI 全負；AU 冇 2026-08 前乾淨回放，3,736 場 refit 只加噪音（同 EXP-20260928-02 一致）
 - EXP-20261116-01 HKJC 檔位×跑法＋逐檔曲線上線（dev/holdout PASS）；負磅殘差修正 REJECT；SIP-C 實為檔位修正
 - EXP-20261116-03 HKJC 剷走 SIP-C（打和；訊號由檔位×跑法接手）
+- EXP-20261116-04 HKJC 跑法×場地偏差喺 live 上重測 REJECT（β fit 到 0）；跑法多變馬用分佈加權 REJECT，現行平均法唔改
