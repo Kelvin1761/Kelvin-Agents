@@ -397,6 +397,24 @@ def _form_pattern_tags(horse: dict, meta: dict) -> list[dict]:
     return out
 
 
+_STYLE_WORD = {"F": "前置馬", "M": "中置馬", "B": "後上馬", "U": "跑法未明"}
+_BAND_WORD = {"I": "內檔", "C": "中檔", "O": "外檔"}
+
+
+def _draw_style_tag(auto: dict) -> list[dict]:
+    """檔位 × 跑法修正（EXP-20261116-01，入分）：|加減| ≥ 0.8 原始分先出 chip，講清楚係邊個跑法配邊段檔位。"""
+    delta = float(auto.get("draw_style_delta") or 0.0)
+    det = auto.get("draw_style_detail") or {}
+    if abs(delta) < 0.8 or not det:
+        return []
+    d = int(det.get("draw") or 0)
+    band = "I" if d <= 4 else ("C" if d <= 9 else "O")
+    label = f"{_STYLE_WORD.get(det.get('style'), '跑法未明')}抽{_BAND_WORD[band]}（{d}檔，{delta:+.1f}）"
+    why = (f"檔位×跑法修正：跑法部分 {det.get('style_part', 0):+.2f}、逐檔部分 {det.get('curve_part', 0):+.2f}（原始分）。"
+           "慣性跑法用之前最多 6 仗嘅早段位置計；格值由 6,000 場歷史殘差估計（回放 dev／holdout 都改善）。")
+    return [_tag("draw_style", label, "good" if delta > 0 else "bad", why=why, scored=True, impact=round(delta, 2))]
+
+
 def horse_tags(no: str, horse: dict, auto: dict, *, runs: list[dict], meta: dict,
                priority: str = "", extra: list | None = None) -> dict:
     special = _trainer_tags(auto) + _jockey_change_tag(horse, auto, runs) + _distance_venue_tags(horse, auto, runs, meta)
@@ -434,6 +452,7 @@ def race_tags(logic_data: dict, meeting_dir: Path | None = None) -> dict:
                 extra.setdefault(no, []).extend(items)
         for no, h in horses.items():
             extra.setdefault(no, []).extend(_debut_trainer_tag(h, meta) + _foreign_tag(h) + _form_pattern_tags(h, meta)
+                                            + _draw_style_tag(h["python_auto"])
                                             + _trainer_pattern_tags(h, meta, gear.get(no, [])))
         return {no: horse_tags(no, h, h["python_auto"], runs=runs_by_no.get(no) or [], meta=meta,
                                priority=priorities.get(no, ""), extra=extra.get(no))

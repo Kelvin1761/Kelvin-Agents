@@ -203,6 +203,33 @@ def write_win_ratings(table: dict) -> Path:
     return p
 
 
+def run_style_table() -> dict:
+    """跑法歷史表（EXP-20261116-01 檔位 × 跑法）：每匹馬每仗「第一個沿途位置 ÷ 完成匹數」（同回放 freeze.py 一樣嘅來源同計法）。"""
+    sys.path.insert(0, str(REPO / ".agents/skills/hkjc_racing/hkjc_reflector/scripts"))
+    import hkjc_history_replay_pit
+    df = hkjc_history_replay_pit.load_all_rows_extended()
+    df = df[df["Rank"].notna()].copy()
+    df["d"] = df["Date"].astype(str).str[:10]
+    df["F"] = df.groupby(["d", "RaceNo"])["Rank"].transform("count")
+    horses: dict[str, list] = {}
+    for r in df.itertuples():
+        rp = str(r.RunningPos or "").split()
+        if r.HorseID is None or r.HorseID != r.HorseID or not rp or not rp[0].isdigit() or not r.F:
+            continue
+        horses.setdefault(str(r.HorseID), []).append([r.d, round(int(rp[0]) / float(r.F), 4)])
+    for v in horses.values():
+        v.sort()
+    return {"version": 1, "last_date": str(df["d"].max()), "horses": horses}
+
+
+def write_run_style(table: dict) -> Path:
+    p = out_path().with_name("run_style.json")
+    tmp = p.with_suffix(".tmp")
+    tmp.write_text(json.dumps(table, ensure_ascii=False), encoding="utf-8")
+    os.replace(tmp, p)
+    return p
+
+
 def write(table: dict) -> Path:
     p = out_path()
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -246,6 +273,7 @@ def update() -> int:
     mh = market_history_table()
     write_market_history(mh)
     write_win_ratings(win_ratings_table())
+    write_run_style(run_style_table())
     print(f"段速表更新到 {table['last_date']} → {p}；上仗賠率表到 {mh['last_date']}（{len(mh['horses'])} 匹）")
     return 0
 
@@ -260,6 +288,8 @@ def main() -> int:
     print(f"標準季 {table['seasons']}；當日快慢 {len(table['variant'])}；到 {table['last_date']} → {write(table)}")
     mh = market_history_table()
     print(f"上仗賠率表 {len(mh['horses'])} 匹、到 {mh['last_date']} → {write_market_history(mh)}")
+    rs = run_style_table()
+    print(f"跑法歷史表 {len(rs['horses'])} 匹、到 {rs['last_date']} → {write_run_style(rs)}")
     ev = debut_events()
     print(f"初出馬事件 {len(ev)} → {write_debut(ev)}")
     return 0
