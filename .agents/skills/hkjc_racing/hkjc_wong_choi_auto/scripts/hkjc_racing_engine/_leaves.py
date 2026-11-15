@@ -1,6 +1,7 @@
 """Leaf scores: every 0–100 sub-score that feeds a 9D dimension, plus the
 jockey/trainer context adjustments and the composite (`_ability_score`).
 """
+from .native_sources import USE_PRODUCTION
 import re
 
 from . import scoring
@@ -581,6 +582,8 @@ class LeafScores:
         source = rail_draw_context_adjustment(
             self.race_context or {},
             self.horse_data.get("barrier") or self.horse_data.get("draw"),
+            **({} if getattr(self, "rail_history", USE_PRODUCTION) is USE_PRODUCTION
+               else {"history": self.rail_history}),
         )
         if self._is_debut():
             source = dict(source)

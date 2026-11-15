@@ -1,4 +1,5 @@
 import re
+from hkjc_racing_engine.native_sources import USE_PRODUCTION
 from hkjc_racing_engine import scoring
 from hkjc_racing_engine.rail_draw_context import rail_draw_context_adjustment
 from hkjc_racing_engine.scoring import BaseScorer
@@ -49,7 +50,9 @@ class DrawScorer(BaseScorer):
             or self.horse_data.get("debut_runner")
             or self.horse_data.get("career_tag") == "DEBUT"
         )
-        context = rail_draw_context_adjustment(self.race_context, draw_num)
+        held = getattr(self, "rail_history", USE_PRODUCTION)
+        context = rail_draw_context_adjustment(self.race_context, draw_num,
+                    **({} if held is USE_PRODUCTION else {"history": held}))
         adjustment = float(context.get("adjustment", 0.0)) if not is_debut else 0.0
         self.score = scoring.clip_score(prior_score + adjustment)
         self.reason = (

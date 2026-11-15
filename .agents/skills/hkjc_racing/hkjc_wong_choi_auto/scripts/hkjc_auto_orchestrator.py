@@ -1121,7 +1121,7 @@ class HKJCAutoOrchestrator:
             print(f"❌ Failed to write outputs for {race_file}: {e}")
             return None
 
-    def score_logic_data(self, race_file, logic_data, *, event_sink=None, sectional_source=None, profile_source=None, same_course_source=None, prior_source=None):
+    def score_logic_data(self, race_file, logic_data, *, event_sink=None, sectional_source=None, profile_source=None, same_course_source=None, prior_source=None, rail_source=None, overlay_source=None):
         """Run complete production scoring without publishing race outputs.
 
         Input data is copied; Logic/Markdown/CSV, event logs and meeting results
@@ -1144,6 +1144,13 @@ class HKJCAutoOrchestrator:
         if prior_source is not None:
             from hkjc_racing_engine.prior_sources import prepare_bound_priors
             prior_context = prepare_bound_priors(prior_source)
+        context_kwargs, context_sources = {}, {}
+        if rail_source is not None:
+            from hkjc_racing_engine.rail_draw_context import prepare_bound_history
+            context_kwargs['rail_history'], context_sources['rail'] = prepare_bound_history(rail_source)
+        if overlay_source is not None:
+            from hkjc_racing_engine.overlay_sources import prepare_bound_history
+            context_kwargs['overlay_history'], context_sources['overlay'] = prepare_bound_history(overlay_source)
         logic_data = deepcopy(logic_data)
         race_context = logic_data.get("race_analysis", {})
         horses = logic_data.get("horses", {})
@@ -1193,7 +1200,7 @@ class HKJCAutoOrchestrator:
             h_name = h_obj.get("horse_name", "Unknown")
             print(f"   - Scoring Horse {h_num}: {h_name}")
 
-            engine = RacingEngine(h_obj, race_context, **({} if prior_context is None else {"prior_context": prior_context}))
+            engine = RacingEngine(h_obj, race_context, **context_kwargs, **({} if prior_context is None else {"prior_context": prior_context}))
             result = engine.analyze_horse()
             # 情境 overlay：逐匹計（shadow 都計），加分喺全場 robustness 之後先做。
             result["overlays"] = overlay_registry.overlay_record(overlay_registry.evaluate_overlays(engine))
@@ -1232,7 +1239,7 @@ class HKJCAutoOrchestrator:
         self._finalize_shadow_profiles(logic_data)
         # 白話重點（純顯示，排名之後先做）：點解排呢度、要留意乜、邊度冇資料。
         race_summary.attach(logic_data, meeting_dir=race_file.parent)
-        logic_data["python_auto_run_contract"] = scoring_run_contract(**({} if prior_context is None else {"prior_context": prior_context}))
+        logic_data["python_auto_run_contract"] = scoring_run_contract(**({} if not context_sources else {"context_sources": context_sources}), **({} if prior_context is None else {"prior_context": prior_context}))
 
         logic_errors = validate_logic_data(logic_data)
         if logic_errors:

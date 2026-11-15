@@ -288,3 +288,63 @@ Final staging check caught one trailing space on the test driver's opening strin
 delimiter (untracked files were not covered by plain git diff --check). Whitespace
 removed; final focused28passed6.74s in
 /private/tmp/stage5-priors-whitespace-final.log, with no implementation change.
+
+## Native rail/draw and overlay-history batch
+
+The actual orchestrator now accepts `rail_source` and `overlay_source`, prepares
+both before headers/enrichment and passes held objects separately through the
+native engine/scorers. Rail binds exact local CSV bytes (or explicit absence)
+through the existing stable descriptor checks, then reuses the extracted native
+normalization unchanged. Both DrawScorer and its leaf explanation consume that
+same held frame. No alternate adjustment formula, eligibility, sample floor,
+shrinkage, cap or score weight is introduced.
+
+Overlay history has its OWN complete native `hkjc results */*/*.json` universe,
+not the same-course CSV/day selection. Sorted noncanonical season/day names and
+alternate JSON copies are included; native hidden-name/depth/order rules remain.
+Inventories, raw hashes/size/mode/mtime and selected identity/absence observations
+bind the catalog, with enumeration and remaining-byte bounds before payload
+reads. A root containing glob metacharacters is rejected rather than silently
+selecting a different native universe. Existing winner recognition, first-seen
+race deduplication, date window, top-six tie rules and zero overlay weights are
+unchanged. Held history routes through evaluate_overlays, ordinary overlay
+recording and the existing secondary top-jockey-upgrade helper. Explicit empty
+resources never select defaults; omission retains existing caches and output.
+Strict-only `bound_context_sources` records both raw/catalog identities.
+
+Actual pre-implementation RED1 in /private/tmp/stage5-rail-overlay-red.log showed
+fresh rail A/B draw-score differences and overlay membership1/0, then stale warm
+A after replacing equal-size B/restoring mtime. Retained tests assert native
+implicit A->A and strict full-native A/B/A. Independent clean pre-integration
+a6c21a96 generated complete fresh outputs; current strict outputs match those
+except for the separately asserted additional strict provenance field. Raw second
+horse55.71/54.86 is synthetic source sensitivity, NOT model improvement.
+Evidence: /private/tmp/stage5-rail-overlay-baseline.log and
+/private/tmp/stage5-rail-overlay-native-reference.json.
+
+Tests cover independent scoring/explanation and overlay consumers, conflicting
+first-copy/identical duplicate semantics, same-day/out-of-window exclusion,
+top-six ties, hidden/alternate/noncanonical files, bad bindings/CSV/JSON,
+absence/root appearance, pre-header/pre-enrichment failure, enumeration/remaining
+byte bounds, same-byte inode replacement/rewrite/new-file capture interleavings,
+and repeated read-only use of held rail frames. The existing dormant upgrade
+branch is exercised only via an isolated test monkeypatch; no production switch
+or weight is changed. Reviewer found a malformed-CSV test was stopping at its
+stale hash; the test now binds the malformed bytes' actual hash and reaches the
+parser. Source inspection found no required production correction; the reviewer
+did not independently execute tests or authorize research/release/runtime work.
+
+This remains the combined UNFINISHED nonmain resource batch, not full resource
+closure. Meeting headers/Facts/formguide/injury/tag inputs, debut display events,
+versioned resources/import discovery, resource materialization and canonicalized
+frozen-harness/control integration still need resolution. Held identity is NOT
+historical availability, adversarial filesystem CAS, OS isolation, power or pilot
+authority. The opt-in protocol/heterogeneous-control proposal remains pending.
+No full16/clean immutable gate/release/merge/activation/live jobs, config, model,
+history, DB, Telegram or frozen-contract writes occurred; Tasks6–10 stay open.
+Final implementation unchanged during whole HKJC447passed32.26s:
+/private/tmp/stage5-rail-overlay-final.log. Quick/goldens green at that same
+implementation, /private/tmp/stage5-rail-overlay-quick-first.log; diff check green.
+Earlier441whole/43affected runs precede the final test-strengthening and are not
+final-current-suite evidence. Same authorized reviewer confirmed the test fixes
+by source inspection and stopped; no independent test/runtime approval inferred.

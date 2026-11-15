@@ -25,6 +25,13 @@ class JsonSource:
     sha256: str | None
 
 
+@dataclass(frozen=True)
+class CsvSource:
+    """Exact native CSV byte identity; None declares absence, not defaults."""
+    path: Path
+    sha256: str | None
+
+
 def _source_path(path):
     path = Path(path)
     if not path.is_absolute() or ".." in path.parts:
@@ -84,12 +91,13 @@ def capture_source_file(path, *, maximum_bytes=None):
 
 
 def read_bound_json(source: JsonSource) -> dict | None:
-    """Read verified local bytes without accessing or changing production cache.
+    raw = read_bound_bytes(source, source_type=JsonSource)
+    return None if raw is None else decode_json_bytes(raw)
 
-    Stable descriptor checks are not an atomic filesystem lease or a PIT proof.
-    This native seam is not connected to the frozen research input protocol.
-    """
-    if not isinstance(source, JsonSource):
+
+def read_bound_bytes(source, *, source_type=JsonSource):
+    """Stable local bytes only; no PIT, review or installation authority."""
+    if not isinstance(source, source_type):
         raise ValueError("typed JSON source binding required")
     path = _source_path(source.path)
     if source.sha256 is None:
@@ -103,7 +111,7 @@ def read_bound_json(source: JsonSource) -> dict | None:
     raw, metadata, _identity = capture_source_file(path)
     if metadata["sha256"] != source.sha256:
         raise ValueError("JSON source changed or hash differs")
-    return decode_json_bytes(raw)
+    return raw
 
 
 def decode_json_bytes(raw):

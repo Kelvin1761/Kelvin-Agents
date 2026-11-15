@@ -31,6 +31,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[6]
 import sys as _sys; _sys.path.insert(0, str(ROOT))
 from wongchoi_paths import HK_RACING
+from .native_sources import USE_PRODUCTION
 
 RESULTS_DB = HK_RACING / "HKJC_Race_Results_Database"
 TOP_JOCKEY_COUNT = 6
@@ -92,13 +93,20 @@ def _jockey_wins_by_day(db_root: str) -> dict:
     (`<date>_<venue>_全日賽果.json` and `full_day_results.json`), so each race
     is counted once by (date, venue, race number) — EXP-20261110-07.
     """
+    def payloads():
+        for path in sorted(glob.glob(f"{db_root}/hkjc results */*/*.json")):
+            try:
+                yield json.loads(Path(path).read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+    return wins_from_payloads(payloads())
+
+
+def wins_from_payloads(payloads):
+    """Same native day/race deduplication for default and held payloads."""
     wins: dict = defaultdict(lambda: defaultdict(int))
     seen: set = set()
-    for path in sorted(glob.glob(f"{db_root}/hkjc results */*/*.json")):
-        try:
-            payload = json.loads(Path(path).read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            continue
+    for payload in payloads:
         for key, race in payload.items():
             if not isinstance(race, dict):
                 continue
@@ -115,10 +123,9 @@ def _jockey_wins_by_day(db_root: str) -> dict:
                     wins[day][row["jockey"]] += 1
     return {day: dict(by_jockey) for day, by_jockey in wins.items()}
 
-
-def top_jockeys_as_of(race_date: date, db_root: str | None = None) -> tuple[frozenset, dict] | None:
+def top_jockeys_as_of(race_date: date, db_root: str | None = None, *, history=USE_PRODUCTION) -> tuple[frozenset, dict] | None:
     """Top-N jockeys by wins in the window strictly before ``race_date``."""
-    by_day = _jockey_wins_by_day(str(db_root or RESULTS_DB))
+    by_day = _jockey_wins_by_day(str(db_root or RESULTS_DB)) if history is USE_PRODUCTION else history
     if not by_day:
         return None
     start = race_date - timedelta(days=TOP_JOCKEY_WINDOW_DAYS)
@@ -138,7 +145,8 @@ def jockey_context(engine) -> dict | None:
     race_date = _parse_date((engine.race_context or {}).get("race_date"))
     if race_date is None:
         return None
-    table = top_jockeys_as_of(race_date)
+    held = getattr(engine, "overlay_history", USE_PRODUCTION)
+    table = top_jockeys_as_of(race_date, **({} if held is USE_PRODUCTION else {"history": held}))
     if table is None:
         return None
     top, wins = table

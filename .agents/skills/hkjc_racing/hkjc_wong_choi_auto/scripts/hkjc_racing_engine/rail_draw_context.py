@@ -3,12 +3,14 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+import io
 import re
 
 import numpy as np
 import pandas as pd
 
 from wongchoi_paths import HK_RACING, is_materialized_file
+from .native_sources import CsvSource as RailDrawSource, USE_PRODUCTION, read_bound_bytes
 
 
 DATASET = (
@@ -64,12 +66,17 @@ def _distance_band(value) -> str:
 @lru_cache(maxsize=4)
 def _read_dataset(path_text: str, modified_ns: int, size: int) -> pd.DataFrame:
     del modified_ns, size
-    frame = pd.read_csv(path_text)
+    return _normalize_dataset(pd.read_csv(path_text))
+
+
+def _normalize_dataset(frame, *, strict=False):
     required = {
         "Date", "RaceNo", "Venue", "Track", "Distance", "Rail",
         "FieldSize", "Draw", "Place",
     }
     if not required.issubset(frame.columns):
+        if strict:
+            raise ValueError("native rail CSV columns missing")
         return pd.DataFrame()
     frame = frame[frame["Track"].astype(str).eq("Turf")].copy()
     frame["Date"] = frame["Date"].astype(str).str[:10]
@@ -88,6 +95,14 @@ def _read_dataset(path_text: str, modified_ns: int, size: int) -> pd.DataFrame:
     return frame
 
 
+def prepare_bound_history(source):
+    raw = read_bound_bytes(source, source_type=RailDrawSource)
+    history = (pd.DataFrame() if raw is None else
+               _normalize_dataset(pd.read_csv(io.StringIO(raw.decode('utf-8-sig'))), strict=True))
+    return history, {'path': str(source.path), 'sha256': source.sha256,
+                     'size': 0 if raw is None else len(raw)}
+
+
 def _dataset(path: Path) -> pd.DataFrame:
     if not is_materialized_file(path):
         return pd.DataFrame()
@@ -103,6 +118,7 @@ def rail_draw_context_adjustment(
     barrier,
     *,
     dataset_path: Path | None = None,
+    history=USE_PRODUCTION,
 ) -> dict:
     """Return a bounded pre-race adjustment relative to the generic draw prior."""
     venue = _venue(race_context.get("venue") or race_context.get("racecourse"))
@@ -140,7 +156,7 @@ def rail_draw_context_adjustment(
     ):
         base["reason"] = "missing_or_ineligible_context"
         return base
-    history = _dataset(dataset_path or DATASET)
+    history = _dataset(dataset_path or DATASET) if history is USE_PRODUCTION else history
     if history.empty:
         base["reason"] = "rail_history_unavailable"
         return base

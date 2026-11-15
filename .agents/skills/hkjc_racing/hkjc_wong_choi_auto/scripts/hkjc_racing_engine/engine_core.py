@@ -20,6 +20,7 @@ from .matrix_mapper import (
     matrix_formula_manifest,
 )
 from . import scoring
+from .native_sources import USE_PRODUCTION
 from .scoring import (CENTRED_MATRIX_WEIGHTS, DEBUT_MATRIX_WEIGHTS, FEATURE_KEYS, MATRIX_WEIGHTS, clip_score, compute_grade,
                       score_band, to_dimension_display,
                       to_display_scale)
@@ -28,7 +29,7 @@ from .scoring import (CENTRED_MATRIX_WEIGHTS, DEBUT_MATRIX_WEIGHTS, FEATURE_KEYS
 _TRAINER_SIGNAL_PRIORS = None
 
 
-def scoring_run_contract(*, prior_context=None):
+def scoring_run_contract(*, prior_context=None, context_sources=None):
     """JSON-safe fingerprint for the exact production scoring contract."""
     contract = {
         "version": scoring.SCORING_CONTRACT_VERSION,
@@ -55,6 +56,8 @@ def scoring_run_contract(*, prior_context=None):
 
     if prior_context is not None:
         contract["bound_prior_source"] = prior_context.evidence()
+    if context_sources is not None:
+        contract["bound_context_sources"] = context_sources
     return contract
 
 
@@ -65,7 +68,9 @@ from ._explain import Explanations
 
 
 class RacingEngine(HorseFacts, LeafScores, ShadowProfiles, Explanations):
-    def __init__(self, horse_data, race_context, *, prior_context=None):
+    def __init__(self, horse_data, race_context, *, prior_context=None, rail_history=USE_PRODUCTION, overlay_history=USE_PRODUCTION):
+        self.rail_history = rail_history
+        self.overlay_history = overlay_history
         self.prior_context = prior_context
         self.horse_data = horse_data
         self.race_context = race_context
@@ -94,6 +99,7 @@ class RacingEngine(HorseFacts, LeafScores, ShadowProfiles, Explanations):
             "speed_score": SpeedScorer,
         }.items():
             scorer = scorer_class(self.horse_data, self.race_context)
+            scorer.rail_history = self.rail_history
             scorer.prior_context = self.prior_context
             score, note = scorer.compute()
             feature_scores[name] = clip_score(score)
