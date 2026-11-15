@@ -8,7 +8,7 @@ bit-identical —— 但呢個「理應」試過破功：兩個數各自 `round(
 
 順手守住另外三樣一改就會靜靜咁改排名／改報告嘅嘢：
   * 顯示尺常數（`DISPLAY_SCALE`）—— 改咗即係改每份報告嘅數字同評級。
-  * SIP-C 嘅觸發窗要用原始尺，唔可以用 grade 字串（`GRADE_THRESHOLDS` 一改就
+  * （SIP-C 已喺 EXP-20261116-03 剷走；以下原本講佢個觸發窗要用原始尺）（`GRADE_THRESHOLDS` 一改就
     會觸發另一批馬）。
   * 評級階梯要真係搭得上實測分佈（舊尺 A 到 S+ 六級係空嘅）。
 """
@@ -147,68 +147,17 @@ class RankingIgnoresTheDisplayScale(unittest.TestCase):
         self.assertEqual(_raw_score({}), 0.0)
 
 
-class SipStaysOnTheRawScale(unittest.TestCase):
-    """SIP-C 觸發窗一改用 grade 字串，「純顯示」嘅階梯改動就會靜靜咁改排名。"""
+class SipCRemoved(unittest.TestCase):
+    """EXP-20261116-03：SIP-C 剷走 —— hook 仲喺度（shadow arm 用），但唔會再郁任何分。"""
 
-    def _sip_horse(self, raw: float) -> dict:
-        return {
-            "weight": 115,
-            "barrier": 3,
-            "python_auto": {
-                "grade": compute_grade(to_display_scale(raw)),
-                "ability_score": round(to_display_scale(raw), 2),
-                "ability_score_raw": raw,
-                "feature_scores": {"speed_score": 72.0, "form_score": 60.0,
-                                   "consistency_score": 60.0},
-            },
-        }
-
-    def test_fires_inside_the_old_b_minus_window(self):
-        horses = {"1": self._sip_horse(66.0), "2": self._sip_horse(66.0)}
-        horses["2"]["weight"] = 133
+    def test_hook_is_a_no_op(self):
+        horse = {"weight": 115, "barrier": 3, "python_auto": {
+            "grade": compute_grade(to_display_scale(66.0)), "ability_score": round(to_display_scale(66.0), 2),
+            "ability_score_raw": 66.0, "feature_scores": {"speed_score": 72.0, "form_score": 60.0, "consistency_score": 60.0}}}
+        horses = {"1": horse, "2": dict(horse, weight=133)}
         _apply_sip_enhancements(horses)
-        self.assertTrue(horses["1"]["python_auto"].get("sip_flags"))
-        self.assertAlmostEqual(horses["1"]["python_auto"]["ability_score_raw"], 67.0, places=4)
-
-    def test_same_sip_boost_is_applied_to_shadow_counterfactuals(self):
-        horses = {"1": self._sip_horse(66.0), "2": self._sip_horse(66.0)}
-        horses["2"]["weight"] = 133
-        shadow_raw = 65.5
-        horses["1"]["python_auto"]["shadow_profiles"] = {
-            "weight_refit_t02": {
-                "ability_score_raw": shadow_raw,
-                "ability_score": round(to_display_scale(shadow_raw), 2),
-                "ability_delta": round(to_display_scale(shadow_raw) - to_display_scale(66.0), 2),
-                "grade": compute_grade(to_display_scale(shadow_raw)),
-            }
-        }
-
-        _apply_sip_enhancements(horses)
-
-        shadow = horses["1"]["python_auto"]["shadow_profiles"]["weight_refit_t02"]
-        self.assertAlmostEqual(shadow["ability_score_raw"], 66.5, places=4)
-        self.assertAlmostEqual(
-            shadow["ability_delta"],
-            shadow["ability_score"] - horses["1"]["python_auto"]["ability_score"],
-            places=2,
-        )
-        self.assertEqual(shadow["sip_flags"], horses["1"]["python_auto"]["sip_flags"])
-
-    def test_does_not_fire_outside_it(self):
-        for raw in (63.9, 68.1):
-            horses = {"1": self._sip_horse(raw), "2": self._sip_horse(raw)}
-            horses["2"]["weight"] = 133
-            _apply_sip_enhancements(horses)
-            self.assertFalse(horses["1"]["python_auto"].get("sip_flags"), raw)
-
-    def test_boost_is_applied_on_the_raw_scale(self):
-        """+1.0 係原始尺，換算落顯示尺應該係 1.0 × slope。"""
-        horses = {"1": self._sip_horse(66.0), "2": self._sip_horse(66.0)}
-        horses["2"]["weight"] = 133
-        before = horses["1"]["python_auto"]["ability_score"]
-        _apply_sip_enhancements(horses)
-        after = horses["1"]["python_auto"]["ability_score"]
-        self.assertAlmostEqual(after - before, DISPLAY_SLOPE, places=1)
+        self.assertEqual(horses["1"]["python_auto"]["ability_score_raw"], 66.0)
+        self.assertFalse(horses["1"]["python_auto"].get("sip_flags"))
 
 
 class GradeLadderMatchesTheDistribution(unittest.TestCase):

@@ -33,7 +33,6 @@
 | Adjustment | 公式 | 缺資料處理 |
 |---|---|---|
 | 全場 race-shape 極端值修正 `race_shape_robustness` | 同場中位數 + clip（race-shape − 同場中位數，−10，+10）；全場同式、不鎖名次 | 整場冇有效 race-shape = 不套用；可用 WC_HKJC_RACE_SHAPE_ROBUSTNESS=legacy_unbounded 回退 |
-| SIP 輕磅好檔修正（SIP-C） `sip_c` | 原始分 64–68、負磅 ≤ 場內中位數、檔位 ≤5、（速度 ≥68 或 近績同穩定性 ≥55）→ 原始分 +1.0（hkjc_auto_orchestrator._apply_sip_enhancements） | 冇負磅或檔位 = 不套用 |
 | 上仗市場熱度（EXP-20261115-07） `market_history` | β₁·(上仗 HKJC 最終獨贏 log 賠率 − 場均) + β₂·(冇上仗紀錄 − 場均)；只用日期嚴格早過今仗嘅賠率，今仗賠率永遠唔用（hkjc_racing_engine/market_history.py） | 冇上仗 = 場均＋缺失指示；外隊馬中性；冇表 = 不套用 |
 | 檔位×跑法修正（EXP-20261116-01） `draw_style` | β_style·(跑法格值 − 場均) + β_curve·(逐檔格值 − 場均)；跑法格 = 組別 × 慣性跑法（之前最多 6 仗早段位置）× 檔位段，逐檔格 = 組別 × 檔號 × 大場（hkjc_racing_engine/draw_style.py，格值凍結喺 resources/hkjc_draw_style.json） | 冇檔號 = 格值 0；之前少過 2 仗 = 跑法「未知」；冇賽日 = 不套用 |
 
@@ -217,10 +216,10 @@ Grade 只係一個閱讀標籤，排名純粹按分數高低，唔會因為 Grad
 
 ## 呢份文件由邊度嚟
 
-- 生成時間：`2026-11-16 00:32 AEDT`
-- Git commit：`1010d65d`
+- 生成時間：`2026-11-16 01:21 AEDT`
+- Git commit：`f6fb6c77`
 - Scoring contract：`HKJC_9D_CONTRACT_2026_10_10_REGISTRY_TRACKWORK_DISTANCE_FIT_RACE_SHAPE_ROBUST_WINSOR10_PIT_RAIL_DRAW_V2_DISTANCE_COMPONENT_V1`
-- `scoring.py` 指紋：`962af429f862`
+- `scoring.py` 指紋：`85c4f16fee30`
 - `matrix_mapper.py` 指紋：`a675ec199a4c`
 - `renderer.py` 指紋：`e07926aa2737`
 - 實測樣本：**110 場、1360 匹馬**，由 `2026-10-11_ShaTin` 到 `2026-11-14_ShaTin`（跳過 351 個舊格式檔案）

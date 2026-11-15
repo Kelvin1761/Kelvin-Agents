@@ -50,8 +50,8 @@ def test_complete_scoring_api_preserves_inputs_and_production_result(tmp_path):
         assert result is not logic
         expected = runner.score_race(path)
     assert result == expected
-    # Captured from unmodified production2c50 before applying this extraction.
-    assert model_fingerprint(result) == 'ec4b732a725e0f83dd8c617f723d3c18fc3d1df30264056e97cc24ed32f64a63'
+    # EXP-20261116-03 剷走 SIP-C 後重錄（接返 main 版 SIP-C 會得返舊值 ec4b732a…，證明只有 SIP-C 改變）。
+    assert model_fingerprint(result) == '3f43bcc10c317b36d5347377aabb90ae50c1c2ed6bb3502557a80f69aaa36100'
     events = [json.loads(line) for line in runner.log_path.read_text().splitlines()]
     assert [e['horse_number'] for e in events if e['event_type'] == 'horse_scored'] == list(logic['horses'])
 
