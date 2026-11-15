@@ -21,3 +21,5 @@ dev 2020/21–2023/24 ｜ **holdout 2024/25–2025/26** ｜ terminal 2026/27。
 | 2026-11-15 | 市場歷史（Kelvin 批准） | market_A（walk-forward；Holm 3） | dev PASS | Δlog-loss −0.00315 [−0.00417,−0.00210]（Holm 上界 −0.00198）、AUC +0.0055（CI>0）、Gold +0.47、Good +1.11 [−0.06,+2.33] | PASS（Holm） | EXP-20261115-07 |
 | 2026-11-15 | 市場歷史（Kelvin 批准） | market_B（walk-forward；Holm 3） | dev PASS | Δlog-loss −0.00269 [−0.00357,−0.00176]、AUC +0.0039、Gold +0.18、Good +0.41 | PASS（同 A 重疊，唔另上） | EXP-20261115-07 |
 | 2026-11-15 | 市場歷史（Kelvin 批准） | market_C（walk-forward；Holm 3） | dev PASS | Δlog-loss −0.00051 [−0.00137,+0.00039]、Good 下界 −1.05 | REJECT | EXP-20261115-07 |
+| 2026-11-15 | 跑法／檔位／場地偏差（Kelvin） | bias_D（walk-forward；Holm 3，E dev REJECT） | dev PASS | 第一次：特徵喺 holdout 期配對唔到（賽果庫 Course 欄壞，見 EXP-08），無效；修正跑道欄位來源後：Δlog-loss −0.00023 [−0.00065,+0.00017]、Gold +0.47、Good +0.29 | REJECT（Holm） | EXP-20261115-08 |
+| 2026-11-15 | 跑法／檔位／場地偏差（Kelvin） | bias_S（walk-forward；Holm 3，E dev REJECT） | dev PASS | 第一次無效（同上）；修正後：Δlog-loss −0.00037 [−0.00058,−0.00019]（Holm 上界 −0.00017）、AUC −0.0002、Gold −0.06、Good +0.23 | PASS（Holm）；上線待 Kelvin | EXP-20261115-08 |
