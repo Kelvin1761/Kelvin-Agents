@@ -348,3 +348,70 @@ implementation, /private/tmp/stage5-rail-overlay-quick-first.log; diff check gre
 Earlier441whole/43affected runs precede the final test-strengthening and are not
 final-current-suite evidence. Same authorized reviewer confirmed the test fixes
 by source inspection and stopped; no independent test/runtime approval inferred.
+
+## Native meeting and display inputs
+
+Actual `meeting_source` now binds the canonical Logic parent, coherent positive
+filename/Logic race identity, root/cache namespaces and the native role universe:
+unique Facts/trackwork/formguide/core racecard, separately selected priority
+racecard, first sorted meeting-wide injury page and local tag-profile JSON.
+Present unavailable/linked/ambiguous selected inputs reject rather than silently
+becoming absence. All selected bytes, raw hashes and size/mode/mtime metadata bind
+the catalog. Capture checks namespaces and selected identities again; per-file
+16MiB, aggregate64MiB and10000 entries reject before excess payload reads. This
+is observed capture, NOT atomic filesystem CAS or historical availability proof.
+
+Held texts now feed actual native header alignment, past runs, Facts/formline and
+first-section deltas, injury records and summary/tag readers. Bound helpers do
+not recheck live existence or reopen HOT meeting files. Original parsers and
+encoding semantics are retained: core markdown UTF8; priority UTF8 replacement;
+injury native UTF16-BOM/UTF8 replacement. Native distinct priority selector is
+preserved, rather than substituting core racecard identity. Tag cache indexes
+hkjc_horse_id separately from enrichment trackwork.horseid. Inconsistent expected
+hashes for the same profile pathname/current hardlink are rejected before headers;
+this does not claim atomic multi-source snapshots or alias continuity.
+
+Separate `debut_source` binds raw JSON, validates event structure before any
+headers/enrichment and passes an explicit list to existing native rate arithmetic.
+Absence becomes [] and never events=None/HOT fallback. `_EVENTS` stays unchanged.
+Strict meeting/debut failures propagate through the display catch; default
+production degradation, caches, ranking/scoring math and switches are unchanged.
+Strict-only `bound_meeting_sources` records the meeting/debut identities. No
+objects are placed in JSON race_context or substituted into production globals.
+
+Actual native behavior RED1: /private/tmp/stage5-meeting-native-red.log proves one
+call can read A headers(weight126) and then B Facts(delta-3), differing from fresh
+A(126/-.2) and B(140/-3). Held A remains full A after fixture rewrite, deletion and
+new competing Facts, with subsequent Path read_text/read_bytes/exists/glob in the
+meeting tree and native meeting/injury resolvers explicitly forbidden. Independent
+clean pre-integration a6c21a96 produced complete A/B native references including
+actual priority/profile tags, first-sorted UTF16 injury/date filtering and debut
+labels. Current strict A/B/A and locked A match those outputs after removing only
+the separately asserted additional strict provenance. Evidence:
+/private/tmp/stage5-meeting-baseline.log and
+/private/tmp/stage5-meeting-native-reference.json. These are synthetic reader
+sensitivity checks, not evaluated model improvement or real pilot evidence.
+
+Real coherence REDs and fixes retained: filename mismatch RED1 in
+/private/tmp/stage5-meeting-identity-red.log; same-profile split snapshot RED1 in
+/private/tmp/stage5-meeting-alias-red.log; zero/00 race RED2 before inventory in
+/private/tmp/stage5-meeting-zero-red.log. Tests also cover current hardlink aliases,
+wrong root/race/hash, malformed/appearing tag caches/events, explicit debut
+absence, strict-vs-default display exceptions, three capture mutation types,
+remaining bytes before second read and root-absence appearance. The same reviewer
+inspected all corrections/test coverage with no further must-fix; no independent
+tests, PIT/pilot/model/release/runtime authority inferred.
+
+Final unchanged implementation: whole HKJC483passed50.68s,
+/private/tmp/stage5-meeting-whole-final.log; focused36passed6.85s,
+/private/tmp/stage5-meeting-expanded.log; quick/goldens and diff checks green,
+/private/tmp/stage5-meeting-quick-final.log. Earlier27/4/2-case runs predate final
+coherence/test corrections and are not final current-suite evidence.
+
+Combined resource batch remains unfinished nonmain WIP: whole native bundle
+coherence across overlapping DB/catalog inputs, code/import/environment resource
+closure, materialization and embedded-input canonicalization still need work.
+Frozen input/control integration and heterogeneous control correspondence remain
+behind the unapproved opt-in contract-extension proposal. No full16 source or
+immutable approval gate/release/merge/activation/live jobs/config/DB/history/model/
+Telegram/contract change; Stage5 Tasks6–10 remain open.

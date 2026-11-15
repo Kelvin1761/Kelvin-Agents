@@ -23,6 +23,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
+from .native_sources import USE_PRODUCTION
 
 PURTON = "潘頓"
 BIG_DISTANCE_MOVE = 400          # 米；「大幅升程／縮程」
@@ -76,7 +77,9 @@ def _race_meta(logic_data: dict) -> dict:
 
 # ── 往績（HKJC 馬匹頁）─────────────────────────────────────────────────────────
 
-def load_profiles(meeting_dir: Path | None) -> dict:
+def load_profiles(meeting_dir: Path | None, *, meeting_context=USE_PRODUCTION) -> dict:
+    if meeting_context is not USE_PRODUCTION:
+        return meeting_context.profiles()
     if not meeting_dir:
         return {}
     path = Path(meeting_dir) / ".hkjc_cache" / "profile_cache.json"
@@ -113,8 +116,11 @@ def past_runs(profile: dict, race_date: str) -> list[dict]:
 
 # ── 排位表：練馬師王牌 ───────────────────────────────────────────────────────
 
-def load_priorities(meeting_dir: Path | None, race_no) -> dict:
+def load_priorities(meeting_dir: Path | None, race_no, *, meeting_context=USE_PRODUCTION) -> dict:
     """horse_no(str) -> 優先參賽次序 raw text."""
+    if meeting_context is not USE_PRODUCTION:
+        text = meeting_context.text("priority")
+        return {} if text is None else priorities_from_text(text)
     if not meeting_dir or not race_no:
         return {}
     out = {}
@@ -123,12 +129,18 @@ def load_priorities(meeting_dir: Path | None, race_no) -> dict:
             text = card.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
-        for block in text.split("\n\n"):
-            no = re.search(r"^馬號:\s*(\d+)", block, re.M)
-            pr = re.search(r"^優先參賽次序:\s*(.*)$", block, re.M)
-            if no and pr:
-                out[no.group(1)] = pr.group(1).strip()
+        out.update(priorities_from_text(text))
         break
+    return out
+
+
+def priorities_from_text(text):
+    out = {}
+    for block in text.split("\n\n"):
+        no = re.search(r"^馬號:\s*(\d+)", block, re.M)
+        pr = re.search(r"^優先參賽次序:\s*(.*)$", block, re.M)
+        if no and pr:
+            out[no.group(1)] = pr.group(1).strip()
     return out
 
 
@@ -333,12 +345,13 @@ def _foreign_tag(horse: dict) -> list[dict]:
                      "回放顯示外隊馬喺同一模型排名入位率高過本地馬（EXP-20261114-07）；未入分。")]
 
 
-def _debut_trainer_tag(horse: dict, meta: dict) -> list[dict]:
+def _debut_trainer_tag(horse: dict, meta: dict, *, debut_events=USE_PRODUCTION) -> list[dict]:
     """初出馬：練馬師初出紀錄（Kelvin 2026-11-14 決定 3；EXP-20261114-06）—— 未入分，forward shadow 觀察緊。"""
     if not (horse.get("is_debut") or horse.get("debut_runner")) or not meta.get("date"):
         return []
     from .debut_trainer import rate
-    info = rate(str(horse.get("trainer") or "").strip(), meta["date"])
+    info = rate(str(horse.get("trainer") or "").strip(), meta["date"],
+                **({} if debut_events is USE_PRODUCTION else {"events": debut_events}))
     if not info or info["starts"] < 5:
         return []
     tone = "good" if info["z"] >= 1 else ("bad" if info["z"] <= -1 else "note")
@@ -365,26 +378,29 @@ def horse_tags(no: str, horse: dict, auto: dict, *, runs: list[dict], meta: dict
     return {tone: sorted([t for t in tags if t["tone"] == tone], key=order) for tone in ("good", "bad", "note")}
 
 
-def race_tags(logic_data: dict, meeting_dir: Path | None = None) -> dict:
+def race_tags(logic_data: dict, meeting_dir: Path | None = None, *, meeting_context=USE_PRODUCTION, debut_events=USE_PRODUCTION) -> dict:
     """horse_no -> {"good": [...], "bad": [...], "note": [...]}.  Never raises."""
     try:
         meta = _race_meta(logic_data)
         horses = {str(no): h for no, h in (logic_data.get("horses") or {}).items()
                   if isinstance(h, dict) and isinstance(h.get("python_auto"), dict)}
-        profiles = load_profiles(meeting_dir)
+        kwargs = {} if meeting_context is USE_PRODUCTION else {"meeting_context": meeting_context}
+        profiles = load_profiles(meeting_dir, **kwargs)
         runs_by_no = {}
         for no, h in horses.items():
             pid = h.get("hkjc_horse_id") or ""
             runs_by_no[no] = past_runs(profiles.get(pid) or {}, meta["date"]) if pid in profiles else []
-        priorities = load_priorities(meeting_dir, meta.get("race_no"))
+        priorities = load_priorities(meeting_dir, meta.get("race_no"), **kwargs)
         extra: dict[str, list] = {}
         for source in (_purton_tags(horses, runs_by_no), _fastest_finisher(horses)):
             for no, items in source.items():
                 extra.setdefault(no, []).extend(items)
         for no, h in horses.items():
-            extra.setdefault(no, []).extend(_debut_trainer_tag(h, meta) + _foreign_tag(h))
+            extra.setdefault(no, []).extend(_debut_trainer_tag(h, meta, **({} if debut_events is USE_PRODUCTION else {"debut_events": debut_events})) + _foreign_tag(h))
         return {no: horse_tags(no, h, h["python_auto"], runs=runs_by_no.get(no) or [], meta=meta,
                                priority=priorities.get(no, ""), extra=extra.get(no))
                 for no, h in horses.items()}
     except Exception as exc:  # 純顯示：出錯就冇標籤，唔可以令評分失敗
+        if meeting_context is not USE_PRODUCTION or debut_events is not USE_PRODUCTION:
+            raise
         return {"_error": f"{type(exc).__name__}: {exc}"}

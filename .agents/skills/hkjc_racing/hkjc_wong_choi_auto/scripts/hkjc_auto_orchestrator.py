@@ -539,13 +539,22 @@ def _formguide_path_for_logic(logic_path, race_number):
     )
 
 
-def _attach_past_runs(logic_path, race_context, horses, meeting_date, *, sectional_table=USE_PRODUCTION):
+def _meeting_text(logic_path, race_number, role, meeting_context=USE_PRODUCTION):
+    if meeting_context is not USE_PRODUCTION:
+        return meeting_context.text(role)
+    readers = {'facts': _facts_path_for_logic, 'trackwork': _trackwork_path_for_logic,
+               'formguide': _formguide_path_for_logic, 'racecard': _racecard_path_for_logic}
+    path = readers[role](logic_path, race_number)
+    return path.read_text(encoding='utf-8') if path and path.exists() else None
+
+
+def _attach_past_runs(logic_path, race_context, horses, meeting_date, *, sectional_table=USE_PRODUCTION, meeting_context=USE_PRODUCTION):
     """逐仗負磅／路程／分段時間由賽績檔寫入 `_data`（hkjc_racing_engine.past_runs）。
     冇賽績檔 = 唔寫，段速分照舊（冇負磅換算、冇對標準顯示）。"""
-    path = _formguide_path_for_logic(logic_path, race_context.get("race_number"))
-    if not path or not path.exists():
+    text = _meeting_text(logic_path, race_context.get("race_number"), "formguide", meeting_context)
+    if text is None:
         return 0
-    return past_runs.attach(path.read_text(encoding="utf-8"), horses, race_context, meeting_date,
+    return past_runs.attach(text, horses, race_context, meeting_date,
                             sectional_table=sectional_table)
 
 
@@ -763,17 +772,15 @@ def _parse_horse_headers(text):
     return anchors
 
 
-def _load_header_anchor_map(logic_path, race_context):
+def _load_header_anchor_map(logic_path, race_context, *, meeting_context=USE_PRODUCTION):
     race_number = race_context.get("race_number")
     anchors = {}
     # Trackwork is fallback. Facts is the complete pre-race layer and wins.
-    for source_path in (
-        _trackwork_path_for_logic(logic_path, race_number),
-        _facts_path_for_logic(logic_path, race_number),
-    ):
-        if not source_path or not source_path.exists():
+    for role in ("trackwork", "facts"):
+        text = _meeting_text(logic_path, race_number, role, meeting_context)
+        if text is None:
             continue
-        parsed = _parse_horse_headers(source_path.read_text(encoding="utf-8"))
+        parsed = _parse_horse_headers(text)
         for horse_num, values in parsed.items():
             merged = anchors.setdefault(str(horse_num), {})
             for key, value in values.items():
@@ -803,16 +810,15 @@ def _enrich_horse_headers(horses, anchor_map, *, keep_embedded_combo_prior=False
                 data["weight_carried"] = horse_obj.get("weight")
 
 
-def _align_runner_headers(logic_path, race_context, horses):
+def _align_runner_headers(logic_path, race_context, horses, *, meeting_context=USE_PRODUCTION):
     """Canonicalize runner identity once before any scoring context is derived."""
     _enrich_horse_headers(
         horses,
-        _load_header_anchor_map(logic_path, race_context),
+        _load_header_anchor_map(logic_path, race_context, **({} if meeting_context is USE_PRODUCTION else {"meeting_context": meeting_context})),
     )
 
-    racecard_path = _racecard_path_for_logic(logic_path, race_context.get("race_number"))
-    if racecard_path and racecard_path.exists():
-        rc_text = racecard_path.read_text(encoding="utf-8")
+    rc_text = _meeting_text(logic_path, race_context.get("race_number"), "racecard", meeting_context)
+    if rc_text is not None:
         rc_class, rc_info = _parse_racecard_meta(rc_text)
         if rc_class:
             race_context["race_class"] = rc_class
@@ -894,11 +900,10 @@ def _horse_number_sort_key(value):
     return (0, int(text)) if text.isdigit() else (1, text)
 
 
-def _load_formline_opponent_summaries(logic_path, race_context, horses):
-    facts_path = _facts_path_for_logic(logic_path, race_context.get("race_number"))
-    if not facts_path or not facts_path.exists():
+def _load_formline_opponent_summaries(logic_path, race_context, horses, *, meeting_context=USE_PRODUCTION):
+    text = _meeting_text(logic_path, race_context.get("race_number"), "facts", meeting_context)
+    if text is None:
         return {}
-    text = facts_path.read_text(encoding="utf-8")
     current_rank = _class_rank(race_context.get("race_class"))
     summaries = {}
     for horse_num in horses.keys():
@@ -961,12 +966,11 @@ def _same_course_best_times(race_context, horses, *, history=USE_PRODUCTION):
         return {}
 
 
-def _load_first_section_deltas(logic_path, race_context, horses):
+def _load_first_section_deltas(logic_path, race_context, horses, *, meeting_context=USE_PRODUCTION):
     """Facts → Logic `_data["first_section_min_delta"]` (EXP-20261016-52/53)."""
-    facts_path = _facts_path_for_logic(logic_path, race_context.get("race_number"))
-    if not facts_path or not facts_path.exists():
+    text = _meeting_text(logic_path, race_context.get("race_number"), "facts", meeting_context)
+    if text is None:
         return {}
-    text = facts_path.read_text(encoding="utf-8")
     out = {}
     for horse_num in horses.keys():
         value = _first_section_min_delta(_section_for_horse(text, horse_num))
@@ -975,7 +979,7 @@ def _load_first_section_deltas(logic_path, race_context, horses):
     return out
 
 
-def _load_official_injury_records(logic_path, meeting_date, horses):
+def _load_official_injury_records(logic_path, meeting_date, horses, *, meeting_context=USE_PRODUCTION):
     """全日出賽馬匹資料 PDF 嘅官方傷患記錄 → Logic `_data["official_injury_records"]`（2026-10-20）。
 
     以前 `medical_flags` 只掃賽事短評，兩仗之間嘅手術／受傷永遠睇唔到。顯示一律用；
@@ -984,7 +988,12 @@ def _load_official_injury_records(logic_path, meeting_date, horses):
     if meeting_date is None:
         return {}
     from hkjc_official_injury import injury_records_for_meeting
-    by_name = injury_records_for_meeting(Path(logic_path).parent, meeting_date)
+    if meeting_context is USE_PRODUCTION:
+        by_name = injury_records_for_meeting(Path(logic_path).parent, meeting_date)
+    else:
+        from hkjc_official_injury import injury_records_from_text
+        text = meeting_context.text('injury')
+        by_name = {} if text is None else injury_records_from_text(text, meeting_date)
     out = {}
     for h_num, horse in horses.items():
         if not isinstance(horse, dict):
@@ -1121,7 +1130,7 @@ class HKJCAutoOrchestrator:
             print(f"❌ Failed to write outputs for {race_file}: {e}")
             return None
 
-    def score_logic_data(self, race_file, logic_data, *, event_sink=None, sectional_source=None, profile_source=None, same_course_source=None, prior_source=None, rail_source=None, overlay_source=None):
+    def score_logic_data(self, race_file, logic_data, *, event_sink=None, sectional_source=None, profile_source=None, same_course_source=None, prior_source=None, rail_source=None, overlay_source=None, meeting_source=None, debut_source=None):
         """Run complete production scoring without publishing race outputs.
 
         Input data is copied; Logic/Markdown/CSV, event logs and meeting results
@@ -1151,11 +1160,20 @@ class HKJCAutoOrchestrator:
         if overlay_source is not None:
             from hkjc_racing_engine.overlay_sources import prepare_bound_history
             context_kwargs['overlay_history'], context_sources['overlay'] = prepare_bound_history(overlay_source)
+        meeting_kwargs, display_kwargs, meeting_sources = {}, {}, {}
+        if meeting_source is not None:
+            from hkjc_racing_engine.meeting_sources import prepare_bound_meeting
+            held, meeting_sources['meeting'] = prepare_bound_meeting(meeting_source, race_file, logic_data.get('race_analysis', {}).get('race_number'), profile_source=profile_source)
+            meeting_kwargs['meeting_context'] = held
+            display_kwargs['meeting_context'] = held
+        if debut_source is not None:
+            from hkjc_racing_engine.debut_trainer import prepare_bound_events
+            display_kwargs['debut_events'], meeting_sources['debut'] = prepare_bound_events(debut_source)
         logic_data = deepcopy(logic_data)
         race_context = logic_data.get("race_analysis", {})
         horses = logic_data.get("horses", {})
         if isinstance(race_context, dict):
-            _align_runner_headers(race_file, race_context, horses)
+            _align_runner_headers(race_file, race_context, horses, **meeting_kwargs)
             meeting_date = _meeting_date_for_logic(race_file, race_context)
             if meeting_date is not None:
                 race_context["race_date"] = meeting_date.isoformat()
@@ -1165,8 +1183,8 @@ class HKJCAutoOrchestrator:
                     race_context["venue"] = venue
             _enrich_profile_history(horses, as_of_date=meeting_date, **profile_kwargs)
             # 段速維度：L400 按負磅換算（入分）＋ 對馬會標準（只顯示）—— EXP-20261112-13
-            _attach_past_runs(race_file, race_context, horses, meeting_date, **sectional_kwargs)
-        formline_summaries = _load_formline_opponent_summaries(race_file, race_context, horses)
+            _attach_past_runs(race_file, race_context, horses, meeting_date, **sectional_kwargs, **meeting_kwargs)
+        formline_summaries = _load_formline_opponent_summaries(race_file, race_context, horses, **meeting_kwargs)
         for h_num, summary in formline_summaries.items():
             horse_obj = horses.get(h_num)
             if not isinstance(horse_obj, dict):
@@ -1174,14 +1192,15 @@ class HKJCAutoOrchestrator:
             data = horse_obj.setdefault("_data", {})
             if isinstance(data, dict):
                 data.update(summary)
-        if _facts_path_for_logic(race_file, race_context.get("race_number")) is not None:
+        if (meeting_kwargs["meeting_context"].text("facts") is not None if meeting_kwargs else
+                _facts_path_for_logic(race_file, race_context.get("race_number")) is not None):
             # Facts is authoritative even when it no longer contains enough runs.
             # Logic-only inputs retain their embedded evidence.
             for horse in horses.values():
                 data = horse.get("_data") if isinstance(horse, dict) else None
                 if isinstance(data, dict):
                     data.pop("first_section_min_delta", None)
-        for h_num, value in _load_first_section_deltas(race_file, race_context, horses).items():
+        for h_num, value in _load_first_section_deltas(race_file, race_context, horses, **meeting_kwargs).items():
             horse_obj = horses.get(h_num)
             if isinstance(horse_obj, dict) and isinstance(horse_obj.setdefault("_data", {}), dict):
                 horse_obj["_data"]["first_section_min_delta"] = value
@@ -1191,7 +1210,7 @@ class HKJCAutoOrchestrator:
             if isinstance(horse_obj, dict) and isinstance(horse_obj.setdefault("_data", {}), dict):
                 horse_obj["_data"]["same_course_best_time"] = text
         injury_date = meeting_date if isinstance(race_context, dict) else None
-        for h_num, records in _load_official_injury_records(race_file, injury_date, horses).items():
+        for h_num, records in _load_official_injury_records(race_file, injury_date, horses, **meeting_kwargs).items():
             horse_obj = horses.get(h_num)
             if isinstance(horse_obj, dict) and isinstance(horse_obj.setdefault("_data", {}), dict):
                 horse_obj["_data"]["official_injury_records"] = records
@@ -1238,8 +1257,11 @@ class HKJCAutoOrchestrator:
         ensure_verdict(logic_data)
         self._finalize_shadow_profiles(logic_data)
         # 白話重點（純顯示，排名之後先做）：點解排呢度、要留意乜、邊度冇資料。
-        race_summary.attach(logic_data, meeting_dir=race_file.parent)
+        race_summary.attach(logic_data, meeting_dir=race_file.parent, **display_kwargs)
         logic_data["python_auto_run_contract"] = scoring_run_contract(**({} if not context_sources else {"context_sources": context_sources}), **({} if prior_context is None else {"prior_context": prior_context}))
+
+        if meeting_sources:
+            logic_data["python_auto_run_contract"]["bound_meeting_sources"] = meeting_sources
 
         logic_errors = validate_logic_data(logic_data)
         if logic_errors:

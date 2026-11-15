@@ -43,7 +43,10 @@ def _iso(text):
 
 
 def read_text(path: Path) -> str:
-    raw = Path(path).read_bytes()
+    return decode_text(Path(path).read_bytes())
+
+
+def decode_text(raw) -> str:
     if raw[:2] in (b"\xff\xfe", b"\xfe\xff"):
         return raw.decode("utf-16")
     return raw.decode("utf-8", "replace")
@@ -135,8 +138,12 @@ def injury_records_for_meeting(meeting_dir: Path, race_day: date) -> dict[str, l
     path = pdf_path_for_meeting(meeting_dir)
     if path is None:
         return {}
+    return injury_records_from_text(read_text(path), race_day)
+
+
+def injury_records_from_text(text: str, race_day: date) -> dict[str, list[dict]]:
     out: dict[str, list[dict]] = {}
-    for rec in records_as_of(parse_injury_page(read_text(path)), race_day):
+    for rec in records_as_of(parse_injury_page(text), race_day):
         out.setdefault(rec["name"], []).append({
             "race": rec["race"],
             "incident_date": rec["incident_date"].isoformat(),

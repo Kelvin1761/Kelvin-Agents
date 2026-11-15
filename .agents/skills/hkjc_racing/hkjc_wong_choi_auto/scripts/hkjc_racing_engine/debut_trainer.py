@@ -40,3 +40,20 @@ def rate(trainer: str, race_date: str, events: list | None = None) -> dict | Non
             starts += 1
     r = (places + PRIOR * K) / (starts + K)
     return {"rate": r, "places": places, "starts": starts, "z": (r - Z_MEAN) / Z_SD}
+
+
+
+def prepare_bound_events(source):
+    """Explicit raw identity only; dates do not prove historical availability."""
+    from datetime import date
+    from .native_sources import read_bound_json
+    table = read_bound_json(source)
+    events = [] if table is None else table.get('events')
+    if not isinstance(events, list):
+        raise ValueError('bound debut events list required')
+    for row in events:
+        if (not isinstance(row, list) or len(row) != 3 or not isinstance(row[0], str)
+                or date.fromisoformat(row[0]).isoformat() != row[0]
+                or not isinstance(row[1], str) or type(row[2]) is not int or row[2] not in (0, 1)):
+            raise ValueError('invalid bound native debut event')
+    return events, {'path': str(source.path), 'sha256': source.sha256}
