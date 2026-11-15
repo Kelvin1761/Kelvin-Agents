@@ -515,3 +515,5 @@
 - [EXP-20261115-07](EXP-20261115-07-hkjc-market-history.md) — HKJC 上仗賠率（Kelvin 批准測市場歷史）：holdout Δlog-loss −0.00315（Holm PASS）、AUC +0.0055、Good +1.11；兩部分（賠率＋冇上仗指示）各自有用；上線待 Kelvin
 - [EXP-20261115-08](EXP-20261115-08-hkjc-run-style-draw-bias.md) — HKJC 跑法／檔位／場地偏差：跑法偏差 holdout PASS（−0.00037，排名幾乎唔郁）、檔位偏差邊緣 REJECT、上仗逆偏差冇訊號；搵到賽果庫 2024-09–2026-05 Course／Going 欄壞（只影響研究）
 - [EXP-20261115-09](EXP-20261115-09-hkjc-kelvin-questions-diagnostic.md) — Kelvin 8 條問題診斷：熟手換騎冇訊號；上仗賠率喺休息 ≥90 日／轉場地過度追熱門；自購馬首戰仍高估 6pp；降班＋換騎、轉馬房、除去配備正、首次配備負（只診斷）
+- [EXP-20261115-10](EXP-20261115-10-hkjc-pattern-batch-l400-ft.md) — HKJC 候選批次：12 個 pattern（合併 log-loss −0.00089 但 Good 下界 −1.25）、L400 近 6 仗（變差）、FT 負磅（冇效）全部 dev REJECT；dump fit 改標準化 newton-cg
+- [EXP-20261115-11](EXP-20261115-11-hkjc-run-style-bias-deep.md) — HKJC 跑法偏差深挖：73% 日子同向、強反向 0.3%；中場壓地冇影響；即場偏差相關 0.01（長期 0.19）；喺上仗賠率之上 dev REJECT → 唔上線
