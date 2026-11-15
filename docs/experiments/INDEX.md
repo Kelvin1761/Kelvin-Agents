@@ -525,3 +525,4 @@
 - [EXP-20261115-17](EXP-20261115-17-hkjc-trainer-shrinkage.md) — 練馬師收縮分數 —— dev REJECT
 - [EXP-20261115-18](EXP-20261115-18-hkjc-draw-curve.md) — HKJC 檔位曲線（逐檔號×組別×場大細）：現行三級漏 1 檔／最外檔／跑馬地內檔；dev PASS、holdout −0.00054 同方向但 REJECT；交 Kelvin
 - [EXP-20261115-20](EXP-20261115-20-hkjc-trainer-pattern-labels.md) — 個別練馬師出擊 pattern 標籤：239 格揀 19 格（前後段一致、CI 唔跨零），純顯示唔入分
+- [EXP-20261115-19](EXP-20261115-19-hkjc-draw-model.md) — HKJC 正式檔位模型：歷史比率取代三級制最多打和（S=80 頂點 −0.00023）；「現有＋逐檔殘差曲線」dev −0.00081 PASS、holdout／terminal 同方向；交 Kelvin forward
