@@ -21,3 +21,9 @@
 ## 結論
 單純用歷史入位率比率取代三級制最多打和 —— 三級＋PIT 欄位調整其實已經捉到大部分「平均檔位效應」。可以加嘅係**模型層面漏咗嘅檔位殘差**
 （1 檔、最外檔、跑馬地內檔、場大細），即係「現有檔位分＋逐檔殘差曲線」：dev 強、holdout／terminal 同方向但功效唔夠。交 Kelvin：forward shadow。
+
+## Kelvin 決定（2026-11-15）：保留現有檔位分＋逐檔殘差曲線 → forward shadow
+- 凍結：`hkjc_draw_curve/freeze.py` → `frozen.json`（回放 v3 至 2026-11-11，172 格，K = 200，β = 32.4，as-of 合併 fit 2020/21 起）。
+- arm：`hkjc_arm_draw_curve_shadow.py`（SIP-C 之後加，sip_flag `draw_curve_shadow`，唔入分）；tracker `draw_curve_shadow`，2026-11-16 起 60 場自動判。
+- 冒煙測試（harness 11-08 至 11-14，25 場）：24 場排序有郁、6 場頭四有變、0 驗證錯。
+- 凍結表例（大場）：跑馬地短 1 檔 +6.5pp、11 檔 −4.0；沙田草短 1 檔 +4.8、13+ 檔 −5.6。
