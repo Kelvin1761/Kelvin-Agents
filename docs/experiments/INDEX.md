@@ -514,3 +514,4 @@
 - [EXP-20261115-06](EXP-20261115-06-hkjc-longshot-diagnostic.md) — HKJC 冷門馬診斷：賠率 ≥10 群組內市場 AUC 0.683 vs 我哋 0.621；同市場唔同意嘅冷門 ROI −35%；上仗賠率 dev in-sample −0.0025 但係市場衍生，待 Kelvin 批准
 - [EXP-20261115-07](EXP-20261115-07-hkjc-market-history.md) — HKJC 上仗賠率（Kelvin 批准測市場歷史）：holdout Δlog-loss −0.00315（Holm PASS）、AUC +0.0055、Good +1.11；兩部分（賠率＋冇上仗指示）各自有用；上線待 Kelvin
 - [EXP-20261115-08](EXP-20261115-08-hkjc-run-style-draw-bias.md) — HKJC 跑法／檔位／場地偏差：跑法偏差 holdout PASS（−0.00037，排名幾乎唔郁）、檔位偏差邊緣 REJECT、上仗逆偏差冇訊號；搵到賽果庫 2024-09–2026-05 Course／Going 欄壞（只影響研究）
+- [EXP-20261115-09](EXP-20261115-09-hkjc-kelvin-questions-diagnostic.md) — Kelvin 8 條問題診斷：熟手換騎冇訊號；上仗賠率喺休息 ≥90 日／轉場地過度追熱門；自購馬首戰仍高估 6pp；降班＋換騎、轉馬房、除去配備正、首次配備負（只診斷）
