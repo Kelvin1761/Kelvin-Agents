@@ -1,0 +1,158 @@
+[
+ {
+  "date": "2026-08-26",
+  "n_train": 6919,
+  "c_rest": 0.09692,
+  "weights": {
+   "stability": 0.0796,
+   "pace_perf": 0.0879,
+   "jockey_trainer": 0.7734,
+   "class_weight": 0.4926,
+   "track": 0.1732,
+   "preparation": 0.317
+  }
+ },
+ {
+  "date": "2026-09-02",
+  "n_train": 8807,
+  "c_rest": 0.08346,
+  "weights": {
+   "stability": 0.1253,
+   "pace_perf": 0.0879,
+   "jockey_trainer": 0.8062,
+   "class_weight": 0.3718,
+   "track": 0.1829,
+   "preparation": 0.3497
+  }
+ },
+ {
+  "date": "2026-09-09",
+  "n_train": 11078,
+  "c_rest": 0.0852,
+  "weights": {
+   "stability": 0.1455,
+   "pace_perf": 0.0879,
+   "jockey_trainer": 0.791,
+   "class_weight": 0.3273,
+   "track": 0.1719,
+   "preparation": 0.4002
+  }
+ },
+ {
+  "date": "2026-09-16",
+  "n_train": 13557,
+  "c_rest": 0.08273,
+  "weights": {
+   "stability": 0.1692,
+   "pace_perf": 0.0879,
+   "jockey_trainer": 0.7882,
+   "class_weight": 0.3208,
+   "track": 0.1557,
+   "preparation": 0.4018
+  }
+ },
+ {
+  "date": "2026-09-23",
+  "n_train": 16289,
+  "c_rest": 0.08826,
+  "weights": {
+   "stability": 0.1879,
+   "pace_perf": 0.0879,
+   "jockey_trainer": 0.7989,
+   "class_weight": 0.3025,
+   "track": 0.1356,
+   "preparation": 0.411
+  }
+ },
+ {
+  "date": "2026-09-30",
+  "n_train": 18594,
+  "c_rest": 0.08705,
+  "weights": {
+   "stability": 0.2003,
+   "pace_perf": 0.0879,
+   "jockey_trainer": 0.8019,
+   "class_weight": 0.2758,
+   "track": 0.1371,
+   "preparation": 0.4208
+  }
+ },
+ {
+  "date": "2026-10-07",
+  "n_train": 21169,
+  "c_rest": 0.08598,
+  "weights": {
+   "stability": 0.2008,
+   "pace_perf": 0.0879,
+   "jockey_trainer": 0.8189,
+   "class_weight": 0.2749,
+   "track": 0.1312,
+   "preparation": 0.41
+  }
+ },
+ {
+  "date": "2026-10-14",
+  "n_train": 23388,
+  "c_rest": 0.0817,
+  "weights": {
+   "stability": 0.2094,
+   "pace_perf": 0.0879,
+   "jockey_trainer": 0.7957,
+   "class_weight": 0.2998,
+   "track": 0.1386,
+   "preparation": 0.3924
+  }
+ },
+ {
+  "date": "2026-10-21",
+  "n_train": 26311,
+  "c_rest": 0.08126,
+  "weights": {
+   "stability": 0.216,
+   "pace_perf": 0.0879,
+   "jockey_trainer": 0.8147,
+   "class_weight": 0.2983,
+   "track": 0.1327,
+   "preparation": 0.3742
+  }
+ },
+ {
+  "date": "2026-10-28",
+  "n_train": 29061,
+  "c_rest": 0.08301,
+  "weights": {
+   "stability": 0.2177,
+   "pace_perf": 0.0879,
+   "jockey_trainer": 0.8199,
+   "class_weight": 0.2945,
+   "track": 0.13,
+   "preparation": 0.3737
+  }
+ },
+ {
+  "date": "2026-11-04",
+  "n_train": 32784,
+  "c_rest": 0.08236,
+  "weights": {
+   "stability": 0.2185,
+   "pace_perf": 0.0879,
+   "jockey_trainer": 0.8155,
+   "class_weight": 0.2804,
+   "track": 0.1407,
+   "preparation": 0.3808
+  }
+ },
+ {
+  "date": "2026-11-11",
+  "n_train": 35026,
+  "c_rest": 0.08345,
+  "weights": {
+   "stability": 0.2258,
+   "pace_perf": 0.0879,
+   "jockey_trainer": 0.8064,
+   "class_weight": 0.2819,
+   "track": 0.1331,
+   "preparation": 0.3886
+  }
+ }
+]

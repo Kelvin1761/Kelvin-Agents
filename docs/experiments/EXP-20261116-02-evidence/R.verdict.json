@@ -1,0 +1,90 @@
+{
+ "races": 3736,
+ "verdict": "REJECT",
+ "reason": "primary_regression",
+ "primary": {
+  "gold": {
+   "delta": -0.005085653104925054,
+   "ci_low": -0.012244897959183673,
+   "ci_high": 0.00234192037470726,
+   "p_value": 0.21,
+   "block_deltas": [
+    0.0,
+    0.009633911368015413,
+    -0.009419152276295133,
+    -0.006389776357827476,
+    -0.015151515151515152,
+    -0.006042296072507553
+   ]
+  },
+  "good_positional": {
+   "delta": -0.007762312633832976,
+   "ci_low": -0.016594332397242787,
+   "ci_high": 0.0009011715229798738,
+   "p_value": 0.095,
+   "block_deltas": [
+    0.0,
+    -0.019267822736030827,
+    0.0,
+    -0.03194888178913738,
+    0.004545454545454545,
+    -0.0030211480362537764
+   ]
+  }
+ },
+ "ranking": {
+  "top3_capture_at5": {
+   "delta": 0.00033458244111349067,
+   "ci_low": -0.0033962264150943413,
+   "ci_high": 0.003845097500686627,
+   "p_value": 0.865
+  },
+  "ndcg_at5": {
+   "delta": -0.0014102285354847125,
+   "ci_low": -0.004593624351531313,
+   "ci_high": 0.0016001292426438035,
+   "p_value": 0.381
+  },
+  "top5_pairwise_auc": {
+   "delta": -0.0030061054313467784,
+   "ci_low": -0.005704169824595943,
+   "ci_high": -0.00029737736495461046,
+   "p_value": 0.025
+  }
+ },
+ "counts_base": {
+  "gold": 21.49357601713062,
+  "gold_strict": 7.682012847965739,
+  "good_positional": 27.03426124197002,
+  "pass": 50.29443254817987,
+  "champion": 25.6423982869379,
+  "winner_in_top3": 58.02997858672377,
+  "winner_in_top5": 78.58672376873662,
+  "t3prec": 49.65203426124197
+ },
+ "counts_cand": {
+  "gold": 20.985010706638114,
+  "gold_strict": 7.735546038543897,
+  "good_positional": 26.258029978586723,
+  "pass": 49.8661670235546,
+  "champion": 25.829764453961456,
+  "winner_in_top3": 57.68201284796574,
+  "winner_in_top5": 78.42612419700214,
+  "t3prec": 49.34867951463241
+ },
+ "cohort_ci_all_negative": [
+  "going:soft5-6:good_positional",
+  "going:soft7+:good_positional",
+  "distance:<=1200:good_positional",
+  "top_style:前置:gold",
+  "top_days_since:<90:gold"
+ ],
+ "changed_races": 3736,
+ "cohorts_ci_all_negative": [
+  "going:soft5-6:good_positional",
+  "going:soft7+:good_positional",
+  "distance:<=1200:good_positional",
+  "top_style:前置:gold",
+  "top_days_since:<90:gold"
+ ]
+}

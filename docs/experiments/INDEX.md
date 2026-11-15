@@ -525,3 +525,5 @@
 - [EXP-20261115-18](EXP-20261115-18-hkjc-draw-curve.md) — HKJC 檔位曲線（逐檔號×組別×場大細）：現行三級漏 1 檔／最外檔／跑馬地內檔；dev PASS、holdout −0.00054 同方向但 REJECT；交 Kelvin
 - [EXP-20261115-20](EXP-20261115-20-hkjc-trainer-pattern-labels.md) — 個別練馬師出擊 pattern 標籤：239 格揀 19 格（前後段一致、CI 唔跨零），純顯示唔入分
 - [EXP-20261115-19](EXP-20261115-19-hkjc-draw-model.md) — HKJC 正式檔位模型：歷史比率取代三級制最多打和（S=80 頂點 −0.00023）；「現有＋逐檔殘差曲線」dev −0.00081 PASS、holdout／terminal 同方向；交 Kelvin forward
+- [EXP-20261116-01](EXP-20261116-01-au-prior-odds-results.md) — AU 上仗賠率（HKJC EXP-20261115-07 嘅 AU 版，Kelvin 批准測）：walk-forward β 上仗 log 賠率 −3.8 分，但 **REJECT ×3**：P Gold −1.02 [−1.96,−0.16]、Good +0.32、冠軍 +0.86；首選更似熱門、頭四覆蓋變窄；只冇往績指示 NDCG CI 全負
+- [EXP-20261116-02](EXP-20261116-02-au-outer-refit-results.md) — AU 外層權重 walk-forward refit（HKJC S 版做法，pace_perf 固定）：**REJECT ×2**：R Gold −0.51、Good −0.78、top5 AUC −0.30 CI 全負；AU 冇 2026-08 前乾淨回放，3,736 場 refit 只加噪音（同 EXP-20260928-02 一致）
