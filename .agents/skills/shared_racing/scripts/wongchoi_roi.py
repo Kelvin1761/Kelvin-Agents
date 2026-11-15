@@ -46,6 +46,9 @@ DOMAINS: tuple[tuple[str, str], ...] = (
     ("tennis", "🎾 網球"),
 )
 DOMAIN_LABELS = dict(DOMAINS)
+# 照記照列，但唔計入「合共累計」：NBA SGM 由 2026-11-16 起只係獨立追蹤，
+# NBA 嘅 ROI 以大細盤精選為準（Kelvin 2026-11-16）。
+TRACK_ONLY = frozenset({"nba"})
 LEDGER_NAME = "roi_board.json"
 
 
@@ -215,9 +218,12 @@ def render(*, updated: str | None = None, today: str | None = None,
     if updated in DOMAIN_LABELS:
         lines.append(f"🆕 啱啱結算：{DOMAIN_LABELS[updated]}")
     totals = []
-    for key, label in DOMAINS:
+    ordered = [d for d in DOMAINS if d[0] not in TRACK_ONLY] + [d for d in DOMAINS if d[0] in TRACK_ONLY]
+    for key, label in ordered:
         entry = data["domains"].get(key)
         lines.append("")
+        if key in TRACK_ONLY:
+            label += "（只追蹤，唔計入合共）"
         lines.append(label + (" 🆕" if updated and key.split("_")[0] == updated else ""))
         if not entry:
             lines.append("  未有紀錄")
@@ -228,7 +234,8 @@ def render(*, updated: str | None = None, today: str | None = None,
         since = entry.get("since")
         lines.append(format_row(f"累計（{since} 起）" if since else "累計",
                                 entry.get("cumulative") or {}))
-        totals.append(entry.get("cumulative") or {})
+        if key not in TRACK_ONLY:
+            totals.append(entry.get("cumulative") or {})
     if len(totals) > 1:
         lines.append("")
         lines.append(format_row("合共累計", add_rows(totals)).strip())

@@ -91,6 +91,22 @@ def _prediction_at(rows, featured_at):
     return usable[-1] if usable else None
 
 
+def _sportsbet_event_id(c, match_id, cache):
+    """Latest Sportsbet event id seen for a fixture, for the「開 Sportsbet」link; None if unknown."""
+    if match_id is None:
+        return None
+    if match_id not in cache:
+        try:
+            row = c.execute(
+                "SELECT event_id FROM odds_snapshots WHERE match_id = ? AND source_provider = 'sportsbet' "
+                "ORDER BY id DESC LIMIT 1", (match_id,)).fetchone()
+        except sqlite3.Error:
+            row = None
+        event = str(row["event_id"]) if row else ""
+        cache[match_id] = event if event.isdigit() else None
+    return cache[match_id]
+
+
 def export_tennis_tracking(db_path):
     result = {
         "status": "unavailable",
@@ -120,6 +136,7 @@ def export_tennis_tracking(db_path):
             }
             result["warnings"] = [f"missing_tracking_source:{name}" for name, rows in sources.items() if rows is None]
             records = []
+            event_ids = {}
 
             def make(row, identity, kind):
                 m = matches.get(row.get("match_id"), {})
@@ -165,6 +182,9 @@ def export_tennis_tracking(db_path):
                     "point_in_time": timed,
                     "recorded_at": row.get("recorded_at") or row.get("created_at"),
                     "model_probability": _number(row.get("blended_prob")),
+                    # Only an open bet needs the link; settled rows skip the lookup.
+                    "sportsbet_event_id": _sportsbet_event_id(c, row.get("match_id"), event_ids)
+                    if state == "pending" else None,
                     "legs": [],
                     "evidence_note": "賽事身份待核實" if disputed
                     else "賽前時間已核實" if timed else "未有可核實賽前時間",

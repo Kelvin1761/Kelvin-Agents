@@ -47,8 +47,9 @@ import，所以**呢份文件係唯一真源** —— 新規則加喺呢度，�
   悉尼 `central_wong_choi/install_roi_summary.sh` 嘅 launchd job 發總結。
   只報四樣嘢：注數、中、ROI（u）、ROI%；時間窗 = 最近結算日 + 累計。
   **唔准再喺各旺財自己嘅訊息度另加 ROI 段。** HKJC 未有落注定義，暫時唔喺板上。
-  口徑：AU = `au_betting` 位注策略（2026-08-12 起）；NBA 兩行分開計：`nba` = dashboard tracking 21:00 穩膽 SGM $1，
-  `nba_featured` = 大細盤精選紙上盤（`featured_records`，2026-11-11 起）；網球 = 正式推薦紙上盤。
+  口徑：AU = `au_betting` 位注策略（2026-08-12 起）；**NBA 嘅 ROI 以 `nba_featured`（大細盤精選紙上盤，`featured_records`，
+  2026-11-11 起）為準**；`nba`（dashboard tracking 21:00 穩膽 SGM $1）照記照列，但係 `TRACK_ONLY`：排喺板最尾、
+  唔計入「合共累計」，dashboard Portfolio 亦唔再顯示（Kelvin 2026-11-16）；網球 = 正式推薦紙上盤。
 
 ### Forward 測試一律登記入追蹤表（夠數一定要 Telegram）
 
@@ -530,7 +531,8 @@ Deploy wrapper：
   冇合資格組合就當取消、作廢不計。同一組腿只係價變唔算更新。**大細盤精選唔跟**（EXP-20261110-01 凍結喺 21:00 價）。
 - **S2 shadow（EXP-20261111-05）**：`nba_minutes.py` 計賽前時間特徵 → package `minutes_context` → 每條腿 `p_s2`（sidecar／ledger）。
   **唔入 `p_final`**；forward 判 MS2（S 份額 0.35）對現行 MS。
-- **SGM 照發，精選排喺後面（Kelvin 2026-11-10 改決定）**：SGM card 每日照發，「⭐ 大細盤精選（紙上盤）」card 跟喺 SGM 後面；
+- **大細盤精選排頂，SGM 只追蹤（Kelvin 2026-11-16）**：dashboard NBA「今日投注」精選放最頂、SGM 放下面；ROI 只計精選（見上面 ROI 口徑）。
+- **（歷史）SGM 照發，精選排喺後面（Kelvin 2026-11-10 改決定）**：SGM card 每日照發，「⭐ 大細盤精選（紙上盤）」card 跟喺 SGM 後面；
   覆盤先報 SGM 再報精選；ROI 板分兩行（`nba` = SGM、`nba_featured` = 精選）；穩膽停損照舊檢查。精選仍然係紙上盤、
   forward 測試照跑（F250／F1000）。同日較早嗰個「停發 SGM」決定（5b45a24e）未影響過任何一張 card 就已撤回。
 
