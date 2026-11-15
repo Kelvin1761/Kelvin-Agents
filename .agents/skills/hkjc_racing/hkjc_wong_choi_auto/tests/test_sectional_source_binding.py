@@ -172,7 +172,8 @@ def test_real_descriptor_read_rejects_concurrent_mutation(tmp_path, monkeypatch,
     path = tmp_path / 'sections.json'
     raw = json.dumps(TABLE_A).encode()
     path.write_bytes(raw)
-    original = ps.os.fdopen
+    from hkjc_racing_engine import native_sources
+    original = native_sources.os.fdopen
     class DuringRead:
         def __init__(self, handle): self.handle = handle
         def __enter__(self): return self
@@ -186,6 +187,6 @@ def test_real_descriptor_read_rejects_concurrent_mutation(tmp_path, monkeypatch,
                 replacement.write_bytes(raw)
                 replacement.replace(path)
             return data
-    monkeypatch.setattr(ps.os, 'fdopen', lambda *args, **kwargs: DuringRead(original(*args, **kwargs)))
+    monkeypatch.setattr(native_sources.os, 'fdopen', lambda *args, **kwargs: DuringRead(original(*args, **kwargs)))
     with pytest.raises(ValueError, match='changed or hash differs'):
         ps.read_bound_table(ps.SectionalSource(path, hashlib.sha256(raw).hexdigest()))

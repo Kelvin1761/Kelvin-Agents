@@ -48,6 +48,7 @@ from hkjc_racing_engine.scoring import (
 from hkjc_racing_engine import overlays as overlay_registry
 from hkjc_racing_engine import past_runs
 from hkjc_racing_engine.pit_sections import USE_PRODUCTION, read_bound_table
+from hkjc_racing_engine.native_sources import read_bound_json
 from hkjc_racing_engine.validation import validate_engine_scripts, validate_logic_data
 from wongchoi_paths import is_materialized_file
 
@@ -174,13 +175,45 @@ def _style_from_positions(positions, field_size=12):
     return "後上"
 
 
-def _enrich_profile_history(horses, *, as_of_date=None):
+def _prepare_profile_reader(source, logic_path, logic_data):
+    """Use exact native cache bytes without importing its live/TTL reader."""
+    cache = read_bound_json(source)
+    if cache is None:
+        return None
+    if _meeting_date_for_logic(logic_path, logic_data.get("race_analysis", {})) is None:
+        raise ValueError("bound profile history requires a known race cutoff")
+    selected = {}
+    for horse in logic_data.get("horses", {}).values():
+        trackwork = horse.get("trackwork") if isinstance(horse, dict) else None
+        identity = trackwork.get("horseid") if isinstance(trackwork, dict) else None
+        if not identity:
+            continue
+        if not isinstance(identity, str) or not identity.strip() or identity not in cache:
+            raise ValueError("bound profile cache lacks requested horse identity")
+        record = cache[identity]
+        if not isinstance(record, dict) or type(record.get("_ts")) not in {int, float}:
+            raise ValueError("invalid native profile cache record")
+        # _ts is retained input metadata, never a historical availability proof.
+        data = record.get("data")
+        if (not isinstance(data, dict) or data.get("horse_id") != identity
+                or not isinstance(data.get("entries"), list)
+                or any(not isinstance(entry, dict) for entry in data["entries"])):
+            raise ValueError("invalid bound native profile data")
+        selected[identity] = data
+    def read_profile(identity):
+        if identity not in selected:
+            raise ValueError("unbound profile lookup during native enrichment")
+        return deepcopy(selected[identity])
+    return read_profile
+
+
+def _enrich_profile_history(horses, *, as_of_date=None, profile_reader=USE_PRODUCTION):
     """Inject point-in-time, display-only multi-season profile fields.
 
     Same-day and future entries are excluded before any summary is built.  This
     matters when an archive is rescored after results have appeared on HKJC.
     """
-    scrape_horse_profile = _get_profile_scraper()
+    scrape_horse_profile = _get_profile_scraper() if profile_reader is USE_PRODUCTION else profile_reader
     if scrape_horse_profile is None:
         return
     for h_obj in horses.values():
@@ -193,6 +226,8 @@ def _enrich_profile_history(horses, *, as_of_date=None):
         try:
             ents = (scrape_horse_profile(hid) or {}).get("entries") or []
         except Exception:
+            if profile_reader is not USE_PRODUCTION:
+                raise
             continue
         if as_of_date is not None:
             ents = [
@@ -1083,7 +1118,7 @@ class HKJCAutoOrchestrator:
             print(f"❌ Failed to write outputs for {race_file}: {e}")
             return None
 
-    def score_logic_data(self, race_file, logic_data, *, event_sink=None, sectional_source=None):
+    def score_logic_data(self, race_file, logic_data, *, event_sink=None, sectional_source=None, profile_source=None):
         """Run complete production scoring without publishing race outputs.
 
         Input data is copied; Logic/Markdown/CSV, event logs and meeting results
@@ -1096,6 +1131,8 @@ class HKJCAutoOrchestrator:
         # formguide is present. Failure cannot fall back to live/native state.
         sectional_kwargs = ({} if sectional_source is None else
                             {"sectional_table": read_bound_table(sectional_source)})
+        profile_kwargs = ({} if profile_source is None else
+                          {"profile_reader": _prepare_profile_reader(profile_source, race_file, logic_data)})
         logic_data = deepcopy(logic_data)
         race_context = logic_data.get("race_analysis", {})
         horses = logic_data.get("horses", {})
@@ -1108,7 +1145,7 @@ class HKJCAutoOrchestrator:
                 venue = _meeting_venue_for_logic(race_file)
                 if venue:
                     race_context["venue"] = venue
-            _enrich_profile_history(horses, as_of_date=meeting_date)
+            _enrich_profile_history(horses, as_of_date=meeting_date, **profile_kwargs)
             # 段速維度：L400 按負磅換算（入分）＋ 對馬會標準（只顯示）—— EXP-20261112-13
             _attach_past_runs(race_file, race_context, horses, meeting_date, **sectional_kwargs)
         formline_summaries = _load_formline_opponent_summaries(race_file, race_context, horses)

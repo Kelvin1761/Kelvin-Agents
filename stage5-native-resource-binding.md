@@ -43,7 +43,8 @@ other resources are not certified by this slice.
 
 ## Remaining work and batch acceptance
 
-- Profiles: import-time cwd cache creation/loading, TTL/network and source identity.
+- Profiles: native per-call cache-byte binding is now implemented below; real
+  source availability/materialization and full supervised integration remain open.
 - Same-course comprehensive history, live-prior catalogs/metadata/season fallbacks,
   standard-time tables and every other raw/auxiliary dependency.
 - Full immutable materialization, declared absences, source availability and
@@ -76,3 +77,62 @@ must-fix by source inspection only; no independent tests/approval inferred.
 Preservation is unfinished nonmain WIP. No full16-suite source gate, immutable
 approval, manifest, merge, activation, real-data replay or native job change was
 started for this slice. Prior d756 release remains a completed separate delivery.
+
+
+## Native profile-cache binding — continuation after20173205
+
+The unmodified201 full-native fixture showed fresh cache A yields rating_high_3s70,
+fresh B yields40, while a warm process changes file A->B but keeps70. Raw score
+70.69 is identical in both fresh references: this is resource determinism, not
+model improvement or an unauthorized change to production caching. Evidence:
+/private/tmp/stage5-profile-native-behavior-red.log and
+/private/tmp/stage5-profile-native-reference.json.
+
+The same stable UTF-8 raw-hash reader is factored into native_sources.JsonSource;
+pit_sections retains its SectionalSource/read_bound_table API aliases. Explicit
+profile_source uses the actual scraper's cache JSON shape, validates requested
+horse identity/record/entries and known race cutoff before enrichment, then feeds
+those held bytes through the unchanged native profile-history transform. Explicit
+lookups cannot import the live scraper, consult its global cache or TTL, create
+cwd caches or silently fetch missing data. A strict lookup error propagates.
+Omission preserves production's existing cache/import/TTL/network behavior.
+
+_ts is retained metadata, not historical availability evidence. Date filtering is
+the native transform, not proof that raw profile bytes existed before a decision.
+Explicit absent paths do not use warm cache data; already embedded profile fields
+are not silently removed. Full audited input canonicalization is still unfinished.
+No resource reference has been connected to prepare_scoring_inputs or the frozen
+research execution contract. Parent/worker power guards remain disabled.
+
+Real subprocess full-native A->B->A matches independent fresh native A/B outputs
+while preserving a real warmed legacy cache. A second integration binds profile
+and sectional A/B/A simultaneously and matches complete fresh native outputs,
+including the pre-seam sectional raw references71.30/70.08. Clean explicit mode
+imports no scraper and creates no .hkjc_cache; controlled network stubs must record
+zero calls. Synthetic future-entry rating999 never enters the Nov8 summary.
+Missing/hash-changed/symlinked/malformed/nonfinite/UTF16/duplicate sources,
+requested-ID mismatches, malformed records and unknown cutoffs fail before native
+header enrichment or events. This is Python/native reader coverage, not a general
+OS/network sandbox or complete resource closure.
+
+Current affected profile+sectional tests49passed12.06s and quick/goldens unchanged.
+Those are focused evidence only. Whole HKJC regression and final source inspection
+are required before preserving this unfinished batch. Full16-suite/immutable gates,
+release/activation, real data/pilot/PIT/power/Stage5 acceptance are not claimed.
+
+
+## Profile continuation preservation evidence
+
+At unchanged final code after adding the profile and combined-source faults, the
+entire HKJC auto suite passed356 cases27.28s,
+/private/tmp/stage5-profile-native-hkjc-suite.log. Final quick/goldens passed,
+/private/tmp/stage5-profile-native-final-quick.log. Same authorized reviewer
+inspected the combined sectional/profile source and plan and found no must-fix;
+source inspection only, no independent tests or authority inferred.
+
+The earlier paused five-file work was resumed only after the user reactivated
+this Goal. Reactivation did not approve the pending frozen-contract proposal.
+No source/full gate, immutable approval, manifest, merge, activation or real-data
+pilot was started for this unfinished resource batch. Next real source work is
+same-course history and live-prior catalog/metadata/season-resource closure; do
+not replace that with repeated helper/status runs or claim complete isolation.
