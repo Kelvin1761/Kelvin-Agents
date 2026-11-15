@@ -224,7 +224,8 @@ def cmd_run(args) -> None:
             time.sleep(random.uniform(*LONG_PAUSE))
     msg = f"✅ HKJC 歷史補抓完成（{sorted(kinds)}）：今次抓咗 {count} 頁。"
     log(msg)
-    notify(msg)
+    if not getattr(args, "quiet", False):   # 每日段速表更新用 --quiet：完成唔推 Telegram（失敗照推）
+        notify(msg)
 
 
 # ---------------------------------------------------------------- 解析
@@ -355,6 +356,7 @@ def main() -> None:
     sub.add_parser("tasks")
     r = sub.add_parser("run")
     r.add_argument("--kinds", default="sectional,horse")
+    r.add_argument("--quiet", action="store_true", help="完成唔推 Telegram（排程每日更新用；失敗照推）")
     sub.add_parser("parse")
     sub.add_parser("status")
     args = ap.parse_args()

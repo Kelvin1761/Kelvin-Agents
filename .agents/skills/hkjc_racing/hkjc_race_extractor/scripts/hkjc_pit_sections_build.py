@@ -184,7 +184,7 @@ def update() -> int:
         notify("⚠️ HKJC 段速表冇更新：外置碟冇掛載（live 繼續用上一版 pit_sections.json）")
         return 2
     bf = [sys.executable, str(HERE / "backfill_history.py")]
-    for args in (["tasks"], ["run", "--kinds", "sectional"], ["parse"]):
+    for args in (["tasks"], ["run", "--kinds", "sectional", "--quiet"], ["parse"]):
         r = subprocess.run(bf + args, capture_output=True, text=True)
         if r.returncode != 0:
             notify(f"⚠️ HKJC 段速表冇更新：backfill {' '.join(args)} 失敗（{r.stderr[-300:]}）；live 繼續用上一版")
