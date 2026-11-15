@@ -17,15 +17,18 @@ def real_overseas_rows(pdf_races):
     return rows
 
 
-def continuous_rating(group, raw_name, *, as_of_date=None):
+def continuous_rating(group, raw_name, *, as_of_date=None, prior_context=None):
     """兩季實績連續評分（EB shrink）——主要來源；搵唔到先退返層級表。
     香港樣本少（客串騎師／新戰力，例如布浩榮 33 騎、韋紀力 38 騎）就同
     層級先驗做 Bayesian blend，數據儲夠自動過渡去純實績。
     Returns (score, reason) or None."""
     try:
         from hkjc_racing_engine.live_priors import get_jt_ratings, JT_RATING_PARAMS
-        hit = get_jt_ratings(as_of_date=as_of_date).lookup(group, raw_name)
+        hit = (get_jt_ratings(as_of_date=as_of_date) if prior_context is None else
+               get_jt_ratings(as_of_date=as_of_date, prior_context=prior_context)).lookup(group, raw_name)
     except Exception:
+        if prior_context is not None:
+            raise
         hit = None
     if hit is None:
         return None
@@ -57,6 +60,7 @@ class JockeyScorer(BaseScorer):
             "jockey",
             self.horse_data.get("jockey", ""),
             as_of_date=(self.race_context or {}).get("race_date"),
+            prior_context=getattr(self, "prior_context", None),
         )
         if rated is not None:
             self.score, self.reason = rated

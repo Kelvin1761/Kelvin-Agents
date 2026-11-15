@@ -126,6 +126,7 @@ class ShadowProfiles:
         recency = get_recency_trainer_rating(
             trainer,
             as_of_date=(self.race_context or {}).get("race_date"),
+            **({} if self.prior_context is None else {"prior_context": self.prior_context}),
         ) if eligible and trainer else None
         matrix_scores = {
             key: float(base_matrix.get(key, 60.0))

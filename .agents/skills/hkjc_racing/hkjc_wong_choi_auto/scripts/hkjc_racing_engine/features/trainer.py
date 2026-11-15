@@ -10,6 +10,7 @@ class TrainerScorer(BaseScorer):
             "trainer",
             self.horse_data.get("trainer", ""),
             as_of_date=(self.race_context or {}).get("race_date"),
+            prior_context=getattr(self, "prior_context", None),
         )
         if rated is not None:
             self.score, self.reason = rated

@@ -220,3 +220,71 @@ not a full16-suite/immutable source gate, release/merge/activation or Stage5 exi
 The next necessary code work remains native priors/catalog/mtime/season binding
 and complete materialization; frozen-harness integration still needs the pending
 separate contract decision and actual preregistered evidence.
+
+## Native CSV-prior resource integration (unfinished resource batch)
+
+The optional native `prior_source` now validates a complete explicit stats-root
+catalog before enrichment and constructs per-call J/T master, grouped trainer
+signal and recency objects using their existing constructors and arithmetic.
+The catalog derives native seasons/fallbacks and all five general roles, two
+master roles and recency, including absent files. Raw bytes, hashes, modes,
+mtime/size, discovered namespaces and the native weighting-season tag bind the
+catalog. Remaining cumulative bytes are checked by fstat before payload reads;
+per-file 16MiB / aggregate 256MiB / 10000 namespace entries reject, never truncate.
+Each consumer parses a fresh held frame because original constructors mutate it.
+Selected identity/absence and namespaces are reobserved; this is not an atomic
+snapshot, adversarial ABA defense or filesystem sandbox.
+
+The real native orchestrator passes an object separately through RacingEngine,
+continuous J/T ratings, trainer signals, registered recency shadow and run
+contract. Nothing non-JSON is inserted into Logic/race_context. Strict failures
+cannot silently become HOT reads/tier fallback. Explicit output adds
+`bound_prior_source` containing root/catalog digest/full raw metadata including
+recency; the existing default manifest/layout/cache remains unchanged. A hash,
+mtime, CSV AsOfDate or held context does not grant PIT mode: latest-season and
+latest-recency identities, historical/unknown guards and live-card tripwire stay
+unchanged. Native scoring math, weights, tier behavior and defaults are retained.
+
+Actual cache behavior RED: /private/tmp/stage5-priors-behavior-red.log failed
+against fresh B with the correctly named `ability_score_raw`; earlier attempts
+used an invalid score-key and are NOT runtime-defect evidence. Retained regression
+asserts unchanged default A->A caching. Independent clean pre-integration a6c21a96
+checkout, verified clean at that SHA, generated complete fresh native A/B results
+(raw first horse 77.39/68.05) and warm A->A. Current strict A/B/A matches those
+complete results, excluding only the separately asserted new strict provenance
+field. Evidence: /private/tmp/stage5-priors-baseline-proof.log and
+/private/tmp/stage5-priors-native-baseline-reference.json. All roots/clock/network
+isolation here are synthetic; those scores do not measure model improvement.
+
+Independent master/grouped-signal/eligible registered recency changes each affect
+the actual native consumer and match full fresh output. Failure tests include
+season/file/metadata changes, missing/invalid/unavailable/linked CSV, bounds before
+read/enrichment, declared-absence appearance, same-byte inode replacement during
+capture, historical matching-recency-AsOfDate rejection, unknown dates, live
+tripwire, fresh frames and proof-copy isolation. Reviewer found absence-adoption
+and missing strict provenance; actual RED2 reproduced both before fixes in
+/private/tmp/stage5-priors-review-red.log. Whole HKJC first 407pass/1fail exposed
+legacy __new__ direct-helper compatibility; final reader/path fallbacks retain
+that composition. Direct jockey-change helper RED1 is retained in
+/private/tmp/stage5-priors-helper-red.log. No assertions were weakened/skipped.
+
+The same authorized reviewer inspected source only, not independent execution or
+runtime/research approval. This remains nonmain WIP with all earlier resource
+changes; no full16 source gate, clean immutable approval, release, merge,
+activation, production scoring/model/DB/history/config or Telegram write.
+Import-time default discovery in live_priors, versioned tier resources, rail/draw
+readers, full resource materialization/canonicalization and frozen-harness/control
+integration remain unfinished. Per-call isolation is not full resource closure.
+The opt-in contract-extension proposal is still pending; no frozen protocol,
+heterogeneous control correspondence, historical availability/power authority or
+real pilot is unlocked. Stage5 Tasks6–10 remain open.
+
+Final unchanged implementation: whole HKJC 413 passed28.07s,
+/private/tmp/stage5-priors-source-final.log; quick/goldens and diff check green,
+/private/tmp/stage5-priors-source-final-quick.log. The reviewer confirmed the last
+legacy direct-helper correction by source inspection and stopped. The earlier
+412-pass run predates that final compatibility correction and is not final proof.
+Final staging check caught one trailing space on the test driver's opening string
+delimiter (untracked files were not covered by plain git diff --check). Whitespace
+removed; final focused28passed6.74s in
+/private/tmp/stage5-priors-whitespace-final.log, with no implementation change.

@@ -28,9 +28,9 @@ from .scoring import (CENTRED_MATRIX_WEIGHTS, DEBUT_MATRIX_WEIGHTS, FEATURE_KEYS
 _TRAINER_SIGNAL_PRIORS = None
 
 
-def scoring_run_contract():
+def scoring_run_contract(*, prior_context=None):
     """JSON-safe fingerprint for the exact production scoring contract."""
-    return {
+    contract = {
         "version": scoring.SCORING_CONTRACT_VERSION,
         "standard_matrix_weights": dict(MATRIX_WEIGHTS),
         "debut_matrix_weights": dict(DEBUT_MATRIX_WEIGHTS),
@@ -46,12 +46,16 @@ def scoring_run_contract():
         # 唔可以靜靜改。validation.py 會對；golden 亦會逐匹馬印出分別。
         "display_scale": dict(scoring.DISPLAY_SCALE),
         "dimension_display_scale": scoring.dimension_display_manifest(),
-        "prior_sources": prior_source_manifest(),
+        "prior_sources": prior_source_manifest() if prior_context is None else prior_context.manifest(),
         "prior_temporal_contract": {
             "historical": "matching_point_in_time_required",
             "live_or_future": "latest_materialized_snapshot_allowed",
         },
     }
+
+    if prior_context is not None:
+        contract["bound_prior_source"] = prior_context.evidence()
+    return contract
 
 
 from ._facts import HorseFacts
@@ -61,7 +65,8 @@ from ._explain import Explanations
 
 
 class RacingEngine(HorseFacts, LeafScores, ShadowProfiles, Explanations):
-    def __init__(self, horse_data, race_context):
+    def __init__(self, horse_data, race_context, *, prior_context=None):
+        self.prior_context = prior_context
         self.horse_data = horse_data
         self.race_context = race_context
         self.data = horse_data.get("_data", {}) if isinstance(horse_data.get("_data"), dict) else {}
@@ -89,6 +94,7 @@ class RacingEngine(HorseFacts, LeafScores, ShadowProfiles, Explanations):
             "speed_score": SpeedScorer,
         }.items():
             scorer = scorer_class(self.horse_data, self.race_context)
+            scorer.prior_context = self.prior_context
             score, note = scorer.compute()
             feature_scores[name] = clip_score(score)
             feature_notes[name] = self._normalize_reason(name, note)
@@ -226,6 +232,9 @@ class RacingEngine(HorseFacts, LeafScores, ShadowProfiles, Explanations):
         }
 
     def _trainer_signal_priors(self):
+        if self.prior_context is not None:
+            source = self.prior_context.signals
+            return source if temporal_source_is_safe(source, (self.race_context or {}).get("race_date")) else empty_trainer_signal_priors()
         global _TRAINER_SIGNAL_PRIORS
         if _TRAINER_SIGNAL_PRIORS is None:
             _TRAINER_SIGNAL_PRIORS = TrainerSignalPriors()

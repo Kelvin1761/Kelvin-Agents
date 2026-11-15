@@ -1121,7 +1121,7 @@ class HKJCAutoOrchestrator:
             print(f"❌ Failed to write outputs for {race_file}: {e}")
             return None
 
-    def score_logic_data(self, race_file, logic_data, *, event_sink=None, sectional_source=None, profile_source=None, same_course_source=None):
+    def score_logic_data(self, race_file, logic_data, *, event_sink=None, sectional_source=None, profile_source=None, same_course_source=None, prior_source=None):
         """Run complete production scoring without publishing race outputs.
 
         Input data is copied; Logic/Markdown/CSV, event logs and meeting results
@@ -1140,6 +1140,10 @@ class HKJCAutoOrchestrator:
         if same_course_source is not None:
             import hkjc_same_course_times as same_course
             same_course_kwargs["history"] = same_course.prepare_bound_history(same_course_source)
+        prior_context = None
+        if prior_source is not None:
+            from hkjc_racing_engine.prior_sources import prepare_bound_priors
+            prior_context = prepare_bound_priors(prior_source)
         logic_data = deepcopy(logic_data)
         race_context = logic_data.get("race_analysis", {})
         horses = logic_data.get("horses", {})
@@ -1189,7 +1193,7 @@ class HKJCAutoOrchestrator:
             h_name = h_obj.get("horse_name", "Unknown")
             print(f"   - Scoring Horse {h_num}: {h_name}")
 
-            engine = RacingEngine(h_obj, race_context)
+            engine = RacingEngine(h_obj, race_context, **({} if prior_context is None else {"prior_context": prior_context}))
             result = engine.analyze_horse()
             # 情境 overlay：逐匹計（shadow 都計），加分喺全場 robustness 之後先做。
             result["overlays"] = overlay_registry.overlay_record(overlay_registry.evaluate_overlays(engine))
@@ -1228,7 +1232,7 @@ class HKJCAutoOrchestrator:
         self._finalize_shadow_profiles(logic_data)
         # 白話重點（純顯示，排名之後先做）：點解排呢度、要留意乜、邊度冇資料。
         race_summary.attach(logic_data, meeting_dir=race_file.parent)
-        logic_data["python_auto_run_contract"] = scoring_run_contract()
+        logic_data["python_auto_run_contract"] = scoring_run_contract(**({} if prior_context is None else {"prior_context": prior_context}))
 
         logic_errors = validate_logic_data(logic_data)
         if logic_errors:

@@ -338,7 +338,10 @@ def prior_source_manifest() -> list[dict]:
 class JockeyTrainerRatings:
     """{name: {score, starts, win_rate, place_rate}}，EB shrink 連續評分。"""
 
-    def __init__(self) -> None:
+    def __init__(self, *, reader=None, master_files=None, current_tag=None) -> None:
+        self._reader = _read_prior_csv if reader is None else reader
+        self._master_files = MASTER_STATS_FILES if master_files is None else master_files
+        self._current_tag = current_tag
         self.temporal_mode = "latest_season_snapshot"
         self.as_of_date = None
         self.jockey = self._build("jockey")
@@ -350,12 +353,12 @@ class JockeyTrainerRatings:
         neg_scale = p["jockey_neg_scale"] if group == "jockey" else p["trainer_neg_scale"]
         floor = 0.0 if group == "jockey" else p["trainer_floor"]
         frames = []
-        current = _current_season_tag()
-        for path, tag in MASTER_STATS_FILES[group]:
+        current = _current_season_tag() if self._current_tag is None else self._current_tag
+        for path, tag in self._master_files[group]:
             season_w = season_weight(group, tag, current)
             if season_w <= 0:
                 continue
-            df_season = _read_prior_csv(path, (col, "Wins", "Starts", "Places"))
+            df_season = self._reader(path, (col, "Wins", "Starts", "Places"))
             if df_season is None:
                 continue
             for c in ("Wins", "Starts", "Places"):
@@ -407,7 +410,9 @@ _JT_RATINGS: JockeyTrainerRatings | None = None
 _RECENCY_TRAINER_RATINGS = None
 
 
-def get_jt_ratings(as_of_date=None):
+def get_jt_ratings(as_of_date=None, *, prior_context=None):
+    if prior_context is not None:
+        return prior_context.ratings if temporal_source_is_safe(prior_context.ratings, as_of_date) else _EMPTY_RATINGS
     global _JT_RATINGS
     if _JT_RATINGS is None:
         _JT_RATINGS = JockeyTrainerRatings()
@@ -421,7 +426,9 @@ class RecencyTrainerRatings:
 
     temporal_mode = "latest_recency_snapshot"
 
-    def __init__(self) -> None:
+    def __init__(self, *, reader=None, recency_path=None) -> None:
+        self._reader = _read_prior_csv if reader is None else reader
+        self._recency_path = TRAINER_RECENCY_PATH if recency_path is None else recency_path
         self.as_of_date = None
         self.latest_result_date = None
         self.half_life_days = None
@@ -432,7 +439,7 @@ class RecencyTrainerRatings:
             "Trainer", "Wins", "Starts", "Places", "AsOfDate",
             "LatestResultDate", "HalfLifeDays",
         )
-        frame = _read_prior_csv(TRAINER_RECENCY_PATH, required)
+        frame = self._reader(self._recency_path, required)
         if frame is None or frame.empty:
             return {}
         self.as_of_date = str(frame["AsOfDate"].iloc[0])
@@ -482,8 +489,11 @@ class RecencyTrainerRatings:
         return None
 
 
-def get_recency_trainer_rating(raw_name: str, *, as_of_date=None) -> dict | None:
+def get_recency_trainer_rating(raw_name: str, *, as_of_date=None, prior_context=None) -> dict | None:
     """Return the registered shadow rating; historical latest-file use is blocked."""
+    if prior_context is not None:
+        source = prior_context.recency
+        return source.lookup(raw_name) if temporal_source_is_safe(source, as_of_date) else None
     global _RECENCY_TRAINER_RATINGS
     if _RECENCY_TRAINER_RATINGS is None:
         _RECENCY_TRAINER_RATINGS = RecencyTrainerRatings()
@@ -494,17 +504,19 @@ def get_recency_trainer_rating(raw_name: str, *, as_of_date=None) -> dict | None
 
 
 class TrainerSignalPriors:
-    def __init__(self) -> None:
+    def __init__(self, *, reader=None, general_files=None) -> None:
+        self._reader = _read_prior_csv if reader is None else reader
+        self._general_files = GENERAL_PRIOR_FILES if general_files is None else general_files
         self.temporal_mode = "latest_season_snapshot"
         self.as_of_date = None
-        self.combo = self._load_grouped(GENERAL_PRIOR_FILES["combo"], ["Jockey", "Trainer"])
-        self.jockey_distance = self._load_grouped(GENERAL_PRIOR_FILES["jockey_distance"], ["Jockey", "Distance"])
-        self.trainer_distance = self._load_grouped(GENERAL_PRIOR_FILES["trainer_distance"], ["Trainer", "Distance"])
+        self.combo = self._load_grouped(self._general_files["combo"], ["Jockey", "Trainer"])
+        self.jockey_distance = self._load_grouped(self._general_files["jockey_distance"], ["Jockey", "Distance"])
+        self.trainer_distance = self._load_grouped(self._general_files["trainer_distance"], ["Trainer", "Distance"])
         self.jockey_change = self._load_jockey_change()
 
     def _load_grouped(self, paths: list[Path], keys: list[str]) -> dict[tuple[str, ...], dict]:
         required = tuple(keys) + ("Wins", "Starts", "Places")
-        frames = [frame for path in paths if (frame := _read_prior_csv(path, required)) is not None]
+        frames = [frame for path in paths if (frame := getattr(self, "_reader", _read_prior_csv)(path, required)) is not None]
         if not frames:
             return {}
         df = pd.concat(frames, ignore_index=True)
@@ -541,8 +553,8 @@ class TrainerSignalPriors:
         required = ("JockeyChanged", "Wins", "Starts", "Places")
         frames = [
             frame
-            for path in GENERAL_PRIOR_FILES["jockey_change"]
-            if (frame := _read_prior_csv(path, required)) is not None
+            for path in getattr(self, "_general_files", GENERAL_PRIOR_FILES)["jockey_change"]
+            if (frame := getattr(self, "_reader", _read_prior_csv)(path, required)) is not None
         ]
         if not frames:
             return {}
