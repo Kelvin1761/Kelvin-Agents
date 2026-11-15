@@ -415,3 +415,59 @@ Frozen input/control integration and heterogeneous control correspondence remain
 behind the unapproved opt-in contract-extension proposal. No full16 source or
 immutable approval gate/release/merge/activation/live jobs/config/DB/history/model/
 Telegram/contract change; Stage5 Tasks6–10 remain open.
+
+## Whole native preparation coherence
+
+All eight explicit native source preparations now share one private per-invocation
+capture scope. Successful descriptor reads record canonical paths, raw hashes and
+observed file identities; conflicting reads reject by path OR current inode.
+Absences and each catalog's common name/type namespace observations are registered
+without replacing native role selection. Finalization rechecks every observed
+file, absence and namespace before headers, enrichment, scores or event output.
+Scoring is outside the scope. ContextVar token/reset in finally prevents failed,
+nested or concurrent invocations from sharing mutable capture state; nested
+capture is rejected. No production cache is replaced or repurposed.
+
+Aggregate limits additionally reject before excess payload reads: 256MiB actual
+captured bytes (including repeated captures),20000 observed paths and10000 unique
+namespace entries. These are source-work bounds, NOT a peak-RSS/host quota or
+large-corpus acceptance claim. Finalization is sequential observation, NOT an
+atomic snapshot, adversarial CAS, PIT availability, authenticated review or OS
+sandbox. Omitted sources still use native defaults; a partial receipt never
+proves external-resource closure. Strict-only bound_source_observation records
+actual source names and evidence after successful finalization; ordinary default
+output remains unchanged. Existing parity drivers assert this additional metadata
+before removing only that field for full pre-existing native-output comparisons.
+
+Actual RED1 /private/tmp/stage5-native-coherence-red.log reproduced independently
+valid same-course catalog A followed by overlay catalog B on the SAME day files;
+old preparation reached forbidden headers. The real scorer now rejects before
+headers/enrichment/events. Tests also exercise finalization rewrite, identical-byte
+inode replacement, absent->present, namespace addition, conflicting hardlinks,
+aggregate bounds (including a read spy proving the second payload was never
+read), nested failure cleanup and two concurrent actual eight-source native calls.
+
+Whole-eight integration uses genuine warmed native default caches in a synthetic
+HK root/cwd and the actual legacy profile-cache reader, with HTTP forbidden.
+Explicit A/B/A matches complete fresh native A/B outputs; identity, deep-copied
+cache content, warmed rail DataFrame/overlay dictionary and cache hit/miss counters
+are checked after strict calls. Independent clean pre-integration a6c21a96 confirms
+that parity, raw first horse78.0/68.44 (synthetic sensitivity, NOT improvement).
+Evidence: /private/tmp/stage5-eight-native-baseline.log and
+/private/tmp/stage5-eight-native-reference.json. Full native HKJC495passed45.46s,
+/private/tmp/stage5-native-coherence-whole.log; the final deep-cache assertions
+were added afterward with NO production implementation change and focused12pass
+2.76s, /private/tmp/stage5-native-coherence-final-focused.log. Quick/goldens and
+diff checks green, /private/tmp/stage5-native-coherence-quick-first.log. Same
+reviewer inspected actual integration and final strengthened assertions only;
+no independent test execution or runtime/research authority was granted.
+
+Combined native-resource WIP remains nonmain/unreleased. Import/environment/code
+resource closure, actual materialization, canonicalized embedded inputs and
+frozen-harness/control integration still require resolution. The opt-in frozen
+protocol/heterogeneous-control proposal is pending. No full16/clean immutable
+approval gate, release, merge, activation, real pilot, model/config/DB/history or
+Telegram write; Stage5 Tasks6–10 and all prior holds remain open.
+Unchanged-source AgentScripts173passed/2existingxfail8.80s under bundled Node and
+normal fixture filesystem permissions, /private/tmp/stage5-native-coherence-agents.log.
+No assertion skipped/relaxed. All test/process handles for this slice are terminal.

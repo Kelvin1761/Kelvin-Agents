@@ -9,6 +9,7 @@ import stat
 
 import hkjc_completed_rows as rows
 from wongchoi_paths import is_materialized_file
+from .native_source_capture import record_source_directory, record_absent_source
 from .native_sources import _source_path, capture_source_file, decode_json_bytes
 
 MAX_ENTRIES = 10000
@@ -35,7 +36,7 @@ def _entries(path, budget):
     try:
         info = path.lstat()
     except FileNotFoundError:
-        return None
+        return record_source_directory(path, None)
     if not stat.S_ISDIR(info.st_mode):
         raise ValueError('completed-result directory required')
     result = []
@@ -47,7 +48,7 @@ def _entries(path, budget):
         if stat.S_ISLNK(info.st_mode):
             raise ValueError('linked completed-result catalog entry')
         result.append((child.name, stat.S_ISDIR(info.st_mode)))
-    return sorted(result)
+    return record_source_directory(path, sorted(result))
 
 
 def _capture(root):
@@ -72,6 +73,7 @@ def _capture(root):
         try:
             path.lstat()
         except FileNotFoundError:
+            record_absent_source(path)
             files[relative] = metadata[relative] = None
             return
         if not is_materialized_file(path):
@@ -131,6 +133,7 @@ def read_bound_rows(source):
         try:
             root.lstat()
         except FileNotFoundError:
+            record_absent_source(root)
             return None
         raise ValueError('declared absent completed-result root exists')
     if not isinstance(source.sha256, str) or not re.fullmatch(r'[a-f0-9]{64}', source.sha256):

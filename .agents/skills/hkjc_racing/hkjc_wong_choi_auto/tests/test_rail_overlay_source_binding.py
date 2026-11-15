@@ -62,6 +62,13 @@ for item in json.loads(Path(request).read_text()):
         proof=result['python_auto_run_contract'].pop('bound_context_sources')
         assert proof['rail']['sha256']==kwargs['rail_source'].sha256
         assert proof['overlay']['catalog_sha256']==kwargs['overlay_source'].sha256
+    observation = result['python_auto_run_contract'].pop('bound_source_observation', None)
+    assert (observation is not None) == bool(kwargs)
+    if observation is not None:
+        assert observation['schema_version'] == 'native-source-observation/v1'
+        assert set(observation['source_names']) == {key[:-7] for key in kwargs}
+        assert observation['bytes_read'] >= sum(row['size'] for row in observation['files'].values())
+        assert all(len(row['sha256']) == 64 and len(row['observed_identity']) == 6 for row in observation['files'].values())
     values.append(result)
 if cache: assert cache==(rail._read_dataset.cache_info(),overlays._jockey_wins_by_day.cache_info())
 assert json.loads(Path(logic_path).read_text())==logic

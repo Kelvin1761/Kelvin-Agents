@@ -63,6 +63,13 @@ for files in json.loads(Path(request).read_text()):
         assert proof['catalog']['files']['experimental/trainer_recency_90d_stats.csv']['sha256']
     else:
         assert 'bound_prior_source' not in result['python_auto_run_contract']
+    observation = result['python_auto_run_contract'].pop('bound_source_observation', None)
+    assert (observation is not None) == bool(kwargs)
+    if observation is not None:
+        assert observation['schema_version'] == 'native-source-observation/v1'
+        assert set(observation['source_names']) == {key[:-7] for key in kwargs}
+        assert observation['bytes_read'] >= sum(row['size'] for row in observation['files'].values())
+        assert all(len(row['sha256']) == 64 and len(row['observed_identity']) == 6 for row in observation['files'].values())
     values.append(result)
 if cache:
     assert all(a is b for a,b in zip(cache,(lp._JT_RATINGS,lp._RECENCY_TRAINER_RATINGS,core._TRAINER_SIGNAL_PRIORS,lp._PRIOR_SOURCE_MANIFEST)))

@@ -11,6 +11,7 @@ import re
 import stat
 
 from wongchoi_paths import is_materialized_file
+from .native_source_capture import record_source_directory, record_absent_source
 from .native_sources import _source_path, capture_source_file, decode_json_bytes
 
 MAX_ENTRIES = 10000
@@ -34,7 +35,7 @@ def _entries(path, budget):
     try:
         info = path.lstat()
     except FileNotFoundError:
-        return None
+        return record_source_directory(path, None)
     if not stat.S_ISDIR(info.st_mode):
         raise ValueError('native meeting directory required')
     result = []
@@ -46,7 +47,7 @@ def _entries(path, budget):
         if stat.S_ISLNK(info.st_mode):
             raise ValueError('linked native meeting inventory')
         result.append((child.name, stat.S_ISDIR(info.st_mode)))
-    return sorted(result)
+    return record_source_directory(path, sorted(result))
 
 
 def _race_number(value):

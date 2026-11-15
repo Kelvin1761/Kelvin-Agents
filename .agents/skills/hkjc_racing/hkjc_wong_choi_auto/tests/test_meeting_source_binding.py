@@ -79,6 +79,13 @@ for index,item in enumerate(requests):
         proof=result['python_auto_run_contract'].pop('bound_meeting_sources')
         assert proof['meeting']['catalog_sha256']==kwargs['meeting_source'].sha256
         assert proof['debut']['sha256']==kwargs['debut_source'].sha256
+    observation = result['python_auto_run_contract'].pop('bound_source_observation', None)
+    assert (observation is not None) == bool(kwargs)
+    if observation is not None:
+        assert observation['schema_version'] == 'native-source-observation/v1'
+        assert set(observation['source_names']) == {key[:-7] for key in kwargs}
+        assert observation['bytes_read'] >= sum(row['size'] for row in observation['files'].values())
+        assert all(len(row['sha256']) == 64 and len(row['observed_identity']) == 6 for row in observation['files'].values())
     results.append(result)
     guarded={}
     if mode in {'interleave','bound_interleave','bound_locked'}: break
@@ -147,7 +154,7 @@ def test_same_profile_path_cannot_bind_two_different_snapshots(tmp_path,monkeypa
     monkeypatch.setattr(auto,'_prepare_profile_reader',interleave)
     header=Mock(side_effect=AssertionError('incoherent source passed to headers'))
     monkeypatch.setattr(auto,'_align_runner_headers',header)
-    with pytest.raises(ValueError,match='profile.*binding'):
+    with pytest.raises(ValueError,match='profile.*binding|source coherence'):
         auto.HKJCAutoOrchestrator(path).score_logic_data(path,logic,profile_source=profile,meeting_source=meeting)
     header.assert_not_called()
 

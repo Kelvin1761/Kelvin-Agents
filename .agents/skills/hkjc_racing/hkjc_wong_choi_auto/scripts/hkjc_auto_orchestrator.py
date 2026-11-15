@@ -49,6 +49,7 @@ from hkjc_racing_engine import overlays as overlay_registry
 from hkjc_racing_engine import past_runs
 from hkjc_racing_engine.pit_sections import USE_PRODUCTION, read_bound_table
 from hkjc_racing_engine.native_sources import read_bound_json
+from hkjc_racing_engine.native_source_capture import source_capture
 from hkjc_racing_engine.validation import validate_engine_scripts, validate_logic_data
 from wongchoi_paths import is_materialized_file
 
@@ -1141,34 +1142,41 @@ class HKJCAutoOrchestrator:
         """
         # Explicit sources are validated before any enrichment, even if no
         # formguide is present. Failure cannot fall back to live/native state.
-        sectional_kwargs = ({} if sectional_source is None else
-                            {"sectional_table": read_bound_table(sectional_source)})
-        profile_kwargs = ({} if profile_source is None else
-                          {"profile_reader": _prepare_profile_reader(profile_source, race_file, logic_data)})
-        same_course_kwargs = {}
-        if same_course_source is not None:
-            import hkjc_same_course_times as same_course
-            same_course_kwargs["history"] = same_course.prepare_bound_history(same_course_source)
-        prior_context = None
-        if prior_source is not None:
-            from hkjc_racing_engine.prior_sources import prepare_bound_priors
-            prior_context = prepare_bound_priors(prior_source)
-        context_kwargs, context_sources = {}, {}
-        if rail_source is not None:
-            from hkjc_racing_engine.rail_draw_context import prepare_bound_history
-            context_kwargs['rail_history'], context_sources['rail'] = prepare_bound_history(rail_source)
-        if overlay_source is not None:
-            from hkjc_racing_engine.overlay_sources import prepare_bound_history
-            context_kwargs['overlay_history'], context_sources['overlay'] = prepare_bound_history(overlay_source)
-        meeting_kwargs, display_kwargs, meeting_sources = {}, {}, {}
-        if meeting_source is not None:
-            from hkjc_racing_engine.meeting_sources import prepare_bound_meeting
-            held, meeting_sources['meeting'] = prepare_bound_meeting(meeting_source, race_file, logic_data.get('race_analysis', {}).get('race_number'), profile_source=profile_source)
-            meeting_kwargs['meeting_context'] = held
-            display_kwargs['meeting_context'] = held
-        if debut_source is not None:
-            from hkjc_racing_engine.debut_trainer import prepare_bound_events
-            display_kwargs['debut_events'], meeting_sources['debut'] = prepare_bound_events(debut_source)
+        source_names = [name for name, source in (
+            ('sectional', sectional_source), ('profile', profile_source),
+            ('same_course', same_course_source), ('prior', prior_source),
+            ('rail', rail_source), ('overlay', overlay_source),
+            ('meeting', meeting_source), ('debut', debut_source)) if source is not None]
+        with source_capture(source_names) as observation:
+            sectional_kwargs = ({} if sectional_source is None else
+                                {"sectional_table": read_bound_table(sectional_source)})
+            profile_kwargs = ({} if profile_source is None else
+                              {"profile_reader": _prepare_profile_reader(profile_source, race_file, logic_data)})
+            same_course_kwargs = {}
+            if same_course_source is not None:
+                import hkjc_same_course_times as same_course
+                same_course_kwargs["history"] = same_course.prepare_bound_history(same_course_source)
+            prior_context = None
+            if prior_source is not None:
+                from hkjc_racing_engine.prior_sources import prepare_bound_priors
+                prior_context = prepare_bound_priors(prior_source)
+            context_kwargs, context_sources = {}, {}
+            if rail_source is not None:
+                from hkjc_racing_engine.rail_draw_context import prepare_bound_history
+                context_kwargs['rail_history'], context_sources['rail'] = prepare_bound_history(rail_source)
+            if overlay_source is not None:
+                from hkjc_racing_engine.overlay_sources import prepare_bound_history
+                context_kwargs['overlay_history'], context_sources['overlay'] = prepare_bound_history(overlay_source)
+            meeting_kwargs, display_kwargs, meeting_sources = {}, {}, {}
+            if meeting_source is not None:
+                from hkjc_racing_engine.meeting_sources import prepare_bound_meeting
+                held, meeting_sources['meeting'] = prepare_bound_meeting(meeting_source, race_file, logic_data.get('race_analysis', {}).get('race_number'), profile_source=profile_source)
+                meeting_kwargs['meeting_context'] = held
+                display_kwargs['meeting_context'] = held
+            if debut_source is not None:
+                from hkjc_racing_engine.debut_trainer import prepare_bound_events
+                display_kwargs['debut_events'], meeting_sources['debut'] = prepare_bound_events(debut_source)
+            source_observation = None if observation is None else observation.finish()
         logic_data = deepcopy(logic_data)
         race_context = logic_data.get("race_analysis", {})
         horses = logic_data.get("horses", {})
@@ -1259,6 +1267,9 @@ class HKJCAutoOrchestrator:
         # 白話重點（純顯示，排名之後先做）：點解排呢度、要留意乜、邊度冇資料。
         race_summary.attach(logic_data, meeting_dir=race_file.parent, **display_kwargs)
         logic_data["python_auto_run_contract"] = scoring_run_contract(**({} if not context_sources else {"context_sources": context_sources}), **({} if prior_context is None else {"prior_context": prior_context}))
+
+        if source_observation is not None:
+            logic_data["python_auto_run_contract"]["bound_source_observation"] = source_observation
 
         if meeting_sources:
             logic_data["python_auto_run_contract"]["bound_meeting_sources"] = meeting_sources

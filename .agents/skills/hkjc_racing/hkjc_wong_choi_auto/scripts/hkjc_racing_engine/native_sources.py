@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import re
 import stat
+from .native_source_capture import capture_byte_limit, record_source_file, record_absent_source
 
 USE_PRODUCTION = object()
 MAX_SOURCE_BYTES = 16 * 1024 * 1024
@@ -73,6 +74,7 @@ def capture_source_file(path, *, maximum_bytes=None):
     if maximum_bytes is not None and (type(maximum_bytes) is not int or maximum_bytes <= 0):
         raise ValueError("native source byte bound exhausted")
     limit = MAX_SOURCE_BYTES if maximum_bytes is None else min(MAX_SOURCE_BYTES, maximum_bytes)
+    limit = capture_byte_limit(limit)
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
     with os.fdopen(os.open(path, flags), "rb") as handle:
         before = os.fstat(handle.fileno())
@@ -86,8 +88,10 @@ def capture_source_file(path, *, maximum_bytes=None):
     if (identity(before) != identity(after) or identity(after) != identity(current)
             or len(raw) != before.st_size):
         raise ValueError("JSON source changed or hash differs")
-    return raw, {"sha256": hashlib.sha256(raw).hexdigest(), "size": len(raw),
-                 "mtime_ns": after.st_mtime_ns, "mode": stat.S_IMODE(after.st_mode)}, identity(after)
+    metadata = {"sha256": hashlib.sha256(raw).hexdigest(), "size": len(raw),
+                "mtime_ns": after.st_mtime_ns, "mode": stat.S_IMODE(after.st_mode)}
+    record_source_file(path, metadata, identity(after))
+    return raw, metadata, identity(after)
 
 
 def read_bound_json(source: JsonSource) -> dict | None:
@@ -104,6 +108,7 @@ def read_bound_bytes(source, *, source_type=JsonSource):
         try:
             path.lstat()
         except FileNotFoundError:
+            record_absent_source(path)
             return None
         raise ValueError("declared absent JSON source exists")
     if not isinstance(source.sha256, str) or not re.fullmatch(r"[a-f0-9]{64}", source.sha256):

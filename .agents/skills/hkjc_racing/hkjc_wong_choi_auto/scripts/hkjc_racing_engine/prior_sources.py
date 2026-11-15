@@ -17,6 +17,7 @@ import stat
 import pandas as pd
 from wongchoi_paths import is_materialized_file
 from . import live_priors as native
+from .native_source_capture import record_source_directory, record_absent_source
 from .native_sources import _source_path, capture_source_file
 
 MAX_ENTRIES = 10000
@@ -49,7 +50,7 @@ def _entries(path, budget):
     try:
         info = path.lstat()
     except FileNotFoundError:
-        return None
+        return record_source_directory(path, None)
     if not stat.S_ISDIR(info.st_mode):
         raise ValueError('native prior directory required')
     entries = []
@@ -61,7 +62,7 @@ def _entries(path, budget):
         if stat.S_ISLNK(info.st_mode):
             raise ValueError('linked native prior inventory')
         entries.append((child.name, stat.S_ISDIR(info.st_mode)))
-    return sorted(entries)
+    return record_source_directory(path, sorted(entries))
 
 
 def _frame(raw, columns):
@@ -100,6 +101,7 @@ def _capture(root):
         try:
             path.lstat()
         except FileNotFoundError:
+            record_absent_source(path)
             files[relative] = metadata[relative] = None
             continue
         if not is_materialized_file(path):

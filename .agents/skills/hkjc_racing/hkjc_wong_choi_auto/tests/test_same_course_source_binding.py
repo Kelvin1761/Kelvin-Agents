@@ -95,6 +95,13 @@ for files in json.loads(Path(request_path).read_text()):
     with contextlib.redirect_stdout(io.StringIO()):
         value = auto.HKJCAutoOrchestrator(Path(logic_path)).score_logic_data(Path(logic_path), logic, **kwargs)
     assert value is not None
+    observation = value['python_auto_run_contract'].pop('bound_source_observation', None)
+    assert (observation is not None) == bool(kwargs)
+    if observation is not None:
+        assert observation['schema_version'] == 'native-source-observation/v1'
+        assert set(observation['source_names']) == {key[:-7] for key in kwargs}
+        assert observation['bytes_read'] >= sum(row['size'] for row in observation['files'].values())
+        assert all(len(row['sha256']) == 64 and len(row['observed_identity']) == 6 for row in observation['files'].values())
     results.append(value)
 assert json.loads(Path(logic_path).read_text()) == logic
 import hkjc_same_course_times as same_course
