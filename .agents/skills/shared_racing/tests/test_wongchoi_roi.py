@@ -29,12 +29,24 @@ def test_board_shows_only_bets_hits_roi_and_pct_for_every_wong_choi(tmp_path):
     assert "🇦🇺 AU 賽馬\n  昨日（11-04）：8 注｜中 5｜ROI +1.20u｜+15.0%" in text
     assert "  累計（2026-08-12 起）：18 注｜中 9｜ROI −1.30u｜−7.2%" in text
     # 冇紀錄嘅旺財照列，等兩個人知佢未有數，唔係漏咗。
-    assert "🏀 NBA SGM\n  未有紀錄" in text
+    assert "🏀 NBA SGM（只追蹤，唔計入合共）\n  未有紀錄" in text
     assert "🏀 NBA 大細盤精選（紙上盤）\n  未有紀錄" in text
     assert "合共累計：75 注｜中 38｜ROI −6.07u｜−8.1%" in text or \
         "合共累計：75 注｜中 38｜ROI −6.06u｜−8.1%" in text
     # HKJC 未有落注定義，唔出現。
     assert "HKJC" not in text
+
+
+def test_nba_sgm_is_listed_last_and_left_out_of_the_total(tmp_path):
+    path = tmp_path / "roi_board.json"
+    _seed(path)
+    roi.record("nba", day="2026-11-04",
+               latest={"bets": 1, "hits": 0, "stake": 1, "pnl": -1},
+               cumulative={"bets": 20, "hits": 5, "stake": 20, "pnl": -9.0}, path=path)
+    text = roi.render(today="2026-11-05", path=path)
+    assert text.index("🎾 網球") < text.index("🏀 NBA SGM（只追蹤，唔計入合共）")
+    # Same total as without SGM: AU 18 + tennis 57.
+    assert "合共累計：75 注" in text
 
 
 def test_record_days_merge_keeps_old_days_and_recomputes_cumulative(tmp_path):

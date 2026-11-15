@@ -208,3 +208,30 @@ def test_prop_cards_carry_sportsbets_english_market_and_selection(tmp_path):
     one, two = export_tennis_tracking(path)["records"]
     assert one["sportsbet_market"] == "Set 1 Winner" and one["selection"] == "Player A"
     assert two["sportsbet_market"] is None and two["selection"] == "Player A Over 3.5"
+
+
+def test_open_bets_carry_the_latest_sportsbet_event_id(tmp_path):
+    path = tmp_path / "db"
+    c = database(path)
+    prop(c, 1)
+    prop(c, 2)
+    c.execute("UPDATE prop_tracker SET result_status='PENDING' WHERE id=1")
+    c.execute("CREATE TABLE odds_snapshots(id INTEGER PRIMARY KEY,event_id TEXT,match_id INTEGER,source_provider TEXT)")
+    c.executemany("INSERT INTO odds_snapshots VALUES(?,?,?,?)",
+                  [(1, "111", 1, "sportsbet"), (2, "222", 1, "sportsbet"), (3, "x-9", 1, "other")])
+    c.commit()
+    c.close()
+    by_id = {r["id"]: r for r in export_tennis_tracking(path)["records"]}
+    assert by_id["tennis:prop:1"]["sportsbet_event_id"] == "222"  # open bet: newest Sportsbet id
+    assert by_id["tennis:prop:2"]["sportsbet_event_id"] is None    # settled: no link, no lookup
+
+
+def test_missing_odds_table_leaves_no_event_id(tmp_path):
+    path = tmp_path / "db"
+    c = database(path)
+    prop(c, 1)
+    c.execute("UPDATE prop_tracker SET result_status='PENDING'")
+    c.commit()
+    c.close()
+    out = export_tennis_tracking(path)
+    assert out["status"] == "valid" and out["records"][0]["sportsbet_event_id"] is None

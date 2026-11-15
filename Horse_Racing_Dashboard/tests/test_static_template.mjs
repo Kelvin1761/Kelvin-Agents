@@ -1092,7 +1092,7 @@ test("portfolio periods: weeks run Monday to Sunday, months are calendar months"
   assert.equal(JSON.stringify(pfPeriod("day", "2026-11-01", -1)), '{"start":"2026-10-31","end":"2026-10-31"}');
 });
 
-test("portfolio shows all four sports: board for AU/NBA/tennis, D1 for HKJC", () => {
+test("portfolio shows all four sports: board for AU/NBA 大細/tennis, D1 for HKJC; NBA SGM left out", () => {
   const data = {
     ...EMPTY_DASHBOARD_DATA,
     roi_board: {
@@ -1108,13 +1108,15 @@ test("portfolio shows all four sports: board for AU/NBA/tennis, D1 for HKJC", ()
   t.setPortfolioForTest({ days: { hkjc: { "2026-11-04": { bets: 4, hits: 1, stake: 4, pnl: 0.5 } } }, horses_by_region: { hkjc: { pending: 2 } } });
   t.setPfViewForTest("week");
   const html = t.renderPortfolioWorkspace();
-  for (const label of ["香港賽馬", "AU 賽馬", "NBA SGM", "NBA 大細盤精選", "網球"]) assert.match(html, new RegExp(label));
-  // Week of the latest settled day (Mon 11-02 .. Sun 11-08): 20 bets, pnl -2 + 1.5 + 0.5 = 0.
+  for (const label of ["香港賽馬", "AU 賽馬", "NBA 大細盤精選", "網球"]) assert.match(html, new RegExp(label));
+  // NBA SGM is tracked on the NBA page only (Kelvin 2026-11-16): no card, not in the total.
+  assert.doesNotMatch(html, /data-sport="nba"/);
+  // Week of the latest settled day (Mon 11-02 .. Sun 11-08): AU 10 + HKJC 4, SGM's 2 excluded.
   assert.match(html, /11月2日 – 11月8日/);
-  assert.match(html, /<span>注數<\/span><strong>16<\/strong>/);
+  assert.match(html, /<span>注數<\/span><strong>14<\/strong>/);
   assert.match(html, /另有 2 注未結算唔計/);
   t.setPfViewForTest("all");
-  assert.match(t.renderPortfolioWorkspace(), /<span>注數<\/span><strong>21<\/strong>/);
+  assert.match(t.renderPortfolioWorkspace(), /<span>注數<\/span><strong>19<\/strong>/);
   assert.equal(t.pfSum(data.roi_board.domains.au.days, { start: "2026-11-01", end: "2026-11-30" }).pnl, -2);
 });
 
