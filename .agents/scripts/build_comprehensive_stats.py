@@ -36,6 +36,9 @@ from pathlib import Path
 
 import pandas as pd
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import hkjc_completed_rows as _completed
+
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from wongchoi_paths import HK_RACING, is_materialized_file  # noqa: E402
@@ -43,291 +46,71 @@ from wongchoi_paths import HK_RACING, is_materialized_file  # noqa: E402
 DB_ROOT = HK_RACING / "HKJC_Race_Results_Database"
 STATS_ROOT = DB_ROOT / "comprehensive_stats"
 
-STATIC_SEASONS = {
-    "24_25": {"csv": "race_results_24_25.csv", "results_dir": "hkjc results 2024 25"},
-    "25_26": {"csv": "race_results_25_26.csv", "results_dir": "hkjc results 2025 26"},
-}
+STATIC_SEASONS = _completed.STATIC_SEASONS
 
-RESULTS_SEASON_RE = re.compile(r"^hkjc results (\d{4}) (\d{2})$")
-BASE_COLUMNS = (
-    "Date", "Venue", "Track", "Distance", "Horse", "Jockey", "Trainer",
-    "Rank", "Win", "Place", "Odds", "Profit",
-)
+RESULTS_SEASON_RE = _completed.RESULTS_SEASON_RE
+BASE_COLUMNS = _completed.BASE_COLUMNS
 TRAINER_RECENCY_HALF_LIFE_DAYS = 90
 TRAINER_RECENCY_RELATIVE_PATH = Path("experimental") / "trainer_recency_90d_stats.csv"
 
 
-def season_key_from_results_dir(name: str) -> str | None:
-    """Convert ``hkjc results 2026 27`` to the stats key ``26_27``."""
-    match = RESULTS_SEASON_RE.fullmatch(str(name or "").strip())
-    if not match:
-        return None
-    return f"{match.group(1)[-2:]}_{match.group(2)}"
+season_key_from_results_dir = _completed.season_key_from_results_dir
 
 
 def discover_seasons(db_root: Path | None = None) -> dict[str, dict[str, object]]:
-    """Discover every canonical season, including a results-only new season.
-
-    Historical seasons keep their materialized base CSV requirement.  A newly
-    opened season legitimately has no consolidated CSV yet, so its completed
-    ``full_day_results.json`` files are the base until one is produced.
-    """
-    root = Path(db_root or DB_ROOT)
-    seasons: dict[str, dict[str, object]] = {
-        key: {**value, "base_required": True}
-        for key, value in STATIC_SEASONS.items()
-    }
-    try:
-        children = list(root.iterdir())
-    except OSError:
-        children = []
-    for path in children:
-        if not path.is_dir():
-            continue
-        key = season_key_from_results_dir(path.name)
-        if not key:
-            continue
-        seasons.setdefault(
-            key,
-            {
-                "csv": f"race_results_{key}.csv",
-                "results_dir": path.name,
-                "base_required": False,
-            },
-        )
-    return dict(sorted(seasons.items()))
+    return _completed.discover_seasons(Path(db_root or DB_ROOT))
 
 
 SEASONS = discover_seasons()
 
-VENUE_NORM = {
-    "ST": "沙田",
-    "HV": "跑馬地",
-    "Sha Tin": "沙田",
-    "ShaTin": "沙田",
-    "Happy Valley": "跑馬地",
-    "HappyValley": "跑馬地",
-}
-DISTANCE_RE = re.compile(r"(\d{3,4})\s*米")
+VENUE_NORM = _completed.VENUE_NORM
+DISTANCE_RE = _completed.DISTANCE_RE
 
 
-def race_metadata(race: dict) -> tuple[float | None, str]:
-    """Recover distance/surface from the result header tables.
-
-    HKJC's JSON does not expose dedicated fields here, but the official header
-    remains present in ``sectional_times`` / ``cumulative_times``.
-    """
-    header = json.dumps(
-        race.get("sectional_times") or race.get("cumulative_times") or "",
-        ensure_ascii=False,
-    )
-    distance_match = DISTANCE_RE.search(header)
-    distance = float(distance_match.group(1)) if distance_match else None
-    if "全天候" in header or "泥地" in header:
-        track = "AWT"
-    elif "草地" in header:
-        track = "Turf"
-    else:
-        track = "Unknown"
-    return distance, track
+race_metadata = _completed.race_metadata
 
 
-def _num(v):
-    try:
-        return float(v)
-    except (TypeError, ValueError):
-        return None
+_num = _completed._num
 
 
 # Same labels as the original snapshot builder (scratch/aggregate_all_stats.py),
 # so appended rows group together with the materialized race_results CSV rows.
-CLASS_LABELS = (
-    ("新馬", "Griffin"), ("第一班", "Class 1"), ("第二班", "Class 2"), ("第三班", "Class 3"),
-    ("第四班", "Class 4"), ("第五班", "Class 5"), ("一級賽", "Group 1"), ("國際", "Group 1"),
-    ("二級賽", "Group 2"), ("三級賽", "Group 3"),
-)
+CLASS_LABELS = _completed.CLASS_LABELS
 
 
-def _header_rows(race: dict) -> list[list[str]]:
-    raw = race.get("sectional_times") or race.get("cumulative_times") or []
-    if isinstance(raw, str):
-        # The results writer stores the header table as a Python repr string.
-        try:
-            raw = ast.literal_eval(raw)
-        except (ValueError, SyntaxError):
-            return []
-    return [[str(c).strip() for c in row] for row in raw if isinstance(row, (list, tuple))]
+_header_rows = _completed._header_rows
 
 
-def _cell_after(rows: list[list[str]], label: str) -> str:
-    for row in rows:
-        for i, cell in enumerate(row):
-            if label in cell:
-                rest = [c for c in row[i + 1:] if c and c != ":"]
-                return rest[0] if rest else "Unknown"
-    return "Unknown"
+_cell_after = _completed._cell_after
 
 
-def race_header(race: dict) -> dict:
-    """Class, going and course from the official result header.
-
-    The snapshot builder put the race title in Going and the race name in
-    Course (it took the first cell of the row instead of the cell after the
-    label). Rows appended here carry the real values: ``好地`` and
-    ``草地 - "C" 賽道``.
-    """
-    rows = _header_rows(race)
-    text = " ".join(" ".join(r) for r in rows) or json.dumps(race.get("sectional_times") or "", ensure_ascii=False)
-    title = next((r[0] for r in rows if r and "米" in r[0] and " - " in r[0]), text)
-    # None (not "Unknown") so pit_sources can still fill it from Logic／排位表.
-    race_class = next((label for token, label in CLASS_LABELS if token in title), None)
-    return {"RaceClass": race_class, "Going": _cell_after(rows, "場地狀況"), "Course": _cell_after(rows, "賽道")}
+race_header = _completed.race_header
 
 
-def _finish_seconds(value) -> float | None:
-    match = re.fullmatch(r"(?:(\d+):)?(\d+(?:\.\d+)?)", str(value or "").strip())
-    if not match or not match.group(1):
-        return None
-    return int(match.group(1)) * 60 + float(match.group(2))
+_finish_seconds = _completed._finish_seconds
 
 
-def _run_style(positions: str) -> str:
-    first = str(positions or "").split()[:1]
-    if not first or not first[0].isdigit():
-        return "Unknown"
-    early = int(first[0])
-    return "Frontrunner" if early <= 3 else "Midpack" if early <= 7 else "Closer"
+_run_style = _completed._run_style
 
 
-def _odds_bucket(odds: float | None) -> str:
-    if not odds or odds <= 0:
-        return "Unknown"
-    for cap, label in ((3, "Hot Fav (<3)"), (6, "Fav (3-6)"), (10, "Contender (6-10)"),
-                       (20, "Mid (10-20)"), (50, "Longshot (20-50)")):
-        if odds < cap:
-            return label
-    return "Outsider (50+)"
+_odds_bucket = _completed._odds_bucket
 
 
-def _weight_bucket(wt: float | None) -> str:
-    if wt is None:
-        return "Unknown"
-    for cap, label in ((115, "Light (<=115)"), (120, "Med-Light (116-120)"),
-                       (126, "Medium (121-126)"), (130, "Med-Heavy (127-130)")):
-        if wt <= cap:
-            return label
-    return "Heavy (131+)"
+_weight_bucket = _completed._weight_bucket
 
 
-def hkjc_season(day: str) -> str:
-    year, month = int(day[:4]), int(day[5:7])
-    start = year if month >= 9 else year - 1
-    return f"{start % 100:02d}/{(start + 1) % 100:02d}"
+hkjc_season = _completed.hkjc_season
 
 
-def result_row(day: str, race_key, race: dict, row: dict, header: dict) -> dict | None:
-    """One runner from ``full_day_results.json`` in the race_results CSV schema.
-
-    Until 2026-10-25 appended rows only had the 12 BASE_COLUMNS, so every
-    meeting after the 2026-05-09 snapshot had no finish time, draw, weights,
-    running positions or horse ID — and nothing reported it.
-    """
-    pos = _num(re.sub(r"\D", "", str(row.get("pos", ""))) or None)
-    if pos is None or pos <= 0:
-        return None
-    venue = VENUE_NORM.get(str(race.get("venue", "")).strip(), str(race.get("venue", "")).strip())
-    distance, track = race_metadata(race)
-    odds = _num(row.get("win_odds"))
-    win = 1 if pos == 1 else 0
-    actual_wt = _num(row.get("actual_wt"))
-    positions = str(row.get("running_positions") or "").strip()
-    horse = str(row.get("horse_name", ""))
-    horse_id = re.search(r"\(([A-Z]\d{3})\)\s*$", horse)
-    race_no = _num(race.get("race_no")) or _num(race_key)
-    return {
-        "Date": day,
-        "Month": day[:7],
-        "Season": hkjc_season(day),
-        "RaceNo": race_no,
-        "RaceClass": header["RaceClass"],
-        "Venue": venue,
-        "Track": track,
-        "Course": header["Course"],
-        "Going": header["Going"],
-        "Distance": distance,
-        "Horse": horse,
-        "Jockey": str(row.get("jockey", "")).strip(),
-        "Trainer": str(row.get("trainer", "")).strip(),
-        "Draw": _num(row.get("draw")),
-        "Rank": pos,
-        "Win": win,
-        "Place": 1 if pos <= 3 else 0,
-        "Odds": odds,
-        "OddsBucket": _odds_bucket(odds),
-        "Profit": (odds - 1.0) if (win and odds) else (-1.0 if odds else 0.0),
-        "ActualWt": actual_wt,
-        "WtBucket": _weight_bucket(actual_wt),
-        "HorseWt": _num(row.get("horse_wt")),
-        "FinishTimeSec": _finish_seconds(row.get("finish_time")),
-        "RunStyle": _run_style(positions),
-        "RunningPos": positions or None,
-        "HorseID": horse_id.group(1) if horse_id else None,
-        "Sire": "Unknown",
-        "DamSire": "Unknown",
-        "Origin": "Unknown",
-    }
+result_row = _completed.result_row
 
 
 def load_base_rows(season_key: str) -> pd.DataFrame:
-    config = SEASONS[season_key]
-    path = STATS_ROOT / season_key / str(config["csv"])
-    if is_materialized_file(path):
-        df = pd.read_csv(path, encoding="utf-8-sig")
-        df["Date"] = df["Date"].astype(str)
-        return df
-    if bool(config.get("base_required", False)):
-        raise RuntimeError(
-            f"HKJC source CSV is not materialized locally: {path}. "
-            "Mark the statistics folder Available offline before rebuilding/PIT replay."
-        )
-    results_dir = DB_ROOT / str(config["results_dir"])
-    if not results_dir.exists():
-        raise RuntimeError(f"HKJC results-only season is unavailable: {results_dir}")
-    return pd.DataFrame(columns=BASE_COLUMNS)
+    return _completed.load_base_rows(season_key, _completed.FilesystemRows(DB_ROOT, STATS_ROOT, SEASONS, is_materialized_file))
 
 
 def append_new_meetings(season_key: str, base: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
-    """快照後賽日由 full_day_results.json 追加；路程／泥草從官方 header 還原。"""
-    results_dir = DB_ROOT / SEASONS[season_key]["results_dir"]
-    if not results_dir.exists():
-        return base, []
-    max_date = str(base["Date"].max()) if not base.empty else ""
-    new_rows, added_dates = [], []
-    for day_dir in sorted(results_dir.iterdir()):
-        if not day_dir.is_dir() or day_dir.name <= max_date:
-            continue
-        fp = day_dir / "full_day_results.json"
-        if not fp.exists():
-            continue
-        try:
-            data = json.loads(fp.read_text(encoding="utf-8"))
-        except Exception:
-            continue
-        for race_key, race in data.items():
-            if not isinstance(race, dict):
-                continue
-            header = race_header(race)
-            for row in race.get("results", []):
-                record = result_row(day_dir.name, race_key, race, row, header)
-                if record is not None:
-                    new_rows.append(record)
-        added_dates.append(day_dir.name)
-    if not new_rows:
-        return base, []
-    appended = pd.DataFrame(new_rows)
-    if base.empty:
-        return appended, added_dates
-    return pd.concat([base, appended], ignore_index=True), added_dates
+    return _completed.append_new_meetings(season_key, base, _completed.FilesystemRows(DB_ROOT, STATS_ROOT, SEASONS, is_materialized_file))
 
 
 def agg(df: pd.DataFrame, keys: list[str], with_profit: bool = False) -> pd.DataFrame:

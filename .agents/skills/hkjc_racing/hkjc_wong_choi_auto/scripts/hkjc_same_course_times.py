@@ -34,6 +34,12 @@ def _load_rows():
     return module.load_all_completed_rows()
 
 
+def prepare_bound_history(source):
+    from hkjc_racing_engine.completed_sources import read_bound_rows
+    held = read_bound_rows(source)
+    return {} if held is None else build_history(held)
+
+
 def build_history(rows) -> dict:
     """HorseID → [(date, cell, adj, raw)]。每個 adj 只用嗰日之前嘅標準同嗰日自己嘅 variant。"""
     import numpy as np

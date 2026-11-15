@@ -136,3 +136,87 @@ No source/full gate, immutable approval, manifest, merge, activation or real-dat
 pilot was started for this unfinished resource batch. Next real source work is
 same-course history and live-prior catalog/metadata/season-resource closure; do
 not replace that with repeated helper/status runs or claim complete isolation.
+
+
+## Complete native same-course result catalog — current unfinished batch
+
+Real unmodifieda6 reproduction through the full scorer: fresh A shows best1:11.00,
+fresh B1:14.00/rank2, but warmA->B still shows A. Evidence:
+/private/tmp/stage5-same-course-native-behavior-red.log and
+/private/tmp/stage5-same-course-native-reference.json.
+The complete A/B/V outputs were separately captured from clean unmodifieda6 in
+/private/tmp/stage5-same-course-pre-extraction-reference.json, including exact code
+and Logic hashes. Literal whole-output fingerprints now protect ordinary native
+parity after extraction; V exercises actual standard/variant arithmetic, not only
+insufficient-history fallback. These are synthetic fixtures, not corpus evidence.
+
+The original result schema/parser/season-selection implementation is extracted to
+.agents/scripts/hkjc_completed_rows.py, which imports no default data root and
+performs no discovery on import. build_comprehensive_stats keeps its default
+root/season-discovery and public wrapper composition. Both production filesystem
+and held-byte contexts invoke the same native base/append/result parsers.
+
+CompletedRowsSource binds an explicit DB root and observed catalog digest. It
+cannot supply a selected season/file list. Capture derives both required static
+seasons and every native-discovered dynamic season, holds each CSV before deriving
+its native maxDate cutoff, and uses the same lexical day-directory comparison.
+Every examined namespace and every selected full_day_results.json presence/absence
+is bound. Large unrelated payloads are not read. CSV BOM behavior, official-header
+parsing, non-finisher handling, append behavior and metric/ranking calculations
+remain native. Present malformed/unreadable selected JSON fails on this strict
+route rather than inheriting default silent skip; defaults retain their policy.
+
+Raw file hashes/mode/mtime/size and catalog entries are reobserved; selected inode
+replacement and namespace changes fail. Explicit prepared history is passed into
+the existing full scoring path before enrichment, never consults/changes _HISTORY,
+propagates errors and does not clear embedded display fields on declared absence.
+This is observational capture, not an atomic cross-file snapshot, adversarial A/B/A
+proof, source availability proof or OS sandbox. Raw payload bounds (16MiB/file,
+256MiB/catalog,10000 examined entries) reject rather than truncate; they do not
+prove a resident-memory budget or complete large-corpus streaming acceptance.
+
+Same authorized reviewer found two real defects: cumulative cap checked after
+reading, and ambiguous season aliases could change first-wins selection. Actual
+RED3 reproduced both alias creation orders and consumption of the second file.
+Remaining budget now rejects oversized fstat results before reading, and strict
+capture rejects ambiguous season-key directories before selected-file I/O.
+Legacy discovery stays unchanged. Correction source review found no further
+must-fix; inspection only, no independent tests/authority. Evidence:
+/private/tmp/stage5-same-course-review-red.log and review-green.log (89passed21.10s).
+
+Coverage includes full native A/B/A, static CSVs, results-only dynamic seasons,
+selected JSON absence/appearance, base-cutoff changes, non-date directory names,
+malformed/unreadable/symlinked inputs, capacity-before-read, actual replacement,
+no unrelated-large-file read, import-safe loader, held bytes after live changes,
+warm-cache absence semantics and both standard/variant branches. Initial
+extraction omitted ast for legacy Python-repr headers; three existing tests
+caught it and the dependency was restored before final checks.
+
+Native priors/catalog/metadata/season resource closure, complete immutable
+materialization, real availability and supervised frozen-contract integration
+remain unfinished. No full16-suite release gate, immutable approval, deployment,
+real historical replay, power profile, pilot or Stage5 completion is claimed.
+
+
+## Same-course continuation preservation evidence
+
+Final unchanged code: full HKJC auto385passed42.84s,
+/private/tmp/stage5-same-course-hkjc-final.log. Full Agent Scripts173passed,
+2existing xfailed11.56s,
+/private/tmp/stage5-same-course-agents-runtime-recheck.log. Initial restricted
+Agent Scripts run had169pass/4fail/2xfail: three explicitly missing Node in PATH,
+one APFS compression flag not set. Existing installed Node was restored to PATH
+and the original synthetic APFS test passed in normal validation permissions;
+no assertion or production policy was skipped/weakened and no compression of
+real historical data was performed. Initial log retained at
+/private/tmp/stage5-same-course-agents-final.log. Final quick/goldens and diff
+checks passed; existing AU stale-baseline warning retained without calibration.
+
+Same authorized reviewer inspected the final eight-path combination and found
+no remaining must-fix after both RED3 corrections; source inspection only, not
+independent tests or full-resource/PIT/native authorization. No source code
+changed during these final suite runs. This is unfinished nonmain preservation,
+not a full16-suite/immutable source gate, release/merge/activation or Stage5 exit.
+The next necessary code work remains native priors/catalog/mtime/season binding
+and complete materialization; frozen-harness integration still needs the pending
+separate contract decision and actual preregistered evidence.

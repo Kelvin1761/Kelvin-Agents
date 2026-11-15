@@ -939,7 +939,7 @@ def _first_section_min_delta(section_text):
     return min(values) if len(values) >= 2 else None
 
 
-def _same_course_best_times(race_context, horses):
+def _same_course_best_times(race_context, horses, *, history=USE_PRODUCTION):
     """{horse_key: 同程最佳時間顯示字串}；冇 horse_code 嘅馬唔計。失敗返回 {}，唔影響評分。"""
     if not isinstance(race_context, dict) or not isinstance(horses, dict):
         return {}
@@ -953,8 +953,11 @@ def _same_course_best_times(race_context, horses):
                 data.get("horse_code") if isinstance(data, dict) else None)
             if code:
                 codes[key] = str(code).strip()
-        return same_course.field_best_times(race_context.get("race_date"), same_course.race_cell(race_context), codes)
-    except Exception:  # noqa: BLE001 — display only
+        return same_course.field_best_times(race_context.get("race_date"), same_course.race_cell(race_context), codes,
+                                            **({} if history is USE_PRODUCTION else {"history": history}))
+    except Exception:  # noqa: BLE001 — display only on the production default
+        if history is not USE_PRODUCTION:
+            raise
         return {}
 
 
@@ -1118,7 +1121,7 @@ class HKJCAutoOrchestrator:
             print(f"❌ Failed to write outputs for {race_file}: {e}")
             return None
 
-    def score_logic_data(self, race_file, logic_data, *, event_sink=None, sectional_source=None, profile_source=None):
+    def score_logic_data(self, race_file, logic_data, *, event_sink=None, sectional_source=None, profile_source=None, same_course_source=None):
         """Run complete production scoring without publishing race outputs.
 
         Input data is copied; Logic/Markdown/CSV, event logs and meeting results
@@ -1133,6 +1136,10 @@ class HKJCAutoOrchestrator:
                             {"sectional_table": read_bound_table(sectional_source)})
         profile_kwargs = ({} if profile_source is None else
                           {"profile_reader": _prepare_profile_reader(profile_source, race_file, logic_data)})
+        same_course_kwargs = {}
+        if same_course_source is not None:
+            import hkjc_same_course_times as same_course
+            same_course_kwargs["history"] = same_course.prepare_bound_history(same_course_source)
         logic_data = deepcopy(logic_data)
         race_context = logic_data.get("race_analysis", {})
         horses = logic_data.get("horses", {})
@@ -1168,7 +1175,7 @@ class HKJCAutoOrchestrator:
             if isinstance(horse_obj, dict) and isinstance(horse_obj.setdefault("_data", {}), dict):
                 horse_obj["_data"]["first_section_min_delta"] = value
         # 同程最佳時間（對全場）：只顯示，引擎冇任何地方讀（EXP-20261025-08 入分 REJECT）。
-        for h_num, text in _same_course_best_times(race_context, horses).items():
+        for h_num, text in _same_course_best_times(race_context, horses, **same_course_kwargs).items():
             horse_obj = horses.get(h_num)
             if isinstance(horse_obj, dict) and isinstance(horse_obj.setdefault("_data", {}), dict):
                 horse_obj["_data"]["same_course_best_time"] = text

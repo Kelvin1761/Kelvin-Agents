@@ -60,6 +60,29 @@ def _finite_tree(value, depth=0):
             _finite_tree(item, depth + 1)
 
 
+def capture_source_file(path, *, maximum_bytes=None):
+    """Observed bytes/metadata only; no review, PIT or publication authority."""
+    path = _source_path(path)
+    if maximum_bytes is not None and (type(maximum_bytes) is not int or maximum_bytes <= 0):
+        raise ValueError("native source byte bound exhausted")
+    limit = MAX_SOURCE_BYTES if maximum_bytes is None else min(MAX_SOURCE_BYTES, maximum_bytes)
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+    with os.fdopen(os.open(path, flags), "rb") as handle:
+        before = os.fstat(handle.fileno())
+        if not stat.S_ISREG(before.st_mode) or not 0 < before.st_size <= limit:
+            raise ValueError("bounded regular JSON source required")
+        raw = handle.read(before.st_size)
+        after = os.fstat(handle.fileno())
+    current = _source_path(path).lstat()
+    def identity(info):
+        return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns, info.st_mode)
+    if (identity(before) != identity(after) or identity(after) != identity(current)
+            or len(raw) != before.st_size):
+        raise ValueError("JSON source changed or hash differs")
+    return raw, {"sha256": hashlib.sha256(raw).hexdigest(), "size": len(raw),
+                 "mtime_ns": after.st_mtime_ns, "mode": stat.S_IMODE(after.st_mode)}, identity(after)
+
+
 def read_bound_json(source: JsonSource) -> dict | None:
     """Read verified local bytes without accessing or changing production cache.
 
@@ -77,19 +100,13 @@ def read_bound_json(source: JsonSource) -> dict | None:
         raise ValueError("declared absent JSON source exists")
     if not isinstance(source.sha256, str) or not re.fullmatch(r"[a-f0-9]{64}", source.sha256):
         raise ValueError("full JSON source hash required")
-    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
-    with os.fdopen(os.open(path, flags), "rb") as handle:
-        before = os.fstat(handle.fileno())
-        if not stat.S_ISREG(before.st_mode) or not 0 < before.st_size <= MAX_SOURCE_BYTES:
-            raise ValueError("bounded regular JSON source required")
-        raw = handle.read(MAX_SOURCE_BYTES + 1)
-        after = os.fstat(handle.fileno())
-    current = _source_path(path).lstat()
-    def identity(info):
-        return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns, info.st_mode)
-    if (identity(before) != identity(after) or identity(after) != identity(current)
-            or len(raw) != before.st_size or hashlib.sha256(raw).hexdigest() != source.sha256):
+    raw, metadata, _identity = capture_source_file(path)
+    if metadata["sha256"] != source.sha256:
         raise ValueError("JSON source changed or hash differs")
+    return decode_json_bytes(raw)
+
+
+def decode_json_bytes(raw):
     try:
         table = json.loads(raw.decode("utf-8"), object_pairs_hook=_unique_object, parse_constant=_invalid_constant)
         _finite_tree(table)
