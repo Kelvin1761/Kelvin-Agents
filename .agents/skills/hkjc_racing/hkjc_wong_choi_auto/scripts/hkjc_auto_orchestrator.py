@@ -316,7 +316,7 @@ def _refresh_grade_transparency(horses):
         adjustments = []
         boost = sum(float(flag.get("boost", 0) or 0) for flag in auto.get("sip_flags") or [])
         if boost:
-            adjustments.append({"key": "sip_boost", "label": "SIP 輕磅好檔修正", "raw": round(boost, 2)})
+            adjustments.append({"key": "sip_boost", "label": "shadow／SIP 調整", "raw": round(boost, 2)})
         overlay = sum(float((item or {}).get("applied_delta", 0.0) or 0.0) for item in (auto.get("overlays") or {}).values())
         if overlay:
             adjustments.append({"key": "overlays", "label": "情境修正", "raw": round(overlay, 2)})
@@ -340,93 +340,14 @@ def _refresh_grade_transparency(horses):
 
 
 def _apply_sip_enhancements(horses):
+    """後置 hook（SIP 已全部剷走）。
+
+    SIP-C（原始分 64–68＋輕磅＋檔位 ≤5 → +1.0）喺 EXP-20261116-03 剷走（Kelvin 2026-11-16「打和就剷走」）：
+    佢其實係對檔位嘅粗修正（同一檔位組入面輕／重磅殘差一樣），而家由 draw_style（檔位×跑法＋逐檔曲線）
+    正式處理；有 draw_style 嘅模型入面剷 SIP-C：dev Δlog-loss −0.00017（CI 全負）、holdout −0.00011（跨零），打和。
+    保留呢個空 function 做 hook：forward shadow arm（interaction_shadow 等）喺呢度之後加 shadow 調整。
     """
-    SIP-C: B- horse with light weight + good draw → +1.0 (原始尺) ability_score
-
-    門檻同加幅一律用**原始加權總分**（`ability_score_raw`），唔用 grade 字串。
-    原本寫 `grade == "B-"`，所以 `GRADE_THRESHOLDS` 一改，SIP 觸發嘅係另一批馬
-    ——即係一個「純顯示」嘅改動會靜靜咁改排名。改用原始尺個窗（64 ≤ raw < 68，
-    等同舊 B- 帶）之後，SIP 對顯示尺完全免疫，實測 210 個觸發 bit-identical。
-    """
-    weights = []
-    for h_obj in horses.values():
-        w = h_obj.get("weight")
-        if w is not None:
-            try:
-                weights.append(int(w))
-            except (ValueError, TypeError):
-                pass
-    if not weights:
-        return
-    field_median = sorted(weights)[len(weights) // 2]
-
-    for h_num, h_obj in horses.items():
-        auto = h_obj.get("python_auto", {})
-        if not auto:
-            continue
-        grade = auto.get("grade", "")
-        ability_score = auto.get("ability_score", 0)
-        # 舊 Logic 冇 ability_score_raw，用逆函數還原（見 scoring.from_display_scale）。
-        raw = auto.get("ability_score_raw")
-        if raw is None:
-            raw = from_display_scale(ability_score)
-        raw = float(raw)
-        weight = h_obj.get("weight")
-        barrier = h_obj.get("barrier")
-        try:
-            weight_val = int(weight) if weight is not None else None
-            barrier_val = int(barrier) if barrier is not None else None
-        except (ValueError, TypeError):
-            continue
-        if weight_val is None or barrier_val is None:
-            continue
-
-        is_light = weight_val <= field_median
-        is_good_draw = barrier_val <= 5
-        boost = 0.0
-        reasons = []
-
-        fs = auto.get("feature_scores", {})
-        speed = fs.get("speed_score", 0)
-        form = fs.get("form_score", 0)
-        consist = fs.get("consistency_score", 0)
-
-        # 64 ≤ raw < 68 = 舊 GRADE_THRESHOLDS 嘅 B- 帶，喺原始尺上面表達。
-        if 64.0 <= raw < 68.0 and is_light and is_good_draw:
-            if speed >= 68 or (form >= 55 and consist >= 55):
-                boost = 1.0
-                reasons.append("輕磅+好檔+速度/穩定性(SIP-C)")
-
-        if boost > 0:
-            new_raw = round(raw + boost, 4)
-            new_score = round(to_display_scale(new_raw), 2)
-            auto["ability_score"] = new_score
-            auto["ability_score_raw"] = new_raw
-            auto["grade"] = compute_grade(new_score)
-            sip_flag = {
-                "reason": "; ".join(reasons),
-                "boost": round(boost, 1),
-                "boost_scale": "raw",
-                "original_score": ability_score,
-                "original_score_raw": round(raw, 4),
-                "original_grade": grade,
-            }
-            auto.setdefault("sip_flags", []).append(sip_flag)
-            # Every shadow is a counterfactual of the same horse, so the
-            # post-matrix SIP adjustment must be identical on both sides.
-            # Otherwise the shadow delta would accidentally test two changes.
-            for shadow in (auto.get("shadow_profiles") or {}).values():
-                try:
-                    shadow_raw = round(float(shadow.get("ability_score_raw")) + boost, 4)
-                except (TypeError, ValueError):
-                    continue
-                shadow_score = round(to_display_scale(shadow_raw), 2)
-                shadow["ability_score_raw"] = shadow_raw
-                shadow["ability_score"] = shadow_score
-                shadow["ability_delta"] = round(shadow_score - new_score, 2)
-                shadow["grade"] = compute_grade(shadow_score)
-                shadow.setdefault("sip_flags", []).append(dict(sip_flag))
-
+    return None
 
 def _field_percentiles(values):
     """Return average within-field percentile ranks for numeric 7D scores."""

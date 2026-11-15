@@ -677,8 +677,8 @@ L10 次數／avg／med／SD／CoV 標籤，喺 reflector 行係 None。extractor
 - 舊版 workflow 文檔（`resources/*.md`、部分 `SKILL.md`）仲有提到 Gemini / LLM 必須參與嘅描述
 
 注意名字有 skeleton 唔等於死 code：`create_hkjc_logic_skeleton.py`、`inject_hkjc_fact_anchors.py`
-係 HKJC 主線仲用緊。現役嘅 SIP 只剩 `hkjc_auto_orchestrator._apply_sip_enhancements` 入面嘅 SIP-C
-（EXP-20261029-30 決定保留）。
+係 HKJC 主線仲用緊。SIP 已經全部剷走：最後一個 SIP-C 喺 EXP-20261116-03 剷（佢其實係檔位粗修正，
+由 `hkjc_racing_engine/draw_style.py` 正式處理）。`_apply_sip_enhancements` 留做空 hook 畀 forward shadow arm 用。
 
 ## Practical Rule Of Thumb
 

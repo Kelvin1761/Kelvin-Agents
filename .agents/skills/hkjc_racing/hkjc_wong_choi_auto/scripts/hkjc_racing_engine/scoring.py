@@ -110,12 +110,6 @@ RANKING_ADJUSTMENTS = (
         "missing": "整場冇有效 race-shape = 不套用；可用 WC_HKJC_RACE_SHAPE_ROBUSTNESS=legacy_unbounded 回退",
     },
     {
-        "key": "sip_c",
-        "label": "SIP 輕磅好檔修正（SIP-C）",
-        "formula": "原始分 64–68、負磅 ≤ 場內中位數、檔位 ≤5、（速度 ≥68 或 近績同穩定性 ≥55）→ 原始分 +1.0（hkjc_auto_orchestrator._apply_sip_enhancements）",
-        "missing": "冇負磅或檔位 = 不套用",
-    },
-    {
         "key": "market_history",
         "label": "上仗市場熱度（EXP-20261115-07）",
         "formula": "β₁·(上仗 HKJC 最終獨贏 log 賠率 − 場均) + β₂·(冇上仗紀錄 − 場均)；只用日期嚴格早過今仗嘅賠率，今仗賠率永遠唔用（hkjc_racing_engine/market_history.py）",
