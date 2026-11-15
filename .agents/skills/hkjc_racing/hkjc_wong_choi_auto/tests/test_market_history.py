@@ -47,5 +47,18 @@ class MarketHistoryTest(unittest.TestCase):
             mh.ENABLED = True
 
 
+    def test_shadows_get_same_delta(self):
+        """shadow 反事實一定要同主線一樣加（2026-11-15：冇呢個成場 Logic 驗證 SHADOW-027 唔過）。"""
+        hs = {"1": horse("L001"), "2": horse("L002")}
+        for h in hs.values():
+            h["python_auto"]["shadow_profiles"] = {"p": {"ability_score_raw": 61.0, "ability_score": 61.0, "grade": "B", "ability_delta": 1.0}}
+        mh.apply(hs, "2026-11-15", TABLE)
+        for h in hs.values():
+            a, sh = h["python_auto"], h["python_auto"]["shadow_profiles"]["p"]
+            self.assertAlmostEqual(sh["ability_score_raw"] - a["ability_score_raw"], 1.0, places=3)
+            self.assertAlmostEqual(sh["ability_delta"], round(sh["ability_score"] - a["ability_score"], 2), places=6)
+            self.assertEqual(sh["sip_flags"][-1]["reason"], "market_history")
+
+
 if __name__ == "__main__":
     unittest.main()

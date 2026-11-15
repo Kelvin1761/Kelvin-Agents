@@ -316,7 +316,21 @@ def _refresh_grade_transparency(horses):
         boost = sum(float(flag.get("boost", 0) or 0) for flag in auto.get("sip_flags") or [])
         if boost:
             adjustments.append({"key": "sip_boost", "label": "SIP 輕磅好檔修正", "raw": round(boost, 2)})
+        overlay = sum(float((item or {}).get("applied_delta", 0.0) or 0.0) for item in (auto.get("overlays") or {}).values())
+        if overlay:
+            adjustments.append({"key": "overlays", "label": "情境修正", "raw": round(overlay, 2)})
+        market = float(auto.get("market_history_delta", 0.0) or 0.0)
+        if market:
+            adjustments.append({"key": "market_history", "label": "上仗市場熱度", "raw": round(market, 2)})
         transparency["adjustments"] = adjustments
+        # 報告「評分總覽」嘅總分係引擎階段（後置調整之前）印嘅：補一行點樣去到最終分，唔然頂部同總覽對唔上。
+        summary = transparency.get("summary")
+        if isinstance(summary, str) and adjustments and "→ 後置調整" not in summary:
+            final_raw = float(auto.get("ability_score_raw") or 0.0)
+            bits = "、".join(f"{a['label']} {a['raw']:+.2f}" for a in adjustments)
+            summary += (f"\n**→ 後置調整（唔屬任何維度）：{bits}；最終原始分 {final_raw:.2f} → 顯示尺 "
+                        f"{float(auto.get('ability_score') or 0.0):.1f} 分 → 評級 [{auto.get('grade')}]**")
+            transparency["summary"] = summary
         transparency["ability_score_raw"] = auto.get("ability_score_raw")
         transparency["impact_baseline"] = round(baseline, 4)
 

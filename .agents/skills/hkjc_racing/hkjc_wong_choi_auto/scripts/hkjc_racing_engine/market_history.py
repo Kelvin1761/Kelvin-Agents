@@ -85,5 +85,18 @@ def apply(horses: dict, race_date: str | None, table: dict | None = None) -> int
         auto["ability_score"] = round(to_display_scale(raw), 2)
         auto["grade"] = compute_grade(auto["ability_score"])
         auto["market_history_delta"] = round(add, 4)
+        # shadow 係同一匹馬嘅反事實：後置加減一定要兩邊一樣（同 SIP 一樣），否則 shadow delta 會測埋呢個組件，
+        # 驗證 SHADOW-024／027 亦會失敗（2026-11-15 實測：冇呢段成場 Logic 驗證唔過）。
+        for shadow in (auto.get("shadow_profiles") or {}).values():
+            try:
+                s_raw = round(float(shadow.get("ability_score_raw")) + add, 4)
+            except (TypeError, ValueError):
+                continue
+            s_score = round(to_display_scale(s_raw), 2)
+            shadow["ability_score_raw"] = s_raw
+            shadow["ability_score"] = s_score
+            shadow["grade"] = compute_grade(s_score)
+            shadow["ability_delta"] = round(s_score - auto["ability_score"], 2)
+            shadow.setdefault("sip_flags", []).append({"reason": "market_history", "boost": round(add, 4), "boost_scale": "raw"})
         n += abs(add) > 1e-9
     return n
