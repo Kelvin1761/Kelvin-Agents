@@ -511,3 +511,4 @@
 - [EXP-20261115-03](EXP-20261115-03-hkjc-leaf-continuous.md) — HKJC 19 組訊號重建第一批：近績／L400／完成時間由階梯改連續，dev 三個都 REJECT（log-loss CI 跨零）；缺口唔喺 leaf 形狀
 - [EXP-20261115-04](EXP-20261115-04-hkjc-signal-interactions.md) — HKJC 訊號 × 情境互動（維度 × 短途／長途／泥地／跑馬地，walk-forward）：dev PASS、holdout Δlog-loss −0.00069 同 dev 一致但 Holm 99% 唔過 → REJECT；交 Kelvin 揀 forward shadow
 - [EXP-20261115-05](EXP-20261115-05-hkjc-class-advantage-negative.md) — HKJC 班次優勢喺模型之上係反指標（同路程適性／穩定性重複）：單參數扣分 dev PASS、holdout −0.00023 CI 跨零 REJECT；已由 EXP-04 shadow 覆蓋
+- [EXP-20261115-06](EXP-20261115-06-hkjc-longshot-diagnostic.md) — HKJC 冷門馬診斷：賠率 ≥10 群組內市場 AUC 0.683 vs 我哋 0.621；同市場唔同意嘅冷門 ROI −35%；上仗賠率 dev in-sample −0.0025 但係市場衍生，待 Kelvin 批准
