@@ -574,7 +574,11 @@ def update_pit_sections_async() -> None:
     """賽果入庫後喺背景更新段速 FT 表（EXP-20261114-04；Kelvin 2026-11-14 決定上線）。
 
     背景跑係因為補抓分段頁會慢速（4–8 秒／頁）而且香港賽馬時段會暫停 —— 唔可以卡住覆盤。
-    失敗／外置碟冇掛載由腳本自己推 Telegram（primary），live 繼續用上一版表。"""
+    失敗／外置碟冇掛載由腳本自己推 Telegram（primary），live 繼續用上一版表。
+    測試入面唔准真係開（2026-11-15 發現：發佈 gate 跑測試時真係抓 HKJC、重寫外置碟同本機表）。"""
+    if os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("WC_DISABLE_PIT_UPDATE"):
+        log("pit-sections: 測試／停用中，唔開背景更新")
+        return
     try:
         LOG_DIR.mkdir(parents=True, exist_ok=True)
         with open(LOG_DIR / "pit_sections_update.log", "a", encoding="utf-8") as fh:

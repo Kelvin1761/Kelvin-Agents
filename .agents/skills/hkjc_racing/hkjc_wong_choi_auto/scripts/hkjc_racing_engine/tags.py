@@ -71,6 +71,7 @@ def _race_meta(logic_data: dict) -> dict:
         "distance": _distance(ra.get("distance")),
         "venue": "HV" if "跑馬地" in venue or "Happy" in venue else ("ST" if "沙田" in venue or "Sha" in venue else ""),
         "awt": "AWT" in venue.upper() or "AWT" in track.upper() or "全天候" in venue + track,
+        "race_class": ra.get("race_class"),
     }
 
 
@@ -129,6 +130,39 @@ def load_priorities(meeting_dir: Path | None, race_no) -> dict:
             if no and pr:
                 out[no.group(1)] = pr.group(1).strip()
         break
+    return out
+
+
+def load_gear(meeting_dir: Path | None, race_no) -> dict:
+    """horse_no(str) -> 排位表配備代碼 list（HKJC：1 = 首次、- = 除去、2 = 再戴）。"""
+    if not meeting_dir or not race_no:
+        return {}
+    out = {}
+    for card in Path(meeting_dir).glob(f"* Race {race_no} 排位表.md"):
+        try:
+            text = card.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for block in text.split("\n\n"):
+            no = re.search(r"^馬號:\s*(\d+)", block, re.M)
+            g = re.search(r"^配備:\s*(.*)$", block, re.M)
+            if no and g:
+                out[no.group(1)] = [x.strip() for x in g.group(1).split("/") if x.strip()]
+        break
+    return out
+
+
+def _trainer_pattern_tags(horse: dict, meta: dict, gear: list[str]) -> list[dict]:
+    """個別練馬師出擊 pattern（EXP-20261115-20）：純顯示，唔入分。"""
+    from .trainer_patterns import NAMES, matches
+    out = []
+    for c in matches(horse, meta.get("race_class"), meta.get("distance"), gear):
+        good = c["resid_pp"] > 0
+        out.append(_tag(f"trainer_pattern:{c['pattern']}", f"{c['trainer']}{NAMES[c['pattern']]}（歷史 {c['resid_pp']:+.0f}pp）",
+                        "good" if good else "bad",
+                        why=f"{c['trainer']}嘅馬喺「{NAMES[c['pattern']]}」時，入位率歷史上{'高' if good else '低'}過模型預測 "
+                            f"{abs(c['resid_pp']):.0f}pp（{c['n']} 匹，95% {c['ci'][0]:+.0f}～{c['ci'][1]:+.0f}；前段 {c['early_pp']:+.0f}、後段 {c['late_pp']:+.0f}）。"
+                            "歷史統計、未入分（EXP-20261115-20）。"))
     return out
 
 
@@ -347,6 +381,22 @@ def _debut_trainer_tag(horse: dict, meta: dict) -> list[dict]:
                      "未入分，forward 觀察緊。")]
 
 
+def _form_pattern_tags(horse: dict, meta: dict) -> list[dict]:
+    """老馬贏後／降班＋評分跌返贏馬分（EXP-20261115-15）：純顯示，forward shadow 觀察緊。"""
+    from .form_patterns import flags
+    f = flags(horse, meta.get("race_class"), meta.get("date"))
+    out = []
+    if f["old_won_last"]:
+        out.append(_tag("old_won_last", f"老馬贏後（在港 {f['starts']} 仗）", "bad",
+                        why="在港 ≥35 仗嘅馬上仗贏咗，下仗入位率歷史上低過模型預測約 10pp（回放 dev −11.2pp、holdout −9.7pp）；"
+                            "高班（評分 ≥95／一二班）唔計。未入分，forward 觀察中。"))
+    if f["classdrop_rating_back"]:
+        out.append(_tag("classdrop_rating_back", f"降班＋評分跌返贏馬分（{f['rating']:.0f} ≤ 上次贏馬 {f['win_rating']:.0f}）", "good",
+                        why="今仗降班，而且評分跌返最近一次贏馬時嘅分數或以下；歷史上入位率高過模型預測約 5pp"
+                            "（回放 dev、holdout 都 +5.2pp）。未入分，forward 觀察中。"))
+    return out
+
+
 def horse_tags(no: str, horse: dict, auto: dict, *, runs: list[dict], meta: dict,
                priority: str = "", extra: list | None = None) -> dict:
     special = _trainer_tags(auto) + _jockey_change_tag(horse, auto, runs) + _distance_venue_tags(horse, auto, runs, meta)
@@ -377,12 +427,14 @@ def race_tags(logic_data: dict, meeting_dir: Path | None = None) -> dict:
             pid = h.get("hkjc_horse_id") or ""
             runs_by_no[no] = past_runs(profiles.get(pid) or {}, meta["date"]) if pid in profiles else []
         priorities = load_priorities(meeting_dir, meta.get("race_no"))
+        gear = load_gear(meeting_dir, meta.get("race_no"))
         extra: dict[str, list] = {}
         for source in (_purton_tags(horses, runs_by_no), _fastest_finisher(horses)):
             for no, items in source.items():
                 extra.setdefault(no, []).extend(items)
         for no, h in horses.items():
-            extra.setdefault(no, []).extend(_debut_trainer_tag(h, meta) + _foreign_tag(h))
+            extra.setdefault(no, []).extend(_debut_trainer_tag(h, meta) + _foreign_tag(h) + _form_pattern_tags(h, meta)
+                                            + _trainer_pattern_tags(h, meta, gear.get(no, [])))
         return {no: horse_tags(no, h, h["python_auto"], runs=runs_by_no.get(no) or [], meta=meta,
                                priority=priorities.get(no, ""), extra=extra.get(no))
                 for no, h in horses.items()}

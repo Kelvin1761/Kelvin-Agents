@@ -508,3 +508,13 @@ def test_lineup_does_not_scan_or_force_rerun_after_all_pools_closed(tmp_path, mo
         assert schedule.run_lineup({}, tmp_path / 'state.json', meeting=meeting) == schedule.EXIT_OK
     scan.assert_not_called()
     assert schedule._CONTROL_OUTCOME['reason'] == 'meeting_pools_closed'
+
+
+def test_pit_sections_update_never_spawns_under_pytest(monkeypatch):
+    """2026-11-15：發佈 gate 跑測試時真係開咗段速表背景更新（抓 HKJC、重寫外置碟同本機表）。"""
+    import subprocess as _sp
+    calls = []
+    monkeypatch.setattr(_sp, "Popen", lambda *a, **k: calls.append(a))
+    monkeypatch.setattr(schedule.subprocess, "Popen", lambda *a, **k: calls.append(a))
+    schedule.update_pit_sections_async()
+    assert calls == []

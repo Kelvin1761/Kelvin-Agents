@@ -40,6 +40,8 @@ STATE = BASE / "state"
 REPO = Path(__file__).resolve().parents[5]
 SECT_URL = "https://racing.hkjc.com/racing/information/Chinese/Racing/DisplaySectionalTime.aspx?RaceDate={d}&RaceNo={n}"
 HORSE_URL = "https://racing.hkjc.com/zh-hk/local/information/horse?horseid={h}"
+# 馬匹晨操頁（Kelvin 2026-11-15「晨操數據」）：現役馬有來港以來全部晨操；退役馬冇（當 empty）
+TW_URL = "https://racing.hkjc.com/zh-hk/local/information/trackworkresult?horseid={h}"
 DELAY = (4.0, 8.0)
 LONG_PAUSE_EVERY, LONG_PAUSE = 100, (120.0, 180.0)
 FAIL_WAIT, MAX_CONSEC_FAIL = 15 * 60, 3
@@ -49,7 +51,7 @@ HKT = dt.timezone(dt.timedelta(hours=8))
 def require_volume() -> None:
     if not os.path.ismount(VOLUME):
         sys.exit(f"❌ 外置碟 {VOLUME} 冇掛載 —— 唔寫（避免靜靜寫返 Mac 內置碟）")
-    for p in (RAW / "sectional", RAW / "horse", RAW / "horse_all", PARSED, STATE):
+    for p in (RAW / "sectional", RAW / "horse", RAW / "horse_all", RAW / "trackwork", PARSED, STATE):
         p.mkdir(parents=True, exist_ok=True)
 
 
@@ -133,8 +135,19 @@ def in_race_hours(now: dt.datetime) -> bool:
     return False
 
 
+def trackwork_path(h: str) -> Path:
+    return RAW / "trackwork" / f"{h}.html.gz"
+
+
 def looks_valid(kind: str, html: str) -> str | None:
     """返回 'ok' / 'empty'（頁面話未有資料）/ None（唔似預期 → 當失敗）。"""
+    if kind == "trackwork":
+        if "晨操" not in html:
+            return None
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import extract_trackwork
+        rows = extract_trackwork.parse_trackwork_rows(html, {"horseid": "", "horse_name": "", "trainer": ""}, None, 99999)
+        return "ok" if rows else "empty"
     if kind == "sectional":
         if "race_table" in html and "分段時間" in html:
             return "ok"
@@ -180,6 +193,14 @@ def cmd_run(args) -> None:
                 p = horse_all_path(h)
                 if not p.exists() and str(p) not in empty:
                     yield "horse_all", HORSE_URL.format(h=h) + "&Option=1", p
+
+        if "trackwork" in args.kinds:
+            # 清單由 state/trackwork_ids.json 提供（2024-09 後有出賽嘅馬）
+            ids_file = STATE / "trackwork_ids.json"
+            for h in (json.loads(ids_file.read_text()) if ids_file.exists() else []):
+                p = trackwork_path(h)
+                if not p.exists() and str(p) not in empty:
+                    yield "trackwork", TW_URL.format(h=h), p
 
     kinds = set(args.kinds.split(","))
     log(f"開始：kinds={sorted(kinds)}")
@@ -318,7 +339,9 @@ def parse_horse(html: str) -> dict | None:
 def cmd_parse(_args) -> None:
     races = {(r["date"], r["race_no"]): r for r in json.loads((STATE / "races.json").read_text(encoding="utf-8"))}
     n_ok = n_bad = 0
-    with gzip.open(PARSED / "sectionals.jsonl.gz", "wt", encoding="utf-8") as out:
+    final_sectionals = PARSED / "sectionals.jsonl.gz"
+    tmp_sectionals = final_sectionals.with_suffix(".tmp")      # 原子寫入：讀緊嘅人唔會見到寫到一半嘅檔
+    with gzip.open(tmp_sectionals, "wt", encoding="utf-8") as out:
         for p in sorted((RAW / "sectional").rglob("*.html.gz")):
             m = re.match(r"(\d{4}-\d{2}-\d{2})_R(\d+)", p.name)
             d = parse_sectional(gzip.open(p, "rt", encoding="utf-8", errors="ignore").read())
@@ -328,9 +351,12 @@ def cmd_parse(_args) -> None:
             r = races.get((m.group(1), int(m.group(2)))) or {}
             out.write(json.dumps({"date": m.group(1), "race_no": int(m.group(2)), "venue": r.get("venue"), **d}, ensure_ascii=False) + "\n")
             n_ok += 1
+    os.replace(tmp_sectionals, final_sectionals)
     print(f"sectional：解析 {n_ok}，失敗 {n_bad}")
     n_ok = n_bad = 0
-    with gzip.open(PARSED / "horses.jsonl.gz", "wt", encoding="utf-8") as out:
+    final_horses = PARSED / "horses.jsonl.gz"
+    tmp_horses = final_horses.with_suffix(".tmp")      # 原子寫入：讀緊嘅人唔會見到寫到一半嘅檔
+    with gzip.open(tmp_horses, "wt", encoding="utf-8") as out:
         for p in sorted((RAW / "horse").glob("*.html.gz")):
             full = horse_all_path(p.name.split(".")[0])     # 有「所有往績」版就用佢
             d = parse_horse(gzip.open(full if full.exists() else p, "rt", encoding="utf-8", errors="ignore").read())
@@ -339,6 +365,7 @@ def cmd_parse(_args) -> None:
                 continue
             out.write(json.dumps({"horse_id": p.name.split(".")[0], **d}, ensure_ascii=False) + "\n")
             n_ok += 1
+    os.replace(tmp_horses, final_horses)
     print(f"horse：解析 {n_ok}，失敗 {n_bad}")
 
 

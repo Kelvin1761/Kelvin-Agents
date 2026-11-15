@@ -174,6 +174,35 @@ def write_market_history(table: dict) -> Path:
     return p
 
 
+def win_ratings_table() -> dict:
+    """贏馬評分表（EXP-20261115-15 降班＋評分跌返贏馬分）：HKJC 馬匹頁每次贏馬嘅 [日期, 評分]。
+    live 近 6 仗以外嘅贏馬靠呢個表；近 6 仗由 Logic rating_trend 補。"""
+    horses: dict[str, list] = {}
+    path = PARSED.with_name("horses.jsonl.gz")
+    for line in gzip.open(path, "rt", encoding="utf-8"):
+        r = json.loads(line)
+        code = str(r.get("horse_id") or "").rsplit("_", 1)[-1]
+        for x in r.get("runs") or []:
+            pos, rating = str(x.get("pos") or "").strip(), str(x.get("rating") or "").strip()
+            try:
+                dd, mm, yy = str(x.get("date") or "").split("/")
+            except ValueError:
+                continue
+            if pos.lstrip("0") == "1" and rating.isdigit():
+                horses.setdefault(code, []).append([f"{yy}-{mm}-{dd}", int(rating)])
+    for v in horses.values():
+        v.sort()
+    return {"version": 1, "horses": horses}
+
+
+def write_win_ratings(table: dict) -> Path:
+    p = out_path().with_name("win_ratings.json")
+    tmp = p.with_suffix(".tmp")
+    tmp.write_text(json.dumps(table, ensure_ascii=False), encoding="utf-8")
+    os.replace(tmp, p)
+    return p
+
+
 def write(table: dict) -> Path:
     p = out_path()
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -216,6 +245,7 @@ def update() -> int:
     write_debut(debut_events())
     mh = market_history_table()
     write_market_history(mh)
+    write_win_ratings(win_ratings_table())
     print(f"段速表更新到 {table['last_date']} → {p}；上仗賠率表到 {mh['last_date']}（{len(mh['horses'])} 匹）")
     return 0
 

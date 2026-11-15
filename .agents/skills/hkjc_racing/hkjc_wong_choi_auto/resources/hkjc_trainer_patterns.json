@@ -1,0 +1,235 @@
+{
+ "version": 1,
+ "source": "EXP-20261115-20",
+ "tested_cells": 239,
+ "cells": [
+  {
+   "trainer": "韋達",
+   "pattern": "classdrop_jchange",
+   "n": 131,
+   "resid_pp": 9.9,
+   "ci": [
+    3.1,
+    17.3
+   ],
+   "early_pp": 8.0,
+   "late_pp": 11.5
+  },
+  {
+   "trainer": "告東尼",
+   "pattern": "gear_removed",
+   "n": 152,
+   "resid_pp": 9.3,
+   "ci": [
+    2.5,
+    16.3
+   ],
+   "early_pp": 9.4,
+   "late_pp": 9.2
+  },
+  {
+   "trainer": "告東尼",
+   "pattern": "last_close_2nd_3rd",
+   "n": 248,
+   "resid_pp": 9.1,
+   "ci": [
+    3.3,
+    15.1
+   ],
+   "early_pp": 9.5,
+   "late_pp": 8.8
+  },
+  {
+   "trainer": "告東尼",
+   "pattern": "third_up",
+   "n": 231,
+   "resid_pp": 8.0,
+   "ci": [
+    1.7,
+    14.0
+   ],
+   "early_pp": 11.7,
+   "late_pp": 4.0
+  },
+  {
+   "trainer": "蔡約翰",
+   "pattern": "rest60",
+   "n": 331,
+   "resid_pp": -7.7,
+   "ci": [
+    -11.6,
+    -4.0
+   ],
+   "early_pp": -6.3,
+   "late_pp": -9.3
+  },
+  {
+   "trainer": "徐雨石",
+   "pattern": "dist_up200",
+   "n": 480,
+   "resid_pp": -7.2,
+   "ci": [
+    -9.5,
+    -4.4
+   ],
+   "early_pp": -7.1,
+   "late_pp": -7.2
+  },
+  {
+   "trainer": "徐雨石",
+   "pattern": "gear_first",
+   "n": 158,
+   "resid_pp": -7.1,
+   "ci": [
+    -10.3,
+    -3.7
+   ],
+   "early_pp": -8.6,
+   "late_pp": -5.4
+  },
+  {
+   "trainer": "容天鵬",
+   "pattern": "gear_first",
+   "n": 165,
+   "resid_pp": -7.0,
+   "ci": [
+    -11.3,
+    -2.1
+   ],
+   "early_pp": -6.7,
+   "late_pp": -7.4
+  },
+  {
+   "trainer": "蔡約翰",
+   "pattern": "layoff90",
+   "n": 224,
+   "resid_pp": -7.0,
+   "ci": [
+    -12.5,
+    -1.6
+   ],
+   "early_pp": -7.8,
+   "late_pp": -6.1
+  },
+  {
+   "trainer": "葉楚航",
+   "pattern": "layoff90",
+   "n": 157,
+   "resid_pp": -6.9,
+   "ci": [
+    -11.4,
+    -1.8
+   ],
+   "early_pp": -2.0,
+   "late_pp": -12.9
+  },
+  {
+   "trainer": "徐雨石",
+   "pattern": "classdrop_jchange",
+   "n": 131,
+   "resid_pp": -6.3,
+   "ci": [
+    -11.3,
+    -1.5
+   ],
+   "early_pp": -6.5,
+   "late_pp": -6.1
+  },
+  {
+   "trainer": "沈集成",
+   "pattern": "gear_first",
+   "n": 189,
+   "resid_pp": 6.3,
+   "ci": [
+    0.6,
+    12.0
+   ],
+   "early_pp": 6.3,
+   "late_pp": 6.3
+  },
+  {
+   "trainer": "蘇偉賢",
+   "pattern": "gear_first",
+   "n": 179,
+   "resid_pp": -6.2,
+   "ci": [
+    -11.3,
+    -0.9
+   ],
+   "early_pp": -8.5,
+   "late_pp": -3.9
+  },
+  {
+   "trainer": "韋達",
+   "pattern": "dist_down200",
+   "n": 446,
+   "resid_pp": 6.0,
+   "ci": [
+    2.2,
+    10.0
+   ],
+   "early_pp": 7.8,
+   "late_pp": 3.4
+  },
+  {
+   "trainer": "伍鵬志",
+   "pattern": "third_up",
+   "n": 176,
+   "resid_pp": -5.9,
+   "ci": [
+    -10.7,
+    -0.8
+   ],
+   "early_pp": -9.7,
+   "late_pp": -5.0
+  },
+  {
+   "trainer": "韋達",
+   "pattern": "layoff90",
+   "n": 184,
+   "resid_pp": -5.7,
+   "ci": [
+    -10.6,
+    -0.7
+   ],
+   "early_pp": -5.8,
+   "late_pp": -5.5
+  },
+  {
+   "trainer": "呂健威",
+   "pattern": "third_up",
+   "n": 258,
+   "resid_pp": 5.6,
+   "ci": [
+    0.8,
+    10.8
+   ],
+   "early_pp": 3.0,
+   "late_pp": 8.2
+  },
+  {
+   "trainer": "徐雨石",
+   "pattern": "layoff90",
+   "n": 148,
+   "resid_pp": -5.2,
+   "ci": [
+    -9.5,
+    -0.4
+   ],
+   "early_pp": -4.4,
+   "late_pp": -7.2
+  },
+  {
+   "trainer": "姚本輝",
+   "pattern": "gear_first",
+   "n": 275,
+   "resid_pp": 5.0,
+   "ci": [
+    0.5,
+    9.7
+   ],
+   "early_pp": 2.7,
+   "late_pp": 6.9
+  }
+ ]
+}

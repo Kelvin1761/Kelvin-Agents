@@ -114,6 +114,18 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 since="2026-11-15", arm="docs/experiments/patches/hkjc_arm_market_history_revert.py",
                 action="自動判：退回版 forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議退回（等你決定）；否則保留",
                 extra={"pass_verdict": "建議退回（等你決定）"}),
+    # EXP-20261115-15（Kelvin 2026-11-15「forward shadow 同顯示標籤兩樣都做」）：老馬贏後 −4.62、降班＋評分跌返贏馬分 +2.56。
+    # 回放殘差兩段都持續（−11.2／−9.7pp、+5.2／+5.2pp）但罕見，排名 A/B 冇功效。罕見 → 用 150 場。
+    ForwardTest("form_patterns_shadow", "老馬贏後／降班評分回落入分（shadow）", "EXP-20261115-15", "harness_ab", 150,
+                since="2026-11-15", arm="docs/experiments/patches/hkjc_arm_form_patterns_shadow.py",
+                action="自動判：forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議入分（等你決定）；否則維持只顯示",
+                extra={"pass_verdict": "建議入分（等你決定）"}),
+    # Kelvin 2026-11-15「forward test 能量／段速細節」：回放 energy_trend 全部 N/A，能量（段速分 ±1.5–4）從來冇驗證。
+    # 退回式：候選 = 拎走能量趨勢；候選贏晒 → 建議拎走。
+    ForwardTest("energy_off", "段速分拎走能量趨勢（驗證能量）", "EXP-20261115-16", "harness_ab", 60,
+                since="2026-11-15", arm="docs/experiments/patches/hkjc_arm_energy_off.py",
+                action="自動判：拎走能量嘅版本 forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議拎走能量（等你決定）；否則保留",
+                extra={"pass_verdict": "建議拎走能量（等你決定）"}),
     # EXP-20261112-13：「對馬會標準」新數值（逐段對標準、扣步速、換算今仗負磅）只顯示唔入分；
     # 夠數用 arm 將佢代替「輸頭馬差距」入分，Δ = 新數值 − live。回放（EXP-09 P2）Gold −0.77／Good −0.51，
     # 同一批 389 場已經跑咗 30 幾個 arm，所以要新場次判；細樣本 Gold 好嘈，最少 150 場。
