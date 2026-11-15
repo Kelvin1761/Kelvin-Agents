@@ -376,7 +376,9 @@ L400_WEIGHT_ADJUST = True
 # 表 = 本機資料根 HKJC_Sections/pit_sections.json（每個賽日後由 hkjc_pit_sections_build.py 更新）。冇表 = 唔加分。
 # 開關畀 forward 退回 arm 用（hkjc_arm_revert_sectional_ft.py，forward `sectional_ft_post_live`）。
 SECTIONAL_FT = True
-L400_WEIGHT_SECONDS_PER_LB = ((1200, 0.007), (1799, 0.016), (None, 0.021))   # (上仗路程上限 m, 秒／磅)
+# 2026-11-15 改實測值（Kelvin 決定；EXP-20261114-01 逐段量度：L400 每磅 ~0.008 秒、唔隨路程升；舊值 0.007／0.016／0.021
+# 似係「全程」每磅秒數全部加落 L400，中長途高估 2–3.5 倍）。排名影響近零（EXP-20261114-12），係正確性修正。
+L400_WEIGHT_SECONDS_PER_LB = ((1200, 0.0077), (1799, 0.0085), (None, 0.0060))   # (上仗路程上限 m, 秒／磅)
 
 
 def l400_weight_seconds_per_lb(distance) -> float:

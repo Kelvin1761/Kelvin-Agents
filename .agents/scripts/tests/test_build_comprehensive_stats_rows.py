@@ -111,3 +111,20 @@ class CoverageRegressionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_repair_course_going_from_official_header(tmp_path):
+    """快照 CSV 嘅 Course 裝咗賽事名：用 full_day_results.json 修返（EXP-20261115-08）。"""
+    import json as _json
+    import pandas as _pd
+    bcs_mod = bcs
+    day = tmp_path / "2025-10-01"
+    day.mkdir()
+    (day / "full_day_results.json").write_text(_json.dumps({"1": {"race_no": 1, "track": '草地 - "A+3" 賽道', "going": "好地至快地",
+                                                                    "results": []}}, ensure_ascii=False), encoding="utf-8")
+    df = _pd.DataFrame([{"Date": "2025-10-01", "RaceNo": 1.0, "Course": "瀋陽讓賽", "Going": "第五班 - 1400米 - (40-0)"},
+                        {"Date": "2025-10-01", "RaceNo": 2.0, "Course": '草地 - "B" 賽道', "Going": "好地"}])
+    out = bcs_mod.repair_course_going(df, tmp_path)
+    assert out.loc[0, "Course"] == '草地 - "A+3" 賽道' and out.loc[0, "Going"] == "好地至快地"
+    assert out.loc[1, "Course"] == '草地 - "B" 賽道'            # 啱嘅唔郁
+    assert df.loc[0, "Course"] == "瀋陽讓賽"                     # 唔改原 DataFrame

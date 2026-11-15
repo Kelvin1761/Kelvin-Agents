@@ -69,6 +69,8 @@ def _capture(root):
     total = 0
     def hold(relative, *, daily=False):
         nonlocal total
+        if relative in metadata:
+            return
         path = _catalog_path(root, relative)
         try:
             path.lstat()
@@ -90,6 +92,10 @@ def _capture(root):
         directories[relative] = _entries(root / relative, budget)
         hold('comprehensive_stats/' + season + '/' + str(config['csv']))
         context = rows.HeldRows(root, seasons, directories, files)
+        raw_base = rows.read_base_rows(season, context)
+        if context.results_exist(season):
+            for day in rows.repair_days(raw_base):
+                hold(relative + '/' + day + '/full_day_results.json', daily=True)
         base = rows.load_base_rows(season, context)
         for day in rows.selected_days(season, base, context):
             hold(relative + '/' + day + '/full_day_results.json', daily=True)

@@ -1,5 +1,34 @@
 # 模型評估合約（AU / HKJC Wong Choi）
 
+## HKJC 歷史回放尺（v4，2026-11-15，Kelvin 決定）
+
+> 適用：**HKJC 候選喺歷史回放語料**（6,047 場，`docs/plans/2026-11-13-hkjc-historic-engine-replay.md`）判。live 389 場語料
+> 係舊權重調參場次（EXP-20261113-05、EXP-20261114-03），唔再做主判決語料。v3（下面）保留畀 AU 同舊記錄；之前判咗嘅唔追溯改判。
+> 判決器：`hkjc_reflector/scripts/hkjc_replay_compare_v4.py`。
+
+### 點解換
+EXP-20261114-05／-08／-11、EXP-20261115-01：好多訊號喺模型之上真（似然度、跨窗穩定），但 Gold／Good 只郁 ±0.3pp；
+「點估計唔准負」喺細幅真改善下面大約一半機會判死（Gold／Good 只睇頭幾個選擇，係粗指標）。Kelvin 2026-11-15 揀：主指標改機率 log-loss。
+
+### 窗（寫死）
+dev 2020/21–2023/24｜holdout 2024/25–2025/26｜terminal 2026/27（2019/20 係 burn-in）。holdout 每個候選家族只睇一次，記入
+`docs/experiments/holdout-ledger-hkjc-replay.md`；同一家族 Holm。
+
+### 判法
+1. **主指標**：入頭三 log-loss（逐匹）。機率 p = σ(a + α·(raw − 場均))；(a, α) baseline 同候選**各自**由訓練段 fit
+   （dev 窗逐季 walk-forward；holdout／terminal 用全 dev）。Δlog-loss 95% CI 上界 < 0（按**賽日** bootstrap 2,000）。
+2. **護欄**：Gold、Good 各自 95% CI 下界 > −1.0pp（唔可以明顯變差）。
+3. **null**：Δlog-loss 要好過 95% 場內洗牌 null（候選對 baseline 嘅 raw Δ 喺場內隨機排列，同幅度、冇資訊）。
+4. 另報場內 AUC Δ、capture@5、頭二選有中（唔係閘）。
+5. fit 類候選一定要交 walk-forward 預測（同 v3）；walk-forward 檔冇訓練季時，候選校準可以用全季版本（只影響 a、α 兩個純量），要喺記錄寫明。
+
+### 驗證把尺
+- A/A（候選 = baseline）：REJECT ✅（2026-11-15）。
+- 第一次應用：場地類型適性（EXP-20261115-02）Δlog-loss −0.00020 [−0.00063,+0.00021] → REJECT —— 新尺唔係「放水」：細到 CI 跨零嘅照樣唔過。
+
+### 其他照舊
+leakage audit、§6 功效前置、§7 正確性修正、多重比較、Kelvin 決定上線嘅改動要登記 forward 退回監察。
+
 ## Stage 4 判決順序（v3，2026-10-10）—— 全紀錄判決
 
 > v2（下面）保留做歷史；**2026-10-10 之後嘅新候選一律用 v3**。之前用 v2 判咗嘅記錄

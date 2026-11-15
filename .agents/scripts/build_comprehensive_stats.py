@@ -105,8 +105,21 @@ hkjc_season = _completed.hkjc_season
 result_row = _completed.result_row
 
 
+_bad_course = _completed._bad_course
+
+
+def repair_course_going(df: pd.DataFrame, results_dir: Path) -> pd.DataFrame:
+    def daily_text(day):
+        path = results_dir / day / 'full_day_results.json'
+        return path.read_text(encoding='utf-8') if path.exists() else None
+    return _completed.repair_course_going(df, results_dir.exists, daily_text)
+
+
 def load_base_rows(season_key: str) -> pd.DataFrame:
-    return _completed.load_base_rows(season_key, _completed.FilesystemRows(DB_ROOT, STATS_ROOT, SEASONS, is_materialized_file))
+    context = _completed.FilesystemRows(DB_ROOT, STATS_ROOT, SEASONS, is_materialized_file)
+    base = _completed.read_base_rows(season_key, context)
+    return repair_course_going(base, DB_ROOT / str(SEASONS[season_key]["results_dir"]))
+
 
 
 def append_new_meetings(season_key: str, base: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:

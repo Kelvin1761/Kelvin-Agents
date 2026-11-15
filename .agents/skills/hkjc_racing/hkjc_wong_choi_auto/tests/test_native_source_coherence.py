@@ -65,7 +65,7 @@ for item in requests_data:
         file=hk/relative; file.parent.mkdir(parents=True,exist_ok=True)
         file.write_bytes(bytes.fromhex(raw)); os.utime(file,ns=(1700000000000000000,1700000000000000000))
     import hkjc_auto_orchestrator as auto
-    from hkjc_racing_engine import live_priors as lp,pit_sections as ps,engine_core as core,rail_draw_context as rail,overlays,debut_trainer
+    from hkjc_racing_engine import live_priors as lp,pit_sections as ps,engine_core as core,rail_draw_context as rail,overlays,debut_trainer,market_history as market
     import hkjc_same_course_times as same
     lp.hk_today=lambda:date(2026,11,8)
     logic=json.loads(logic_path.read_text())
@@ -84,9 +84,9 @@ for item in requests_data:
                     lp._RECENCY_TRAINER_RATINGS.trainer,lp._RECENCY_TRAINER_RATINGS.as_of_date,
                     core._TRAINER_SIGNAL_PRIORS.combo,core._TRAINER_SIGNAL_PRIORS.jockey_distance,
                     core._TRAINER_SIGNAL_PRIORS.trainer_distance,core._TRAINER_SIGNAL_PRIORS.jockey_change,
-                    lp._PRIOR_SOURCE_MANIFEST,ps._TABLE,same._HISTORY,debut_trainer._EVENTS,legacy._profile_cache))
+                    lp._PRIOR_SOURCE_MANIFEST,ps._TABLE,same._HISTORY,debut_trainer._EVENTS,legacy._profile_cache,market._TABLE))
             data_before=cache_data()
-            cache=(lp._JT_RATINGS,lp._RECENCY_TRAINER_RATINGS,core._TRAINER_SIGNAL_PRIORS,lp._PRIOR_SOURCE_MANIFEST,ps._TABLE,same._HISTORY,debut_trainer._EVENTS,legacy._profile_cache,rail._read_dataset.cache_info(),overlays._jockey_wins_by_day.cache_info())
+            cache=(lp._JT_RATINGS,lp._RECENCY_TRAINER_RATINGS,core._TRAINER_SIGNAL_PRIORS,lp._PRIOR_SOURCE_MANIFEST,ps._TABLE,same._HISTORY,debut_trainer._EVENTS,legacy._profile_cache,market._TABLE,rail._read_dataset.cache_info(),overlays._jockey_wins_by_day.cache_info())
             def forbidden_reader(*a,**kw): raise AssertionError('strict full invocation used default resource getter')
             auto._get_profile_scraper=forbidden_reader
         from hkjc_racing_engine.native_sources import JsonSource
@@ -100,23 +100,26 @@ for item in requests_data:
                 'rail_source':rail.RailDrawSource(stats/'rail_draw_results.csv',hashlib.sha256((stats/'rail_draw_results.csv').read_bytes()).hexdigest()),
                 'overlay_source':ovs.OverlaySource(db,ovs.observe_catalog_sha256(db)),
                 'meeting_source':ms.MeetingSource(logic_path.parent,ms.observe_catalog_sha256(logic_path,1)),
-                'debut_source':j(hk/'HKJC_Sections/debut_trainer.json')}
+                'debut_source':j(hk/'HKJC_Sections/debut_trainer.json'),
+                'market_source':j(hk/'HKJC_Sections/market_history.json')}
     with contextlib.redirect_stdout(io.StringIO()): result=runner.score_logic_data(logic_path,logic,**kwargs)
     if mode=='bound':
         contract=result['python_auto_run_contract']
         observation=contract.pop('bound_source_observation')
-        assert observation['source_names']==['sectional','profile','same_course','prior','rail','overlay','meeting','debut']
+        assert observation['source_names']==['sectional','profile','same_course','prior','rail','overlay','meeting','debut','market']
         assert len(observation['files'])>=15 and observation['absent_paths']
         assert observation['bytes_read']>=sum(info['size'] for info in observation['files'].values())
         assert contract.pop('bound_prior_source')['catalog_sha256']==kwargs['prior_source'].sha256
-        assert contract.pop('bound_context_sources')['overlay']['catalog_sha256']==kwargs['overlay_source'].sha256
+        contexts=contract.pop('bound_context_sources')
+        assert contexts['overlay']['catalog_sha256']==kwargs['overlay_source'].sha256
+        assert contexts['market']['sha256']==kwargs['market_source'].sha256
         assert contract.pop('bound_meeting_sources')['meeting']['catalog_sha256']==kwargs['meeting_source'].sha256
     else:
         assert 'bound_source_observation' not in result['python_auto_run_contract']
     values.append(result)
 if cache:
-    current=(lp._JT_RATINGS,lp._RECENCY_TRAINER_RATINGS,core._TRAINER_SIGNAL_PRIORS,lp._PRIOR_SOURCE_MANIFEST,ps._TABLE,same._HISTORY,debut_trainer._EVENTS,legacy._profile_cache,rail._read_dataset.cache_info(),overlays._jockey_wins_by_day.cache_info())
-    assert all(a is b for a,b in zip(cache[:8],current[:8])) and cache[8:]==current[8:]
+    current=(lp._JT_RATINGS,lp._RECENCY_TRAINER_RATINGS,core._TRAINER_SIGNAL_PRIORS,lp._PRIOR_SOURCE_MANIFEST,ps._TABLE,same._HISTORY,debut_trainer._EVENTS,legacy._profile_cache,market._TABLE,rail._read_dataset.cache_info(),overlays._jockey_wins_by_day.cache_info())
+    assert all(a is b for a,b in zip(cache[:9],current[:9])) and cache[9:]==current[9:]
     assert cache_data()==data_before
     assert cached_rail.equals(rail_before) and cached_overlay==overlay_before
 assert not network
@@ -158,6 +161,9 @@ def whole_files(path,version,stamp):
     files['HKJC_Race_Results_Database/comprehensive_stats/rail_draw_results.csv']=rail_csv(version).encode()
     files['HKJC_Sections/pit_sections.json']=json.dumps(TABLE_A if version=='A' else TABLE_B,sort_keys=True).encode()
     files['HKJC_Sections/debut_trainer.json']=json.dumps(events(version)).encode()
+    files['HKJC_Sections/market_history.json']=json.dumps({'version':1,'horses':{
+        'A001':[['2026-10-01',3.0 if version=='A' else 25.0],['2026-11-08',999.0]],
+        'A002':[['2026-10-01',25.0 if version=='A' else 3.0]]}}).encode()
     prefix=path.parent.name+'/'
     for relative,content in display_files(version).items():
         if relative=='.hkjc_cache/profile_cache.json': continue
@@ -178,10 +184,11 @@ def run_whole(tmp_path,hk,path,versions,*,mode='default',repo=None):
     return json.loads(result.stdout)
 
 
-def test_all_eight_native_sources_together_match_full_fresh_a_b_a(tmp_path):
+def test_all_nine_native_sources_together_match_full_fresh_a_b_a(tmp_path):
     hk,path=whole_case(tmp_path)
     a=run_whole(tmp_path,hk,path,['A'])[0]; b=run_whole(tmp_path,hk,path,['B'])[0]
     assert a!=b
+    assert a['horses']['1']['python_auto']['market_history_delta'] != 0
     assert run_whole(tmp_path,hk,path,['A','B','A'],mode='bound')==[a,b,a]
 
 
@@ -294,7 +301,7 @@ def test_failed_or_nested_native_preparation_resets_capture_scope(tmp_path,monke
     assert set(receipt['files'])=={str(file)} and capture._ACTIVE.get() is None
 
 
-def test_concurrent_actual_native_invocations_keep_capture_state_separate(tmp_path,monkeypatch):
+def test_concurrent_actual_nine_source_invocations_keep_capture_state_separate(tmp_path,monkeypatch):
     from concurrent.futures import ThreadPoolExecutor
     from threading import Barrier
     import hashlib
@@ -313,7 +320,8 @@ def test_concurrent_actual_native_invocations_keep_capture_state_separate(tmp_pa
                 'rail_source':rail.RailDrawSource(hk/'absent-rail.csv',None),
                 'overlay_source':ov.OverlaySource(hk/'absent-overlay',None),
                 'meeting_source':ms.MeetingSource(path.parent,ms.observe_catalog_sha256(path,1)),
-                'debut_source':JsonSource(hk/'absent-debut.json',None)}
+                'debut_source':JsonSource(hk/'absent-debut.json',None),
+                'market_source':JsonSource(hk/'absent-market.json',None)}
         inputs.append((hk,path,kwargs))
     barrier=Barrier(2); original=capture._Capture.file
     def interleave(self,path,metadata,identity):
@@ -325,7 +333,7 @@ def test_concurrent_actual_native_invocations_keep_capture_state_separate(tmp_pa
         result=auto.HKJCAutoOrchestrator(path).score_logic_data(path,json.loads(path.read_text()),**kwargs)
         assert capture._ACTIVE.get() is None
         receipt=result['python_auto_run_contract']['bound_source_observation']
-        assert len(receipt['source_names'])==8
+        assert len(receipt['source_names'])==9
         assert all(str(path.parent.parent.parent) in name for name in receipt['files'])
         assert all(str(inputs[1 if item is inputs[0] else 0][0]) not in name for name in receipt['files'])
         return result

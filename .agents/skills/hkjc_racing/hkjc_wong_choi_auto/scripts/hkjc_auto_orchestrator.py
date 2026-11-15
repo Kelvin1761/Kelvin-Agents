@@ -50,6 +50,8 @@ from hkjc_racing_engine import past_runs
 from hkjc_racing_engine.pit_sections import USE_PRODUCTION, read_bound_table
 from hkjc_racing_engine.native_sources import read_bound_json
 from hkjc_racing_engine.native_source_capture import source_capture
+from hkjc_racing_engine import market_history
+
 from hkjc_racing_engine.validation import validate_engine_scripts, validate_logic_data
 from wongchoi_paths import is_materialized_file
 
@@ -174,6 +176,28 @@ def _style_from_positions(positions, field_size=12):
     if fp <= mid_cut:
         return "守中"
     return "後上"
+
+
+def _prepare_market_table(source):
+    """Bind native input bytes without changing the current-main component."""
+    import math
+    table = read_bound_json(source)
+    if table is None:
+        return {}  # Existing apply(table=None) would reload the default cache.
+    horses = table.get('horses')
+    if not isinstance(horses, dict):
+        raise ValueError('bound native market horses object required')
+    for code, runs in horses.items():
+        if not code or not isinstance(runs, list):
+            raise ValueError('invalid bound native market horse history')
+        previous = ''
+        for row in runs:
+            if (not isinstance(row, list) or len(row) != 2 or not isinstance(row[0], str)
+                    or date.fromisoformat(row[0]).isoformat() != row[0] or row[0] < previous
+                    or type(row[1]) not in {int, float} or not math.isfinite(float(row[1])) or row[1] <= 0):
+                raise ValueError('invalid bound native market run')
+            previous = row[0]
+    return table
 
 
 def _prepare_profile_reader(source, logic_path, logic_data):
@@ -352,7 +376,21 @@ def _refresh_grade_transparency(horses):
         boost = sum(float(flag.get("boost", 0) or 0) for flag in auto.get("sip_flags") or [])
         if boost:
             adjustments.append({"key": "sip_boost", "label": "SIP 輕磅好檔修正", "raw": round(boost, 2)})
+        overlay = sum(float((item or {}).get("applied_delta", 0.0) or 0.0) for item in (auto.get("overlays") or {}).values())
+        if overlay:
+            adjustments.append({"key": "overlays", "label": "情境修正", "raw": round(overlay, 2)})
+        market = float(auto.get("market_history_delta", 0.0) or 0.0)
+        if market:
+            adjustments.append({"key": "market_history", "label": "上仗市場熱度", "raw": round(market, 2)})
         transparency["adjustments"] = adjustments
+        # 報告「評分總覽」嘅總分係引擎階段（後置調整之前）印嘅：補一行點樣去到最終分，唔然頂部同總覽對唔上。
+        summary = transparency.get("summary")
+        if isinstance(summary, str) and adjustments and "→ 後置調整" not in summary:
+            final_raw = float(auto.get("ability_score_raw") or 0.0)
+            bits = "、".join(f"{a['label']} {a['raw']:+.2f}" for a in adjustments)
+            summary += (f"\n**→ 後置調整（唔屬任何維度）：{bits}；最終原始分 {final_raw:.2f} → 顯示尺 "
+                        f"{float(auto.get('ability_score') or 0.0):.1f} 分 → 評級 [{auto.get('grade')}]**")
+            transparency["summary"] = summary
         transparency["ability_score_raw"] = auto.get("ability_score_raw")
         transparency["impact_baseline"] = round(baseline, 4)
 
@@ -1131,7 +1169,7 @@ class HKJCAutoOrchestrator:
             print(f"❌ Failed to write outputs for {race_file}: {e}")
             return None
 
-    def score_logic_data(self, race_file, logic_data, *, event_sink=None, sectional_source=None, profile_source=None, same_course_source=None, prior_source=None, rail_source=None, overlay_source=None, meeting_source=None, debut_source=None):
+    def score_logic_data(self, race_file, logic_data, *, event_sink=None, sectional_source=None, profile_source=None, same_course_source=None, prior_source=None, rail_source=None, overlay_source=None, meeting_source=None, debut_source=None, market_source=None):
         """Run complete production scoring without publishing race outputs.
 
         Input data is copied; Logic/Markdown/CSV, event logs and meeting results
@@ -1146,7 +1184,7 @@ class HKJCAutoOrchestrator:
             ('sectional', sectional_source), ('profile', profile_source),
             ('same_course', same_course_source), ('prior', prior_source),
             ('rail', rail_source), ('overlay', overlay_source),
-            ('meeting', meeting_source), ('debut', debut_source)) if source is not None]
+            ('meeting', meeting_source), ('debut', debut_source), ('market', market_source)) if source is not None]
         with source_capture(source_names) as observation:
             sectional_kwargs = ({} if sectional_source is None else
                                 {"sectional_table": read_bound_table(sectional_source)})
@@ -1176,6 +1214,10 @@ class HKJCAutoOrchestrator:
             if debut_source is not None:
                 from hkjc_racing_engine.debut_trainer import prepare_bound_events
                 display_kwargs['debut_events'], meeting_sources['debut'] = prepare_bound_events(debut_source)
+            market_kwargs = {}
+            if market_source is not None:
+                market_kwargs['table'] = _prepare_market_table(market_source)
+                context_sources['market'] = {'path': str(market_source.path), 'sha256': market_source.sha256}
             source_observation = None if observation is None else observation.finish()
         logic_data = deepcopy(logic_data)
         race_context = logic_data.get("race_analysis", {})
@@ -1258,6 +1300,8 @@ class HKJCAutoOrchestrator:
         _apply_sip_enhancements(horses)
         self._apply_mainline_shape_robustness(horses)
         self._apply_overlays(horses)
+        # 上仗賠率（EXP-20261115-07）：overlays 之後、grade／排名之前（同回放 dump 嘅 raw 一致）
+        market_history.apply(horses, race_context.get("race_date"), **market_kwargs)
         _refresh_grade_transparency(horses)
         self._apply_7d_official_ranking(horses)
         # ensure_verdict owns the single deterministic ranking path, including

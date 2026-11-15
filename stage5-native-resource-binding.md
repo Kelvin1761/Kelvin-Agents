@@ -471,3 +471,58 @@ Telegram write; Stage5 Tasks6–10 and all prior holds remain open.
 Unchanged-source AgentScripts173passed/2existingxfail8.80s under bundled Node and
 normal fixture filesystem permissions, /private/tmp/stage5-native-coherence-agents.log.
 No assertion skipped/relaxed. All test/process handles for this slice are terminal.
+
+## Reconciliation with observed main 432188c9 (supersedes eight-source scope)
+
+Fresh remote/main, clean primary and production HEAD were observed at
+432188c9d0fd3245a1c2a85b8d7f5ed0b1acdea0. At that probe a foreign scoped-release
+PID19646 and installer34605 were actually live, so this session started NO release
+controller or native activation. Production's two unrelated generated dirty paths
+(hkjc_draw_stats.json and AU sb_archive_meeting_ids.json) were retained. These are
+observations, not approval of foreign work, a permanent process-liveness claim or
+production acceptance. Normal merge of that exact main into this existing owned
+NONMAIN branch had two textual conflicts; resolution preserves both main changes
+and the native IO API. No primary/main/production checkout HEAD or file mutation was performed.
+
+Main adds current-market-history IO and Course/Going repair of CSV rows using daily
+JSON at/before the CSV cutoff. Therefore old a6/all-eight evidence is historical,
+not current-source closure proof. The shared import-safe row implementation now
+retains main's repair calculation, fallback, first-match behavior and default
+skip semantics; the public facade repair wrapper remains in the default path.
+Held catalog selection captures repair-required AND append-required daily files,
+including absences. No source CSV or historical artifact is rewritten by these
+readers. Actual repair RED1 /private/tmp/stage5-course-reconcile-red.log failed on
+an old CSV date, then passed after preserving the new native selection/repair.
+
+New optional market_source preflights raw JSON, sorted canonical ISO dates and
+finite positive non-boolean odds, then passes the held object to the EXISTING
+market_history.apply(table=...) parameter. Explicit absence is {}, avoiding the
+native table=None default reload. No edit to market_history.py versus the observed
+main: ENABLED, coefficients, formula, cutoff, ranking placement and shadow
+propagation remain byte-identical. The new component is preserved, not approved,
+re-evaluated, promoted or disabled by this session. Main's transparency/formline
+explanation changes are also retained. This is engineering IO isolation only.
+
+Whole source tests now exercise NINE explicit native sources and the existing
+nonzero market delta. Clean immutable 432188c9 reference checkout generated fresh
+complete A/B outputs. Bound A/B/A matches them after separately asserting strict
+source metadata; actual native cache identity/deep contents/counters stay fixed
+and HTTP calls remain zero. Synthetic raw first-horse79.4467/66.9933 is reader
+sensitivity, NOT model improvement. Evidence:
+/private/tmp/stage5-nine-native-baseline.log and
+/private/tmp/stage5-nine-native-reference.json. Separate independent current-main
+completed-row parity compares every row/field against both own default facade and
+held reader, including pre-cutoff repair:
+/private/tmp/stage5-course-current-main-parity.log and
+/private/tmp/stage5-course-current-main-reference.json.
+
+Current implementation unchanged during final related validation: HKJC515passed
+44.84s, /private/tmp/stage5-native-reconciled-hkjc.log; AgentScripts174passed and
+2existingxfail8.37s, /private/tmp/stage5-native-reconciled-agents.log. Quick/goldens
+and diff checks green, /private/tmp/stage5-native-reconcile-quick-first.log.
+Same authorized reviewer inspected merge preservation and IO bindings only, no
+independent tests/foreign model/runtime/release authority. No full16 source gate,
+clean immutable approval, release/merge into main/activation, live source data,
+DB/history/config/model/Telegram write. Remaining import/environment/worker and
+materialization/canonicalization boundaries, unapproved frozen-protocol proposal,
+power/provenance/incident holds and original Stage5 Tasks6–10 remain OPEN.

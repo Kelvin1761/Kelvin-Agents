@@ -192,6 +192,11 @@ def _validate_auto_namespace(horse_num: str, auto: dict) -> list[str]:
             )
         except (AttributeError, TypeError, ValueError):
             errors.append(f"SCORE-009 horse {horse_num} invalid overlay record")
+        try:
+            # 上仗賠率組件亦係原始尺（見 hkjc_racing_engine.market_history；EXP-20261115-07）。
+            expected += float(auto.get("market_history_delta", 0.0) or 0.0)
+        except (TypeError, ValueError):
+            errors.append(f"SCORE-010 horse {horse_num} invalid market history delta")
         if abs(float(ability_raw) - expected) > 0.05:
             errors.append(f"SCORE-004 horse {horse_num} ability formula mismatch: {ability_raw} != {expected:.2f}")
         # 顯示尺一定要真係由原始尺換算返出嚟，唔准兩個數各行各路。

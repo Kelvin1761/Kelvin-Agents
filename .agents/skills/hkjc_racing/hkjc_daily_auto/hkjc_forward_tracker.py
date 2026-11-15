@@ -97,6 +97,23 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 since="2026-11-15", arm="docs/experiments/patches/hkjc_arm_debut_trainer_shadow.py",
                 action="自動判：forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議入分（等你決定）；否則維持只顯示",
                 extra={"pass_verdict": "建議入分（等你決定）"}),
+    # EXP-20261114-08（Kelvin 2026-11-15）：「換上頂級騎師」做 forward 收集數據，唔入分。
+    # 回放：模型之上 dev／holdout 都真，但固定加分 holdout Gold −0.88。shadow arm = jockey_up 嘅非初出馬 raw + 1.0。
+    ForwardTest("jockey_up_shadow", "換上頂級騎師入分（shadow）", "EXP-20261114-08", "harness_ab", 60,
+                since="2026-11-15", arm="docs/experiments/patches/hkjc_arm_jockey_up_shadow.py",
+                action="自動判：forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議入分（等你決定）；否則維持唔入分",
+                extra={"pass_verdict": "建議入分（等你決定）"}),
+    # EXP-20261115-04（Kelvin 2026-11-15「開 forward shadow」）：維度 × 情境（短途／長途／泥地／跑馬地）互動，唔入分。
+    # 回放：dev PASS；holdout Δlog-loss −0.00069 同 dev 一致，但家族 5 個設定 Holm 99% 唔過。β 凍結喺 arm 入面。
+    ForwardTest("interaction_shadow", "維度 × 情境互動入分（shadow）", "EXP-20261115-04", "harness_ab", 60,
+                since="2026-11-15", arm="docs/experiments/patches/hkjc_arm_interaction_shadow.py",
+                action="自動判：forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議入分（等你決定）；否則維持唔入分",
+                extra={"pass_verdict": "建議入分（等你決定）"}),
+    # EXP-20261115-07（Kelvin 2026-11-15 批准上線）：上仗賠率組件。退回 arm = 關掉組件；退回版贏晒 → 建議退回。
+    ForwardTest("market_history_post_live", "上仗賠率上線後 vs 冇組件", "EXP-20261115-07", "harness_ab", 60,
+                since="2026-11-15", arm="docs/experiments/patches/hkjc_arm_market_history_revert.py",
+                action="自動判：退回版 forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議退回（等你決定）；否則保留",
+                extra={"pass_verdict": "建議退回（等你決定）"}),
     # EXP-20261112-13：「對馬會標準」新數值（逐段對標準、扣步速、換算今仗負磅）只顯示唔入分；
     # 夠數用 arm 將佢代替「輸頭馬差距」入分，Δ = 新數值 − live。回放（EXP-09 P2）Gold −0.77／Good −0.51，
     # 同一批 389 場已經跑咗 30 幾個 arm，所以要新場次判；細樣本 Gold 好嘈，最少 150 場。

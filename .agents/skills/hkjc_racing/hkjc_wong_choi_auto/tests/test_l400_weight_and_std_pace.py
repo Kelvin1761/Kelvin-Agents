@@ -87,14 +87,14 @@ class L400WeightTests(unittest.TestCase):
         return data
 
     def test_coefficient_by_last_run_distance(self):
-        self.assertEqual(scoring.l400_weight_seconds_per_lb(1200), 0.007)
-        self.assertEqual(scoring.l400_weight_seconds_per_lb(1650), 0.016)
-        self.assertEqual(scoring.l400_weight_seconds_per_lb(1800), 0.021)
+        self.assertEqual(scoring.l400_weight_seconds_per_lb(1200), 0.0077)   # 2026-11-15 實測（EXP-20261114-01）
+        self.assertEqual(scoring.l400_weight_seconds_per_lb(1650), 0.0085)
+        self.assertEqual(scoring.l400_weight_seconds_per_lb(1800), 0.0060)
 
     def test_heavier_today_makes_last_l400_slower(self):
         adj = speed.l400_weight_adjustment(self._data())
         self.assertEqual(adj["weight_diff"], 23)
-        self.assertEqual(adj["adjusted"], round(23.27 + 0.016 * 23, 2))
+        self.assertEqual(adj["adjusted"], round(23.27 + 0.0085 * 23, 2))
 
     def test_mismatched_run_or_switch_off_means_no_conversion(self):
         self.assertIsNone(speed.l400_weight_adjustment(self._data(raw_l400="23.80")))
@@ -103,13 +103,13 @@ class L400WeightTests(unittest.TestCase):
             self.assertIsNone(speed.l400_weight_adjustment(self._data()))
 
     def test_scorer_bands_on_converted_value_and_shows_both(self):
-        # 23.55 原本 ≤23.6 攞「末段偏快」；重 23 磅換算 +0.37 → 23.92 = 末段一般
+        # 23.55 原本 ≤23.6 攞「末段偏快」；重 23 磅換算 +0.20（實測係數）→ 23.75 = 末段一般
         data = self._data(raw_l400="23.55", l400_last_run={"date": "2026-10-28", "distance": 1650, "weight": 110, "l400": 23.55})
         scorer = speed.SpeedScorer({"_data": data}, {})
         scorer.compute()
         row = next(d for d in scorer.detail if d["factor"] == "L400 絕對值")
         self.assertEqual(row["delta"], 0.0)
-        self.assertIn("23.92s", row["value"])
+        self.assertIn("23.75s", row["value"])
         self.assertIn("上仗 23.55s", row["value"])
         with mock.patch.object(scoring, "L400_WEIGHT_ADJUST", False):
             scorer = speed.SpeedScorer({"_data": data}, {})

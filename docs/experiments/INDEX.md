@@ -506,3 +506,14 @@
 - [EXP-20261114-10](EXP-20261114-10-hkjc-replay-forward-tests.md) — HKJC 現有 forward 測試回放判：評分差距、L400 負磅換算維持；L400 標準化唔上
 - [EXP-20261114-11](EXP-20261114-11-hkjc-replay-awt-straight-deep.md) — HKJC 泥地／直路深挖（Kelvin 決定 5、7）：直路表現、泥地相對草地、泥地前段係真訊號，但加分 dev 全部 REJECT
 - [EXP-20261114-12](EXP-20261114-12-hkjc-replay-signal-audit-and-retries.md) — HKJC 19 組訊號審計：S 版權重下冇可剷噪音（舊權重下嘅「噪音」係權重錯配）；賽績線「強」字修正唔修；三個重試 REJECT
+- [EXP-20261115-01](EXP-20261115-01-hkjc-course-fit-and-small-fixes.md) — HKJC 泥地／直路轉化（校準加分、分段權重）同一般化場地類型適性（全部場次篩選 CI 全正、δ 穩定）排名都唔過 Gold／Good；結論：把尺同改善幅度唔配（改尺交 Kelvin）；L400 係數改實測、賽績線顯示修正、換騎 forward shadow
+- [EXP-20261115-02](EXP-20261115-02-hkjc-ruler-v4-and-course-fit.md) — **HKJC 歷史回放尺 v4**（Kelvin 決定：主指標 log-loss，Gold／Good CI 下界 > −1pp，贏 null）；A/A REJECT ✅；場地類型適性用 v4 仍然 REJECT（效果本身細）
+- [EXP-20261115-03](EXP-20261115-03-hkjc-leaf-continuous.md) — HKJC 19 組訊號重建第一批：近績／L400／完成時間由階梯改連續，dev 三個都 REJECT（log-loss CI 跨零）；缺口唔喺 leaf 形狀
+- [EXP-20261115-04](EXP-20261115-04-hkjc-signal-interactions.md) — HKJC 訊號 × 情境互動（維度 × 短途／長途／泥地／跑馬地，walk-forward）：dev PASS、holdout Δlog-loss −0.00069 同 dev 一致但 Holm 99% 唔過 → REJECT；交 Kelvin 揀 forward shadow
+- [EXP-20261115-05](EXP-20261115-05-hkjc-class-advantage-negative.md) — HKJC 班次優勢喺模型之上係反指標（同路程適性／穩定性重複）：單參數扣分 dev PASS、holdout −0.00023 CI 跨零 REJECT；已由 EXP-04 shadow 覆蓋
+- [EXP-20261115-06](EXP-20261115-06-hkjc-longshot-diagnostic.md) — HKJC 冷門馬診斷：賠率 ≥10 群組內市場 AUC 0.683 vs 我哋 0.621；同市場唔同意嘅冷門 ROI −35%；上仗賠率 dev in-sample −0.0025 但係市場衍生，待 Kelvin 批准
+- [EXP-20261115-07](EXP-20261115-07-hkjc-market-history.md) — HKJC 上仗賠率（Kelvin 批准測市場歷史）：holdout Δlog-loss −0.00315（Holm PASS）、AUC +0.0055、Good +1.11；兩部分（賠率＋冇上仗指示）各自有用；上線待 Kelvin
+- [EXP-20261115-08](EXP-20261115-08-hkjc-run-style-draw-bias.md) — HKJC 跑法／檔位／場地偏差：跑法偏差 holdout PASS（−0.00037，排名幾乎唔郁）、檔位偏差邊緣 REJECT、上仗逆偏差冇訊號；搵到賽果庫 2024-09–2026-05 Course／Going 欄壞（只影響研究）
+- [EXP-20261115-09](EXP-20261115-09-hkjc-kelvin-questions-diagnostic.md) — Kelvin 8 條問題診斷：熟手換騎冇訊號；上仗賠率喺休息 ≥90 日／轉場地過度追熱門；自購馬首戰仍高估 6pp；降班＋換騎、轉馬房、除去配備正、首次配備負（只診斷）
+- [EXP-20261115-10](EXP-20261115-10-hkjc-pattern-batch-l400-ft.md) — HKJC 候選批次：12 個 pattern（合併 log-loss −0.00089 但 Good 下界 −1.25）、L400 近 6 仗（變差）、FT 負磅（冇效）全部 dev REJECT；dump fit 改標準化 newton-cg
+- [EXP-20261115-11](EXP-20261115-11-hkjc-run-style-bias-deep.md) — HKJC 跑法偏差深挖：73% 日子同向、強反向 0.3%；中場壓地冇影響；即場偏差相關 0.01（長期 0.19）；喺上仗賠率之上 dev REJECT → 唔上線

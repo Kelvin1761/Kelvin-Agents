@@ -152,6 +152,28 @@ def build(rows: list[dict]) -> dict:
             "nsec": {k: max(v, key=v.get) for k, v in cnt.items()}}
 
 
+def market_history_table() -> dict:
+    """上仗賠率表（EXP-20261115-07）：每匹馬每仗嘅 HKJC 最終獨贏賠率（舊季研究檔＋現行庫，同回放一樣嘅來源）。"""
+    sys.path.insert(0, str(REPO / ".agents/skills/hkjc_racing/hkjc_reflector/scripts"))
+    import hkjc_history_replay_pit
+    df = hkjc_history_replay_pit.load_all_rows_extended()
+    df = df[df["Odds"].notna() & df["HorseID"].notna() & df["Rank"].notna()]
+    horses: dict[str, list] = {}
+    for r in df.itertuples():
+        horses.setdefault(str(r.HorseID), []).append([str(r.Date)[:10], float(r.Odds)])
+    for v in horses.values():
+        v.sort()
+    return {"version": 1, "last_date": max(str(d)[:10] for d in df["Date"]), "horses": horses}
+
+
+def write_market_history(table: dict) -> Path:
+    p = out_path().with_name("market_history.json")
+    tmp = p.with_suffix(".tmp")
+    tmp.write_text(json.dumps(table, ensure_ascii=False), encoding="utf-8")
+    os.replace(tmp, p)
+    return p
+
+
 def write(table: dict) -> Path:
     p = out_path()
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -184,7 +206,7 @@ def update() -> int:
         notify("⚠️ HKJC 段速表冇更新：外置碟冇掛載（live 繼續用上一版 pit_sections.json）")
         return 2
     bf = [sys.executable, str(HERE / "backfill_history.py")]
-    for args in (["tasks"], ["run", "--kinds", "sectional"], ["parse"]):
+    for args in (["tasks"], ["run", "--kinds", "sectional", "--quiet"], ["parse"]):
         r = subprocess.run(bf + args, capture_output=True, text=True)
         if r.returncode != 0:
             notify(f"⚠️ HKJC 段速表冇更新：backfill {' '.join(args)} 失敗（{r.stderr[-300:]}）；live 繼續用上一版")
@@ -192,7 +214,9 @@ def update() -> int:
     table = build(load_rows())
     p = write(table)
     write_debut(debut_events())
-    print(f"段速表更新到 {table['last_date']} → {p}")
+    mh = market_history_table()
+    write_market_history(mh)
+    print(f"段速表更新到 {table['last_date']} → {p}；上仗賠率表到 {mh['last_date']}（{len(mh['horses'])} 匹）")
     return 0
 
 
@@ -204,6 +228,8 @@ def main() -> int:
         return update()
     table = build(load_rows())
     print(f"標準季 {table['seasons']}；當日快慢 {len(table['variant'])}；到 {table['last_date']} → {write(table)}")
+    mh = market_history_table()
+    print(f"上仗賠率表 {len(mh['horses'])} 匹、到 {mh['last_date']} → {write_market_history(mh)}")
     ev = debut_events()
     print(f"初出馬事件 {len(ev)} → {write_debut(ev)}")
     return 0
