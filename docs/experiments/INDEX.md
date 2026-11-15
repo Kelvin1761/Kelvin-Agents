@@ -517,3 +517,11 @@
 - [EXP-20261115-09](EXP-20261115-09-hkjc-kelvin-questions-diagnostic.md) — Kelvin 8 條問題診斷：熟手換騎冇訊號；上仗賠率喺休息 ≥90 日／轉場地過度追熱門；自購馬首戰仍高估 6pp；降班＋換騎、轉馬房、除去配備正、首次配備負（只診斷）
 - [EXP-20261115-10](EXP-20261115-10-hkjc-pattern-batch-l400-ft.md) — HKJC 候選批次：12 個 pattern（合併 log-loss −0.00089 但 Good 下界 −1.25）、L400 近 6 仗（變差）、FT 負磅（冇效）全部 dev REJECT；dump fit 改標準化 newton-cg
 - [EXP-20261115-11](EXP-20261115-11-hkjc-run-style-bias-deep.md) — HKJC 跑法偏差深挖：73% 日子同向、強反向 0.3%；中場壓地冇影響；即場偏差相關 0.01（長期 0.19）；喺上仗賠率之上 dev REJECT → 唔上線
+- [EXP-20261115-12](EXP-20261115-12-hkjc-refit-v3.md) — HKJC 外層權重 refit（v3：S 版＋FT＋L400 實測＋上仗賠率）—— dev REJECT，唔上線
+- [EXP-20261115-13](EXP-20261115-13-hkjc-l400-standardised-6-runs.md) — HKJC L400 對標準＋扣當日快慢＋負磅換算，近 6 仗 —— dev REJECT
+- [EXP-20261115-14](EXP-20261115-14-hkjc-trainer-longshot-oldfav-diagnostic.md) — 練馬師出擊、冷門、上仗熱門／老馬、潘頓 —— 診斷
+- [EXP-20261115-15](EXP-20261115-15-hkjc-old-winner-jockey-rating.md) — 老馬贏後、騎師升降級、評分跌返贏馬分 —— holdout 全 REJECT；兩個 pattern 改做顯示標籤＋forward shadow
+- [EXP-20261115-16](EXP-20261115-16-hkjc-trackwork-energy-data.md) — 晨操同能量數據可用性；能量 forward；晨操補抓
+- [EXP-20261115-17](EXP-20261115-17-hkjc-trainer-shrinkage.md) — 練馬師收縮分數 —— dev REJECT
+- [EXP-20261115-18](EXP-20261115-18-hkjc-draw-curve.md) — HKJC 檔位曲線（逐檔號×組別×場大細）：現行三級漏 1 檔／最外檔／跑馬地內檔；dev PASS、holdout −0.00054 同方向但 REJECT；交 Kelvin
+- [EXP-20261115-20](EXP-20261115-20-hkjc-trainer-pattern-labels.md) — 個別練馬師出擊 pattern 標籤：239 格揀 19 格（前後段一致、CI 唔跨零），純顯示唔入分
