@@ -109,6 +109,11 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 since="2026-11-15", arm="docs/experiments/patches/hkjc_arm_interaction_shadow.py",
                 action="自動判：forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議入分（等你決定）；否則維持唔入分",
                 extra={"pass_verdict": "建議入分（等你決定）"}),
+    # EXP-20261115-07（Kelvin 2026-11-15 批准上線）：上仗賠率組件。退回 arm = 關掉組件；退回版贏晒 → 建議退回。
+    ForwardTest("market_history_post_live", "上仗賠率上線後 vs 冇組件", "EXP-20261115-07", "harness_ab", 60,
+                since="2026-11-15", arm="docs/experiments/patches/hkjc_arm_market_history_revert.py",
+                action="自動判：退回版 forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議退回（等你決定）；否則保留",
+                extra={"pass_verdict": "建議退回（等你決定）"}),
     # EXP-20261112-13：「對馬會標準」新數值（逐段對標準、扣步速、換算今仗負磅）只顯示唔入分；
     # 夠數用 arm 將佢代替「輸頭馬差距」入分，Δ = 新數值 − live。回放（EXP-09 P2）Gold −0.77／Good −0.51，
     # 同一批 389 場已經跑咗 30 幾個 arm，所以要新場次判；細樣本 Gold 好嘈，最少 150 場。

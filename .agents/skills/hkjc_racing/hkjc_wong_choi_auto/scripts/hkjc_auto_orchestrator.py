@@ -47,6 +47,7 @@ from hkjc_racing_engine.scoring import (
 )
 from hkjc_racing_engine import overlays as overlay_registry
 from hkjc_racing_engine import past_runs
+from hkjc_racing_engine import market_history
 from hkjc_racing_engine.validation import validate_engine_scripts, validate_logic_data
 from wongchoi_paths import is_materialized_file
 
@@ -1170,6 +1171,8 @@ class HKJCAutoOrchestrator:
         _apply_sip_enhancements(horses)
         self._apply_mainline_shape_robustness(horses)
         self._apply_overlays(horses)
+        # 上仗賠率（EXP-20261115-07）：overlays 之後、grade／排名之前（同回放 dump 嘅 raw 一致）
+        market_history.apply(horses, race_context.get("race_date"))
         _refresh_grade_transparency(horses)
         self._apply_7d_official_ranking(horses)
         # ensure_verdict owns the single deterministic ranking path, including

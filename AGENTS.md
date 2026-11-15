@@ -283,6 +283,9 @@ assert 緊兩個冇 merge 過嘅嘢 —— `rating_series` 只存在於
   拎得到？」答唔到就 flag，唔准當安全。**統計閘門捉唔到洩漏** —— 一個洩漏特徵
   試過 5/5 fold 全過、holdout +17.58pp。
 - **賠率／市場價唔准做隱藏 proxy。** 除非個 methodology 明文寫住佢係模型一部分。
+  **HKJC 明文例外（Kelvin 2026-11-15，EXP-20261115-07）**：「上仗賠率」—— 之前賽事（日期嚴格早過今仗）嘅 HKJC 最終獨贏賠率
+  —— 係模型一部分（`hkjc_racing_engine/market_history.py`，表 `HKJC_Sections/market_history.json` 每個賽日後重建）。
+  **今仗賠率永遠唔准入模型**；外隊馬當中性。
   回測取賠率一定要最早快照（tennis：`MIN(id)`，後面嘅係走地價）。
 - **唔准只針對最近一日／一個場次去調。** 單日結果冇功效。
 - **優先睇 out-of-sample。** dev + 時間 fold 揀，holdout 只做最後確認。
