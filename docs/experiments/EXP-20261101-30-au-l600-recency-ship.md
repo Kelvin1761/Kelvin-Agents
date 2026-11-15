@@ -46,3 +46,22 @@
 
 `L600_RECENCY_DECAY = 1.0` 即係返回每仗一樣重（權重全部 1；加總次序按日期，捨入到 3dp 後同舊平均數一樣，
 smoke test 518／518 場對得上）。
+
+## Forward 判決（2026-11-15）：REJECT（primary_regression）→ 用戶決定保留
+
+- 狀態檔 `au_daily_auto/work/au-l600-recency-forward-status.json`（scheduler checkout，`generated_at`
+  2026-11-15T11:45Z）：2026-11-02 起 650 場、14 個賽日、`old_engine` 0、`incomplete_result` 0；按預先登記取頭 600 場判。
+- v3 fixed_rule：**REJECT，`primary_regression`**，`keep=false`。
+
+| 600 場 | 上線版 | 反事實（每仗一樣重） | Δ |
+|---|---|---|---|
+| Gold | 20.33% | 20.50% | −0.17pp [−0.62, 0.00]，p 0.705 |
+| Good 位置 | 27.67% | 27.83% | −0.17pp [−1.45, +0.92]，p 0.844 |
+| 冠軍 | 29.5% | 29.0% | +0.5pp |
+| 頭馬入頭五 | 80.17% | 79.83% | +0.33pp |
+| Pass | 52.67% | 52.5% | +0.17pp |
+
+- 兩個 −0.17pp 各自都係 600 場差 **1 場**，CI 包零。Gold 同歷史預期（−0.18pp）一致；歷史 Good +0.28pp **冇喺 forward 重現**。
+  forward 冇量度 L600 leaf AUC（上線主要理由），所以呢個判決唔覆核嗰部分。
+- **用戶決定（2026-11-15）：「ok 保留」**。`L600_RECENCY_DECAY` 維持 0.8，冇改 code。同上線一樣係取捨決定，
+  唔係閘門通過；記錄上 forward 結果係 REJECT（效果同反事實分唔開）。
