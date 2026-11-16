@@ -546,3 +546,4 @@
 - [EXP-20261116-16](EXP-20261116-16-tennis-total-games-model.md) — Tennis 搵 NBA 式大細位＋總局數模型：雙邊大細盤冇一邊偏；發球特徵令 RMSE 跌（CI 全負）但對 Sportsbet 條線 AUC 0.492 輸市場 0.544，REJECT
 - [EXP-20261116-17](EXP-20261116-17-tennis-fatigue-residual.md) — Tennis 疲勞喺收市價之上：前 3 日局數 NO EVIDENCE（方向仲相反）；前 7 日場數正向過 Holm（「較忙一方」holdout +7.2pp，dev 只 +2.2pp 跨零），似動量唔係疲勞，要用 2025 檔＋Betfair 即時價重新登記先算
 - [EXP-20261116-17](EXP-20261116-17-au-mobile-sectionals-results.md) — AU sportsbetform 手機版逐駒 200m 分段（全國、每場一版、PIT 安全、對 RQ 0.991）：318 場 walk-forward，末段 L600 同前段可變基準 E2 REJECT（有害），前段 E／末段減速 D／平均速度 A CI 跨零；單獨全部輸完成時間，同 EXP-20261101-42 一致；唔建議專登累積
+- [EXP-20261116-18](EXP-20261116-18-au-sectionals-deep-dive-results.md) — AU 段速深入診斷（Kelvin 唔信 EXP-17）：對嗰場正規化後末段 Lr／扣位置 Lpos 喺現行模型上有殘差資訊（Holm 0.013／0.02），EXP-17「L 有害」係 β 大 10–40 倍；正確權重 ~0.1 SD、318 場 MDE ~4pp 量唔到 → NEEDS MORE TESTING；QLD 5,514 場 Lpos 係唯一贏完成時間嘅段速（log-lik CI 正、AUC +0.008 跨零）；收腳×步速、走地距離冇資訊；pace_figure 換真 L600 REJECT（leaf AUC −0.019）
