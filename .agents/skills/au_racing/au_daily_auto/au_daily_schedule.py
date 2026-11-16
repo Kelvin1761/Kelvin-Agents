@@ -521,22 +521,22 @@ def run_cmd(cmd: list[str], *, cwd: Path | None = None, timeout: int = 3600,
 
 # ── Sportsbet ───────────────────────────────────────────────────────────────
 def browser(runlog: RunLog):
-    """Run-scoped 真 Chrome session。第一次用先開，run 尾收工。
+    """Run-scoped sportsbetform 抓取 session。第一次用先開，run 尾收工。
 
-    ⚠️ **sportsbetform 只行真瀏覽器。** 2026-08-05 實測，同一時間同一個 IP：
-    curl_cffi 403、Playwright bundled chromium headless 403、**真 Chrome headless
-    亦 403**、真 Chrome headed 200。即係被偵測嘅係 headless 本身。詳表見
-    `sb_browser_fetch.py`。
+    2026-11-17 起預設係 `sb_http_fetch.HybridFetcher`：curl_cffi 攞頁（唔開窗、唔使 GUI
+    login），寫同一個 cache；HTTP 一被拒絕就轉返 headed 真 Chrome 做埋今次 run。
+    實測同瀏覽器版逐項比較嘅結果喺 `sb_http_fetch.py` docstring。
 
-    代價講清楚：headed 要有 active GUI login session（鎖螢幕冇問題、登出就唔得），
-    而且每次 run 會彈一個 Chrome 窗。
+    歷史：2026-08-05 實測 curl_cffi／headless 全部 403，只有 headed 真 Chrome 200
+    （`sb_browser_fetch.py` 個表），所以當時只行瀏覽器。`WC_SB_FETCH=browser` 行返舊路。
     """
     if getattr(runlog, "browser_session", None) is None:
         from claw_sportsbet_form import BASE
-        from sb_browser_fetch import BrowserFetcher
-        # 同源起始頁：`fetch()` 要同源，所以一定要先落一版。用當日索引頁 ——
-        # 任何一版有效索引頁都做得到起點，成本係每個 run 多一個請求。
-        runlog.browser_session = BrowserFetcher(
+        from sb_http_fetch import make_fetcher
+        # 2026-11-17 起預設唔開 Chrome：curl_cffi 攞同一批 URL、寫同一個 cache，
+        # 被拒絕先轉返真 Chrome（`sb_http_fetch.HybridFetcher`）。`WC_SB_FETCH=browser`
+        # 行返舊路。origin_candidates 只係舊 caller 參數，兩個 fetcher 都唔用。
+        runlog.browser_session = make_fetcher(
             delay=fetch_delay(),
             # 兩個候選：覆盤日索引頁，同今日索引頁。落唔到第一個唔應該令成個
             # run 報廢（起始頁係單點失敗位）。
@@ -551,6 +551,10 @@ def close_browser(runlog: RunLog) -> None:
     if session is None:
         return
     runlog.step("browser", "closed", requests_made=session.requests_made,
+                fetch_mode=type(session).__name__,
+                http_fallback=getattr(session, "fallback_reason", None),
+                odds_sidecars=getattr(getattr(session, "http", None), "odds_written", None),
+                odds_missed=len(getattr(getattr(session, "http", None), "odds_missed", []) or []),
                 stop_reason=session.stop_reason,
                 network_reason=getattr(session, "network_reason", None),
                 launch_reason=getattr(session, "launch_reason", None))
@@ -2999,7 +3003,7 @@ def market_drift(runlog: RunLog, folder: Path, key: str) -> list[dict]:
     ⚠️ 一定要喺**重建覆寫 Formguide 之前**叫。分析時嘅賠率只存喺 Formguide 度，
     一重建就被新頁面沖走，之後再比就永遠零差異。
     """
-    from claw_sportsbet_form import BASE, SportsbetFormFetcher, parse_odds_html
+    from claw_sportsbet_form import BASE, SportsbetFormFetcher, cached_page_odds
 
     ids = load_mapping()
     meta = ids.get(key) or {}
@@ -3017,7 +3021,7 @@ def market_drift(runlog: RunLog, folder: Path, key: str) -> list[dict]:
         if not cache.exists():
             continue
         try:
-            now = parse_odds_html(cache.read_text(errors="replace"))
+            now = cached_page_odds(cache)
         except Exception:  # noqa: BLE001
             continue
         for rank, num, name in chosen:
@@ -3055,7 +3059,7 @@ def record_odds_from_cache(runlog: RunLog, folder: Path, key: str,
     重建都影** —— Kelvin 想開始用賠率，所以每次覆核都要留一個時間點，唔可以只喺
     「啱好有退出馬」嘅日子才有。
     """
-    from claw_sportsbet_form import BASE, SportsbetFormFetcher, parse_odds_html
+    from claw_sportsbet_form import BASE, SportsbetFormFetcher, cached_page_odds
 
     meta = (load_mapping().get(key) or {})
     if not meta.get("races"):
@@ -3073,7 +3077,7 @@ def record_odds_from_cache(runlog: RunLog, folder: Path, key: str,
         if not cache.exists():
             continue
         try:
-            live = parse_odds_html(cache.read_text(errors="replace"))
+            live = cached_page_odds(cache)
         except Exception:  # noqa: BLE001
             continue
         prices = {}

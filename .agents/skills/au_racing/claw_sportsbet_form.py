@@ -1246,7 +1246,12 @@ def write_meeting(races, out_dir, date_str, venue, verbose=True,
                 # 唔喂入現有 `Gear:` health-score regex，等過 canonical gate 先入分。
                 if profile.get("gear_changes"):
                     f_fg.write(f"SportsbetGear: Changes: {profile['gear_changes']}\n")
-                f_fg.write(f"Flucs:$- ${ov.get('fixed_win','-')}\n")
+                fixed = ov.get("fixed_win", "-")
+                if fixed == "-" and (od.get(num) or (None,))[0]:
+                    # HTTP 攞嘅頁冇 JS 填嘅賠率格 → 用攞頁嗰刻嘅 API 獨贏價，格式同瀏覽器格一樣。
+                    # 排程嘅市場警號（`market_odds_from_formguide`）讀呢一行。
+                    fixed = f"{float(od[num][0]):.2f}"
+                f_fg.write(f"Flucs:$- ${fixed}\n")
                 def _ly(kind, person_name):
                     nonlocal ly_hit, ly_miss
                     pid = _match_person(meta.get("people_by_name") or {}, kind,
@@ -1578,6 +1583,27 @@ def parse_odds_html(html):
     return out
 
 
+def cached_page_odds(cache_file):
+    """一版已 cache 嘅賽事頁嘅賠率 → `{馬號: {盤口: 賠率}}`（同 `parse_odds_html` 一樣格式）。
+
+    瀏覽器攞嘅頁有 JS 填好嘅賠率，直接 parse HTML；HTTP 攞嘅頁冇（raw HTML 永遠空），
+    就讀 `sb_http_fetch` 喺攞頁嗰刻由 Sportsbet API 寫嘅 sidecar `<cache>.odds.json`。
+    兩樣都冇 → `{}`（同以前瀏覽器冇填到賠率一樣）。
+    """
+    cache_file = Path(cache_file)
+    try:
+        odds = parse_odds_html(cache_file.read_text(encoding="utf-8", errors="replace"))
+    except OSError:
+        odds = {}
+    if odds:
+        return odds
+    try:
+        doc = json.loads(cache_file.with_suffix(".odds.json").read_text(encoding="utf-8"))
+        return {int(k): dict(v) for k, v in (doc.get("odds") or {}).items()}
+    except (OSError, ValueError, AttributeError, TypeError):
+        return {}
+
+
 def parse_date_index(html):
     """`/{YYYY-MM-DD}/` 嗰版 → {slug: {"meetingId", "races": [...]}}。
 
@@ -1670,6 +1696,9 @@ def main():
                 print(f"   ⚠️ R{i} 攞唔到，跳過")
                 continue
             pr = parse_race(html)
+            if not pr["meta"].get("odds"):
+                # HTTP 攞嘅頁冇 JS 賠率 → 讀攞頁嗰刻寫嘅 API sidecar（見 sb_http_fetch）
+                pr["meta"]["odds"] = cached_page_odds(f._cache_path(base_url))
             race_no = pr["meta"].get("race_number", i)
             out.append((race_no, pr, parse_runner_blocks(html)))
             # Expert Tips 存檔（2026-10-14）：賽前頁先有，賽後重抽就冇咗，以前
