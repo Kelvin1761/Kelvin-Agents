@@ -536,3 +536,4 @@
 - [EXP-20261116-06](EXP-20261116-06-hkjc-incident-history-live.md) — HKJC 上仗事件報告入分（走外疊冇遮擋 +、醫療 −）：補抓 2019–23 後 dev／holdout PASS（Holm 2），上線＋forward 退回監察
 - [EXP-20261116-07](EXP-20261116-07-hkjc-weight-vs-rating-split.md) — 負磅殘差拆解：讓賽係高評分被高估、分級賽先係真負磅效應（−14.7／10 磅）；HR／HG 候選 dev CI 跨零 REJECT
 - [EXP-20261116-08](EXP-20261116-08-tennis-family-calibration.md) — Tennis 逐 family 校準：Platt 解決唔到冷門高估；市場錨定校準後 ≈ 市場、value 注幾乎冇晒，照蝕；B／C 都 REJECT，odds ≥3 只可以做安全欄
+- [EXP-20261116-09](EXP-20261116-09-nba-sgm-review-and-single-bets.md) — NBA 穩膽 S3 審查：腿命中 68.5% 對模型 70.2%（後段 2 SE 壞運），SGM 報價高過腿價相乘 7.5%；每場一注 milestone 單注六個揀法全部 −4%…−9%；分別喺盤口唔喺單注／SGM（只量度）
