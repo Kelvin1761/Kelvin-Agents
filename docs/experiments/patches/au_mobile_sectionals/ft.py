@@ -3,7 +3,7 @@
 
     PYTHONDONTWRITEBYTECODE=1 python3 ft.py <raw/mob> <events.json> <outdir>
 
-同 EXP-18（deep.py）一樣嘅場次、base、殘差 conditional logit、v3；k 網格換成預先登記嘅 {0.05, 0.10, 0.15, 0.25}。
+同 EXP-22（deep.py）一樣嘅場次、base、殘差 conditional logit、v3；k 網格換成預先登記嘅 {0.05, 0.10, 0.15, 0.25}。
 """
 from __future__ import annotations
 

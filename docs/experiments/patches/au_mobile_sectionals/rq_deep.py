@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""EXP-20261116-18 B 部分：QLD 官方分段（RQ XML）大樣本，同場正規化特徵 + 情境 + 對我哋模型分嘅殘差。
+"""EXP-20261116-22 B 部分：QLD 官方分段（RQ XML）大樣本，同場正規化特徵 + 情境 + 對我哋模型分嘅殘差。
 
     PYTHONDONTWRITEBYTECODE=1 python3 rq_deep.py --out OUT.json
 

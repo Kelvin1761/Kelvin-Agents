@@ -1,6 +1,6 @@
-# EXP-20261116-18 結果：段速深入診斷 —— 訊號有，EXP-19 輸喺配權同功效
+# EXP-20261116-22 結果：段速深入診斷 —— 訊號有，EXP-19 輸喺配權同功效
 
-- **預先登記**：[protocol](EXP-20261116-18-au-sectionals-deep-dive-protocol.md)（`17c8d95b`，量度之前）。
+- **預先登記**：[protocol](EXP-20261116-22-au-sectionals-deep-dive-protocol.md)（`17c8d95b`，量度之前）。
 - **起因**：Kelvin 對 EXP-20261116-19：「doesnt makes sense, try to dig deeper, sectional is one of the most important signals」。
 - **一句結論**：**Kelvin 啱一半。** 逐仗對嗰場正規化之後，末段速度（尤其**扣咗 600m 位置**之後）喺現行模型之上**有**殘差資訊；
   EXP-19 嘅「L600 有害」係配權過大，唔係訊號有害。但正確權重好細（現行分 SD 嘅約 0.10–0.13 倍），
@@ -158,4 +158,4 @@ PYTHONDONTWRITEBYTECODE=1 python3 $P/deep.py <raw/mob> <events.json> <outdir>   
 PYTHONDONTWRITEBYTECODE=1 python3 $P/rq_deep.py --out <out.json>                   # QLD（~3 分鐘）
 ```
 
-證據：[`EXP-20261116-18-evidence/`](EXP-20261116-18-evidence/)（`deep_report.json`、`rq_deep_report.json`）；`events.json` 喺 EXP-19 evidence。分支 `claude-au-mobile-sectionals-20261116`。
+證據：[`EXP-20261116-22-evidence/`](EXP-20261116-22-evidence/)（`deep_report.json`、`rq_deep_report.json`）；`events.json` 喺 EXP-19 evidence。分支 `claude-au-mobile-sectionals-20261116`。

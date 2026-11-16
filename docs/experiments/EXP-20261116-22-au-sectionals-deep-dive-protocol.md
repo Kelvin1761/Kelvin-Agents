@@ -1,4 +1,6 @@
-# EXP-20261116-18 預先登記：段速深入診斷（正規化、殘差資訊、配權、情境、功效、QLD 大樣本、pace_figure 換真 L600）
+# EXP-20261116-22 預先登記：段速深入診斷（正規化、殘差資訊、配權、情境、功效、QLD 大樣本、pace_figure 換真 L600）
+
+> 編號更正：原本以 EXP-20261116-18 登記（commit `17c8d95b`，內容同時間未改），但 main 上 -18 已經俾 HKJC 用咗，改做 -22。
 
 - **日期**：2026-11-16；**平台**：AU；**類型**：診斷 + 一個零擬合參數候選（arm P）。唔改生產模型。
 - **起因**：Kelvin 對 EXP-20261116-19 嘅判決：「doesnt makes sense, try to dig deeper, sectional is one of the most important signals」。

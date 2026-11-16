@@ -95,7 +95,7 @@ def main():
     ap.add_argument("--rq", default=str(Path(open(rq_deep.REPO / ".wongchoi_au_data_root").read().strip()).parent / "AU_Racing_Time_Evidence"))
     args = ap.parse_args()
     races = rq_deep.parse(args.rq)
-    rel_runs, _info = rq_deep.relative(races)          # fin.w6 / Lpos.w6（EXP-18 定義）
+    rel_runs, _info = rq_deep.relative(races)          # fin.w6 / Lpos.w6（EXP-22 定義）
     runs, const, info = per_run(races)
     data = rq_deep.build(races, rel_runs, rq_deep.load_scores())
     keys = ARMS

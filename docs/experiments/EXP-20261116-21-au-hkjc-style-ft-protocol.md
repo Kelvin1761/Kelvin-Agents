@@ -34,13 +34,13 @@ L400 趨勢、能量趨勢、分段形狀，同 2026-11-14 上線嘅 **FT 組件
 - **H2**：只 `z_total`（消融）
 - **H0**：H 但**唔減**當日場地速度（消融當日場地速度）
 
-另報（探索，唔判）：`H` 同 `Lpos`（EXP-18）一齊入 conditional logit，睇係咪互補。
+另報（探索，唔判）：`H` 同 `Lpos`（EXP-22）一齊入 conditional logit，睇係咪互補。
 
-## 量度同判決（同 EXP-18 一樣嘅尺，加細咗嘅 k 網格）
+## 量度同判決（同 EXP-22 一樣嘅尺，加細咗嘅 k 網格）
 
 1. 單獨：場內 place／win AUC、Spearman。
 2. **殘差（主判）**：conditional logit `place ~ base_z + arm_z`，c 嘅賽日 bootstrap CI（400）；「有資訊」= c CI 全正且 Holm 後 p < 0.05。
-3. 配權：dev（11-08→11-12）揀 k ∈ {0.05, 0.10, 0.15, 0.25}（base 場內 SD 單位）—— EXP-18 教訓係正確比率 ~0.1，所以網格要包住；
+3. 配權：dev（11-08→11-12）揀 k ∈ {0.05, 0.10, 0.15, 0.25}（base 場內 SD 單位）—— EXP-22 教訓係正確比率 ~0.1，所以網格要包住；
    dev Gold／Good 唔負、dev place AUC > 0 嘅 k 取中位；test（11-13→11-15）報 v3。
 4. **QLD**（RQ，EXP-42 切分）：同樣定義（`first` = 完成時間 − 最後 3 段；標準 = train 期頭三名 (場地, 路程) 中位；
    當日場地速度 = 同日同場全場中位偏差；1/k 最近 6 仗最少 2 仗；z 常數 train 期）。疊加喺 `fin.w6` 上 test 期 log-lik／AUC；

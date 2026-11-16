@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""EXP-20261116-18 A 部分 + arm P（跟預先登記，唔准喺度改規則）。
+"""EXP-20261116-22 A 部分 + arm P（跟預先登記，唔准喺度改規則）。
 
     PYTHONDONTWRITEBYTECODE=1 python3 deep.py <raw/mob> <events.json> <outdir> [--semantics-only]
 

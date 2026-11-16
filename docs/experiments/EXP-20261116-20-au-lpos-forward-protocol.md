@@ -1,7 +1,7 @@
 # EXP-20261116-20 預先登記：AU 末段扣位置（Lpos）forward 測試（只追蹤，唔郁發佈排名）
 
 - **日期**：2026-11-16（Kelvin 經主 session 批准：「happy to have a 登記嘅前向測試」）。
-- **來源**：[EXP-20261116-18](EXP-20261116-18-au-sectionals-deep-dive-results.md)：`Lpos` 喺現行模型之上有殘差資訊（Holm p 0.020），
+- **來源**：[EXP-20261116-22](EXP-20261116-22-au-sectionals-deep-dive-results.md)：`Lpos` 喺現行模型之上有殘差資訊（Holm p 0.020），
   但 318 場量唔到排名改善（Gold MDE ~4pp）。呢個測試用**全新、之後先發生**嘅賽事判。
 - **寫喺任何 forward 數據之前**，規格凍結；之後見到數據唔准改（Kelvin 嘅要求）。要改 = 開新 EXP、新 arm。
 
@@ -21,7 +21,7 @@
     本駒 L600 = Σ 200 × 3.6 / km/h（400m、200m、Fnsh 三格齊先有）
     Lr        = −(本駒 L600 − RaceL600)
     p800      = (800m 位置 − 1) / (馬數 − 1)
-    Lpos      = Lr − (−1.1008497873571432 + −0.10976351609298357 × p800)   # 常數 = EXP-18 用 11-06 前 22,071 行 fit，凍結
+    Lpos      = Lr − (−1.1008497873571432 + −0.10976351609298357 × p800)   # 常數 = EXP-22 用 11-06 前 22,071 行 fit，凍結
 
 `Lpos.avg4` = 最近 ≤4 仗有值嘅平均（日期 < 今仗）。冇值 = 場內 z 0。
 
@@ -29,7 +29,7 @@
 
 - **baseline** = live 排名分（`Race_N_Logic.json` 儲存特徵，`au_walkforward_refit.exact_score`，同其他 AU forward 一樣）。
 - **candidate** = baseline + **0.10** × 場內 pstdev(baseline) × 場內 z(`Lpos.avg4`)。
-  0.10 = EXP-18 估計比率 0.102 向下取整，冇再調。
+  0.10 = EXP-22 估計比率 0.102 向下取整，冇再調。
 
 ## 母體
 
@@ -47,5 +47,5 @@
 
 ## 洩漏
 
-只用日期 < 今仗嘅手機行同 Formguide 行；常數係 EXP-18 嗰陣定（11-06 前資料）；冇今仗賠率；
+只用日期 < 今仗嘅手機行同 Formguide 行；常數係 EXP-22 嗰陣定（11-06 前資料）；冇今仗賠率；
 baseline 用賽前儲存特徵重算。
