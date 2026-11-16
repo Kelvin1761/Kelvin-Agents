@@ -36,10 +36,10 @@ class BetfairError(RuntimeError):
     """只帶安全資訊（method、HTTP 狀態、Betfair 錯誤碼），唔帶 credential。"""
 
 
-def _app_key() -> str:
-    key = os.environ.get("BETFAIR_APP_KEY", "").strip()
+def _app_key(env_var: str = "BETFAIR_APP_KEY") -> str:
+    key = os.environ.get(env_var, "").strip()
     if not key:
-        raise BetfairError("BETFAIR_APP_KEY 未設定（~/.wongchoi_betfair.env）")
+        raise BetfairError(f"{env_var} 未設定（~/.wongchoi_betfair.env）")
     return key
 
 
@@ -54,19 +54,23 @@ def _post(url: str, data: bytes, headers: dict, context: ssl.SSLContext | None =
         raise BetfairError(f"network error @ {urllib.parse.urlparse(url).path}: {type(exc.reason).__name__}") from None
 
 
-def _save_session(token: str) -> None:
-    SESSION_FILE.write_text(json.dumps({"token": token, "at": time.time()}))
-    os.chmod(SESSION_FILE, 0o600)
+def _save_session(token: str, session_file: Path | None = None) -> None:
+    path = session_file or SESSION_FILE
+    path.write_text(json.dumps({"token": token, "at": time.time()}))
+    os.chmod(path, 0o600)
 
 
-def login() -> str:
-    """→ session token。有證書就用證書登入，否則用戶名＋密碼。"""
+def login(*, app_key: str | None = None, session_file: Path | None = None) -> str:
+    """→ session token。有證書就用證書登入，否則用戶名＋密碼。
+
+    `app_key`／`session_file` 只係畀落注 module（`betfair_trading.py`）用 live key 同另一個 session 檔；
+    唔傳就同以前一模一樣（delayed key、`SESSION_FILE`）。"""
     user = os.environ.get("BETFAIR_USERNAME", "").strip()
     password = os.environ.get("BETFAIR_PASSWORD", "")
     if not user or not password:
         raise BetfairError("BETFAIR_USERNAME／BETFAIR_PASSWORD 未設定（~/.wongchoi_betfair.env）")
     body = urllib.parse.urlencode({"username": user, "password": password}).encode()
-    headers = {"X-Application": _app_key(), "Accept": "application/json",
+    headers = {"X-Application": app_key or _app_key(), "Accept": "application/json",
                "Content-Type": "application/x-www-form-urlencoded"}
     cert, key = os.environ.get("BETFAIR_CERT_FILE"), os.environ.get("BETFAIR_KEY_FILE")
     if cert and key:
@@ -79,28 +83,29 @@ def login() -> str:
         token, status = out.get("token"), out.get("status")
     if not token or status not in ("SUCCESS", None):
         raise BetfairError(f"login failed: {status or out.get('error') or 'unknown'}")
-    _save_session(token)
+    _save_session(token, session_file)
     return token
 
 
-def session_token() -> str:
+def session_token(*, app_key: str | None = None, session_file: Path | None = None) -> str:
+    path = session_file or SESSION_FILE
     try:
-        cached = json.loads(SESSION_FILE.read_text())
+        cached = json.loads(path.read_text())
     except (OSError, ValueError):
-        return login()
+        return login(app_key=app_key, session_file=session_file)
     age = time.time() - float(cached.get("at") or 0)
     if age < 3.5 * 3600:
         return cached["token"]
     if age < SESSION_MAX_AGE_S:
         try:
-            out = _post(KEEPALIVE_URL, b"", {"X-Application": _app_key(), "X-Authentication": cached["token"],
-                                               "Accept": "application/json"})
+            out = _post(KEEPALIVE_URL, b"", {"X-Application": app_key or _app_key(),
+                                               "X-Authentication": cached["token"], "Accept": "application/json"})
             if out.get("status") == "SUCCESS":
-                _save_session(cached["token"])
+                _save_session(cached["token"], session_file)
                 return cached["token"]
         except BetfairError:
             pass
-    return login()
+    return login(app_key=app_key, session_file=session_file)
 
 
 def rpc(method: str, params: dict, *, retry_login: bool = True) -> object:

@@ -1,0 +1,31 @@
+{
+  "_comment": "AU Betfair 自動落注設定。開關第 1 層：要 enabled=true 同 mode=live 先算開。改呢個檔 = 改落注行為，要經 ./保存.sh。說明：docs/operations/au-betfair-autobet-setup.md",
+  "enabled": false,
+  "mode": "dry_run",
+  "strategy": "none",
+  "allowed_strategies": [],
+  "limits": {
+    "min_stake": 5.0,
+    "max_stake_per_bet": 5.0,
+    "max_total_stake_per_day": 50.0,
+    "max_bets_per_day": 10,
+    "daily_stop_loss": 30.0,
+    "max_exposure_per_race": 10.0,
+    "min_bsp": 1.5,
+    "max_bsp": 30.0,
+    "min_minutes_before_start": 2,
+    "max_minutes_before_start": 720,
+    "min_available_funds": 100.0,
+    "allow_market_on_close": false,
+    "market_types": ["WIN", "PLACE"],
+    "country": "AU",
+    "default_commission_pct": 10.0
+  },
+  "strategies": {
+    "au_betting_place": {
+      "stake": 5.0,
+      "min_price": 1.5,
+      "which": "last"
+    }
+  }
+}
