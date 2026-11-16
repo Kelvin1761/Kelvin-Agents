@@ -172,3 +172,11 @@ def test_awt_vs_turf_and_straight_tags_are_unscored(tmp_path):
 def test_formline_chip_does_not_say_strong(tmp_path):
     out = tags.race_tags(*_meeting(tmp_path, {"1": _horse("甲", "巴度", hid="H1", rows=[("form_line", 1.2)])}, {"H1": []}))
     assert _labels(out, "1", "good") == ["賽績線佔優"]
+
+
+def test_wide_two_back_tag_is_unscored():
+    """EXP-20261116-18：上上仗走外疊只顯示。"""
+    out = tags._incident_tag({"incident_history_flags": "", "incident_wide_two_back": True})
+    assert [t["label"] for t in out] == ["上上仗走外疊冇遮擋"]
+    assert out[0]["scored"] is False and out[0]["tone"] == "good"
+    assert tags._incident_tag({"incident_history_flags": ""}) == []

@@ -88,6 +88,19 @@ def prev_flags(code: str, race_date: str, table: dict) -> str:
     return runs[i - 1][1] or ""
 
 
+def prev_wide_two_back(code: str, race_date: str, table: dict) -> bool:
+    """只顯示（EXP-20261116-18）：上上仗（上仗之前最近一場有報告嘅賽事）走外疊冇遮擋，而上仗冇。
+    上仗要有報告（同 diag_twoback.py 一樣）；上仗走外疊已由 W 入分處理。"""
+    runs = (table.get("horses") or {}).get(code) or []
+    i = bisect_left([r[0] for r in runs], race_date)
+    if i == 0 or runs[i - 1][1] is None or "W" in runs[i - 1][1]:
+        return False
+    for _d, fl in reversed(runs[:i - 1]):
+        if fl is not None:
+            return "W" in fl
+    return False
+
+
 def horse_flags(horses: dict, race_date: str, table: dict) -> dict:
     """{馬號: 上仗旗}；外隊馬當冇旗（中性）。"""
     from .market_history import horse_code
@@ -112,7 +125,9 @@ def apply(horses: dict, race_date: str | None, table: dict | None = None) -> int
     table = table if table is not None else load_table()
     if not table:
         return 0
+    from .market_history import horse_code
     from .scoring import compute_grade, to_display_scale
+    from .tags import is_foreign
     scored = {k: h for k, h in horses.items() if isinstance(h, dict) and isinstance(h.get("python_auto"), dict)
               and h["python_auto"].get("ability_score_raw") is not None}
     n = 0
@@ -120,6 +135,8 @@ def apply(horses: dict, race_date: str | None, table: dict | None = None) -> int
     for k, add in adjustments(scored, str(race_date)[:10], table).items():
         auto = scored[k]["python_auto"]
         auto["incident_history_flags"] = fl.get(k, "")
+        auto["incident_wide_two_back"] = (False if is_foreign(scored[k])
+                                          else prev_wide_two_back(horse_code(scored[k]), str(race_date)[:10], table))
         raw = round(float(auto["ability_score_raw"]) + add, 4)
         auto["ability_score_raw"] = raw
         auto["ability_score"] = round(to_display_scale(raw), 2)

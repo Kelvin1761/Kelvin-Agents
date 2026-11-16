@@ -472,6 +472,10 @@ def _incident_tag(auto: dict) -> list[dict]:
         out.append(_tag("incident_ride", "上仗騎法被查詢", "good",
                         why="上仗競賽事件報告：競賽小組查詢騎法、騎師交代策騎指示，或者被告誡／未有力策。"
                             "歷史上下仗入位率高過模型預測約 3pp（dev／holdout 都正），但入分過唔到閘；未入分。"))
+    if auto.get("incident_wide_two_back"):
+        out.append(_tag("incident_wide_two_back", "上上仗走外疊冇遮擋", "good",
+                        why="上仗之前嗰場競賽事件報告記錄走外疊、冇遮擋（上仗冇）。歷史上入位率仍然高過模型預測約 2pp"
+                            "（dev／holdout 都正、7 季全正），但入分過唔到閘（EXP-20261116-18）；未入分。"))
     return out
 
 

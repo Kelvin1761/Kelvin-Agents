@@ -39,6 +39,24 @@ class IncidentHistoryTest(unittest.TestCase):
         adj = ih.adjustments({"1": horse("L001"), "2": horse("L002")}, "2026-11-15", table)
         self.assertEqual(adj, {"1": 0.0, "2": 0.0})
 
+    def test_wide_two_back_display_only(self):
+        """EXP-20261116-18：上上仗走外疊（上仗有報告但冇走外疊）只顯示，唔入分。"""
+        t = {"horses": {"L001": [["2026-10-01", "W"], ["2026-10-20", None], ["2026-11-01", ""]],
+                        "L002": [["2026-10-01", "W"], ["2026-11-01", "W"]],
+                        "L003": [["2026-10-01", "W"], ["2026-11-01", None]],
+                        "L004": [["2026-10-01", "W"], ["2026-11-01", ""], ["2026-11-15", ""]]}}
+        self.assertTrue(ih.prev_wide_two_back("L001", "2026-11-15", t))   # 跳過冇報告嗰場
+        self.assertFalse(ih.prev_wide_two_back("L002", "2026-11-15", t))  # 上仗已經 W（入分）
+        self.assertFalse(ih.prev_wide_two_back("L003", "2026-11-15", t))  # 上仗冇報告
+        self.assertFalse(ih.prev_wide_two_back("L004", "2026-11-30", t))  # 上上仗係 ""，唔係 W
+        self.assertTrue(ih.prev_wide_two_back("L004", "2026-11-15", t))   # 嚴格早過今仗
+        hs = {"1": horse("L001"), "2": horse("L003")}
+        self.assertEqual(ih.adjustments(hs, "2026-11-15", t), {"1": 0.0, "2": 0.0})
+        ih.apply(hs, "2026-11-15", t)
+        self.assertTrue(hs["1"]["python_auto"]["incident_wide_two_back"])
+        self.assertFalse(hs["2"]["python_auto"]["incident_wide_two_back"])
+        self.assertEqual(hs["1"]["python_auto"]["ability_score_raw"], 60.0)
+
     def test_last_run_strictly_before(self):
         self.assertEqual(ih.prev_flags("L001", "2026-11-15", TABLE), "W")      # 唔用今仗 M
         self.assertEqual(ih.prev_flags("L002", "2026-11-15", TABLE), "")       # 最近一仗冇報告 → 冇旗（唔回頭搵舊旗）
