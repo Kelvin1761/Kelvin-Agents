@@ -211,15 +211,15 @@ def test_distance_move_and_quick_backup_and_rating_near_win():
     runs = [{"distance": 1200, "placing": 5, "venue": "HV", "awt": False, "jockey": "x"}]
     # 增減程 chip 用引擎組件（distance_move）嘅判斷：≥400 米先出；增程入分
     auto = {"distance_move": {"prev": 1200, "today": 1650, "up": True}, "distance_move_delta": -0.85}
-    t = tags._distance_venue_tags(horse, auto, runs, dict(meta))
+    t = tags._distance_move_tags(auto)
     up = [x for x in t if x["key"] == "distance_up"]
     assert up and up[0]["label"] == "大幅增程（1200→1650米）" and up[0]["tone"] == "bad" and up[0]["scored"]
     assert up[0]["impact"] == -0.85
     auto = {"distance_move": {"prev": 1650, "today": 1200, "up": False}}
-    t = tags._distance_venue_tags(horse, auto, runs, dict(meta, distance=1200))
+    t = tags._distance_move_tags(auto)
     assert [x["label"] for x in t if x["key"] == "distance_down"] == ["大幅減程（1650→1200米）"]
     auto = {"distance_move": {"prev": 1400, "today": 1200, "up": False}}     # 200 米唔係大幅
-    t = tags._distance_venue_tags(horse, auto, runs, dict(meta, distance=1200))
+    t = tags._distance_move_tags(auto)
     assert not [x for x in t if x["key"] in ("distance_up", "distance_down")]
     assert tags._backup_tag({"days_since_last": 7})[0]["label"] == "相隔 7 日再出"
     assert tags._backup_tag({"days_since_last": 14}) == []
@@ -239,3 +239,10 @@ def test_next_entry_tag():
     assert t[0]["label"] == "已報 11/22 沙田（4 日後）" and t[0]["tone"] == "note" and not t[0]["scored"]
     assert "第 9 場" in t[0]["why"] and "4班" in t[0]["why"]
     assert tags._next_entry_tag({"_data": {}}) == []
+
+
+def test_scored_distance_move_always_has_a_chip_even_without_profile_runs():
+    """2026-11-18：14 匹大幅增程扣咗分但只有 4 匹有 chip（馬匹頁往績冇載入 → _distance_venue_tags 提早 return）。"""
+    auto = {"distance_move": {"prev": 1200, "today": 1650, "up": True}, "distance_move_delta": -0.8}
+    out = tags.horse_tags("1", {"_data": {}}, auto, runs=[], meta={"distance": 1650, "date": "2026-11-18"})
+    assert "大幅增程（1200→1650米）" in [t["label"] for t in out["bad"]]

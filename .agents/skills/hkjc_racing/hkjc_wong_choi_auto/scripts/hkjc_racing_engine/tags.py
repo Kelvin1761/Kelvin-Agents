@@ -241,6 +241,23 @@ def _fastest_finisher(horses: dict) -> dict:
                           "冇按路程／場地標準化；未入分（段速維度另有計 L400）。")]}
 
 
+def _distance_move_tags(auto: dict) -> list[dict]:
+    """大幅增減程（≥400 米，EXP-20261117-03）：只讀引擎 distance_move 結果 —— 入咗分就一定有 chip
+    （以前放喺 _distance_venue_tags 入面，馬匹頁往績冇載入就提早 return，11-18 有 10 匹扣咗分冇 chip）。"""
+    out = []
+    mv = auto.get("distance_move") or {}
+    prev, dist = mv.get("prev"), mv.get("today")
+    if prev and dist and mv.get("up"):
+        delta = float(auto.get("distance_move_delta") or 0.0)
+        out.append(_tag("distance_up", f"大幅增程（{prev}→{dist}米）", "bad", scored=True, impact=round(delta, 2),
+                        why=f"上仗 {prev}米，今仗 {dist}米（增 ≥400 米）。歷史上大幅增程嘅馬入位率低過模型預測約 2pp，"
+                            "短途（≤1200）轉一哩以上更明顯（約 −4～−6pp）；6,000 場回放 dev／holdout 都改善（EXP-20261117-03）。"))
+    elif prev and dist and prev - dist >= BIG_MOVE:
+        out.append(_tag("distance_down", f"大幅減程（{prev}→{dist}米）", "note",
+                        why=f"上仗 {prev}米，今仗 {dist}米（減 ≥400 米）。歷史上冇穩定加減（dev +1.5、holdout −0.2pp）；未入分。"))
+    return out
+
+
 def _distance_venue_tags(horse: dict, auto: dict, runs: list[dict], meta: dict) -> list[dict]:
     out = []
     data = horse.get("_data") or {}
@@ -265,16 +282,6 @@ def _distance_venue_tags(horse: dict, auto: dict, runs: list[dict], meta: dict) 
         elif not same and complete:
             out.append(_tag("first_distance", f"初跑{dist}米", "note",
                             why=f"香港 {len(runs)} 仗從未跑過 {dist}米；未入分。"))
-        mv = auto.get("distance_move") or {}
-        prev = mv.get("prev")
-        if prev and dist and mv.get("up"):
-            delta = float(auto.get("distance_move_delta") or 0.0)
-            out.append(_tag("distance_up", f"大幅增程（{prev}→{dist}米）", "bad", scored=True, impact=round(delta, 2),
-                            why=f"上仗 {prev}米，今仗 {dist}米（增 ≥400 米）。歷史上大幅增程嘅馬入位率低過模型預測約 2pp，"
-                                "短途（≤1200）轉一哩以上更明顯（約 −4～−6pp）；6,000 場回放 dev／holdout 都改善（EXP-20261117-03）。"))
-        elif prev and dist and prev - dist >= BIG_MOVE:
-            out.append(_tag("distance_down", f"大幅減程（{prev}→{dist}米）", "note",
-                            why=f"上仗 {prev}米，今仗 {dist}米（減 ≥400 米）。歷史上冇穩定加減（dev +1.5、holdout −0.2pp）；未入分。"))
     out += _surface_tags(runs, meta, complete)
     if complete:
         if meta.get("awt") and not any(r["awt"] for r in runs):
@@ -590,7 +597,7 @@ def _incident_tag(auto: dict) -> list[dict]:
 
 def horse_tags(no: str, horse: dict, auto: dict, *, runs: list[dict], meta: dict,
                priority: str = "", extra: list | None = None) -> dict:
-    special = _trainer_tags(auto) + _jockey_change_tag(horse, auto, runs) + _distance_venue_tags(horse, auto, runs, meta)
+    special = _trainer_tags(auto) + _jockey_change_tag(horse, auto, runs) + _distance_venue_tags(horse, auto, runs, meta) + _distance_move_tags(auto)
     special += extra or []
     if "+" in str(priority or ""):
         special.append(_tag("trainer_ace", "練馬師王牌", "note",
