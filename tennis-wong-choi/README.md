@@ -40,7 +40,7 @@ PYTHONPATH=src .venv/bin/python -m pytest -q
 | 10:30, 12:30 | recovery of a failed 09:00 run | failures only |
 | every 30 min | near-start price capture for 精選 matches | none |
 | hourly at :35 | settle 精選 whose match started 90 min–12 h ago; redeploy the dashboard only if one settled | none |
-| every 15 min | Betfair tennis MATCH_ODDS capture (read-only) + frozen Sportsbet-vs-Betfair paper decisions (EXP-20261116-19) | 300／1,000 milestones via 18:00 daily |
+| every 15 min | Betfair tennis MATCH_ODDS capture (read-only) + frozen Sportsbet-vs-Betfair paper decisions (EXP-20261116-23) | 300／1,000 milestones via 18:00 daily |
 
 Install: `WC_TENNIS_RUNTIME_ROOT=<live checkout>/tennis-wong-choi scripts/install_macos_launchd.sh`.
 

@@ -550,4 +550,4 @@
 - [EXP-20261116-22](EXP-20261116-22-au-sectionals-deep-dive-results.md) — AU 段速深入診斷（Kelvin 唔信 EXP-19）：對嗰場正規化後末段 Lr／扣位置 Lpos 喺現行模型上有殘差資訊（Holm 0.013／0.02），EXP-19「L 有害」係 β 大 10–40 倍；正確權重 ~0.1 SD、318 場 MDE ~4pp 量唔到 → NEEDS MORE TESTING；QLD 5,514 場 Lpos 係唯一贏完成時間嘅段速（log-lik CI 正、AUC +0.008 跨零）；收腳×步速、走地距離冇資訊；pace_figure 換真 L600 REJECT（leaf AUC −0.019）
 - [EXP-20261116-20](EXP-20261116-20-au-lpos-forward-protocol.md) — AU 末段扣位置 Lpos forward（Kelvin 批）：β 0.10 固定、只追蹤唔郁排名、2026-11-17 起、夠 2,500 場 v3 fixed_rule 判；每日 04:30 抓手機分段（隔 25 秒、非 200 即停）；登記 `au_forward_tracker`
 - [EXP-20261116-21](EXP-20261116-21-au-hkjc-style-ft-results.md) — 借 HKJC FT（前段＋全程對頭三名標準、扣當日場地速度）落 AU：手機殘差有（Holm 0.01，全程最強 c +0.087），但 QLD 疊加喺同場相對完成時間上全部跨零 → 係完成質素唔係段速；唔開第二 forward arm；建議用手機全國完成時間補 `full_time_speed` 來源
-- [EXP-20261116-19](EXP-20261116-19-tennis-sharp-forward.md) — Tennis Sportsbet 對 Betfair 即時價紙上前向測試（預先登記）：每 15 分鐘抓 Betfair 網球 MATCH_ODDS，每場喺 21:00 嗰輪做一次決定就凍結，EV>0 落 1u；300／1,000 注推 Telegram
+- [EXP-20261116-23](EXP-20261116-23-tennis-sharp-forward.md) — Tennis Sportsbet 對 Betfair 即時價紙上前向測試（預先登記）：每 15 分鐘抓 Betfair 網球 MATCH_ODDS，每場喺 21:00 嗰輪做一次決定就凍結，EV>0 落 1u；300／1,000 注推 Telegram
