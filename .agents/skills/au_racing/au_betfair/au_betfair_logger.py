@@ -49,6 +49,8 @@ HARNESS = re.compile(r"\b(Pace|Trot|Pacers?|Trotters?)\b", re.I)
 AHEAD_MIN, BEHIND_MIN = 75, 10
 QUIET_HOURS = range(1, 9)        # 悉尼 01:00–08:59 冇 AU 賽事，唔 call API
 BOOK_CHUNK = 40                  # EX_BEST_OFFERS weight 5 × 40 = 200（Betfair 上限）
+SETTLE_CHUNK = 25                # SP_TRADED weight 7 × 25 = 175；用 40 會 TOO_MUCH_DATA（2026-11-07..16 每晚結算都失敗）
+SETTLE_LOOKBACK_DAYS = 7         # 每晚補返之前 7 日未結算嘅市場：一晚失敗唔會永久冇咗賽果
 TARGET_RACES = 2000             # 只計 WIN（預先登記嘅分析）；PLACE 只係記錄，分析要另開協議
 MARKET_TYPES = ("WIN", "PLACE")  # 用戶 2026-11-06：「can we track place as well」
 WINDOWS = {"t60": (70, 60), "t15": (18, 15), "t5": (8, 5)}   # 開跑前 [早, 遲] 分鐘內最後一張未開跑快照
@@ -133,6 +135,8 @@ def cmd_snapshot(now: datetime | None = None, rpc=bf.rpc) -> int:
         "market": m["marketId"], "type": (m.get("description") or {}).get("marketType"),
         "event_id": (m.get("event") or {}).get("id"), "name": m.get("marketName"), "start": m.get("marketStartTime"),
         "event": (m.get("event") or {}).get("name"), "venue": (m.get("event") or {}).get("venue"),
+        # 佣金率（%，市場底率）：VIC 8、NSW 10 …… 唔係 5；計 ROI 一定要用呢個（2026-11-16 查實）
+        "mbr": (m.get("description") or {}).get("marketBaseRate"),
         "runners": [{"id": r.get("selectionId"), "name": r.get("runnerName")} for r in m.get("runners") or []],
     } for m in markets if m["marketId"] not in seen])
     rows = book_rows(markets, int(now.timestamp() * 1000), rpc)
@@ -146,8 +150,8 @@ def cmd_settle(date_str: str, rpc=bf.rpc) -> int:
     done = {s["market"] for s in read(folder / "settle.jsonl") if s.get("status") == "CLOSED"}
     todo = [i for i in ids if i not in done]
     rows = []
-    for i in range(0, len(todo), BOOK_CHUNK):
-        books = rpc("listMarketBook", {"marketIds": todo[i:i + BOOK_CHUNK],
+    for i in range(0, len(todo), SETTLE_CHUNK):
+        books = rpc("listMarketBook", {"marketIds": todo[i:i + SETTLE_CHUNK],
                                        "priceProjection": {"priceData": ["SP_TRADED"]}}) or []
         for book in books:
             if book.get("status") != "CLOSED":
@@ -214,6 +218,18 @@ def notify_offline(reason: str) -> None:
         print(f"Telegram 推送失敗：{type(exc).__name__}", file=sys.stderr)
 
 
+def notify_settle_failed(reason: str) -> None:
+    """結算失敗 → 推 Telegram（primary）；之後 7 日內任何一晚成功都會自動補返。失敗唔影響結束碼。"""
+    try:
+        sys.path.insert(0, str(HERE.parent / "au_daily_auto"))
+        import au_notify
+        au_notify.push(f"⚠️ Betfair 市場走勢記錄：今晚結算失敗（{reason}）。賽果同 BSP 未寫入，"
+                       f"前向測試（EXP-20261106-02）場數唔會增加；{SETTLE_LOOKBACK_DAYS} 日內修好會自動補返。",
+                       title="🏇 AU Betfair 記錄", audience="primary")
+    except Exception as exc:  # noqa: BLE001
+        print(f"Telegram 推送失敗：{type(exc).__name__}", file=sys.stderr)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -228,12 +244,15 @@ def main() -> int:
             print(f"snapshot rows {cmd_snapshot()}")
         elif args.cmd == "settle":
             today = datetime.now(SYDNEY).date()
-            for d in ([args.date] if args.date else [str(today - timedelta(days=1)), str(today)]):
+            days = [str(today - timedelta(days=k)) for k in range(SETTLE_LOOKBACK_DAYS, -1, -1)]
+            for d in ([args.date] if args.date else days):
                 print(f"settle {d}: {cmd_settle(d)} markets")
         else:
             print(json.dumps(cmd_status(Path(args.output)), ensure_ascii=False))
     except bf.BetfairError as exc:
         print(f"Betfair error: {exc}", file=sys.stderr)
+        if args.cmd == "settle":            # 結算失敗 = 前向測試靜靜停咗（2026-11-07..16 冇人知），一定要推
+            notify_settle_failed(str(exc))
         return 2
     except DiskOffline as exc:
         print(f"停手（冇寫入內置碟）：{exc}", file=sys.stderr)
