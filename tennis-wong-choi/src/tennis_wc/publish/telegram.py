@@ -242,3 +242,36 @@ def shadow_forward_milestones(log_dir: Path) -> dict[str, str | None]:
                 state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2))
             out[arm.name] = verdict
     return out
+
+
+def sharp_forward_milestone(log_dir: Path) -> str | None:
+    """Telegram once when the Sportsbet-vs-Betfair paper test (EXP-20261116-19) reaches 300, and again at 1,000."""
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.select import featured, sharp_forward
+
+    with get_connection() as conn:
+        rows = sharp_forward.picks_with_results(conn)
+        counts = sharp_forward.decision_counts(conn)
+    perf = featured.performance(rows)
+    settled = perf["settled"]
+    milestone = (sharp_forward.FINAL_VERDICT if settled >= sharp_forward.FINAL_VERDICT
+                 else sharp_forward.FIRST_LOOK if settled >= sharp_forward.FIRST_LOOK else None)
+    state_path = log_dir / FORWARD_STATE
+    state = json.loads(state_path.read_text()) if state_path.exists() else {}
+    key = f"sharp:{milestone}"
+    if milestone is None or key in state:
+        return None
+    verdict = sharp_forward.verdict(perf)
+    roi = f"{perf['roi']:+.1%}" if perf["roi"] is not None else "—"
+    ci = f"[{perf['ci_low']:+.1%}, {perf['ci_high']:+.1%}]" if perf["ci_low"] is not None else "—"
+    clvs = [r["clv"] for r in rows if r.get("clv") is not None]
+    clv = f"{sum(clvs) / len(clvs):+.1%}（{len(clvs)} 注有收市價）" if clvs else "—"
+    message = (f"🎾 Tennis Sportsbet 對 Betfair 紙上測試夠數（{milestone} 注）\n"
+               f"決定 {counts['decisions']} 場｜落注 {counts['bets']}｜已結算 {settled}｜中 {perf['wins']}\n"
+               f"ROI {roi}｜95% CI {ci}｜平均 CLV {clv}\n"
+               f"預先登記判決：{verdict}\n"
+               f"{sharp_forward.EXPERIMENT}。紙上測試，唔會自動落真錢，由 Kelvin 決定。")
+    if notify(message, audience="primary"):
+        state[key] = {"verdict": verdict, "settled": settled, "sent_at": datetime.now().isoformat()}
+        state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2))
+    return verdict

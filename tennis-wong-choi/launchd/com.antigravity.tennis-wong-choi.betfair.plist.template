@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!--
+    Every 15 minutes (:00 :15 :30 :45): Betfair tennis MATCH_ODDS capture
+    (read-only) and the frozen Sportsbet-vs-Betfair paper decisions
+    (EXP-20261116-19). Credentials: ~/.wongchoi_betfair.env (outside the repo).
+  -->
+  <key>Label</key>
+  <string>com.antigravity.tennis-wong-choi.betfair</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>__TENNIS_PYTHON_BIN__</string>
+    <string>__PROJECT_DIR__/scripts/tennis_betfair_tick.py</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>__PROJECT_DIR__</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>DATABASE_URL</key>
+    <string>__DATABASE_URL__</string>
+    <key>TENNIS_ENV_FILE</key>
+    <string>__TENNIS_ENV_FILE__</string>
+    <key>TENNIS_PYTHON_BIN</key>
+    <string>__TENNIS_PYTHON_BIN__</string>
+    <key>TENNIS_LOG_DIR</key>
+    <string>__TENNIS_LOG_DIR__</string>
+  </dict>
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict><key>Minute</key><integer>0</integer></dict>
+    <dict><key>Minute</key><integer>15</integer></dict>
+    <dict><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Minute</key><integer>45</integer></dict>
+  </array>
+  <key>StandardOutPath</key>
+  <string>__PROJECT_DIR__/data/logs/launchd.betfair.stdout.log</string>
+  <key>StandardErrorPath</key>
+  <string>__PROJECT_DIR__/data/logs/launchd.betfair.stderr.log</string>
+  <key>RunAtLoad</key><false/>
+</dict>
+</plist>
