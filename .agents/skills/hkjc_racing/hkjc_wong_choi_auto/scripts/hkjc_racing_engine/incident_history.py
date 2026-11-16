@@ -28,6 +28,10 @@ MEDICAL_RE = r"喘鳴|流鼻血|鼻孔流血|心律|跛|呼吸|肺部有血|不�
 # 只顯示（EXP-20261116-11）：同 docs/experiments/patches/hkjc_incidents/diag_round3.py 嘅 INSTR｜RIDE_Q｜RIDE_WARN 一樣。
 RIDE_RE = (r"獲指示|策騎指示|(查詢|研訊).{0,30}(騎法|策騎)|(騎法|策騎).{0,12}(展開研訊|查詢)"
            r"|告誡.{0,40}(策騎|騎法)|(策騎|騎法).{0,30}(引起小組關注|未能令小組滿意)|100\(2\)|未有力策|未有盡力")
+# 只用嚟 forward shadow（EXP-20261117-05 joint_signals_shadow）＋日後研究；唔入 adjustments。
+# 同 docs/experiments/patches/hkjc_incidents/diag.py 嘅 CATS 一樣。
+BLOCKED_RE = r"未能望空|未能找到空位|找不到空位|受阻|勒避|被困|未能.{0,4}走位|須收慢"
+SLOW_RE = r"出閘笨拙|出閘緩慢|起步緩慢|失地"
 _TABLE: dict | None = None
 
 
@@ -37,7 +41,8 @@ def flags(sentence: str | None) -> str | None:
         return None
     s = str(sentence)
     return (("W" if re.search(WIDE_RE, s) else "") + ("M" if re.search(MEDICAL_RE, s) else "")
-            + ("R" if re.search(RIDE_RE, s) else ""))
+            + ("R" if re.search(RIDE_RE, s) else "") + ("B" if re.search(BLOCKED_RE, s) else "")
+            + ("S" if re.search(SLOW_RE, s) else ""))
 
 
 # 用字漂移監察（Kelvin 2026-11-16「每次用字唔同，捉唔捉得齊？」）：HKJC 改寫法 → 命中率靜靜跌到 0 都唔會報錯。
@@ -99,6 +104,17 @@ def prev_wide_two_back(code: str, race_date: str, table: dict) -> bool:
         if fl is not None:
             return "W" in fl
     return False
+
+
+def prev_two(code: str, race_date: str, table: dict) -> tuple[str | None, str | None]:
+    """(上仗旗, 上上仗旗)：上仗 = 日期嚴格早過今仗嘅最近一仗（冇報告 = None）；上上仗 = 再之前最近一場有報告嘅。"""
+    runs = (table.get("horses") or {}).get(code) or []
+    i = bisect_left([r[0] for r in runs], race_date)
+    if i == 0:
+        return None, None
+    last = runs[i - 1][1]
+    two = next((fl for _d, fl in reversed(runs[:i - 1]) if fl is not None), None)
+    return last, two
 
 
 def horse_flags(horses: dict, race_date: str, table: dict) -> dict:

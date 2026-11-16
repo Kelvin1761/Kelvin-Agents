@@ -57,6 +57,18 @@ class IncidentHistoryTest(unittest.TestCase):
         self.assertFalse(hs["2"]["python_auto"]["incident_wide_two_back"])
         self.assertEqual(hs["1"]["python_auto"]["ability_score_raw"], 60.0)
 
+    def test_blocked_and_slow_flags_are_not_scored(self):
+        """EXP-20261117-05：B（受阻）／S（出閘慢）只俾 forward shadow 用，唔入 adjustments。"""
+        self.assertEqual(ih.flags("出閘緩慢，其後未能望空。"), "BS")
+        t = {"horses": {"L001": [["2026-11-01", "BS"]], "L002": [["2026-11-01", ""]]}}
+        self.assertEqual(ih.adjustments({"1": horse("L001"), "2": horse("L002")}, "2026-11-15", t), {"1": 0.0, "2": 0.0})
+
+    def test_prev_two(self):
+        t = {"horses": {"A": [["2026-10-01", "B"], ["2026-10-20", None], ["2026-11-01", "R"]]}}
+        self.assertEqual(ih.prev_two("A", "2026-11-15", t), ("R", "B"))
+        self.assertEqual(ih.prev_two("A", "2026-11-01", t), (None, "B"))
+        self.assertEqual(ih.prev_two("A", "2026-10-01", t), (None, None))
+
     def test_last_run_strictly_before(self):
         self.assertEqual(ih.prev_flags("L001", "2026-11-15", TABLE), "W")      # 唔用今仗 M
         self.assertEqual(ih.prev_flags("L002", "2026-11-15", TABLE), "")       # 最近一仗冇報告 → 冇旗（唔回頭搵舊旗）
