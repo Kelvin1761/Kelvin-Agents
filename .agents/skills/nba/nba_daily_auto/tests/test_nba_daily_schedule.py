@@ -651,6 +651,10 @@ class NbaDailyScheduleTests(unittest.TestCase):
                 self.assertIs(schedule.card_firewall(snapshot), schedule.nba_publication_firewall)
 
     def test_partial_snapshot_sends_card_for_frozen_games_only(self) -> None:
+        # The SGM push itself is off (Kelvin 2026-11-16); this pins the card it would send.
+        patcher = mock.patch.object(schedule, "SGM_TELEGRAM", True)
+        patcher.start()
+        self.addCleanup(patcher.stop)
         exported = {
             "validation_status": "partial",
             "recommendations": [
@@ -684,6 +688,18 @@ class NbaDailyScheduleTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp, mock.patch.object(
             schedule, "export_nba_snapshot", return_value=exported
         ), mock.patch.object(schedule, "notify_once") as notify:
+            schedule.send_partial_betting_card("2026-10-29", Path(tmp) / "s", ["LAL_LAC"], _Log())
+        notify.assert_not_called()
+
+    def test_track_only_sgm_sends_no_partial_card(self) -> None:
+        """Kelvin 2026-11-16: SGM is track-only, so no SGM card reaches content."""
+        self.assertFalse(schedule.SGM_TELEGRAM)
+        exported = {"validation_status": "partial", "recommendations": [{"id": "nba:2026-10-29:DEN_NOP:combo:1"}],
+                    "warnings": []}
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(
+            schedule, "export_nba_snapshot", return_value=exported
+        ), mock.patch.object(schedule, "nba_betting_message", return_value="TITLE\nBODY"), \
+                mock.patch.object(schedule, "notify_once") as notify:
             schedule.send_partial_betting_card("2026-10-29", Path(tmp) / "s", ["LAL_LAC"], _Log())
         notify.assert_not_called()
 
@@ -841,10 +857,18 @@ def _final_refresh(update_text):
 
 
 def test_final_refresh_with_a_changed_slip_redeploys_and_tells_content() -> None:
-    status, deploy, notify = _final_refresh("🔄 NBA 2026-10-21 朝早更新：1 張穩膽注單有改")
+    with mock.patch.object(schedule, "SGM_TELEGRAM", True):
+        status, deploy, notify = _final_refresh("🔄 NBA 2026-10-21 朝早更新：1 張穩膽注單有改")
     assert status == "complete" and deploy.call_count == 1
     sent = [c for c in notify.call_args_list if c.args[0].startswith("pregame-morning-update:2026-10-21:")]
     assert len(sent) == 1 and sent[0].kwargs == {"audience": "content"}
+
+
+def test_track_only_sgm_morning_change_redeploys_but_tells_nobody() -> None:
+    """Kelvin 2026-11-16: the dashboard still swaps the slip; content hears nothing about SGM."""
+    status, deploy, notify = _final_refresh("🔄 NBA 2026-10-21 朝早更新：1 張穩膽注單有改")
+    assert status == "complete" and deploy.call_count == 1
+    assert not [c for c in notify.call_args_list if c.kwargs.get("audience") == "content"]
 
 
 def test_final_refresh_without_a_changed_slip_does_not_redeploy() -> None:
