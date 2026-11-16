@@ -102,6 +102,12 @@ def publish_featured(match_date: str, run_label: str, *, main: bool, before_send
 
     with get_connection() as conn:
         added = featured.record(conn, match_date, run_label)
+        try:
+            # Paper-only shadow arms (EXP-20261116-14); never sent, never block 精選.
+            from tennis_wc.select import featured_shadow
+            featured_shadow.record(conn, match_date, run_label)
+        except Exception as exc:  # noqa: BLE001
+            _LOG.warning("精選 shadow arms skipped: %s", exc)
         today = featured.picks_with_results(conn, since=match_date, until=match_date)
         perf = featured.performance(featured.picks_with_results(conn))
     _LOG.info("精選 %s @ %s: +%d (total %d)", match_date, run_label, len(added), len(today))
@@ -196,3 +202,43 @@ def forward_milestone(log_dir: Path) -> str | None:
                                  "sent_at": datetime.now().isoformat()}
         state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2))
     return verdict
+
+
+def shadow_forward_milestones(log_dir: Path) -> dict[str, str | None]:
+    """Telegram once per 精選 shadow arm when it first reaches 250, and again at 600."""
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.select import featured, featured_shadow
+
+    state_path = log_dir / FORWARD_STATE
+    out: dict[str, str | None] = {}
+    with get_connection() as conn:
+        for arm in featured_shadow.ARMS.values():
+            rows = featured_shadow.picks_with_results(conn, arm.name)
+            perf = featured.performance(rows)
+            settled = perf["settled"]
+            milestone = (featured.FORWARD_FINAL_VERDICT if settled >= featured.FORWARD_FINAL_VERDICT
+                         else featured.FORWARD_FIRST_VERDICT if settled >= featured.FORWARD_FIRST_VERDICT else None)
+            state = json.loads(state_path.read_text()) if state_path.exists() else {}
+            key = f"{arm.name}:{milestone}"
+            if milestone is None or key in state:
+                out[arm.name] = None
+                continue
+            verdict = featured.forward_verdict(perf)
+            real = featured_shadow.real_arm_same_dates(conn, rows)
+
+            def fmt(p):
+                roi = f"{p['roi']:+.1%}" if p["roi"] is not None else "—"
+                ci = f"[{p['ci_low']:+.1%}, {p['ci_high']:+.1%}]" if p["ci_low"] is not None else "—"
+                return f"{p['settled']} 注｜中 {p['wins']}｜ROI {roi}｜95% CI {ci}"
+
+            message = (f"🎾 Tennis 精選 shadow arm「{arm.name}」夠數（{milestone} 注）\n"
+                       f"shadow：{fmt(perf)}\n"
+                       f"同期正式精選：{fmt(real)}\n"
+                       f"預先登記判決：{verdict}\n"
+                       f"{arm.experiment}。紙上測試，系統唔會自動改精選規則，由 Kelvin 決定。")
+            if notify(message, audience="primary"):
+                state[key] = {"verdict": verdict, "settled": settled,
+                              "sent_at": datetime.now().isoformat()}
+                state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2))
+            out[arm.name] = verdict
+    return out
