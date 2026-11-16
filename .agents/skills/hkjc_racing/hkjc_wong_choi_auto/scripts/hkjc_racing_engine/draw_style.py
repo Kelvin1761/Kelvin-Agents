@@ -4,7 +4,7 @@
   跑法格  (組別 HV/ST/AWT/STR × 短≤1200／長, 慣性跑法 F／M／B／U, 檔位段 內1–4／中5–9／外10+)
   逐檔格  (組別, 檔號 1–13+, 大場 ≥12)
   raw' = raw + β_style·(跑法格值 − 場均) + β_curve·(逐檔格值 − 場均)
-慣性跑法 = 賽前最多 6 仗（日期嚴格早過今仗）「第一個沿途位置 ÷ 完成匹數」平均（≥2 仗；≤0.3 前置、≤0.6 中置、其餘後上；冇 = U）。
+慣性跑法 = `run_style.py`（Wong Choi 唯一跑法標準；賽前最多 6 仗「第一個沿途位置 ÷ 完成匹數」平均，≤0.3 放頭 F、≤0.6 守中 M、其餘後上 B；冇 = U）。
 格值同 β 凍結喺 resources/hkjc_draw_style.json（docs/experiments/patches/hkjc_draw_style/freeze.py，回放 v3 至 2026-11-11）。
 跑法歷史表 HKJC_Sections/run_style.json 由 hkjc_pit_sections_build.py 每個賽日後重建（同上仗賠率表一樣）。
 回放：dev Δlog-loss −0.00101、holdout −0.00093（Holm 2 PASS）、AUC dev +0.0036、頭二選有中 dev +1.21。
@@ -14,8 +14,9 @@ from __future__ import annotations
 
 import json
 import re
-from bisect import bisect_left
 from pathlib import Path
+
+from . import run_style
 
 ENABLED = True
 FROZEN_PATH = Path(__file__).resolve().parents[2] / "resources" / "hkjc_draw_style.json"
@@ -56,7 +57,8 @@ def group(race_context: dict) -> str | None:
 
 
 def style_class(frac: float | None) -> str:
-    return "U" if frac is None else ("F" if frac <= 0.3 else ("M" if frac <= 0.6 else "B"))
+    label = run_style.classify(frac)
+    return run_style.CODE[label] if label else "U"
 
 
 def draw_band(d: int) -> str:
@@ -69,16 +71,7 @@ def horse_code(horse: dict) -> str:
 
 
 def habitual_position(code: str, race_date: str, table: dict | None) -> float | None:
-    runs = ((table or {}).get("horses") or {}).get(code) or []
-    i = bisect_left([r[0] for r in runs], race_date)      # 嚴格早過今仗
-    prev = [float(r[1]) for r in runs[max(0, i - 6):i]]
-    return sum(prev) / len(prev) if len(prev) >= 2 else None
-
-
-def habitual_runs(code: str, race_date: str, table: dict | None) -> int:
-    """habitual_position 用咗幾多仗（顯示用）。"""
-    runs = ((table or {}).get("horses") or {}).get(code) or []
-    return min(6, bisect_left([r[0] for r in runs], race_date))
+    return run_style.habitual_fraction(code, race_date, table)
 
 
 def adjustments(horses: dict, race_context: dict, race_date: str, table: dict | None) -> tuple[dict, dict]:
@@ -95,12 +88,10 @@ def adjustments(horses: dict, race_context: dict, race_date: str, table: dict | 
         except (TypeError, ValueError):
             s_val[k] = d_val[k] = 0.0
             continue
-        habit = habitual_position(horse_code(h), race_date, table)
-        st = style_class(habit)
+        st = style_class(habitual_position(horse_code(h), race_date, table))
         s_val[k] = float(fz["style_cells"].get(f"{g}|{st}|{draw_band(d)}", 0.0))
         d_val[k] = float(fz["curve_cells"].get(f"{g}|{min(d, 13)}|{big}", 0.0))
-        info[k] = {"group": g, "style": st, "draw": d, "habit": None if habit is None else round(habit, 3),
-                   "habit_runs": habitual_runs(horse_code(h), race_date, table)}
+        info[k] = {"group": g, "style": st, "draw": d}
     ms = sum(s_val.values()) / len(s_val)
     md = sum(d_val.values()) / len(d_val)
     out = {}
@@ -121,6 +112,8 @@ def apply(horses: dict, race_context: dict | None, table: dict | None = None) ->
     from .scoring import compute_grade, to_display_scale
     scored = {k: h for k, h in horses.items() if isinstance(h, dict) and isinstance(h.get("python_auto"), dict)
               and h["python_auto"].get("ability_score_raw") is not None}
+    for h in scored.values():
+        h["python_auto"]["run_style"] = run_style.habitual(horse_code(h), race_date, table)
     adds, info = adjustments(scored, race_context, race_date, table)
     n = 0
     for k, add in adds.items():

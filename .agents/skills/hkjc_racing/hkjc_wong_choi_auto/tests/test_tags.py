@@ -115,7 +115,7 @@ def test_dimension_drivers_become_concrete_phrases(tmp_path):
     horse = _horse("甲", "巴度", hid="H1", barrier=3, last6="1-2-9-4-5-6",
                    rows=[("race_shape", 2.8), ("stability", -0.6), ("trackwork", -0.04)])
     out = tags.race_tags(*_meeting(tmp_path, {"1": horse}, {"H1": []}))
-    assert _labels(out, "1", "good") == ["檔位走位有利（3檔）"]
+    assert _labels(out, "1", "good") == ["內檔優勢（3檔）"]
     assert _labels(out, "1", "bad") == ["近績差（近3仗 1-2-9）"]
     assert out["1"]["good"][0]["impact"] == 2.8
 
@@ -138,7 +138,7 @@ def test_trainer_ace_from_racecard(tmp_path):
 def test_missing_files_and_bad_input_never_raise(tmp_path):
     logic = {"race_analysis": {}, "horses": {"1": _horse("甲", "巴度", hid="H1", rows=[("race_shape", 1.0)])}}
     out = tags.race_tags(logic, tmp_path / "nope")
-    assert _labels(out, "1", "good") == ["檔位走位有利（5檔）"]
+    assert _labels(out, "1", "good") == ["中檔優勢（5檔）"]
     assert tags.race_tags({"horses": {"1": {"python_auto": None}}}) == {}
     assert "_error" in tags.race_tags({"horses": ["唔係 dict"]})
 
@@ -150,7 +150,7 @@ def test_summary_attach_carries_tags_and_does_not_touch_scores(tmp_path):
     before = json.dumps({k: v for k, v in horses["1"]["python_auto"].items()}, sort_keys=True)
     summary.attach(logic, md)
     auto = horses["1"]["python_auto"]
-    assert _labels({"1": auto["summary"]["tags"]}, "1", "good") == ["檔位走位有利（5檔）"]
+    assert _labels({"1": auto["summary"]["tags"]}, "1", "good") == ["中檔優勢（5檔）"]
     auto.pop("summary")
     assert json.dumps(auto, sort_keys=True) == before
 
@@ -180,3 +180,25 @@ def test_wide_two_back_tag_is_unscored():
     assert [t["label"] for t in out] == ["上上仗走外疊冇遮擋"]
     assert out[0]["scored"] is False and out[0]["tone"] == "good"
     assert tags._incident_tag({"incident_history_flags": ""}) == []
+
+
+def test_gear_chips_and_trainer_pattern_wins():
+    """Kelvin 2026-11-17：除去配備有訊號（未入分）要突出；首次配備只留意；練馬師專屬 pattern 有就唔重複。"""
+    out = tags._gear_tags(["B-", "TT1", "H2"], set())
+    assert [(t["label"], t["tone"], t["scored"]) for t in out] == [("除去眼罩", "good", False), ("首次戴繫舌帶", "note", False)]
+    assert tags._gear_tags(["B-"], {"gear_removed"}) == []
+    assert tags._gear_tags([], set()) == []
+
+
+def test_jockey_change_always_names_both_riders():
+    auto = {"trainer_signal_detail": {"adjustments": [{"factor": "換騎", "delta": -1.0, "evidence": "沿用原騎較好"}]}}
+    horse = {"jockey": "何澤堯", "_data": {"prev_jockey": "楊明綸", "jockey_change_note": "今仗轉用騎師何澤堯（與此駒首次合作）"}}
+    t = tags._jockey_change_tag(horse, auto, runs=[])
+    assert t[0]["label"] == "換騎（楊明綸→何澤堯）" and "首次策騎此駒" in t[0]["why"]
+    t = tags._jockey_change_tag({"jockey": "班德禮", "_data": {}}, auto, runs=[])
+    assert t[0]["label"] == "換騎（今仗 班德禮）"
+
+
+def test_weak_combo_reads_as_not_in_sync():
+    auto = {"trainer_signal_detail": {"adjustments": [{"factor": "騎練組合", "delta": -3.0, "evidence": "x"}]}}
+    assert [t["label"] for t in tags._trainer_tags(auto)] == ["騎練唔合拍"]

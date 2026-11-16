@@ -84,10 +84,7 @@ def _watch(horse: dict, auto: dict) -> list[str]:
     medical = str(data.get("medical_flags") or horse.get("medical_flags") or "")
     if medical and "無醫療事故" not in medical and medical not in ("N/A", "-"):
         out.append("賽事短評有醫療事故紀錄")
-    for adj in (auto.get("trainer_signal_detail") or {}).get("adjustments") or []:
-        if adj.get("factor") == "換騎" and adj.get("delta"):
-            out.append("今仗換騎")
-            break
+    # 「今仗換騎」唔再寫：換騎 chip 已經寫明前→今騎師（Kelvin 2026-11-17 話重複）。
     if any("debut" in str(code).lower() for code in auto.get("reason_codes") or []):
         out.append("初出馬，冇正式賽績")
     return out

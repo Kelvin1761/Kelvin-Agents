@@ -2690,22 +2690,18 @@ test("HKJC 即場形勢 splits 場地偏差 into a 頭馬 card and a 上名 card
   assert.doesNotMatch(html,/NaN|Infinity/);assert.match(html,/未有賽果/);
 });
 
-test("horse card shows the 預計跑法 label with runs and hit rate (reference only)", () => {
+test("horse card shows the 預計跑法 label from the engine standard (Kelvin 2026-11-16)", () => {
   const { renderRunStyleOutlook } = loadTemplateFunctions();
   const html = renderRunStyleOutlook({
-    label: "放頭", consistency: "穩定", hit_rate: 69.5, field: 12,
-    runs: [{ date: "28/10/2026", first_call: 2, style: "放頭" }, { date: "07/10/2026", first_call: 3, style: "放頭" },
-           { date: "16/09/2026", first_call: 1, style: "放頭" }],
+    label: "後上", consistency: "多變", hit_rate: 52.0, habit: 0.607, same: 2,
+    runs: [{ date: "2026-10-19", frac: 0.583, style: "守中" }, { date: "2026-02-19", frac: 0.786, style: "後上" }],
   });
-  assert.match(html, /預計跑法: <strong>放頭<\/strong> · 穩定/);
-  assert.doesNotMatch(html, /近仗/);                                   // card shows the style only
-  assert.match(html, /28\/10\/2026 第2位/);                             // per-run detail stays in the tooltip
-  assert.match(html, /歷史命中 69\.5%/);
-  assert.match(html, /唔入評分/);
-  const variable = renderRunStyleOutlook({ label: null, consistency: "多變", hit_rate: null,
-    runs: [{ date: "01/10/2026", first_call: 1, style: "放頭" }, { date: "01/09/2026", first_call: 7, style: "守中" }] });
-  assert.match(variable, /預計跑法: <strong>多變<\/strong>/);
-  assert.doesNotMatch(variable, /命中|null|undefined/);
+  assert.match(html, /預計跑法: <strong>後上<\/strong> · 多變/);
+  assert.match(html, /平均第 61% 位置/);
+  assert.match(html, /2026-10-19 第58%（守中）/);
+  assert.match(html, /歷史命中 52\.0%/);
+  assert.match(html, /同檔位×跑法入分同一個標準/);
+  assert.doesNotMatch(html, /null|undefined|NaN/);
   assert.equal(renderRunStyleOutlook(null), "");
 });
 
