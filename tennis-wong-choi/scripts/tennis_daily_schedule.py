@@ -225,7 +225,7 @@ def card(today: date) -> None:
 def daily(today: date) -> None:
     """18:00: review + settle yesterday, ROI board, archive; warm tomorrow."""
     from tennis_wc import run
-    from tennis_wc.publish.telegram import forward_milestone, send_roi_board
+    from tennis_wc.publish.telegram import forward_milestone, send_roi_board, shadow_forward_milestones
 
     yesterday = (today - timedelta(days=1)).isoformat()
     preflight()
@@ -243,6 +243,10 @@ def daily(today: date) -> None:
         forward_milestone(LOG_DIR)
     except Exception as exc:  # noqa: BLE001
         log(f"精選 forward milestone check skipped: {exc}")
+    try:
+        shadow_forward_milestones(LOG_DIR)
+    except Exception as exc:  # noqa: BLE001
+        log(f"精選 shadow milestone check skipped: {exc}")
     _dashboard_settlements(yesterday)
     if run.results_extracted(review):
         _archive(yesterday)
