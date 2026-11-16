@@ -1,4 +1,4 @@
-"""EXP-20261116-17 覆蓋率：python3 -I coverage.py <raw/mob 目錄> <events.json> <out.json>"""
+"""EXP-20261116-19 覆蓋率：python3 -I coverage.py <raw/mob 目錄> <events.json> <out.json>"""
 import collections, html, json, re, sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))

@@ -1,9 +1,9 @@
-# EXP-20261116-18 結果：段速深入診斷 —— 訊號有，EXP-17 輸喺配權同功效
+# EXP-20261116-18 結果：段速深入診斷 —— 訊號有，EXP-19 輸喺配權同功效
 
 - **預先登記**：[protocol](EXP-20261116-18-au-sectionals-deep-dive-protocol.md)（`17c8d95b`，量度之前）。
-- **起因**：Kelvin 對 EXP-20261116-17：「doesnt makes sense, try to dig deeper, sectional is one of the most important signals」。
+- **起因**：Kelvin 對 EXP-20261116-19：「doesnt makes sense, try to dig deeper, sectional is one of the most important signals」。
 - **一句結論**：**Kelvin 啱一半。** 逐仗對嗰場正規化之後，末段速度（尤其**扣咗 600m 位置**之後）喺現行模型之上**有**殘差資訊；
-  EXP-17 嘅「L600 有害」係配權過大，唔係訊號有害。但正確權重好細（現行分 SD 嘅約 0.10–0.13 倍），
+  EXP-19 嘅「L600 有害」係配權過大，唔係訊號有害。但正確權重好細（現行分 SD 嘅約 0.10–0.13 倍），
   預期收益遠細過 318 場量得到嘅最細效應，所以**仍然未證明可以改善排名**。
 - **判決**：
   - `Lr`（末段對嗰場）、`Lpos`（末段扣位置）：**NEEDS MORE TESTING，訊號已確認**。建議開始每日累積，用預先固定嘅細權重做 forward 測試（見最尾，要 Kelvin 決定）。
@@ -11,14 +11,14 @@
   - `CxP`（收腳×步速）：**冇資訊**（手機 c +0.003 [−0.025, +0.032]；QLD 單獨 AUC 0.488）。
   - `ground`（QLD 走地距離）：**冇資訊**（AUC 0.502）。
   - **Arm P（pace_figure 換真 L600）：REJECT**，leaf AUC 由 0.625 跌到 0.606（CI 全負）。
-- EXP-20261116-17 嘅 **L：REJECT 改為「配權問題，唔係訊號問題」**（見第 3 節）。生產模型冇改。
+- EXP-20261116-19 嘅 **L：REJECT 改為「配權問題，唔係訊號問題」**（見第 3 節）。生產模型冇改。
 
-## 0. EXP-17 點砌（Kelvin 第 1、3 點）
+## 0. EXP-19 點砌（Kelvin 第 1、3 點）
 
 - E／L／D **唔係**生 km/h，係喺 (場地, 路程段) 入面 z。但**冇**對嗰場往績本身（同場其他馬）、地況、班次正規化。
 - 配權係 walk-forward conditional logistic 比率 β = c/b，冇手揀，但 8 日 fit 出嚟嘅 β 好嘈（E 去到 5.4、L 由 1.47 跳到 −0.66）。
-  今次量到嘅正確比率係 0.09–0.15 —— **EXP-17 嘅 β 大咗 10–40 倍**。
-- 另外發現 EXP-17 harness 一個 bug：Holm 用咗 `verdict["p_value"]`，但 v3 判決冇呢個欄，所以五個 arm 嘅「Holm 1.0」冇意義。判決本身唔受影響（v3 各指標有自己 CI）。
+  今次量到嘅正確比率係 0.09–0.15 —— **EXP-19 嘅 β 大咗 10–40 倍**。
+- 另外發現 EXP-19 harness 一個 bug：Holm 用咗 `verdict["p_value"]`，但 v3 判決冇呢個欄，所以五個 arm 嘅「Holm 1.0」冇意義。判決本身唔受影響（v3 各指標有自己 CI）。
 
 ## 1. 數據
 
@@ -94,7 +94,7 @@ QLD 對我哋模型分嘅殘差（62 場）：`fin`、`L600`、`early` 近期加
 k = 0.25 已經 dev Gold −0.8～−2.5pp。原因好清楚：資料要求嘅比率係 0.09–0.15，**網格最細一格都大過佢一倍**。
 所以呢個係「權重太大」，唔係「訊號有害」。我**冇**事後加細 k 去救（holdout 冇郁過）。
 
-EXP-17 嘅 L（β 0.9–1.5）同 E（β 2–5）比正確比率大 10–40 倍 —— 「L 有害」係配權造成。
+EXP-19 嘅 L（β 0.9–1.5）同 E（β 2–5）比正確比率大 10–40 倍 —— 「L 有害」係配權造成。
 
 ## 4. 情境（Kelvin 第 4 點，探索性，只報唔判）
 
@@ -118,7 +118,7 @@ EXP-17 嘅 L（β 0.9–1.5）同 E（β 2–5）比正確比率大 10–40 倍 
 
 固定 k = 0.25 全期 318 場（v3 賽日 bootstrap）：Gold 差 SE 1.4–1.6pp → **80% 功效最細可測效應 ≈ 3.9–4.5pp**；Good 3.1–4.5pp。
 粗略估計（**未量度**，由殘差係數大細推）：正確權重下 Gold 改善應該係 1pp 以下 —— 要 MDE 跌到 ~1pp，SE 要細 4 倍，即係 **約 16 倍語料（~5,000 場）**；2,500 場（~6–7 星期每日抓）先可以判 ~1.5pp。
-EXP-17 L 嘅 Gold −0.95pp CI [−2.3, −0.2] 係 β 過大 + 8 日嘈嘅結果；同一特徵用 k = 0.25 係 −0.6pp [−4.3, +1.8]，量唔出有害。
+EXP-19 L 嘅 Gold −0.95pp CI [−2.3, −0.2] 係 β 過大 + 8 日嘈嘅結果；同一特徵用 k = 0.25 係 −0.6pp [−4.3, +1.8]，量唔出有害。
 
 ## 6. QLD 大樣本（Kelvin 第 6 點）
 
@@ -158,4 +158,4 @@ PYTHONDONTWRITEBYTECODE=1 python3 $P/deep.py <raw/mob> <events.json> <outdir>   
 PYTHONDONTWRITEBYTECODE=1 python3 $P/rq_deep.py --out <out.json>                   # QLD（~3 分鐘）
 ```
 
-證據：[`EXP-20261116-18-evidence/`](EXP-20261116-18-evidence/)（`deep_report.json`、`rq_deep_report.json`）；`events.json` 喺 EXP-17 evidence。分支 `claude-au-mobile-sectionals-20261116`。
+證據：[`EXP-20261116-18-evidence/`](EXP-20261116-18-evidence/)（`deep_report.json`、`rq_deep_report.json`）；`events.json` 喺 EXP-19 evidence。分支 `claude-au-mobile-sectionals-20261116`。

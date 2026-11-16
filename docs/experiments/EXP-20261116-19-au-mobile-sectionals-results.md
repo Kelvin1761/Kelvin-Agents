@@ -1,6 +1,6 @@
-# EXP-20261116-17 結果：sportsbetform 手機版逐駒分段（前段／末段速度）
+# EXP-20261116-19 結果：sportsbetform 手機版逐駒分段（前段／末段速度）
 
-- **預先登記**：[`EXP-20261116-17-au-mobile-sectionals-protocol.md`](EXP-20261116-17-au-mobile-sectionals-protocol.md)
+- **預先登記**：[`EXP-20261116-19-au-mobile-sectionals-protocol.md`](EXP-20261116-19-au-mobile-sectionals-protocol.md)
   （原本編號 -11，commit `e9bf1628`；補充登記 `69e0879d`、`ea22e324`，全部喺睇候選結果之前）。
 - ⚠️ **2026-11-16 後續（EXP-20261116-18）**：L 嘅「有害」係配權過大（β 比正確比率大 10–40 倍）造成，唔係訊號有害；對嗰場正規化同扣位置之後，末段速度喺現行模型之上有殘差資訊（Holm p 0.013／0.02）。另外本實驗 harness 嘅 Holm 讀錯欄位（全部 1.0 冇意義）。見 [EXP-20261116-18](EXP-20261116-18-au-sectionals-deep-dive-results.md)。
 - **判決**：數據來源 **point-in-time 安全、逐駒、準確**；但五個候選 arm 冇一個贏現行模型。
@@ -86,7 +86,7 @@ walk-forward β（11-08 → 11-15）：
 ## 5. RacecardWithContext 欄位（只審計，冇開臂）
 
 主站 API（`www.sportsbet.com.au/apigw`），`rc_audit.py`。我哋取得：12 場 11-14／11-15 舊賽事（169 匹，全部係賽後先抓），
-同 16 場 11-17 賽前快照（199 匹，存咗喺 `EXP-20261116-17-evidence/rc_prerace_20261117.tar.gz`）。
+同 16 場 11-17 賽前快照（199 匹，存咗喺 `EXP-20261116-19-evidence/rc_prerace_20261117.tar.gz`）。
 
 | 欄位 | 結果 | 判斷 |
 |---|---|---|
@@ -126,5 +126,5 @@ python3 -I $W/rc_audit.py <rc json 目錄> <events.json>
 ```
 
 - 手機頁原檔（89MB，370 版）冇入 repo；`events.json`（event ID 對場次）、`coverage.json`、`eval_report.json`、`harvest.log`
-  喺 [`EXP-20261116-17-evidence/`](EXP-20261116-17-evidence/)。
+  喺 [`EXP-20261116-19-evidence/`](EXP-20261116-19-evidence/)。
 - 分支 `claude-au-mobile-sectionals-20261116`；base `final_rank_score` 來自各場次 `Meeting_Auto_Scoring.csv`（live 版），賽果 `AU_Historical_Raw_Race_Results.csv`。

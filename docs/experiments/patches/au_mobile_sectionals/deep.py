@@ -25,7 +25,7 @@ REPO = HERE.parents[3]
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(REPO / ".agents/skills/shared_racing"))
 sys.path.insert(0, str(REPO / ".agents/skills/au_racing/au_wong_choi_auto/scripts"))
-import evaluate as ev  # noqa: E402  (EXP-17 loaders／metric_row)
+import evaluate as ev  # noqa: E402  (EXP-19 loaders／metric_row)
 import parse_mobile as pm  # noqa: E402
 from au_racing_engine import speed  # noqa: E402
 from au_racing_engine.data_prep import _parse_formguide_pf_metrics  # noqa: E402
