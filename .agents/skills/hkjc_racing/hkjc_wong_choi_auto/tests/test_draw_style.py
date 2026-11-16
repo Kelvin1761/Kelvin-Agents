@@ -61,7 +61,12 @@ class DrawStyleTagTest(unittest.TestCase):
         t = _draw_style_tag({"draw_style_delta": -1.5, "draw_style_detail": det})
         self.assertEqual(t[0]["tone"], "bad")
         self.assertTrue(t[0]["scored"])
-        self.assertIn("後上馬抽外檔", t[0]["label"])
+        self.assertIn("近仗早段偏後抽外檔", t[0]["label"])
+        # Kelvin 2026-11-16（機不可失）：tooltip 要寫實際平均位置同仗數，同「預計跑法」嘅分別要講清楚
+        det2 = dict(det, habit=0.607, habit_runs=5)
+        why = _draw_style_tag({"draw_style_delta": -1.5, "draw_style_detail": det2})[0]["why"]
+        self.assertIn("近 5 仗第一個沿途位平均喺第 61% 位置", why)
+        self.assertIn("預計跑法", why)
         self.assertEqual(_draw_style_tag({"draw_style_delta": 0.5, "draw_style_detail": det}), [])
 
 

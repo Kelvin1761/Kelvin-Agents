@@ -2911,3 +2911,10 @@ test("HKJC 維度計法 line does not swallow the sub-score boxes (936f3d9b form
   assert.match(html, /對綜合分<\/span>分項加權/);
   assert.doesNotMatch(html, /dim-sub__name">維度計法/);
 });
+
+test("HKJC tag chips are never folded into +N (Kelvin 2026-11-16)", () => {
+  const src = fs.readFileSync(new URL("../static_template.html", import.meta.url), "utf8");
+  const m = src.match(/const TAG_LIMIT = \{([^}]*)\}/);
+  assert.ok(m, "TAG_LIMIT defined");
+  assert.doesNotMatch(m[1], /\d/, "no numeric cap on tag chips");
+});

@@ -438,7 +438,9 @@ def _form_pattern_tags(horse: dict, meta: dict) -> list[dict]:
     return out
 
 
-_STYLE_WORD = {"F": "前置馬", "M": "中置馬", "B": "後上馬", "U": "跑法未明"}
+# Kelvin 2026-11-16：機不可失「預計跑法 守中」但 chip 寫「後上馬」—— 兩個唔同計法（預計跑法 = 近 3 仗第一個沿途位多數決；
+# 呢度 = 近 6 仗早段位置 ÷ 完成匹數 平均，> 60% 算偏後）。chip 用自己嘅字眼，tooltip 寫埋數字。
+_STYLE_WORD = {"F": "近仗早段偏前", "M": "近仗早段居中", "B": "近仗早段偏後", "U": "跑法未明"}
 _BAND_WORD = {"I": "內檔", "C": "中檔", "O": "外檔"}
 
 
@@ -451,8 +453,11 @@ def _draw_style_tag(auto: dict) -> list[dict]:
     d = int(det.get("draw") or 0)
     band = "I" if d <= 4 else ("C" if d <= 9 else "O")
     label = f"{_STYLE_WORD.get(det.get('style'), '跑法未明')}抽{_BAND_WORD[band]}（{d}檔，{delta:+.1f}）"
-    why = (f"檔位×跑法修正：跑法部分 {det.get('style_part', 0):+.2f}、逐檔部分 {det.get('curve_part', 0):+.2f}（原始分）。"
-           "慣性跑法用之前最多 6 仗嘅早段位置計；格值由 6,000 場歷史殘差估計（回放 dev／holdout 都改善）。")
+    habit = det.get("habit")
+    pos = (f"近 {det.get('habit_runs') or '?'} 仗第一個沿途位平均喺第 {100 * float(habit):.0f}% 位置"
+           "（≤30% 偏前、>60% 偏後）。") if habit is not None else ""
+    why = (f"檔位×跑法修正：{pos}跑法部分 {det.get('style_part', 0):+.2f}、逐檔部分 {det.get('curve_part', 0):+.2f}（原始分）。"
+           "同「預計跑法」（近 3 仗多數決）唔同計法，邊界馬兩個可以唔一樣。格值由 6,000 場歷史殘差估計（回放 dev／holdout 都改善）。")
     return [_tag("draw_style", label, "good" if delta > 0 else "bad", why=why, scored=True, impact=round(delta, 2))]
 
 

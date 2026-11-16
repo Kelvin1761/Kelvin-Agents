@@ -75,6 +75,12 @@ def habitual_position(code: str, race_date: str, table: dict | None) -> float | 
     return sum(prev) / len(prev) if len(prev) >= 2 else None
 
 
+def habitual_runs(code: str, race_date: str, table: dict | None) -> int:
+    """habitual_position 用咗幾多仗（顯示用）。"""
+    runs = ((table or {}).get("horses") or {}).get(code) or []
+    return min(6, bisect_left([r[0] for r in runs], race_date))
+
+
 def adjustments(horses: dict, race_context: dict, race_date: str, table: dict | None) -> tuple[dict, dict]:
     """horses：{馬號: horse dict} → ({馬號: raw 加減}, {馬號: 說明})。"""
     fz = frozen()
@@ -89,10 +95,12 @@ def adjustments(horses: dict, race_context: dict, race_date: str, table: dict | 
         except (TypeError, ValueError):
             s_val[k] = d_val[k] = 0.0
             continue
-        st = style_class(habitual_position(horse_code(h), race_date, table))
+        habit = habitual_position(horse_code(h), race_date, table)
+        st = style_class(habit)
         s_val[k] = float(fz["style_cells"].get(f"{g}|{st}|{draw_band(d)}", 0.0))
         d_val[k] = float(fz["curve_cells"].get(f"{g}|{min(d, 13)}|{big}", 0.0))
-        info[k] = {"group": g, "style": st, "draw": d}
+        info[k] = {"group": g, "style": st, "draw": d, "habit": None if habit is None else round(habit, 3),
+                   "habit_runs": habitual_runs(horse_code(h), race_date, table)}
     ms = sum(s_val.values()) / len(s_val)
     md = sum(d_val.values()) / len(d_val)
     out = {}

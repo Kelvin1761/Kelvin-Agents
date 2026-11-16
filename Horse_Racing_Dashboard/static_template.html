@@ -6198,7 +6198,8 @@ function shortenVerdict(line) {
 // HKJC 標籤（engine tags.py，2026-11-11）：每個 chip 係一句具體事實（「好檔（3檔）」「人馬合拍」
 // 「潘頓棄騎」），取代「檔位與走位 +2.8」同騎師／練馬師名。scored=false 嘅係賽前事實但
 // 冇入分，畫成虛線 chip、tooltip 寫明，唔扮成模型理由。
-const TAG_LIMIT = { good: 5, bad: 4, note: 4 };
+// Kelvin 2026-11-16：全部標籤都要見到，唔再收埋做「+1／+2」。
+const TAG_LIMIT = { good: Infinity, bad: Infinity, note: Infinity };
 function renderTagChips(summary) {
   const tags = summary.tags || {};
   const chip = t => {
