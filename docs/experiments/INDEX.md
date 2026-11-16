@@ -534,6 +534,10 @@
 - EXP-20261115-22 HKJC 上仗事件報告診斷：走外疊冇遮擋兩段都 +2–4pp；醫療 −2–4pp；冷門有藉口好過乾淨冷門
 - [EXP-20261116-05](EXP-20261116-05-hkjc-weight-residual-ft-and-hiclass.md) — 負磅殘差：段速 FT 負磅換算三個 arm 打和、高班直接修正 H log-loss 跨零，全部 REJECT
 - [EXP-20261116-06](EXP-20261116-06-hkjc-incident-history-live.md) — HKJC 上仗事件報告入分（走外疊冇遮擋 +、醫療 −）：補抓 2019–23 後 dev／holdout PASS（Holm 2），上線＋forward 退回監察
+- [EXP-20261117-04](EXP-20261117-04-hkjc-entries-warmup-forward.md) — HKJC 熱身：事後「下仗 ≤7 日」−2.5～−2.8pp（倒果為因會誇大）；開始儲 HKJC 報名表快照、「已報 N 日後」留意標籤；forward shadow 熱身 −1.465、上仗入位＋評分跌返 +1.51（各 150 場）
+- [EXP-20261117-03](EXP-20261117-03-hkjc-big-distance-increase-live.md) — HKJC 大幅增程（≥400 米）入分：dev −0.00011、holdout −0.00013（Holm 2 PASS）上線，107／107 忠實；短途轉一哩子集 REJECT；初出馬父系 dev 有梯度 holdout 平 → REJECT
+- [EXP-20261117-02](EXP-20261117-02-hkjc-kelvin-six-questions.md) — HKJC 疲勞／匆匆再出冇一致方向（唔扣分）；增程係真（≥400 米 holdout −2.6pp、7 季全負）→ 扣分位標籤未入分；評分跌返贏馬分 2024 起冇訊號（只上仗入位子集 dev +4.3／holdout +1.8 未確認）→ 留意標籤；一星期內再出今仗 −2.5～−2.8pp（研究，要報名表先用得）
+- [EXP-20261117-01](EXP-20261117-01-hkjc-split-midfield-style.md) — HKJC 守中拆守好位：dev Δlog-loss +0.00009 REJECT，跑法維持 3 類（run_style.py 唯一標準）
 - [EXP-20261116-18](EXP-20261116-18-hkjc-incident-wide-two-back.md) — HKJC 上上仗走外疊冇遮擋（上仗冇）：殘差 dev +2.1／holdout +2.3、7 季全正；W2 入分 dev CI 上界 +0.00001 REJECT → 顯示標籤；近 6 仗擴闊：3–6 仗冇訊號、經常走外疊偏負，唔使睇晒 6 仗
 - [EXP-20261116-13](EXP-20261116-13-hkjc-group-race-model.md) — HKJC 分級賽專用模型（評分＋、負磅−、維度 L2）：dev PASS（Holm），holdout −0.00018 [−0.00038,+0.00001] 啱啱跨零 → REJECT；冇開 shadow（每季 31 場）
 - [EXP-20261116-12](EXP-20261116-12-hkjc-kelvin-round3-checks.md) — HKJC 班內評分位置（通用效應 holdout −1.4pp／10 分，A1／A3 REJECT）；上仗賠率唔使因事件重調；見習減磅已入 L400 換算、殘差唔一致；直路檔位殘差全跨零唔使改

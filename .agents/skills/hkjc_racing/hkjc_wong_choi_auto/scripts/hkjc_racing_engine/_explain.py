@@ -10,6 +10,7 @@ from .matrix_mapper import (
     MATRIX_FORMULAS,
 )
 from . import dimensions
+from .gear import GEAR_NAMES
 from .scoring import (CENTRED_MATRIX_WEIGHTS, DEBUT_MATRIX_WEIGHTS, FEATURE_KEYS, MATRIX_WEIGHTS, clip_score, score_band, to_dimension_display,
                       to_display_scale)
 
@@ -329,12 +330,7 @@ class Explanations:
         marg = mm.group(1).lstrip("-").strip() if mm else ""
         return f"第{pos}負{marg}" if marg else f"第{pos}"
 
-    _GEAR_NAMES = {
-        "B": "眼罩", "BO": "單邊眼罩", "CP": "羊毛面箍", "CC": "頸箍",
-        "E": "耳塞", "H": "頭罩", "P": "防沙眼罩", "PC": "半掩防沙眼罩",
-        "SR": "鼻箍", "SB": "羊毛額箍", "TT": "繫舌帶", "V": "開縫眼罩",
-        "VO": "單邊開縫眼罩", "XB": "交叉鼻繃",
-    }
+    _GEAR_NAMES = GEAR_NAMES   # 唯一定義喺 gear.py
 
     def _gear_codes_to_names(self, text):
         parts = [c.strip() for c in str(text or "").replace("＋", "/").split("/")
@@ -488,33 +484,6 @@ class Explanations:
         parts = [f"{cls} 平均{sum(v)/len(v):.1f}名（{len(v)}場）"
                  for cls, v in sorted(buckets.items(), key=keyf)]
         return " ｜ ".join(parts)
-
-    def _predicted_style(self):
-        """Parse the pre-computed running_style ('後上 | 信心: 高 | 依據: …') into a
-        tactical label the punter cares about (前置／守好位／守中／後上) plus the WHY.
-        Reference only — never enters the rating matrix."""
-        raw = str(self._value("running_style") or "").strip()
-        if not raw or raw in ("N/A", "-", "--"):
-            return None
-        parts = [p.strip() for p in raw.split("|")]
-        style_cn = parts[0] if parts else ""
-        conf, basis = "", ""
-        for p in parts[1:]:
-            seg = p.split("：", 1)[-1].split(":", 1)[-1].strip()
-            if "信心" in p:
-                conf = seg
-            elif "依據" in p:
-                basis = seg
-        label_map = {"前領": "前置", "跟前": "守好位", "中段": "守中",
-                     "後上": "後上", "靈活": "靈活（隨步速）"}
-        label = label_map.get(style_cn, style_cn)
-        if not label:
-            return None
-        # Prefer the compact 近6仗 走位 breakdown (e.g. "5場守好位、1場後上") over the
-        # verbose per-race "近1仗評語顯示…" basis.
-        breakdown = str(self._value("style_breakdown_6") or "").strip()
-        basis = f"近6仗 {breakdown}" if breakdown else basis
-        return {"label": label, "conf": conf, "basis": basis}
 
     def _data_readout(self, features, matrix_scores):
         """Structured, fully-Chinese 數據判讀 rows: each = label/value/trend/band(/reason).

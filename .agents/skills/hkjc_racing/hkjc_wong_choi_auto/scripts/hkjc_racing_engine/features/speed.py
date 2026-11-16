@@ -107,7 +107,8 @@ class SpeedScorer(BaseScorer):
         self.detail = list(getattr(self, "detail", []) or []) + [{
             "factor": "前段／全程對標準",
             "value": f"前段 {ft.get('first_v'):+.2f}s／全程 {ft.get('total_v'):+.2f}s（每 400 米，快過標準為正）",
-            "delta": round(pts, 2), "why": "近 6 仗對 as-of 標準時間、扣當日場地快慢"}]
+            "delta": round(pts, 2),
+            "why": "前段／全程段速快過標準" if pts > 0 else "前段／全程段速慢過標準"}]   # 近 6 仗、扣當日場地快慢
         return clip_score(score + pts), note
 
     def _compute_with_first_section(self):

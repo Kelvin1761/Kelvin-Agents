@@ -49,7 +49,7 @@ from hkjc_racing_engine import overlays as overlay_registry
 from hkjc_racing_engine import past_runs
 from hkjc_racing_engine import market_history
 from hkjc_racing_engine import draw_style
-from hkjc_racing_engine import incident_history
+from hkjc_racing_engine import incident_history, distance_move
 from hkjc_racing_engine.validation import validate_engine_scripts, validate_logic_data
 from wongchoi_paths import is_materialized_file
 
@@ -158,22 +158,27 @@ def _profile_season_key(date_str):
     return parsed.year if parsed.month >= 9 else parsed.year - 1
 
 
-def _style_from_positions(positions, field_size=12):
-    """Single-race tactical style from in-race positions (mirrors the engine's
-    position fallback): 前置 / 守好位 / 守中 / 後上."""
-    if not positions:
-        return None
-    fp = positions[0] if isinstance(positions[0], int) else None
-    if not fp or fp <= 0:
-        return None
-    mid_cut = max(int(field_size * 0.55), 4)
-    if fp == 1:
-        return "前置"
-    if fp <= 4:
-        return "守好位"
-    if fp <= mid_cut:
-        return "守中"
-    return "後上"
+def _attach_upcoming_entries(horses, meeting_date):
+    """報名表（EXP-20261117-04）：今仗開跑前已報咗 1–7 日內另一場 → `_data.next_entry`（顯示＋forward，唔入分）。
+    只有排程 live 賽前 run（WC_HKJC_LIVE_CARD=1）先會抓網頁；回放／測試只讀已存嘅賽前快照。"""
+    if meeting_date is None:
+        return
+    try:
+        import os
+        import wongchoi_paths
+        from hkjc_racing_engine import upcoming_entries
+        root = Path(wongchoi_paths.HK_RACING)
+        if os.environ.get("WC_HKJC_LIVE_CARD") == "1":
+            upcoming_entries.fetch_and_store(root)
+        soon = upcoming_entries.entered_soon(root, meeting_date.isoformat())
+    except Exception:
+        return
+    for h_obj in horses.values():
+        if not isinstance(h_obj, dict):
+            continue
+        hid = str(h_obj.get("hkjc_horse_id") or "").upper()
+        if hid in soon:
+            h_obj.setdefault("_data", {})["next_entry"] = soon[hid]
 
 
 def _enrich_profile_history(horses, *, as_of_date=None):
@@ -206,6 +211,10 @@ def _enrich_profile_history(horses, *, as_of_date=None):
         if not ents:
             continue
         data = h_obj.setdefault("_data", {})
+        # 大幅增程組件（EXP-20261117-03）：最近一場香港賽事路程（同回放用嘅馬匹頁往績一樣，海外紀錄唔計）
+        hk_prev = next((e for e in ents if str(e.get("venue_track") or "").startswith(("沙田", "跑馬地"))), None)
+        if hk_prev is not None and hk_prev.get("distance"):
+            data["prev_distance"] = hk_prev.get("distance")
         seasons = sorted({s for s in (_profile_season_key(e.get("date")) for e in ents) if s},
                          reverse=True)[:3]
         recent = [e for e in ents if _profile_season_key(e.get("date")) in seasons] if seasons else ents
@@ -232,31 +241,20 @@ def _enrich_profile_history(horses, *, as_of_date=None):
                    and isinstance(e.get("rating"), int) and e["rating"] > 0]
             if cur:
                 data["rating_season_start"] = cur[-1]  # earliest race of current season
-        style_counts = {}
-        for e in ents[:6]:
-            st = _style_from_positions(e.get("running_positions"))
-            if st:
-                style_counts[st] = style_counts.get(st, 0) + 1
-        if style_counts:
-            order = ["前置", "守好位", "守中", "後上"]
-            data["style_breakdown_6"] = "、".join(
-                f"{style_counts[st]}場{st}" for st in order if style_counts.get(st))
         # Jockey change vs LAST start (authoritative: entries[0] = most recent race).
         # Only flag a real change, and if the new rider has ridden THIS horse before,
         # report the horse's running style under that rider.
         declared = str(h_obj.get("jockey") or "").strip()
         last_j = str(ents[0].get("jockey") or "").strip()
+        if last_j:
+            data["prev_jockey"] = last_j   # 換騎 chip 用（前→今），唔使再搵馬匹頁
         if declared and last_j and declared != last_j:
             prior = [e for e in ents if str(e.get("jockey") or "").strip() == declared]
             if prior:
                 wins = sum(1 for e in prior if e.get("placing") == 1)
-                pstyles = Counter(s for s in (_style_from_positions(e.get("running_positions"))
-                                              for e in prior) if s)
-                sstr = "、".join(f"{n}次{st}" for st, n in pstyles.most_common())
                 win_txt = f"，{wins}勝" if wins else ""
-                style_txt = f"，跑法：{sstr}" if sstr else ""
                 data["jockey_change_note"] = (
-                    f"今仗轉用騎師{declared}（曾策此駒{len(prior)}次{win_txt}{style_txt}）")
+                    f"今仗轉用騎師{declared}（曾策此駒{len(prior)}次{win_txt}）")
             else:
                 data["jockey_change_note"] = f"今仗轉用騎師{declared}（與此駒首次合作）"
 
@@ -330,6 +328,9 @@ def _refresh_grade_transparency(horses):
         incident = float(auto.get("incident_history_delta", 0.0) or 0.0)
         if incident:
             adjustments.append({"key": "incident_history", "label": "上仗事件報告", "raw": round(incident, 2)})
+        dmove = float(auto.get("distance_move_delta", 0.0) or 0.0)
+        if dmove:
+            adjustments.append({"key": "distance_move", "label": "大幅增程", "raw": round(dmove, 2)})
         transparency["adjustments"] = adjustments
         # 報告「評分總覽」嘅總分係引擎階段（後置調整之前）印嘅：補一行點樣去到最終分，唔然頂部同總覽對唔上。
         summary = transparency.get("summary")
@@ -1047,6 +1048,7 @@ class HKJCAutoOrchestrator:
                 if venue:
                     race_context["venue"] = venue
             _enrich_profile_history(horses, as_of_date=meeting_date)
+            _attach_upcoming_entries(horses, meeting_date)
             # 段速維度：L400 按負磅換算（入分）＋ 對馬會標準（只顯示）—— EXP-20261112-13
             _attach_past_runs(race_file, race_context, horses, meeting_date)
         formline_summaries = _load_formline_opponent_summaries(race_file, race_context, horses)
@@ -1120,6 +1122,8 @@ class HKJCAutoOrchestrator:
         draw_style.apply(horses, race_context)
         # 上仗事件報告（EXP-20261116-06）：檔位 × 跑法之後、grade／排名之前
         incident_history.apply(horses, race_context.get("race_date"))
+        # 大幅增程（EXP-20261117-03 D1）：事件報告之後、grade／排名之前
+        distance_move.apply(horses, race_context)
         _refresh_grade_transparency(horses)
         self._apply_7d_official_ranking(horses)
         # ensure_verdict owns the single deterministic ranking path, including

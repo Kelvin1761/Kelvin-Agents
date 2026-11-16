@@ -145,6 +145,21 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 action="自動判：退回版 forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議退回（等你決定）；否則保留",
                 extra={"pass_verdict": "建議退回（等你決定）"}),
     # EXP-20261116-06（Kelvin 2026-11-16 揀 B：全語料過閘就直接入分）：上仗事件報告（走外疊冇遮擋 +、醫療 −）。
+    # EXP-20261117-03：大幅增程（≥400 米）入分；回放 dev／holdout Holm 2 PASS。退回式 forward 監察。
+    ForwardTest("distance_move_post_live", "大幅增程上線後 vs 冇組件", "EXP-20261117-03", "harness_ab", 60,
+                since="2026-11-18", arm="docs/experiments/patches/hkjc_arm_distance_move_revert.py",
+                action="自動判：退回版 forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議退回（等你決定）；否則保留",
+                extra={"pass_verdict": "建議退回（等你決定）"}),
+    # EXP-20261117-04（Kelvin 2026-11-17）：「賽前已報 7 日內另一場」= 熱身？事後近似 −2.5～−2.8pp；乾淨版本要報名表快照 forward。
+    ForwardTest("warmup_entry_shadow", "賽前已報 7 日內另一場（熱身）扣分（shadow）", "EXP-20261117-04", "harness_ab", 150,
+                since="2026-11-18", arm="docs/experiments/patches/hkjc_arm_warmup_entry_shadow.py",
+                action="自動判：forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議入分（等你決定）；否則維持只顯示",
+                extra={"pass_verdict": "建議入分（等你決定）"}),
+    # EXP-20261117-02／04：上仗入位＋評分跌返贏馬分（唔降班）dev +4.3、holdout +1.8pp（未確認）。
+    ForwardTest("rating_back_placed_shadow", "上仗入位＋評分跌返贏馬分入分（shadow）", "EXP-20261117-04", "harness_ab", 150,
+                since="2026-11-18", arm="docs/experiments/patches/hkjc_arm_rating_back_placed_shadow.py",
+                action="自動判：forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議入分（等你決定）；否則維持只顯示",
+                extra={"pass_verdict": "建議入分（等你決定）"}),
     ForwardTest("incident_history_post_live", "上仗事件報告上線後 vs 冇組件", "EXP-20261116-06", "harness_ab", 60,
                 since="2026-11-17", arm="docs/experiments/patches/hkjc_arm_incident_history_revert.py",
                 action="自動判：退回版 forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議退回（等你決定）；否則保留",

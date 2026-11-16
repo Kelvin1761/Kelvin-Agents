@@ -72,7 +72,7 @@ def test_runs_on_or_after_race_day_are_ignored(tmp_path):
     out = tags.race_tags(*_meeting(tmp_path, horses, profiles))
     assert "潘頓棄騎（揀咗 2 號）" not in _labels(out, "1", "bad")
     notes = _labels(out, "1", "note")
-    assert "初跑1650米" in notes and "初跑跑馬地" in notes and "大幅升程（1200→1650米）" in notes
+    assert "初跑1650米" in notes and "初跑跑馬地" in notes
 
 
 def test_first_time_tags_need_complete_history(tmp_path):
@@ -115,7 +115,7 @@ def test_dimension_drivers_become_concrete_phrases(tmp_path):
     horse = _horse("甲", "巴度", hid="H1", barrier=3, last6="1-2-9-4-5-6",
                    rows=[("race_shape", 2.8), ("stability", -0.6), ("trackwork", -0.04)])
     out = tags.race_tags(*_meeting(tmp_path, {"1": horse}, {"H1": []}))
-    assert _labels(out, "1", "good") == ["檔位走位有利（3檔）"]
+    assert _labels(out, "1", "good") == ["內檔優勢（3檔）"]
     assert _labels(out, "1", "bad") == ["近績差（近3仗 1-2-9）"]
     assert out["1"]["good"][0]["impact"] == 2.8
 
@@ -138,7 +138,7 @@ def test_trainer_ace_from_racecard(tmp_path):
 def test_missing_files_and_bad_input_never_raise(tmp_path):
     logic = {"race_analysis": {}, "horses": {"1": _horse("甲", "巴度", hid="H1", rows=[("race_shape", 1.0)])}}
     out = tags.race_tags(logic, tmp_path / "nope")
-    assert _labels(out, "1", "good") == ["檔位走位有利（5檔）"]
+    assert _labels(out, "1", "good") == ["中檔優勢（5檔）"]
     assert tags.race_tags({"horses": {"1": {"python_auto": None}}}) == {}
     assert "_error" in tags.race_tags({"horses": ["唔係 dict"]})
 
@@ -150,7 +150,7 @@ def test_summary_attach_carries_tags_and_does_not_touch_scores(tmp_path):
     before = json.dumps({k: v for k, v in horses["1"]["python_auto"].items()}, sort_keys=True)
     summary.attach(logic, md)
     auto = horses["1"]["python_auto"]
-    assert _labels({"1": auto["summary"]["tags"]}, "1", "good") == ["檔位走位有利（5檔）"]
+    assert _labels({"1": auto["summary"]["tags"]}, "1", "good") == ["中檔優勢（5檔）"]
     auto.pop("summary")
     assert json.dumps(auto, sort_keys=True) == before
 
@@ -180,3 +180,62 @@ def test_wide_two_back_tag_is_unscored():
     assert [t["label"] for t in out] == ["上上仗走外疊冇遮擋"]
     assert out[0]["scored"] is False and out[0]["tone"] == "good"
     assert tags._incident_tag({"incident_history_flags": ""}) == []
+
+
+def test_gear_chips_and_trainer_pattern_wins():
+    """Kelvin 2026-11-17：除去配備有訊號（未入分）要突出；首次配備只留意；練馬師專屬 pattern 有就唔重複。"""
+    out = tags._gear_tags(["B-", "TT1", "H2"], set())
+    assert [(t["label"], t["tone"], t["scored"]) for t in out] == [("除去眼罩", "good", False), ("首次戴繫舌帶", "note", False)]
+    assert tags._gear_tags(["B-"], {"gear_removed"}) == []
+    assert tags._gear_tags([], set()) == []
+
+
+def test_jockey_change_always_names_both_riders():
+    auto = {"trainer_signal_detail": {"adjustments": [{"factor": "換騎", "delta": -1.0, "evidence": "沿用原騎較好"}]}}
+    horse = {"jockey": "何澤堯", "_data": {"prev_jockey": "楊明綸", "jockey_change_note": "今仗轉用騎師何澤堯（與此駒首次合作）"}}
+    t = tags._jockey_change_tag(horse, auto, runs=[])
+    assert t[0]["label"] == "換騎（楊明綸→何澤堯）" and "首次策騎此駒" in t[0]["why"]
+    t = tags._jockey_change_tag({"jockey": "班德禮", "_data": {}}, auto, runs=[])
+    assert t[0]["label"] == "換騎（今仗 班德禮）"
+
+
+def test_weak_combo_reads_as_not_in_sync():
+    auto = {"trainer_signal_detail": {"adjustments": [{"factor": "騎練組合", "delta": -3.0, "evidence": "x"}]}}
+    assert [t["label"] for t in tags._trainer_tags(auto)] == ["騎練唔合拍"]
+
+
+def test_distance_move_and_quick_backup_and_rating_near_win():
+    """Kelvin 2026-11-17：增程有訊號 → 扣分位；減程留意；匆匆再出留意；評分跌返／接近贏馬分留意（EXP-20261117-02）。"""
+    meta = {"distance": 1650, "date": "2026-11-18"}
+    horse = {"_data": {"hk_starts": 3}}
+    runs = [{"distance": 1200, "placing": 5, "venue": "HV", "awt": False, "jockey": "x"}]
+    # 增減程 chip 用引擎組件（distance_move）嘅判斷：≥400 米先出；增程入分
+    auto = {"distance_move": {"prev": 1200, "today": 1650, "up": True}, "distance_move_delta": -0.85}
+    t = tags._distance_venue_tags(horse, auto, runs, dict(meta))
+    up = [x for x in t if x["key"] == "distance_up"]
+    assert up and up[0]["label"] == "大幅增程（1200→1650米）" and up[0]["tone"] == "bad" and up[0]["scored"]
+    assert up[0]["impact"] == -0.85
+    auto = {"distance_move": {"prev": 1650, "today": 1200, "up": False}}
+    t = tags._distance_venue_tags(horse, auto, runs, dict(meta, distance=1200))
+    assert [x["label"] for x in t if x["key"] == "distance_down"] == ["大幅減程（1650→1200米）"]
+    auto = {"distance_move": {"prev": 1400, "today": 1200, "up": False}}     # 200 米唔係大幅
+    t = tags._distance_venue_tags(horse, auto, runs, dict(meta, distance=1200))
+    assert not [x for x in t if x["key"] in ("distance_up", "distance_down")]
+    assert tags._backup_tag({"days_since_last": 7})[0]["label"] == "相隔 7 日再出"
+    assert tags._backup_tag({"days_since_last": 14}) == []
+    from hkjc_racing_engine.form_patterns import flags
+    h = {"last_6_finishes": "4-1", "_data": {"current_rating": "57", "rating_trend": "57→55",
+                                              "recent_6_detail": "第1仗(01/11/2026 第四班)"}}
+    f = flags(h, "第四班", "2026-11-18", win_table={})
+    assert f["rating_near_win"] and not f["classdrop_rating_back"] and f["win_rating"] == 55
+    out = tags._form_pattern_tags(h, {"race_class": "第四班", "date": "2026-11-18"})
+    assert [x["label"] for x in out] == ["評分接近贏馬分（57，上次贏馬 55）"]
+
+
+def test_next_entry_tag():
+    """Kelvin 2026-11-17：賽前已報 7 日內另一場 → 留意標籤（EXP-20261117-04）。"""
+    h = {"_data": {"next_entry": {"date": "2026-11-22", "venue": "沙田", "race": 9, "class": "4", "distance": 1400, "days": 4}}}
+    t = tags._next_entry_tag(h)
+    assert t[0]["label"] == "已報 11/22 沙田（4 日後）" and t[0]["tone"] == "note" and not t[0]["scored"]
+    assert "第 9 場" in t[0]["why"] and "4班" in t[0]["why"]
+    assert tags._next_entry_tag({"_data": {}}) == []

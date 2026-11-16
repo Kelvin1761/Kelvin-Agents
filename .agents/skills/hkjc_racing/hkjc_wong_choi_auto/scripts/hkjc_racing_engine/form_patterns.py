@@ -15,6 +15,7 @@ import re
 CN = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5}
 OLD_STARTS = 35
 ELITE_RATING = 95
+RATING_NEAR_WIN = 2
 
 
 def class_no(text) -> int | None:
@@ -87,5 +88,9 @@ def flags(horse: dict, race_class, race_date: str | None = None, win_table: dict
             win_rating = float(wins[-1][1])
     out["classdrop_rating_back"] = bool(today_cls and last_cls and today_cls > last_cls and rating is not None
                                         and win_rating is not None and rating <= win_rating)
+    # Kelvin 2026-11-17：唔降班都要標「評分跌返／接近贏馬分」。回放（EXP-20261115-15）單獨殘差 dev +1.4、holdout +0.1
+    # → 冇穩定訊號，只係留意；降班＋跌返先有訊號（+5.2／+5.2，上面 classdrop_rating_back）。接近 = 高過贏馬分 ≤ 2 分。
+    out["rating_near_win"] = bool(not out["classdrop_rating_back"] and rating is not None and win_rating is not None
+                                  and rating <= win_rating + RATING_NEAR_WIN)
     out["rating"], out["win_rating"] = rating, win_rating
     return out

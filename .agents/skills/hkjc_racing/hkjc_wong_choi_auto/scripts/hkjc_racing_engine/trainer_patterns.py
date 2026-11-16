@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import json
 import re
+
+from . import gear
 from datetime import date, datetime
 from pathlib import Path
 
@@ -43,9 +45,9 @@ def patterns(horse: dict, race_class, distance, gear_codes: list[str]) -> set[st
     from .form_patterns import class_no
     d = horse.get("_data") if isinstance(horse.get("_data"), dict) else {}
     out = set()
-    if any(g.endswith("-") for g in gear_codes):
+    if gear.removed(gear_codes):
         out.add("gear_removed")
-    if any(re.fullmatch(r"[A-Z]+1", g) for g in gear_codes):
+    if gear.first(gear_codes):
         out.add("gear_first")
     try:
         lf = int(str(d.get("last_finish") or "").strip())
