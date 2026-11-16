@@ -534,3 +534,4 @@
 - EXP-20261115-22 HKJC 上仗事件報告診斷：走外疊冇遮擋兩段都 +2–4pp；醫療 −2–4pp；冷門有藉口好過乾淨冷門
 - [EXP-20261116-05](EXP-20261116-05-hkjc-weight-residual-ft-and-hiclass.md) — 負磅殘差：段速 FT 負磅換算三個 arm 打和、高班直接修正 H log-loss 跨零，全部 REJECT
 - [EXP-20261116-06](EXP-20261116-06-hkjc-incident-history-live.md) — HKJC 上仗事件報告入分（走外疊冇遮擋 +、醫療 −）：補抓 2019–23 後 dev／holdout PASS（Holm 2），上線＋forward 退回監察
+- [EXP-20261116-07](EXP-20261116-07-hkjc-weight-vs-rating-split.md) — 負磅殘差拆解：讓賽係高評分被高估、分級賽先係真負磅效應（−14.7／10 磅）；HR／HG 候選 dev CI 跨零 REJECT
