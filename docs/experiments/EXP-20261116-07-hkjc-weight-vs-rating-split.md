@@ -24,3 +24,8 @@
 
 ## 結論
 負磅殘差嘅來源搵到：讓賽係「高評分被高估」，分級賽係真負磅效應。兩者 β 逐季好穩定但場數少（分級賽每季約 30 場），v4 log-loss CI 跨零。模型唔改。候選 forward shadow：H（EXP-05）／HR，交 Kelvin。
+
+## 跟進：forward shadow（2026-11-16）
+HR 開 forward shadow（唔入分）：`patches/hkjc_arm_weight_rating_shadow.py`，β 用 2026/27 walk-forward（−1.77／−6.51／+4.69），
+評分 = Logic `_data.current_rating`、負磅 = `weight`。登記 `weight_rating_shadow`（150 場，2026-11-17 起），夠數自動判、Telegram。
+Smoke（2026-11-11/14，14 場有賽果）：只有 11-11 R9（第二班）排名郁，其他不變 → 接通。

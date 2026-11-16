@@ -120,6 +120,12 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 since="2026-11-15", arm="docs/experiments/patches/hkjc_arm_form_patterns_shadow.py",
                 action="自動判：forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議入分（等你決定）；否則維持只顯示",
                 extra={"pass_verdict": "建議入分（等你決定）"}),
+    # EXP-20261116-07 HR（Kelvin「負磅 dig deep」）：一二班評分項＋分級賽負磅／評分項，回放 dev CI 跨零，唔入分。
+    # 只郁一二班同分級賽（約一成場次）→ 用 150 場。
+    ForwardTest("weight_rating_shadow", "一二班評分／分級賽負磅入分（shadow）", "EXP-20261116-07", "harness_ab", 150,
+                since="2026-11-17", arm="docs/experiments/patches/hkjc_arm_weight_rating_shadow.py",
+                action="自動判：forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議入分（等你決定）；否則維持唔入分",
+                extra={"pass_verdict": "建議入分（等你決定）"}),
     # Kelvin 2026-11-15「forward test 能量／段速細節」：回放 energy_trend 全部 N/A，能量（段速分 ±1.5–4）從來冇驗證。
     # 退回式：候選 = 拎走能量趨勢；候選贏晒 → 建議拎走。
     ForwardTest("energy_off", "段速分拎走能量趨勢（驗證能量）", "EXP-20261115-16", "harness_ab", 60,
