@@ -536,3 +536,5 @@
 - [EXP-20261116-06](EXP-20261116-06-hkjc-incident-history-live.md) — HKJC 上仗事件報告入分（走外疊冇遮擋 +、醫療 −）：補抓 2019–23 後 dev／holdout PASS（Holm 2），上線＋forward 退回監察
 - [EXP-20261116-07](EXP-20261116-07-hkjc-weight-vs-rating-split.md) — 負磅殘差拆解：讓賽係高評分被高估、分級賽先係真負磅效應（−14.7／10 磅）；HR／HG 候選 dev CI 跨零 REJECT
 - [EXP-20261116-08](EXP-20261116-08-tennis-family-calibration.md) — Tennis 逐 family 校準：Platt 解決唔到冷門高估；市場錨定校準後 ≈ 市場、value 注幾乎冇晒，照蝕；B／C 都 REJECT，odds ≥3 只可以做安全欄
+- [EXP-20261116-09](EXP-20261116-09-tennis-featured-cap3-shadow.md) — Tennis 精選 shadow arm cap3（賠率 <3.0）：預先登記紙上 forward，250／600 注判，夠數推 Telegram
+- [EXP-20261116-10](EXP-20261116-10-tennis-calibrated-residual-scan.md) — Tennis 校準後殘差掃描：28 格冇一格過 Bonferroni；holdout p×odds>1 −7.2% ≈ 盲買；要贏只剩外部參考價／多莊／時間

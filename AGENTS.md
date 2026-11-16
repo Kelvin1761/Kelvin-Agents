@@ -63,7 +63,8 @@ import，所以**呢份文件係唯一真源** —— 新規則加喺呢度，�
 
 - **Tennis**：精選前向測試（EXP-20261105-10）由 `tennis_wc/publish/telegram.py` 嘅 `forward_milestone`
   喺每日覆盤後檢查，250／600 注第一次夠數推 Telegram（state：`data/logs/featured-forward-state.json`）。
-  新開 tennis forward 測試要喺同一處加。Tennis 投注推送只有精選（21:00 主 card、23:00／09:00 補充）。
+  新開 tennis forward 測試要喺同一處加。精選 shadow arm（紙上、唔發、唔上板）登記喺 `tennis_wc/select/featured_shadow.py` 嘅 `ARMS`，
+  由 `shadow_forward_milestones` 推（現有 `cap3`：賠率 <3.0，EXP-20261116-09）。Tennis 投注推送只有精選（21:00 主 card、23:00／09:00 補充）。
 
 - **NBA**：加入 `.agents/skills/nba/nba_daily_auto/nba_forward_tracker.py` 嘅 `FORWARD_TESTS`（指住一個凍結評估腳本，
   要有 `status`／`evaluate(only=...)`）。postgame `_forward_tracker` 每晚跑，第一次夠數自動評估一次、凍結結果並經
