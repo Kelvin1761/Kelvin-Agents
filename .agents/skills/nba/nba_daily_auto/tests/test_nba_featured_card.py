@@ -29,6 +29,8 @@ def test_card_says_paper_only_and_lists_each_pick():
     assert "紙上盤" in text and "唔好落真錢" in text
     assert "BOS@LAL｜Jayson Tatum - Points｜Under 24.5 @1.9" in text and "+10.0pp" in text
     assert "Sportsbet 搵法" in text and "得分" not in text
+    assert "All → 展開 Player" in text and "唔係即時可投注確認" in text
+    assert "唔好換線或用 N+ 代替 Under" in text
     assert "冇大細盤" in fc.card("2026-11-11", [])
 
 
