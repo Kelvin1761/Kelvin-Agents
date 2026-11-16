@@ -51,6 +51,11 @@ SPORTSBET_COMPETITIONS = (
 )
 
 class SportsbetNBAExtractor:
+    @staticmethod
+    def _unavailable(entity):
+        """Redux may retain prices after a market/selection is hidden or suspended."""
+        return entity.get("active") is False or entity.get("displayed") is False
+
     def __init__(self, outdir=".", target_date=None):
         self.competition_api = "https://www.sportsbet.com.au/apigw/sportsbook-sports/Sportsbook/Sports/Competitions"
         self.base_event_url = "https://www.sportsbet.com.au/betting/basketball-us"
@@ -312,11 +317,15 @@ class SportsbetNBAExtractor:
             outcomes_db = sportsbook.get("outcomes", {}) or {}
             outcomes = {}
             for market in (sportsbook.get("markets", {}) or {}).values():
+                if SportsbetNBAExtractor._unavailable(market):
+                    continue
                 if market.get("eventId") not in (None, event_id) and str(market.get("eventId")) != str(event_id):
                     continue
                 ids = {}
                 for out_id in market.get("outcomeIds", []):
                     out = outcomes_db.get(str(out_id), {})
+                    if SportsbetNBAExtractor._unavailable(out):
+                        continue
                     name = out.get("name", "")
                     hc = out.get("handicap")
                     if hc and isinstance(hc, dict):
@@ -367,6 +376,8 @@ class SportsbetNBAExtractor:
         outcomes_db = sportsbook.get("outcomes", {})
 
         for m_id, m_data in markets.items():
+            if self._unavailable(m_data):
+                continue
             name = m_data.get("name", "")
             if not any(x in name for x in ['Point', 'Rebound', 'Assist', 'Match Betting',
                                             'Line', 'Handicap', 'Threes', 'Three']):
@@ -375,6 +386,8 @@ class SportsbetNBAExtractor:
             sels = {}
             for out_id in m_data.get("outcomeIds", []):
                 out_data = outcomes_db.get(str(out_id), {})
+                if self._unavailable(out_data):
+                    continue
                 s_name = out_data.get("name", "")
 
                 price_val = None

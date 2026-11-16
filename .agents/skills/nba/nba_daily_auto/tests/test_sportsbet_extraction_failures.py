@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import copy
 import os
 import subprocess
 import sys
@@ -16,6 +17,38 @@ import claw_sportsbet_odds as claw  # noqa: E402
 
 
 class SportsbetExtractionFailureTests(unittest.TestCase):
+    def test_unavailable_market_or_side_cannot_create_featured_two_way_pair(self) -> None:
+        book = {"markets": {"1": {
+            "name": "Herbert Jones - Assists", "eventId": 123, "externalId": 456,
+            "active": True, "displayed": True, "outcomeIds": [11, 12],
+        }}, "outcomes": {
+            "11": {"name": "Over", "externalId": 111, "active": True, "displayed": True,
+                   "handicap": {"display": "+1.5"}, "winPrice": {"num": 800, "den": 1000}},
+            "12": {"name": "Under", "externalId": 112, "active": True, "displayed": True,
+                   "handicap": {"display": "+1.5"}, "winPrice": {"num": 960, "den": 1000}},
+        }}
+        extractor = claw.SportsbetNBAExtractor()
+
+        def formatted(payload):
+            parsed = extractor._parse_normalized_markets(payload)
+            return extractor._format_as_sportsbet("Golden State Warriors At New Orleans Pelicans", "GSW", "NOP",
+                                                 extractor._clean_markets(parsed))
+
+        self.assertEqual(formatted(book)["player_props_two_way"]["assists"]["Herbert Jones"]["1.5"],
+                         {"over": "1.8", "under": "1.96"})
+        for section, key in (("markets", "1"), ("outcomes", "11"), ("outcomes", "12")):
+            for flag in ("active", "displayed"):
+                with self.subTest(section=section, key=key, flag=flag):
+                    unavailable = copy.deepcopy(book)
+                    unavailable[section][key][flag] = False
+                    self.assertEqual(formatted(unavailable)["player_props_two_way"], {})
+                    ids = extractor._sgm_pricing_context(unavailable, 123)["outcomes"]
+                    if section == "markets":
+                        self.assertEqual(ids, {})
+                    else:
+                        side = unavailable[section][key]["name"] + " +1.5"
+                        self.assertNotIn(side, ids.get("Herbert Jones - Assists", {}))
+
     def test_cli_no_matches_exits_75_instead_of_success(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             program = """

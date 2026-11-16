@@ -13,8 +13,9 @@ from typing import Any, Iterable
 from nba_engine.featured import daily_top, describe
 
 HEADER_NOTE = "前向測試 EXP-20261110-01：未證實賺錢，唔好落真錢。每場一注、每日最多 10 注。"
-HOW_TO_FIND = ("Sportsbet 搵法：Basketball → NBA → 揀返場波 → 搵 market「球員名 - Points／Rebounds／Assists／"
-               "Made Threes」→ 揀 Over／Under。下面用嘅係 Sportsbet 原名。")
+HOW_TO_FIND = ("Sportsbet 搵法：Basketball → NBA → 揀返場波 → All → 展開 Player Points／Rebounds／Assists／"
+               "Three Point Markets → 搵「球員名 - 項目」→ 揀 Over／Under。")
+PRICE_NOTE = "報價係 21:00 發佈快照，唔係即時可投注確認；盤口之後可能停開／移除。搵唔到原盤就跳過，唔好換線或用 N+ 代替 Under。"
 
 
 def snapshot_picks(snapshot: Path) -> list[dict]:
@@ -43,7 +44,7 @@ def card(target_date: str, picks: list[dict]) -> str:
         lines.append("今晚冇大細盤 edge ≥ 5pp（或者 Sportsbet 未開大細盤）。")
     else:
         lines += [_line(i, p) for i, p in enumerate(picks, 1)]
-        lines += ["", HOW_TO_FIND, "Dashboard：NBA →「⭐ 大細盤精選」分頁（有直達 Sportsbet 連結、紀錄同累計表現）。"]
+        lines += ["", PRICE_NOTE, HOW_TO_FIND, "Dashboard：NBA →「⭐ 大細盤精選」分頁（有直達 Sportsbet 連結、紀錄同累計表現）。"]
     return "\n".join(lines)
 
 
