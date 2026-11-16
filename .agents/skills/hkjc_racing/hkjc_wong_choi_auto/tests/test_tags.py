@@ -153,3 +153,22 @@ def test_summary_attach_carries_tags_and_does_not_touch_scores(tmp_path):
     assert _labels({"1": auto["summary"]["tags"]}, "1", "good") == ["檔位走位有利（5檔）"]
     auto.pop("summary")
     assert json.dumps(auto, sort_keys=True) == before
+
+
+def test_awt_vs_turf_and_straight_tags_are_unscored(tmp_path):
+    horses = {"1": _horse("甲", "巴度", hid="H1", hk_starts=5)}
+    runs = ([_entry(f"0{d}/10/2026", "沙田全天候跑道", 1200, "巴度", p) for d, p in ((1, 1), (2, 3))]
+            + [_entry(f"0{d}/09/2026", "沙田草地\"A\"", 1200, "巴度", 8) for d in (1, 2, 3)])
+    out = tags.race_tags(*_meeting(tmp_path / "a", horses, {"H1": runs}, venue="沙田AWT", track="AWT", distance="1200m"))
+    t = [x for x in out["1"]["good"] if x["key"] == "awt_better"]
+    assert t and t[0]["scored"] is False
+
+    runs = [_entry("01/10/2026", "沙田草地\"A\"", 1000, "巴度", 2), _entry("01/09/2026", "沙田草地\"A\"", 1200, "巴度", 5)]
+    horses = {"1": _horse("甲", "巴度", hid="H1", hk_starts=2)}
+    out = tags.race_tags(*_meeting(tmp_path / "b", horses, {"H1": runs}, venue="沙田", distance="1000m"))
+    assert "直路有上名往績（1戰1上名）" in _labels(out, "1", "good")
+
+
+def test_formline_chip_does_not_say_strong(tmp_path):
+    out = tags.race_tags(*_meeting(tmp_path, {"1": _horse("甲", "巴度", hid="H1", rows=[("form_line", 1.2)])}, {"H1": []}))
+    assert _labels(out, "1", "good") == ["賽績線佔優"]
