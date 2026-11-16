@@ -126,6 +126,12 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 since="2026-11-17", arm="docs/experiments/patches/hkjc_arm_weight_rating_shadow.py",
                 action="自動判：forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議入分（等你決定）；否則維持唔入分",
                 extra={"pass_verdict": "建議入分（等你決定）"}),
+    # EXP-20261116-13 G2a（Kelvin 2026-11-16「開分級賽 G2a forward shadow」）：分級賽專用模型，回放 dev PASS、
+    # holdout CI 上界 +0.00001 擦邊 REJECT。只郁分級賽（一季約 40 場）→ 淨數分級賽，30 場判。
+    ForwardTest("group_model_shadow", "分級賽專用模型 G2a（shadow）", "EXP-20261116-13", "harness_ab", 30,
+                since="2026-11-17", arm="docs/experiments/patches/hkjc_arm_group_model_shadow.py",
+                action="自動判：forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議入分（等你決定）；否則維持唔入分",
+                extra={"pass_verdict": "建議入分（等你決定）", "count_filter": "group"}),
     # Kelvin 2026-11-15「forward test 能量／段速細節」：回放 energy_trend 全部 N/A，能量（段速分 ±1.5–4）從來冇驗證。
     # 退回式：候選 = 拎走能量趨勢；候選贏晒 → 建議拎走。
     ForwardTest("energy_off", "段速分拎走能量趨勢（驗證能量）", "EXP-20261115-16", "harness_ab", 60,
@@ -260,6 +266,23 @@ def _race_count(root: Path, since: str) -> int:
     return sum(len(_results_races(m)) for m in _meetings(root, since))
 
 
+def _group_race_count(root: Path, since: str) -> int:
+    """Races with results whose racecard 班次 is a Group race (一級賽／二級賽／三級賽)."""
+    count = 0
+    for meeting in _meetings(root, since):
+        for race_no in _results_races(meeting):
+            cards = list(meeting.glob(f"* Race {race_no} 排位表.md"))
+            if cards and re.search(r"^班次:.*級賽", cards[0].read_text(encoding="utf-8", errors="replace"), re.M):
+                count += 1
+    return count
+
+
+def _harness_count(test: "ForwardTest", root: Path) -> int:
+    if test.extra.get("count_filter") == "group":
+        return _group_race_count(root, test.since)
+    return _race_count(root, test.since)
+
+
 def _awt_race_count(root: Path, since: str) -> int:
     count = 0
     for meeting in _meetings(root, since):
@@ -370,7 +393,7 @@ def progress(test: ForwardTest, *, root: Path, ledger: dict, state: dict) -> dic
             return {"count": 0, "minimum": test.minimum, "status": "stalled",
                     "note": "ledger 有其他 profile 嘅記錄，呢個一場都冇 —— 唔喺預設 shadow 清單？要決定撤定駁返"}
     elif test.kind == "harness_ab":
-        count = _race_count(root, test.since)
+        count = _harness_count(test, root)
         note = ""
     elif test.kind == "awt_races":
         count = _awt_race_count(root, test.since)
@@ -477,7 +500,7 @@ def judge_ready(state: dict, *, root: Path, run_cmd: Callable, harness: Path, py
         # 再跑一次 arm，發出誤導嘅「建議上線／維持現狀」（2026-11-11，weight_rating_gap）。
         if test.kind != "harness_ab" or test.key in judged or test.decided:
             continue
-        count = _race_count(root, test.since)
+        count = _harness_count(test, root)
         if count < test.minimum:
             continue
         folder = out_dir / test.experiment

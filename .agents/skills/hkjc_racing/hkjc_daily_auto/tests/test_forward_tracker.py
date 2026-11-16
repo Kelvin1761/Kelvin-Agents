@@ -10,14 +10,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import hkjc_forward_tracker as tracker  # noqa: E402
 
 
-def _meeting(root: Path, name: str, races: int, awt: set[int] = frozenset(), trackwork: bool = False) -> None:
+def _meeting(root: Path, name: str, races: int, awt: set[int] = frozenset(), trackwork: bool = False,
+             group: set[int] = frozenset()) -> None:
     m = root / name
     m.mkdir()
     payload = {str(i): {"results": [{"pos": "1"}]} for i in range(1, races + 1)}
     (m / f"{name}_全日賽果.json").write_text(json.dumps(payload), encoding="utf-8")
     for i in range(1, races + 1):
         surface = "全天候跑道" if i in awt else "草地"
-        (m / f"{name[5:10]} Race {i} 排位表.md").write_text(f"場地: {surface}\n", encoding="utf-8")
+        klass = "二級賽" if i in group else "第三班"
+        (m / f"{name[5:10]} Race {i} 排位表.md").write_text(f"場地: {surface}\n班次: {klass}\n", encoding="utf-8")
     if trackwork:
         (m / f"{name[:10]} Race 1 晨操.json").write_text("{}", encoding="utf-8")
 
@@ -249,3 +251,12 @@ def test_purton_rival_never_uses_same_day_history(tmp_path):
     # 同一日上一場潘頓騎過唔算「上仗」（同一匹馬一日唔會跑兩場；呢度防住計法本身）
     _results(tmp_path, "2026-11-11_HappyValley", {1: [(1, "A001", "潘頓", 1)], 2: [(1, "A001", "田泰安", 1), (2, "Z", "潘頓", 2)]})
     assert pr.rival_cases(tmp_path, "") == []
+
+
+def test_group_model_shadow_counts_only_group_races(tmp_path):
+    """G2a 只郁分級賽：普通場次唔計數，否則一個月就「夠數」而其實得幾場分級賽。"""
+    _meeting(tmp_path, "2026-11-22_ShaTin", 10, group={8})
+    _meeting(tmp_path, "2026-11-25_HappyValley", 9)
+    assert tracker._group_race_count(tmp_path, "2026-11-17") == 1
+    item = tracker.progress(_test("group_model_shadow"), root=tmp_path, ledger={}, state={})
+    assert item["count"] == 1 and item["status"] == "collecting"
