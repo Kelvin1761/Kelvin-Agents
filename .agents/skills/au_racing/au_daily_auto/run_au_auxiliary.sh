@@ -42,8 +42,13 @@ case "$TASK" in
     exec /usr/bin/python3 "$BF" status --output "$SCRIPT_DIR/work/au-betfair-log-status.json"
     ;;
   bot)         exec /usr/bin/python3 "$SCRIPT_DIR/au_telegram_bot.py" ;;
+  # EXP-20261116-20：sportsbetform 手機逐駒分段，每日 04:30 抓前一至八日（隔 25 秒、非 200 即停、唔重試）。
+  # 腳本自己只喺 03:00–09:00 開工，避開 22:00 evening job 同 10:00–16:00 refresh。
+  mobile-sectionals)
+    exec /usr/bin/python3 "$SCRIPT_DIR/../au_wong_choi_auto/scripts/au_mobile_sectionals.py" fetch \
+      --status "$SCRIPT_DIR/work/au-mobile-sectionals-fetch.json" ;;
   *)
-    print -r -- "用法：$0 healthcheck|bot|betfair-snapshot|betfair-settle" >&2
+    print -r -- "用法：$0 healthcheck|bot|betfair-snapshot|betfair-settle|mobile-sectionals" >&2
     exit 2
     ;;
 esac

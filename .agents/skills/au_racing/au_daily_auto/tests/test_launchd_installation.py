@@ -71,3 +71,14 @@ class LaunchdInstallationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+    def test_mobile_sectionals_job_runs_in_the_quiet_window(self):
+        # EXP-20261116-20：04:30 抓手機逐駒分段，避開 22:00 evening job 同 10:00–16:00 refresh（全部都打 sportsbetform）。
+        plist = self._plist("com.antigravity.au-wong-choi.mobile-sectionals")
+        self.assertEqual(plist["StartCalendarInterval"], {"Hour": 4, "Minute": 30})
+        args = plist["ProgramArguments"]
+        self.assertTrue(args[1].endswith("/run_au_auxiliary.sh"))
+        self.assertEqual(args[2], "mobile-sectionals")
+        wrapper = (HERE / "run_au_auxiliary.sh").read_text(encoding="utf-8")
+        self.assertIn("mobile-sectionals)", wrapper)
+        self.assertIn("au_mobile_sectionals.py", wrapper)
