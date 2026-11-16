@@ -323,7 +323,12 @@ def update() -> int:
     write_market_history(mh)
     write_win_ratings(win_ratings_table())
     write_run_style(run_style_table())
-    write_incident_history(incident_history_table())
+    ih = incident_history_table()
+    write_incident_history(ih)
+    sys.path.insert(0, str(REPO / ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts"))
+    from hkjc_racing_engine.incident_history import wording_check
+    for warn in wording_check(ih):
+        notify(f"⚠️ {warn}")
     print(f"段速表更新到 {table['last_date']} → {p}；上仗賠率表到 {mh['last_date']}（{len(mh['horses'])} 匹）")
     return 0
 

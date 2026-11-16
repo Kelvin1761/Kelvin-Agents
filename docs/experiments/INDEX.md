@@ -534,6 +534,9 @@
 - EXP-20261115-22 HKJC 上仗事件報告診斷：走外疊冇遮擋兩段都 +2–4pp；醫療 −2–4pp；冷門有藉口好過乾淨冷門
 - [EXP-20261116-05](EXP-20261116-05-hkjc-weight-residual-ft-and-hiclass.md) — 負磅殘差：段速 FT 負磅換算三個 arm 打和、高班直接修正 H log-loss 跨零，全部 REJECT
 - [EXP-20261116-06](EXP-20261116-06-hkjc-incident-history-live.md) — HKJC 上仗事件報告入分（走外疊冇遮擋 +、醫療 −）：補抓 2019–23 後 dev／holdout PASS（Holm 2），上線＋forward 退回監察
+- [EXP-20261116-13](EXP-20261116-13-hkjc-group-race-model.md) — HKJC 分級賽專用模型（評分＋、負磅−、維度 L2）：dev PASS（Holm），holdout −0.00018 [−0.00038,+0.00001] 啱啱跨零 → REJECT；冇開 shadow（每季 31 場）
+- [EXP-20261116-12](EXP-20261116-12-hkjc-kelvin-round3-checks.md) — HKJC 班內評分位置（通用效應 holdout −1.4pp／10 分，A1／A3 REJECT）；上仗賠率唔使因事件重調；見習減磅已入 L400 換算、殘差唔一致；直路檔位殘差全跨零唔使改
+- [EXP-20261116-11](EXP-20261116-11-hkjc-incident-round3-and-wording.md) — HKJC 事件報告擴闊：騎法被查詢 dev／holdout +3pp 但 R1 REJECT → 顯示標籤；慣性出閘慢唔係負；用字審計（出血、帶出外疊、小傷）加入全部更差；加用字漂移監察
 - [EXP-20261116-07](EXP-20261116-07-hkjc-weight-vs-rating-split.md) — 負磅殘差拆解：讓賽係高評分被高估、分級賽先係真負磅效應（−14.7／10 磅）；HR／HG 候選 dev CI 跨零 REJECT
 - [EXP-20261116-08](EXP-20261116-08-tennis-family-calibration.md) — Tennis 逐 family 校準：Platt 解決唔到冷門高估；市場錨定校準後 ≈ 市場、value 注幾乎冇晒，照蝕；B／C 都 REJECT，odds ≥3 只可以做安全欄
 - [EXP-20261116-09](EXP-20261116-09-nba-sgm-review-and-single-bets.md) — NBA 穩膽 S3 審查：腿命中 68.5% 對模型 70.2%（後段 2 SE 壞運），SGM 報價高過腿價相乘 7.5%；每場一注 milestone 單注六個揀法全部 −4%…−9%；分別喺盤口唔喺單注／SGM（只量度）

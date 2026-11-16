@@ -8,8 +8,10 @@
 回放 6,047 場（舊格式 2019-09 至 2023-10 由賽果頁補抓）：dev Δlog-loss −0.00028 [−0.00050,−0.00006]、
 holdout −0.00041 [−0.00067,−0.00012]（Holm 2 PASS）、holdout AUC +0.0017、Good +0.64。
 表（`incident_history.json`，由 `hkjc_pit_sections_build.py` 每個賽日後重建，放本機資料根）：
-  {"version": 1, "last_date": ..., "horses": {馬號(L245): [[日期, 旗]], ...舊到新}}，旗 = "W"／"M"／"WM"／""；
+  {"version": 1, "last_date": ..., "horses": {馬號(L245): [[日期, 旗]], ...舊到新}}，旗 = "W"／"M"／"R" 嘅組合或 ""；
   null = 嗰場冇事件報告（當冇旗）。外隊馬（tags.is_foreign）中性。冇表 = 不套用。`ENABLED = False` = 退回。
+"R"（騎法被查詢／有策騎指示交代／騎師被告誡或未有力策）**只做顯示標籤，唔入分**：殘差 dev +3.4pp、holdout +3.0pp
+兩段都正，但入分候選 R1 dev Δlog-loss −0.00010 [−0.00024,+0.00005] REJECT（EXP-20261116-11）。
 """
 from __future__ import annotations
 
@@ -23,6 +25,9 @@ BETA_WIDE = 1.218867269611233
 BETA_MEDICAL = -1.9362938666252367
 WIDE_RE = r"沒有遮擋|走外疊|三疊|四疊"
 MEDICAL_RE = r"喘鳴|流鼻血|鼻孔流血|心律|跛|呼吸|肺部有血|不良於行"
+# 只顯示（EXP-20261116-11）：同 docs/experiments/patches/hkjc_incidents/diag_round3.py 嘅 INSTR｜RIDE_Q｜RIDE_WARN 一樣。
+RIDE_RE = (r"獲指示|策騎指示|(查詢|研訊).{0,30}(騎法|策騎)|(騎法|策騎).{0,12}(展開研訊|查詢)"
+           r"|告誡.{0,40}(策騎|騎法)|(策騎|騎法).{0,30}(引起小組關注|未能令小組滿意)|100\(2\)|未有力策|未有盡力")
 _TABLE: dict | None = None
 
 
@@ -31,7 +36,34 @@ def flags(sentence: str | None) -> str | None:
     if sentence is None:
         return None
     s = str(sentence)
-    return ("W" if re.search(WIDE_RE, s) else "") + ("M" if re.search(MEDICAL_RE, s) else "")
+    return (("W" if re.search(WIDE_RE, s) else "") + ("M" if re.search(MEDICAL_RE, s) else "")
+            + ("R" if re.search(RIDE_RE, s) else ""))
+
+
+# 用字漂移監察（Kelvin 2026-11-16「每次用字唔同，捉唔捉得齊？」）：HKJC 改寫法 → 命中率靜靜跌到 0 都唔會報錯。
+# 歷史命中率（有報告嘅馬次）：W 7–9%、M 2–3%、R 2–5%；地板定喺約一半。
+WORDING_FLOORS = {"W": 0.035, "M": 0.008, "R": 0.008}
+WORDING_WINDOW_DAYS = 120
+WORDING_MIN_RUNS = 300
+
+
+def wording_check(table: dict) -> list[str]:
+    """最近 WORDING_WINDOW_DAYS 日有報告嘅馬次，逐旗命中率；低過地板 → 警告句子。樣本唔夠 → 唔判。"""
+    from datetime import date, timedelta
+    last = (table or {}).get("last_date")
+    if not last:
+        return []
+    since = (date.fromisoformat(str(last)[:10]) - timedelta(days=WORDING_WINDOW_DAYS)).isoformat()
+    flags_ = [f for runs in (table.get("horses") or {}).values() for d, f in runs if d >= since and f is not None]
+    if len(flags_) < WORDING_MIN_RUNS:
+        return []
+    out = []
+    for k, floor in WORDING_FLOORS.items():
+        rate = sum(k in f for f in flags_) / len(flags_)
+        if rate < floor:
+            out.append(f"事件報告旗 {k} 近 {WORDING_WINDOW_DAYS} 日命中率 {rate:.1%}（{len(flags_)} 馬次）低過地板 {floor:.1%}"
+                       " —— HKJC 可能改咗寫法，incident_history 嘅 regex 要覆核")
+    return out
 
 
 def load_table(path: str | Path | None = None) -> dict | None:

@@ -21,6 +21,23 @@ class IncidentHistoryTest(unittest.TestCase):
         self.assertEqual(ih.flags("賽後獸醫檢查，發現喘鳴。"), "M")
         self.assertEqual(ih.flags("無特別報告。"), "")
         self.assertIsNone(ih.flags(None))
+        # R = 騎法被查詢類，只顯示（EXP-20261116-08）；唔影響 W／M 加減
+        self.assertEqual(ih.flags("被查詢時，周俊樂表示，他獲指示讓坐騎留後。"), "R")
+        self.assertEqual(ih.flags("走外疊。騎師承認違反賽事規例第100(2)條。"), "WR")
+
+    def test_wording_check_flags_silent_drop(self):
+        ok = {"last_date": "2026-11-15", "horses": {f"L{i:03d}": [["2026-11-01", f]] for i, f in
+              enumerate(["W"] * 30 + ["M"] * 10 + ["R"] * 10 + [""] * 300)}}
+        self.assertEqual(ih.wording_check(ok), [])
+        dead = {"last_date": "2026-11-15", "horses": {f"L{i:03d}": [["2026-11-01", f]] for i, f in
+                enumerate(["M"] * 10 + ["R"] * 10 + [""] * 330)}}
+        self.assertEqual(len(ih.wording_check(dead)), 1)          # W 跌到 0 → 報警
+        self.assertEqual(ih.wording_check({"last_date": "2026-11-15", "horses": {"L1": [["2026-11-01", ""]]}}), [])
+
+    def test_ride_flag_not_scored(self):
+        table = {"horses": {"L001": [["2026-11-01", "R"]], "L002": [["2026-11-01", ""]]}}
+        adj = ih.adjustments({"1": horse("L001"), "2": horse("L002")}, "2026-11-15", table)
+        self.assertEqual(adj, {"1": 0.0, "2": 0.0})
 
     def test_last_run_strictly_before(self):
         self.assertEqual(ih.prev_flags("L001", "2026-11-15", TABLE), "W")      # 唔用今仗 M

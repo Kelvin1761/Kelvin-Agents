@@ -267,6 +267,7 @@ def _distance_venue_tags(horse: dict, auto: dict, runs: list[dict], meta: dict) 
             word = "升程" if dist > prev else "縮程"
             out.append(_tag("distance_move", f"大幅{word}（{prev}→{dist}米）", "note",
                             why=f"上仗 {prev}米，今仗 {dist}米；未入分。"))
+    out += _surface_tags(runs, meta, complete)
     if complete:
         if meta.get("awt") and not any(r["awt"] for r in runs):
             out.append(_tag("first_awt", "初跑泥地", "note", why=f"香港 {len(runs)} 仗從未跑過全天候跑道；未入分。"))
@@ -274,6 +275,45 @@ def _distance_venue_tags(horse: dict, auto: dict, runs: list[dict], meta: dict) 
         if venue and not any(r["venue"] == venue for r in runs):
             name = "沙田" if venue == "ST" else "跑馬地"
             out.append(_tag("first_venue", f"初跑{name}", "note", why=f"香港 {len(runs)} 仗從未喺{name}跑過；未入分。"))
+    return out
+
+
+AWT_TURF_GAP = 0.25               # 泥地／草地上名率相差 ≥ 25 個百分點先出標籤
+
+
+def _placed(r) -> bool:
+    return isinstance(r["placing"], int) and 1 <= r["placing"] <= 3
+
+
+def _surface_tags(runs: list[dict], meta: dict, complete: bool) -> list[dict]:
+    """泥地相對草地、直路 1000 往績（Kelvin 2026-11-16「真訊號但加分唔過 → 做顯示標籤」；EXP-20261114-11：
+    兩樣都係模型之上嘅真訊號（holdout 確認），但做成加分喺細樣本過唔到閘，所以**未入分**）。"""
+    out = []
+    if meta.get("awt"):
+        awt = [r for r in runs if r["awt"]]
+        turf = [r for r in runs if not r["awt"]]
+        if len(awt) >= 2 and len(turf) >= 3:
+            ra = sum(map(_placed, awt)) / len(awt)
+            rt = sum(map(_placed, turf)) / len(turf)
+            detail = f"泥地 {len(awt)} 仗 {sum(map(_placed, awt))} 上名、草地 {len(turf)} 仗 {sum(map(_placed, turf))} 上名"
+            why = (f"香港往績：{detail}。歷史回放：泥地相對草地表現係模型之上嘅真訊號（holdout 確認），"
+                   "但做成加分過唔到閘；未入分。")
+            if ra - rt >= AWT_TURF_GAP:
+                out.append(_tag("awt_better", "泥地表現好過草地", "good", why=why))
+            elif rt - ra >= AWT_TURF_GAP:
+                out.append(_tag("awt_worse", "泥地表現差過草地", "bad", why=why))
+    if meta.get("venue") == "ST" and meta.get("distance") == 1000 and not meta.get("awt"):
+        straight = [r for r in runs if r["venue"] == "ST" and not r["awt"] and r["distance"] == 1000]
+        placed = sum(map(_placed, straight))
+        why_tail = "歷史回放：以往直路 1000 表現係模型之上嘅真訊號（holdout 確認），但做成加分過唔到閘；未入分。"
+        if placed:
+            out.append(_tag("straight_placed", f"直路有上名往績（{len(straight)}戰{placed}上名）", "good",
+                            why=f"沙田直路 1000米 {len(straight)} 仗 {placed} 次上名。" + why_tail))
+        elif len(straight) >= 2:
+            out.append(_tag("straight_unplaced", f"直路{len(straight)}戰未上過名", "bad",
+                            why=f"沙田直路 1000米 {len(straight)} 仗未上過名。" + why_tail))
+        elif not straight and complete and runs:
+            out.append(_tag("first_straight", "初跑直路", "note", why=f"香港 {len(runs)} 仗從未跑過沙田直路 1000米；未入分。"))
     return out
 
 
@@ -339,7 +379,8 @@ def _driver_label(key: str, good: bool, horse: dict, auto: dict) -> str:
         jockey = str(horse.get("jockey") or "").strip()
         return f"騎練實績{'強' if good else '弱'}" + (f"（{jockey}）" if jockey else "")
     if key == "form_line":
-        return "賽績線強" if good else "賽績線弱"
+        # Kelvin 2026-11-16：唔寫「強」—— 分數係按對手後續數據計，唔係標籤寫「強」（EXP-20261114-12）。
+        return "賽績線佔優" if good else "賽績線蝕底"
     if key == "class_advantage":
         return "評分與經驗佔優" if good else "評分與經驗蝕底"
     if key == "horse_health":
@@ -427,6 +468,10 @@ def _incident_tag(auto: dict) -> list[dict]:
     if "M" in fl:
         out.append(_tag("incident_medical", "上仗醫療事故", "bad", scored=True, impact=round(delta, 2),
                         why="上仗競賽事件報告有喘鳴／流鼻血／心律不正／跛等醫療紀錄。歷史上下仗入位率低過模型預測約 3–4pp。"))
+    if "R" in fl:
+        out.append(_tag("incident_ride", "上仗騎法被查詢", "good",
+                        why="上仗競賽事件報告：競賽小組查詢騎法、騎師交代策騎指示，或者被告誡／未有力策。"
+                            "歷史上下仗入位率高過模型預測約 3pp（dev／holdout 都正），但入分過唔到閘；未入分。"))
     return out
 
 
