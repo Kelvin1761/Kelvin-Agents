@@ -415,6 +415,21 @@ def _draw_style_tag(auto: dict) -> list[dict]:
     return [_tag("draw_style", label, "good" if delta > 0 else "bad", why=why, scored=True, impact=round(delta, 2))]
 
 
+def _incident_tag(auto: dict) -> list[dict]:
+    """上仗事件報告（EXP-20261116-06，入分）：上仗走外疊冇遮擋（藉口）／上仗醫療事故。"""
+    fl = str(auto.get("incident_history_flags") or "")
+    delta = float(auto.get("incident_history_delta") or 0.0)
+    out = []
+    if "W" in fl:
+        out.append(_tag("incident_wide", "上仗走外疊冇遮擋", "good", scored=True, impact=round(delta, 2),
+                        why="上仗競賽事件報告記錄走外疊、冇遮擋：往績名次差唔代表能力差。歷史上下仗入位率高過模型預測約 2–3pp"
+                            "（6,000 場回放 dev／holdout 都改善）。"))
+    if "M" in fl:
+        out.append(_tag("incident_medical", "上仗醫療事故", "bad", scored=True, impact=round(delta, 2),
+                        why="上仗競賽事件報告有喘鳴／流鼻血／心律不正／跛等醫療紀錄。歷史上下仗入位率低過模型預測約 3–4pp。"))
+    return out
+
+
 def horse_tags(no: str, horse: dict, auto: dict, *, runs: list[dict], meta: dict,
                priority: str = "", extra: list | None = None) -> dict:
     special = _trainer_tags(auto) + _jockey_change_tag(horse, auto, runs) + _distance_venue_tags(horse, auto, runs, meta)
@@ -452,7 +467,7 @@ def race_tags(logic_data: dict, meeting_dir: Path | None = None) -> dict:
                 extra.setdefault(no, []).extend(items)
         for no, h in horses.items():
             extra.setdefault(no, []).extend(_debut_trainer_tag(h, meta) + _foreign_tag(h) + _form_pattern_tags(h, meta)
-                                            + _draw_style_tag(h["python_auto"])
+                                            + _draw_style_tag(h["python_auto"]) + _incident_tag(h["python_auto"])
                                             + _trainer_pattern_tags(h, meta, gear.get(no, [])))
         return {no: horse_tags(no, h, h["python_auto"], runs=runs_by_no.get(no) or [], meta=meta,
                                priority=priorities.get(no, ""), extra=extra.get(no))

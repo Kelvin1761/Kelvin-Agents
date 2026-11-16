@@ -121,6 +121,12 @@ RANKING_ADJUSTMENTS = (
         "formula": "β_style·(跑法格值 − 場均) + β_curve·(逐檔格值 − 場均)；跑法格 = 組別 × 慣性跑法（之前最多 6 仗早段位置）× 檔位段，逐檔格 = 組別 × 檔號 × 大場（hkjc_racing_engine/draw_style.py，格值凍結喺 resources/hkjc_draw_style.json）",
         "missing": "冇檔號 = 格值 0；之前少過 2 仗 = 跑法「未知」；冇賽日 = 不套用",
     },
+    {
+        "key": "incident_history",
+        "label": "上仗事件報告（EXP-20261116-06）",
+        "formula": "β_wide·(上仗走外疊冇遮擋 − 場均) + β_med·(上仗醫療事故 − 場均)；只睇日期嚴格早過今仗嘅最近一仗 HKJC 競賽事件報告（hkjc_racing_engine/incident_history.py）",
+        "missing": "上仗冇事件報告／冇上仗 = 當冇旗；外隊馬中性；冇表 = 不套用",
+    },
 )
 
 DEBUT_MATRIX_WEIGHTS = dimensions.debut_weights()

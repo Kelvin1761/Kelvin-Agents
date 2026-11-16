@@ -174,6 +174,55 @@ def write_market_history(table: dict) -> Path:
     return p
 
 
+def incident_history_table() -> dict:
+    """上仗事件報告表（EXP-20261116-06）：每匹馬每仗嘅事件報告旗（W 走外疊冇遮擋／M 醫療；null = 嗰場冇報告）。
+    來源同回放索引一樣（舊季研究賽果＋賽果庫 full_day_results.json），本機資料根，唔使外置碟。"""
+    import json as _json
+    sys.path.insert(0, str(REPO / ".agents/skills/hkjc_racing/hkjc_reflector/scripts"))
+    sys.path.insert(0, str(REPO / ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts"))
+    import build_comprehensive_stats as bcs
+    import hkjc_history_replay_build as rb
+    from hkjc_racing_engine.incident_history import flags
+    files = sorted((bcs.HK_RACING / "_research_old_season_results").glob("*.json"))
+    files += sorted(bcs.DB_ROOT.glob("hkjc results */*/full_day_results.json"))
+    races = {}
+    for fp in files:
+        try:
+            data = _json.loads(fp.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        for key, race in data.items():
+            if not isinstance(race, dict):
+                continue
+            if not race.get("racedate"):
+                race = rb._normalise_new_schema(race, fp)
+                if race is None:
+                    continue
+            m = re.search(r"\d+", str(race.get("race_no") or key))
+            if m:
+                races[(str(race["racedate"])[:10], int(m.group()))] = race
+    horses: dict[str, list] = {}
+    for (d, _n), race in sorted(races.items()):
+        inc = race.get("incident_report")
+        per = rb._incident_by_horse(inc) if inc else None
+        for row in race.get("results", []):
+            code = rb._code(str(row.get("horse_name") or ""))
+            if not code or not rb._started(row):
+                continue
+            horses.setdefault(code, []).append([d, None if per is None else flags(per.get(code, ""))])
+    for v in horses.values():
+        v.sort(key=lambda r: r[0])
+    return {"version": 1, "last_date": max(d for d, _ in races) if races else None, "horses": horses}
+
+
+def write_incident_history(table: dict) -> Path:
+    p = out_path().with_name("incident_history.json")
+    tmp = p.with_suffix(".tmp")
+    tmp.write_text(json.dumps(table, ensure_ascii=False), encoding="utf-8")
+    os.replace(tmp, p)
+    return p
+
+
 def win_ratings_table() -> dict:
     """贏馬評分表（EXP-20261115-15 降班＋評分跌返贏馬分）：HKJC 馬匹頁每次贏馬嘅 [日期, 評分]。
     live 近 6 仗以外嘅贏馬靠呢個表；近 6 仗由 Logic rating_trend 補。"""
@@ -274,6 +323,7 @@ def update() -> int:
     write_market_history(mh)
     write_win_ratings(win_ratings_table())
     write_run_style(run_style_table())
+    write_incident_history(incident_history_table())
     print(f"段速表更新到 {table['last_date']} → {p}；上仗賠率表到 {mh['last_date']}（{len(mh['horses'])} 匹）")
     return 0
 
@@ -290,6 +340,8 @@ def main() -> int:
     print(f"上仗賠率表 {len(mh['horses'])} 匹、到 {mh['last_date']} → {write_market_history(mh)}")
     rs = run_style_table()
     print(f"跑法歷史表 {len(rs['horses'])} 匹、到 {rs['last_date']} → {write_run_style(rs)}")
+    ih = incident_history_table()
+    print(f"上仗事件報告表 {len(ih['horses'])} 匹、到 {ih['last_date']} → {write_incident_history(ih)}")
     ev = debut_events()
     print(f"初出馬事件 {len(ev)} → {write_debut(ev)}")
     return 0

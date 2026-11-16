@@ -35,6 +35,7 @@
 | 全場 race-shape 極端值修正 `race_shape_robustness` | 同場中位數 + clip（race-shape − 同場中位數，−10，+10）；全場同式、不鎖名次 | 整場冇有效 race-shape = 不套用；可用 WC_HKJC_RACE_SHAPE_ROBUSTNESS=legacy_unbounded 回退 |
 | 上仗市場熱度（EXP-20261115-07） `market_history` | β₁·(上仗 HKJC 最終獨贏 log 賠率 − 場均) + β₂·(冇上仗紀錄 − 場均)；只用日期嚴格早過今仗嘅賠率，今仗賠率永遠唔用（hkjc_racing_engine/market_history.py） | 冇上仗 = 場均＋缺失指示；外隊馬中性；冇表 = 不套用 |
 | 檔位×跑法修正（EXP-20261116-01） `draw_style` | β_style·(跑法格值 − 場均) + β_curve·(逐檔格值 − 場均)；跑法格 = 組別 × 慣性跑法（之前最多 6 仗早段位置）× 檔位段，逐檔格 = 組別 × 檔號 × 大場（hkjc_racing_engine/draw_style.py，格值凍結喺 resources/hkjc_draw_style.json） | 冇檔號 = 格值 0；之前少過 2 仗 = 跑法「未知」；冇賽日 = 不套用 |
+| 上仗事件報告（EXP-20261116-06） `incident_history` | β_wide·(上仗走外疊冇遮擋 − 場均) + β_med·(上仗醫療事故 − 場均)；只睇日期嚴格早過今仗嘅最近一仗 HKJC 競賽事件報告（hkjc_racing_engine/incident_history.py） | 上仗冇事件報告／冇上仗 = 當冇旗；外隊馬中性；冇表 = 不套用 |
 
 **「權重」同「實測影響力」有咩分別？**  權重係配方上寫死嘅數。實測影響力係
 實際跑落去，呢個維度喺同一場馬入面真係拉開幾多分距離 —— 一個權重好高但成場馬
@@ -216,10 +217,10 @@ Grade 只係一個閱讀標籤，排名純粹按分數高低，唔會因為 Grad
 
 ## 呢份文件由邊度嚟
 
-- 生成時間：`2026-11-16 01:21 AEDT`
-- Git commit：`f6fb6c77`
+- 生成時間：`2026-11-16 14:55 AEDT`
+- Git commit：`13255cb3`
 - Scoring contract：`HKJC_9D_CONTRACT_2026_10_10_REGISTRY_TRACKWORK_DISTANCE_FIT_RACE_SHAPE_ROBUST_WINSOR10_PIT_RAIL_DRAW_V2_DISTANCE_COMPONENT_V1`
-- `scoring.py` 指紋：`85c4f16fee30`
+- `scoring.py` 指紋：`36601820a83b`
 - `matrix_mapper.py` 指紋：`a675ec199a4c`
 - `renderer.py` 指紋：`e07926aa2737`
 - 實測樣本：**110 場、1360 匹馬**，由 `2026-10-11_ShaTin` 到 `2026-11-14_ShaTin`（跳過 351 個舊格式檔案）

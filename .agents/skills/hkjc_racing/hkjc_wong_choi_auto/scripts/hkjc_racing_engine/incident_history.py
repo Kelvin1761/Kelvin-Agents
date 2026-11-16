@@ -1,0 +1,109 @@
+"""上仗競賽事件報告組件（EXP-20261116-06；Kelvin 2026-11-16 揀 B：「全語料測試過閘就直接入分」）。
+
+**methodology**：只用之前賽事（日期嚴格早過今仗）嘅 HKJC 競賽事件報告（賽後公開）；睇匹馬**最近一仗**：
+  走外疊冇遮擋  = 句子有「沒有遮擋／走外疊／三疊／四疊」→ 往績名次差但唔代表能力差（藉口）
+  醫療事故      = 「喘鳴／流鼻血／鼻孔流血／心律／跛／呼吸／肺部有血／不良於行」
+  raw' = raw + β_wide·(走外疊 − 場均) + β_med·(醫療 − 場均)
+β 係逐季 walk-forward 嘅 2026/27 季值（fit 2019/20–2025/26 全部回放季；docs/experiments/patches/hkjc_incidents/build_cand.py I1）。
+回放 6,047 場（舊格式 2019-09 至 2023-10 由賽果頁補抓）：dev Δlog-loss −0.00028 [−0.00050,−0.00006]、
+holdout −0.00041 [−0.00067,−0.00012]（Holm 2 PASS）、holdout AUC +0.0017、Good +0.64。
+表（`incident_history.json`，由 `hkjc_pit_sections_build.py` 每個賽日後重建，放本機資料根）：
+  {"version": 1, "last_date": ..., "horses": {馬號(L245): [[日期, 旗]], ...舊到新}}，旗 = "W"／"M"／"WM"／""；
+  null = 嗰場冇事件報告（當冇旗）。外隊馬（tags.is_foreign）中性。冇表 = 不套用。`ENABLED = False` = 退回。
+"""
+from __future__ import annotations
+
+import json
+import re
+from bisect import bisect_left
+from pathlib import Path
+
+ENABLED = True
+BETA_WIDE = 1.218867269611233
+BETA_MEDICAL = -1.9362938666252367
+WIDE_RE = r"沒有遮擋|走外疊|三疊|四疊"
+MEDICAL_RE = r"喘鳴|流鼻血|鼻孔流血|心律|跛|呼吸|肺部有血|不良於行"
+_TABLE: dict | None = None
+
+
+def flags(sentence: str | None) -> str | None:
+    """事件報告句子 → 旗（None = 冇報告）。"""
+    if sentence is None:
+        return None
+    s = str(sentence)
+    return ("W" if re.search(WIDE_RE, s) else "") + ("M" if re.search(MEDICAL_RE, s) else "")
+
+
+def load_table(path: str | Path | None = None) -> dict | None:
+    global _TABLE
+    if path is None and _TABLE is not None:
+        return _TABLE
+    if path is None:
+        import wongchoi_paths
+        path = Path(wongchoi_paths.HK_RACING) / "HKJC_Sections" / "incident_history.json"
+    p = Path(path)
+    if not p.exists():
+        return None
+    _TABLE = json.loads(p.read_text(encoding="utf-8"))
+    return _TABLE
+
+
+def prev_flags(code: str, race_date: str, table: dict) -> str:
+    runs = (table.get("horses") or {}).get(code) or []
+    i = bisect_left([r[0] for r in runs], race_date)      # 嚴格早過今仗
+    if i == 0:
+        return ""
+    return runs[i - 1][1] or ""
+
+
+def horse_flags(horses: dict, race_date: str, table: dict) -> dict:
+    """{馬號: 上仗旗}；外隊馬當冇旗（中性）。"""
+    from .market_history import horse_code
+    from .tags import is_foreign
+    return {k: ("" if is_foreign(h) else prev_flags(horse_code(h), race_date, table)) for k, h in horses.items()}
+
+
+def adjustments(horses: dict, race_date: str, table: dict) -> dict:
+    """horses：{馬號: horse dict} → {馬號: raw 加減}（場內置中）。"""
+    if not horses:
+        return {}
+    fl = horse_flags(horses, race_date, table)
+    raw = {k: BETA_WIDE * ("W" in f) + BETA_MEDICAL * ("M" in f) for k, f in fl.items()}
+    mean = sum(raw.values()) / len(raw)
+    return {k: v - mean for k, v in raw.items()}
+
+
+def apply(horses: dict, race_date: str | None, table: dict | None = None) -> int:
+    """加落 ability_score_raw（上仗賠率之後、grade／排名之前）。返回郁咗幾多匹；冇表／冇日期 → 唔郁。"""
+    if not ENABLED or not race_date:
+        return 0
+    table = table if table is not None else load_table()
+    if not table:
+        return 0
+    from .scoring import compute_grade, to_display_scale
+    scored = {k: h for k, h in horses.items() if isinstance(h, dict) and isinstance(h.get("python_auto"), dict)
+              and h["python_auto"].get("ability_score_raw") is not None}
+    n = 0
+    fl = horse_flags(scored, str(race_date)[:10], table)
+    for k, add in adjustments(scored, str(race_date)[:10], table).items():
+        auto = scored[k]["python_auto"]
+        auto["incident_history_flags"] = fl.get(k, "")
+        raw = round(float(auto["ability_score_raw"]) + add, 4)
+        auto["ability_score_raw"] = raw
+        auto["ability_score"] = round(to_display_scale(raw), 2)
+        auto["grade"] = compute_grade(auto["ability_score"])
+        auto["incident_history_delta"] = round(add, 4)
+        # shadow 反事實要同主線一樣加（同 market_history；否則 SHADOW-024／027 驗證唔過）
+        for shadow in (auto.get("shadow_profiles") or {}).values():
+            try:
+                s_raw = round(float(shadow.get("ability_score_raw")) + add, 4)
+            except (TypeError, ValueError):
+                continue
+            s_score = round(to_display_scale(s_raw), 2)
+            shadow["ability_score_raw"] = s_raw
+            shadow["ability_score"] = s_score
+            shadow["grade"] = compute_grade(s_score)
+            shadow["ability_delta"] = round(s_score - auto["ability_score"], 2)
+            shadow.setdefault("sip_flags", []).append({"reason": "incident_history", "boost": round(add, 4), "boost_scale": "raw"})
+        n += abs(add) > 1e-9
+    return n
