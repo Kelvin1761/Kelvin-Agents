@@ -55,6 +55,43 @@ def runner_key(parsed):
                      for v in parsed["overview"].values() if isinstance(v, dict))
 
 
+def run_key(x):
+    h = x.get("header") or {}
+    return (h.get("date"), h.get("track"), h.get("race"), x.get("pos"), x.get("barrier"), x.get("jockey"))
+
+
+def match_runs(brw_runs, form_runs):
+    """按 run_key 配對，唔受次序／多一條少一條影響。"""
+    from collections import defaultdict
+    ser = lambda x: json.dumps(norm(x), sort_keys=True, ensure_ascii=False)  # noqa: E731
+    bk, fk = defaultdict(list), defaultdict(list)
+    for x in brw_runs:
+        bk[run_key(x)].append(x)
+    for x in form_runs:
+        fk[run_key(x)].append(x)
+    out = {"identical": 0, "matched_diff": 0, "only_browser": 0, "only_form": 0,
+           "field_diffs": {}, "examples": []}
+    for k in set(bk) | set(fk):
+        xs, ys = bk.get(k, []), fk.get(k, [])
+        for i in range(max(len(xs), len(ys))):
+            if i >= len(ys):
+                out["only_browser"] += 1
+                if len(out["examples"]) < 6:
+                    out["examples"].append(["只有瀏覽器", list(map(str, k))])
+            elif i >= len(xs):
+                out["only_form"] += 1
+                if len(out["examples"]) < 6:
+                    out["examples"].append(["只有 /form/", list(map(str, k))])
+            elif ser(xs[i]) == ser(ys[i]):
+                out["identical"] += 1
+            else:
+                out["matched_diff"] += 1
+                for f in set(xs[i]) | set(ys[i]):
+                    if ser(xs[i].get(f)) != ser(ys[i].get(f)):
+                        out["field_diffs"][f] = out["field_diffs"].get(f, 0) + 1
+    return out
+
+
 def diff(a, b, path="", out=None, limit=40):
     out = [] if out is None else out
     if len(out) >= limit:
@@ -78,7 +115,10 @@ def diff(a, b, path="", out=None, limit=40):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--date", required=True)
-    ap.add_argument("--venues", nargs="+", required=True)
+    ap.add_argument("--venues", nargs="+",
+                    help="唔俾就由 AU 資料根嘅 `<date> <場地> Race ...` 資料夾揀")
+    ap.add_argument("--data-root", type=Path,
+                    default=Path("/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing"))
     ap.add_argument("--cache", required=True, type=Path)
     ap.add_argument("--out", required=True, type=Path)
     ap.add_argument("--delay", type=float, default=25.0)
@@ -94,7 +134,14 @@ def main():
 
     # 1. 今日賽事（主站 API，NBA／網球用緊嗰類）
     allr = s.get(API + f"AllRacing/{args.date}", timeout=30).json()
-    meetings = walk(allr, lambda o: o.get("name") in args.venues and "events" in o, [])
+    if not args.venues:
+        import re as _re
+        args.venues = sorted({_re.sub(r"\s+Race\s.*$", "", d.name[11:]).strip()
+                              for d in args.data_root.iterdir()
+                              if d.is_dir() and d.name.startswith(args.date + " ")})
+        note(f"資料根場次：{args.venues}")
+    want = {v.lower() for v in args.venues}
+    meetings = walk(allr, lambda o: str(o.get("name", "")).lower() in want and "events" in o, [])
     events = [(m["name"], e) for m in meetings for e in m["events"]]
     note(f"{len(events)} 場：{[m['name'] for m in meetings]}")
 
@@ -168,7 +215,8 @@ def main():
                          "overview": ov, "runs": p["runs"]})
         a, b = strip(brw), strip(mob)
         d = diff(a, b)
-        results.append({"race": tag, "status": "same" if not d else "diff",
+        m = match_runs(brw["runs"], mob["runs"])
+        results.append({"race": tag, "status": "same" if not d else "diff", "match": m,
                         "cache_file": cf.name, "runs": [len(brw["runs"]), len(mob["runs"])],
                         "in_running": [sum(bool(x.get("p800") or x.get("settled")) for x in brw["runs"]),
                                        sum(bool(x.get("p800") or x.get("settled")) for x in mob["runs"])],
@@ -179,7 +227,12 @@ def main():
     summary = {"date": args.date, "fetched": fetched, "stop": stop, "results": results, "log": log}
     (args.out / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=1))
     same = sum(r["status"] == "same" for r in results)
+    tot = {k: sum(r.get("match", {}).get(k, 0) for r in results)
+           for k in ("identical", "matched_diff", "only_browser", "only_form")}
+    summary["totals"] = tot
+    (args.out / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=1))
     note(f"完成：抓 {fetched} 版，{same}/{len(results)} 場完全一致，stop={stop}")
+    note(f"往績配對：{tot}")
 
 
 if __name__ == "__main__":
