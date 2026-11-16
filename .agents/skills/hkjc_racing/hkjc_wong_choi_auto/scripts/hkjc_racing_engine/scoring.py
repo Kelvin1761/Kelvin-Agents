@@ -127,6 +127,12 @@ RANKING_ADJUSTMENTS = (
         "formula": "β_wide·(上仗走外疊冇遮擋 − 場均) + β_med·(上仗醫療事故 − 場均)；只睇日期嚴格早過今仗嘅最近一仗 HKJC 競賽事件報告（hkjc_racing_engine/incident_history.py）",
         "missing": "上仗冇事件報告／冇上仗 = 當冇旗；外隊馬中性；冇表 = 不套用",
     },
+    {
+        "key": "distance_move",
+        "label": "大幅增程（EXP-20261117-03）",
+        "formula": "β·([今仗路程 − 上仗路程 ≥ 400 米] − 場均)，β = −0.926（原始分）；上仗 = HKJC 馬匹頁最近一場香港賽事、日期嚴格早過今仗（hkjc_racing_engine/distance_move.py）",
+        "missing": "冇上仗（初出／外隊）= 冇旗；冇今仗路程 = 不套用；大幅減程只顯示、唔入分",
+    },
 )
 
 DEBUT_MATRIX_WEIGHTS = dimensions.debut_weights()
