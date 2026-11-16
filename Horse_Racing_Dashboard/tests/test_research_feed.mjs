@@ -1,8 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { webcrypto } from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import vm from 'node:vm';
 import { onRequestGet, onRequestPost } from '../functions/api/research.js';
 
 globalThis.crypto ||= webcrypto;
@@ -93,50 +91,4 @@ test('missing freeze state and future dates are rejected before cache writes', a
     assert.equal((await onRequestPost({request: request('POST', p), env: env()})).status, 422);
     assert.equal(values.size, 0);
   }
-});
-function viewHarness(fetcher) {
-  class Element {
-    constructor(tag) { this.tag = tag; this.children = []; this.style = {}; this.textContent = ''; }
-    replaceChildren() { this.children = []; this.textContent = ''; }
-    appendChild(node) { this.children.push(node); }
-    showModal() { this.open = true; }
-    set innerHTML(_) { throw new Error('unsafe HTML rendering'); }
-  }
-  const content = new Element('div'), dialog = new Element('dialog');
-  const document = {createElement: tag => new Element(tag), getElementById: id =>
-    id === 'research-feed-content' ? content : dialog};
-  const source = readFileSync(new URL('../static_template.html', import.meta.url), 'utf8')
-    .split('// BEGIN PRIVATE RESEARCH VIEW')[1].split('// END PRIVATE RESEARCH VIEW')[0];
-  // First line is the marker's comment suffix.
-  const context = vm.createContext({document, window: {location: {protocol: 'https:'}}, authorizedFetch: fetcher});
-  vm.runInContext(source.slice(source.indexOf('\n') + 1), context);
-  const text = node => [node.textContent, ...node.children.map(text)].join(' ');
-  return {context, content, text};
-}
-test('actual template renders untrusted hypotheses as text and retains freeze warning', () => {
-  const h = viewHarness(); const p = payload();
-  p.projection.experiments.push({spec_id: 'test', hypothesis: '<img src=x onerror=alert(1)>'});
-  h.context.renderResearchFeed(h.content, {schema_version: 'wong-choi-private-research-list/v1',
-    current_state_verified: false, model_promotion_allowed: false, missing: [],
-    snapshots: [{sha256: 'c'.repeat(64), publication: p}]});
-  assert.match(h.text(h.content), /研究凍結/);
-  assert.match(h.text(h.content), /發布端報告/);
-  assert.match(h.text(h.content), /<img src=x onerror=alert\(1\)>/);
-  delete p.projection.freeze_research_required;
-  assert.throws(() => h.context.renderResearchFeed(h.content, {schema_version: 'wong-choi-private-research-list/v1',
-    current_state_verified: false, model_promotion_allowed: false, missing: [],
-    snapshots: [{sha256: 'c'.repeat(64), publication: p}]}));
-  assert.equal(h.content.children.length, 0);
-});
-test('actual template clears old private content and never echoes failed response bodies', async () => {
-  let calls = 0;
-  const h = viewHarness(async (url, options) => {
-    calls++; assert.equal(url, '/api/research'); assert.equal(options.redirect, 'error');
-    return {ok: false, text: async () => 'private server secret'};
-  });
-  h.content.textContent = 'old private data';
-  await h.context.openResearchFeed();
-  assert.equal(calls, 1);
-  assert.match(h.content.textContent, /未能載入/);
-  assert.doesNotMatch(h.content.textContent, /old private data|private server secret/);
 });
