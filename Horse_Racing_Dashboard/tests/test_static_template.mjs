@@ -2848,6 +2848,14 @@ test('NBA 大細盤精選 has its own tab and names bets the way Sportsbet lists
   assert.match(html,/−\$0\.20|-\$0\.20/);                // +0.80 − 1.00
 });
 
+test('NBA 精選 whose Sportsbet market was pulled shows as withdrawn and is not counted',()=>{
+  const rec=(id,state,extra={})=>({id,day:'2026-11-17',event_name:'GSW @ NOP',game_tag:'GSW_NOP',start_time_utc:'2026-11-17T01:10:00Z',sportsbet_event_id:'11171052',odds:1.96,stake:1,tracking_kind:'featured',edge:0.08,p_model:0.56,p_fair:0.48,state,...extra,legs:[{player:'Herbert Jones',team:'NOP',market:'ast',stat:'AST',ou_line:1.5,side:'under',price:1.96,state,actual:state==='void'?'void':2}]});
+  const api=loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,sports_feed:{sports:{nba:{tracking:{status:'valid',records:[],featured_inception_date:'2026-11-11',featured_records:[rec('a','void',{void_reason:'market_withdrawn',withdrawn_at:'2026-11-17T06:30:00+11:00'}),rec('b','lost')]}}}}});
+  api.setSportsTabForTest('featured');const html=api.renderSportsWorkspace('nba');
+  assert.ok(html.includes('已收盤 · 不計'));assert.ok(html.includes('Sportsbet 開波前收咗呢個盤'));
+  assert.match(html,/1<small>\/ 250 注<\/small>/);   // only the lost bet counts
+});
+
 test('NBA SGM leg expands into a plain-language reason built from the saved pricing inputs',()=>{
   const why={price:1.3,p_market:0.7692,p_s:0.68,p_c:0.7,p_final:0.69,p_l10_base_rate:0.8,hit_l5:0.8,cov:0.31,rule:'banker',opponent:'DEN',l10:[8,7,5,9,6,7,10,6,4,8],avg:7,median:7,minutes_l10:32.1,expect:{mu:7.3,minutes:31.9,per_minute:0.228,opponent_factor:1.0,games:12}};
   const leg=(player,extra)=>({player,team:'BKN',market:'reb',stat:'REB',line:6,side:'over',state:'pending',actual:null,...extra});

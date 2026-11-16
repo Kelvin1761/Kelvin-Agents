@@ -359,3 +359,16 @@ def test_each_leg_carries_what_it_was_priced_from(tmp_path):
     assert first['why'] is None                      # a leg the sidecar never priced explains nothing
     assert second['why']['expect']['mu']==7.3 and second['why']['l10']==[8,7,5]
     assert second['why']['p_s']==.68 and second['why']['rule']=='banker' and second['why']['opponent']=='DEN'
+
+
+def test_featured_market_withdrawn_before_tip_is_void_whatever_the_box_score(tmp_path):
+    """Kelvin 2026-11-17: Sportsbet pulled the O/U after 21:00, so the bet could not be placed."""
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]/'.agents'/'skills'/'nba'/'nba_daily_auto'))
+    import nba_featured_availability as availability
+    _featured(tmp_path);_box(tmp_path,actual=22)
+    day=tmp_path/f'{FDAY} NBA Analysis'
+    pick={**PICK,'game_tag':TAG}
+    (day/f'Sportsbet_Odds_{TAG}.json').write_text(json.dumps({'player_props_two_way':{'points':{'Other Player':{'10.5':{'over':'1.9','under':'1.9'}}}}}))
+    assert [p['player'] for p in availability.check(day,[pick],{TAG},now=datetime(2026,11,7,20,tzinfo=timezone.utc))]==['First Player']
+    (rec,)=build(tmp_path)['featured_records']
+    assert (rec['state'],rec['profit'],rec['void_reason'],rec['legs'][0]['actual'])==('void',None,'market_withdrawn','void')

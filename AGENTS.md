@@ -536,6 +536,10 @@ Deploy wrapper：
   **SGM 唔再發 Telegram**（同日，EXP-20261116-09）：21:00／部分場次 SGM card、朝早換單通知、傷停提示、覆盤 SGM 摘要全部停；
   content 只收精選 card、精選覆盤同 ROI 板。dashboard 照追蹤 SGM、穩膽停損照跑（暫停／S3 通知照發 primary）。
   開關：`nba_daily_schedule.SGM_TELEGRAM`（`True` 即恢復）。milestone 腿唔好剷：精選嘅模型機率就係借 milestone 腿嘅 `p_final`。
+- **精選原盤收咗 = 作廢不計（Kelvin 2026-11-17）**：每次開波前 odds refresh 之後，`nba_featured_availability.py` 逐場對返
+  精選嘅「球員 - 項目」大細盤；成個盤冇咗（同場同項目其他球員仲有盤）就寫入當日 `Featured_Availability.json`，**永久**作廢
+  （`void_reason = market_withdrawn`，之後盤返嚟都唔變），dashboard 標「已收盤 · 不計」並 content Telegram 一次。
+  只係轉線（`line_moved`）照計；成場冇大細盤（`unknown`）唔下判斷。只睇盤口唔睇賽果，所以唔會令紀錄偏向有利結果。
 - **（歷史）SGM 照發，精選排喺後面（Kelvin 2026-11-10 改決定）**：SGM card 每日照發，「⭐ 大細盤精選（紙上盤）」card 跟喺 SGM 後面；
   覆盤先報 SGM 再報精選；ROI 板分兩行（`nba` = SGM、`nba_featured` = 精選）；穩膽停損照舊檢查。精選仍然係紙上盤、
   forward 測試照跑（F250／F1000）。同日較早嗰個「停發 SGM」決定（5b45a24e）未影響過任何一張 card 就已撤回。

@@ -57,9 +57,12 @@ def postgame_lines(target_date: str, records: Iterable[dict[str, Any]]) -> str |
     for r in rows:
         leg = (r.get("legs") or [{}])[0]
         actual = leg.get("actual")
-        shown = "作廢" if actual == "void" else ("待結算" if actual is None else f"實際 {actual:g}")
+        shown = ("Sportsbet 收咗盤，作廢不計" if r.get("void_reason") == "market_withdrawn"
+                 else "作廢" if actual == "void" else ("待結算" if actual is None else f"實際 {actual:g}"))
         out.append(f"{mark.get(r.get('state'), '⏳')} {describe({**leg, 'stat': leg.get('stat') or ''})}"
                    f" @{r['odds']:g}（{shown}）")
     won = sum(r.get("state") == "won" for r in rows)
     lost = sum(r.get("state") == "lost" for r in rows)
-    return "\n".join([f"⭐ 大細盤精選（紙上盤）：{len(rows)} 注｜中 {won}｜未中 {lost}", *out])
+    void = sum(r.get("state") == "void" for r in rows)
+    return "\n".join([f"⭐ 大細盤精選（紙上盤）：{len(rows)} 注｜中 {won}｜未中 {lost}"
+                      + (f"｜作廢 {void}" if void else ""), *out])

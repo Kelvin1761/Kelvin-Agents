@@ -47,3 +47,12 @@ def test_postgame_reports_hits_but_never_roi():
     assert "✅ A - Points｜Under 24.5 @1.9（實際 20）" in text and "➖ B - Assists｜Over 5.5" in text
     assert "ROI" not in text and "%" not in text
     assert fc.postgame_lines("2026-11-12", records) is None
+
+
+def test_postgame_says_when_sportsbet_pulled_the_market():
+    records = [{"day": "2026-11-17", "tracking_kind": "featured", "state": "void", "odds": 1.96,
+                "void_reason": "market_withdrawn",
+                "legs": [{"player": "Herbert Jones", "stat": "AST", "side": "under", "ou_line": 1.5, "actual": "void"}]}]
+    text = fc.postgame_lines("2026-11-17", records)
+    assert text.startswith("⭐ 大細盤精選（紙上盤）：1 注｜中 0｜未中 0｜作廢 1")
+    assert "Sportsbet 收咗盤，作廢不計" in text
