@@ -1,5 +1,7 @@
 # Antigravity Setup Guide
 
+日常操作先睇 [旺財簡明指南](WONGCHOI_SIMPLE.md)：四線共用 `./旺財.sh`。以下係完整安裝參考。
+
 呢份文件以目前 repo 內實際存在嘅腳本、依賴同資料夾為準，目標係令新用戶 clone 完之後，可以喺 macOS 或 Windows 完成基本安裝，並成功運行以下主流程或相關工具：
 
 - `HKJC Wong Choi`
