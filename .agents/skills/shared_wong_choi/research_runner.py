@@ -8,6 +8,8 @@ import json
 import math
 import os
 import resource
+import re
+import tempfile
 import shlex
 import shutil
 import signal
@@ -454,6 +456,68 @@ class ResearchExecutor(Protocol):
     ) -> CommandExecution: ...
 
 
+def _direct_python_options(argv: tuple[str, ...]) -> bool:
+    if not argv:
+        raise ValueError("empty research command")
+    executable = shutil.which(argv[0]) or argv[0]
+    names = (Path(argv[0]).name, Path(executable).resolve().name)
+    if not any(re.fullmatch(r"python(?:[0-9]+(?:\.[0-9]+)*)?(?:\.exe)?", name, re.I) for name in names):
+        return False
+    index = 1
+    while index < len(argv):
+        token = argv[index]
+        if token == "--" or token == "-" or not token.startswith("-"):
+            break
+        if token.startswith("--"):
+            if token == "--check-hash-based-pycs":
+                index += 1
+        else:
+            for offset, flag in enumerate(token[1:], 1):
+                if flag in "EI":
+                    raise ValueError("research Python options ignore private bytecode environment")
+                if flag in "cm":
+                    return True  # Remaining text/arguments belong to code or module.
+                if flag in "XW":
+                    value = token[offset + 1:]
+                    if not value:
+                        index += 1
+                        value = argv[index] if index < len(argv) else ""
+                    if flag == "X" and value.split("=", 1)[0] == "pycache_prefix":
+                        raise ValueError("research Python options override private bytecode prefix")
+                    break
+        index += 1
+    return True
+
+
+def _research_spawn_environment(invocation: CommandInvocation) -> dict[str, str]:
+    """Private import cache for trusted commands, not a hostile-code sandbox."""
+    direct_python = _direct_python_options(invocation.argv)
+    root = Path(invocation.output_dir)
+    if (not root.is_absolute() or ".." in root.parts
+            or any(path.is_symlink() for path in (root, *root.parents))):
+        raise ValueError("unsafe research bytecode output ancestry")
+    before = root.stat()
+    if not stat.S_ISDIR(before.st_mode) or before.st_uid != os.getuid():
+        raise ValueError("research bytecode output directory must be owned")
+    attempt = Path(tempfile.mkdtemp(prefix=".python-bytecode-", dir=root))
+    current = root.stat()
+    if (before.st_dev, before.st_ino) != (current.st_dev, current.st_ino):
+        raise ValueError("research bytecode output directory changed")
+    cache = attempt / "cache"
+    cache.mkdir(mode=0o700)
+    # Descriptive per-spawn evidence only. It contains no caller environment,
+    # credentials or review authority and is retained on spawn failure.
+    policy = {"schema_version": "research-python-cache-policy/v1",
+              "pycache_prefix": str(cache), "dont_write_bytecode": True,
+              "direct_python_options_checked": direct_python,
+              "argv_sha256": hashlib.sha256(json.dumps(list(invocation.argv), ensure_ascii=False).encode()).hexdigest()}
+    with (attempt / "policy.json").open("x", encoding="utf-8") as handle:
+        os.chmod(handle.name, 0o600)
+        handle.write(json.dumps(policy, sort_keys=True) + "\n")
+    return {**os.environ, **dict(invocation.env),
+            "PYTHONDONTWRITEBYTECODE": "1", "PYTHONPYCACHEPREFIX": str(cache)}
+
+
 class SubprocessResearchExecutor:
     """Run one command in its own process group with timeout/preemption polling."""
 
@@ -466,7 +530,7 @@ class SubprocessResearchExecutor:
     def _spawn(self, invocation: CommandInvocation) -> subprocess.Popen[str]:
         return subprocess.Popen(
             list(invocation.argv), cwd=invocation.cwd,
-            env={**os.environ, **dict(invocation.env)}, text=True,
+            env=_research_spawn_environment(invocation), text=True,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True,
         )
 

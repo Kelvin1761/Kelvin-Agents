@@ -54,6 +54,7 @@ from .research_runner import (
     ResearchRuntime,
     SubprocessResearchExecutor,
     _git_checkout_probe,
+    _research_spawn_environment,
     create_research_adapter,
 )
 
@@ -67,7 +68,7 @@ class _InheritedGroupExecutor(SubprocessResearchExecutor):
         return subprocess.Popen(
             list(invocation.argv),
             cwd=invocation.cwd,
-            env={**os.environ, **dict(invocation.env)},
+            env=_research_spawn_environment(invocation),
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
