@@ -245,7 +245,7 @@ def shadow_forward_milestones(log_dir: Path) -> dict[str, str | None]:
 
 
 def sharp_forward_milestone(log_dir: Path) -> str | None:
-    """Telegram once when the Sportsbet-vs-Betfair paper test (EXP-20261116-19) reaches 300, and again at 1,000."""
+    """Telegram once when the Sportsbet-vs-Betfair paper test (EXP-20261116-23) reaches 300, and again at 1,000."""
     from tennis_wc.store.db import get_connection
     from tennis_wc.select import featured, sharp_forward
 

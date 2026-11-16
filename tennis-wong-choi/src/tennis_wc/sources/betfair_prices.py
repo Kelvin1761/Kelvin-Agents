@@ -1,4 +1,4 @@
-"""Betfair Exchange tennis MATCH_ODDS capture (read-only; EXP-20261116-19).
+"""Betfair Exchange tennis MATCH_ODDS capture (read-only; EXP-20261116-23).
 
 Reuses the AU read-only client (`.agents/skills/au_racing/au_betfair/betfair_client.py`),
 whose credentials live outside the repo in ``~/.wongchoi_betfair.env``. The client
