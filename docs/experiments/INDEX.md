@@ -540,3 +540,7 @@
 - [EXP-20261116-07](EXP-20261116-07-hkjc-weight-vs-rating-split.md) — 負磅殘差拆解：讓賽係高評分被高估、分級賽先係真負磅效應（−14.7／10 磅）；HR／HG 候選 dev CI 跨零 REJECT
 - [EXP-20261116-08](EXP-20261116-08-tennis-family-calibration.md) — Tennis 逐 family 校準：Platt 解決唔到冷門高估；市場錨定校準後 ≈ 市場、value 注幾乎冇晒，照蝕；B／C 都 REJECT，odds ≥3 只可以做安全欄
 - [EXP-20261116-09](EXP-20261116-09-nba-sgm-review-and-single-bets.md) — NBA 穩膽 S3 審查：腿命中 68.5% 對模型 70.2%（後段 2 SE 壞運），SGM 報價高過腿價相乘 7.5%；每場一注 milestone 單注六個揀法全部 −4%…−9%；分別喺盤口唔喺單注／SGM（只量度）
+- [EXP-20261116-10](EXP-20261116-10-tennis-calibrated-residual-scan.md) — Tennis 校準後殘差掃描：28 格冇一格過 Bonferroni；holdout p×odds>1 −7.2% ≈ 盲買；要贏只剩外部參考價／多莊／時間
+- [EXP-20261116-14](EXP-20261116-14-tennis-featured-cap3-shadow.md) — Tennis 精選 shadow arm cap3（賠率 <3.0）：預先登記紙上 forward，250／600 注判，夠數推 Telegram
+- [EXP-20261116-15](EXP-20261116-15-tennis-sportsbet-vs-betfair-close.md) — Tennis Sportsbet 獨贏對 Betfair 收市（Pinnacle 2026-02 後冇數）：506 場 holdout −3.9% CI 跨零 INCONCLUSIVE；Sportsbet 抽水 5.8%、冷門 EV −8.4% 係熱門兩倍；9% 嘅邊對收市 +4.6%，要即時 sharp 價先執行到
+- [EXP-20261116-16](EXP-20261116-16-tennis-total-games-model.md) — Tennis 搵 NBA 式大細位＋總局數模型：雙邊大細盤冇一邊偏；發球特徵令 RMSE 跌（CI 全負）但對 Sportsbet 條線 AUC 0.492 輸市場 0.544，REJECT
