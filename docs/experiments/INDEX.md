@@ -546,3 +546,4 @@
 - [EXP-20261116-15](EXP-20261116-15-tennis-sportsbet-vs-betfair-close.md) — Tennis Sportsbet 獨贏對 Betfair 收市（Pinnacle 2026-02 後冇數）：506 場 holdout −3.9% CI 跨零 INCONCLUSIVE；Sportsbet 抽水 5.8%、冷門 EV −8.4% 係熱門兩倍；9% 嘅邊對收市 +4.6%，要即時 sharp 價先執行到
 - [EXP-20261116-16](EXP-20261116-16-tennis-total-games-model.md) — Tennis 搵 NBA 式大細位＋總局數模型：雙邊大細盤冇一邊偏；發球特徵令 RMSE 跌（CI 全負）但對 Sportsbet 條線 AUC 0.492 輸市場 0.544，REJECT
 - [EXP-20261116-17](EXP-20261116-17-tennis-fatigue-residual.md) — Tennis 疲勞喺收市價之上：前 3 日局數 NO EVIDENCE（方向仲相反）；前 7 日場數正向過 Holm（「較忙一方」holdout +7.2pp，dev 只 +2.2pp 跨零），似動量唔係疲勞，要用 2025 檔＋Betfair 即時價重新登記先算
+- [EXP-20261116-25](EXP-20261116-25-au-bsp-strategy-real-commission-protocol.md) — AU Betfair BSP 落注策略計真實佣金（VIC 8%、NSW 10%，按市場淨贏）：9 個策略預先登記，dev 08-05..11-03、holdout 11-04..11-15（結果待補）

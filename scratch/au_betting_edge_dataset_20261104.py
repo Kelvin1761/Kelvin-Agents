@@ -22,7 +22,9 @@ import au_window_review as wr  # noqa: E402
 
 SCHED = Path("/Users/imac/wongchoi-scheduler/.agents/skills/au_racing/data/sb_archive_meeting_ids.json")
 CACHE = Path("/Users/imac/Antigravity-repo/.agents/skills/au_racing/.sportsbet_cache")
-SINCE, UNTIL = "2026-08-05", "2026-11-03"
+# EXP-20261116-25：holdout 用 WC_SINCE／WC_UNTIL 覆寫窗口（預設照舊）
+SINCE = __import__("os").environ.get("WC_SINCE", "2026-08-05")
+UNTIL = __import__("os").environ.get("WC_UNTIL", "2026-11-03")
 MONTHS = {m: i for i, m in enumerate(["Jan", "Feb", "Mar", "Apr", "May", "Jun",
                                       "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"], 1)}
 
