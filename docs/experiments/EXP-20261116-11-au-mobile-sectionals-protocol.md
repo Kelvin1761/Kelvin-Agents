@@ -68,3 +68,20 @@ Kelvin 經主 session：「照做落去 and see if we can find any signals to im
   （三格齊先計；越大 = 收得越好）。同樣喺 (場地, 路程段) 內 z、最近 ≤4 仗平均。同一家族，Holm 由 3 個 arm 變 4 個。
 - **同場名次相對值計唔到**：頁面只有今場出賽馬嘅往績，冇往績嗰場其他馬嘅分段，所以「喺嗰場入面排第幾」量唔到。
   （要做就要抓嗰場往績本身嘅頁，即係歷史 event ID —— AllRacing 只回溯 ~10 日，攞唔到。）唔加，唔係 REJECT。
+
+## 補充登記 2（2026-11-16 19:1x，抓取未完、未睇任何候選結果）
+
+Kelvin 經主 session（「好，交俾佢」）加候選。
+
+- arm **E2**（前段速度，可變基準）：前段長度 = 路程 − 200 × 有值格數；前段時間 = 本駒完成時間 − 有值格嘅時間（由 km/h 反推，避開 0.1 秒捨入）。
+  前段長度 ≤ 0 當缺值。同 E 一樣喺 (場地, 路程段) 內 z、最近 ≤4 仗平均。E2 係 E 嘅消融兄弟：兩個都報，邊個都唔可以揀完再報。
+  Holm 家族 = E、E2、L、A、D 共 5 個。
+- **Sportsbet 摘要（EARLY／MID／LATE／AVG）唔開臂**：量度（未睇賽果）證實佢係頁面顯示嘅 ≤10 行嘅平均 ——
+  AVG 同 `路程/時間` 一樣（中位差 0.003）、LATE = 最後兩格 km/h 平均（0.025）、EARLY ≈ E2 嘅前段速度（0.033，76% 差 ≤0.15）。
+  所以佢唔係新資訊；而且「最近 10 仗」由抓取時間決定，唔用佢，用行重算。
+- **`RacecardWithContext` 欄位**（`speed`、`dryRating`、`wetRating`、`horseJockey`、`expectedSettlingPosition`、勝率／位率）：
+  呢次**唔開臂**。我哋只可以喺賽後抓舊賽事嘅 API，未知佢會唔會賽後更新、`speed`／`rating` 計法未知 → leakage audit 答唔到 → flag。
+  做法：抓少量賽後 API，用我哋賽前 Racecard 嘅生涯紀錄／騎師配搭對 `winPercentage`／`horseJockey` 有冇包今仗；
+  再用賽前快照（今晚抓 11-17、聽日賽後再抓同一批）比 `speed`／`rating` 有冇郁。
+  `expectedSettlingPosition` 疑似就係 EXP 已 REJECT 嘅 Sportsbet Speedmap（記憶 `au-sportsbet-speedmap-rejected`），要對返。
+- **試閘 600m**：只量覆蓋率（long-form 列表），唔開臂。
