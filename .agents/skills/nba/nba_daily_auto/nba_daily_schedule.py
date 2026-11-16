@@ -259,6 +259,11 @@ FEATURED_START_DATE = "2026-11-11"  # EXP-20261110-01 first forward target date
 # Kelvin 2026-11-10 (later the same day, before any card was affected): the SGM card
 # keeps going out every day; the 大細盤精選 paper card follows it, and the ROI board
 # carries one line for each (`nba` = SGM, `nba_featured` = 精選 paper bets).
+# Kelvin 2026-11-16 (EXP-20261116-09): SGM is track-only. Its content Telegram (21:00 card,
+# partial card, morning slip update, availability alert, postgame SGM summary) stops; the
+# dashboard keeps tracking it, the steady stop-loss still runs, and 大細盤精選 is the only
+# content push. Set True to bring the SGM pushes back.
+SGM_TELEGRAM = False
 
 # 預設 7200：orchestrator 全 slate 跑法要俾夠時間（2026-10-26 七場要 61 分鐘，
 # 舊嘅 3600 上限令 pregame 連日 TimeoutExpired）。要短嘅呼叫都有自己明確 timeout。
@@ -1184,7 +1189,8 @@ def send_partial_betting_card(
         return
     title, _, body = card.partition("\n")
     card = f"{title}（部分場次）\n⏳ 未開盤／未通過：{', '.join(sorted(blocked))}；稍後完整卡會再發。\n{body}"
-    result = notify_once(f"pregame-card:{target_date}:{snapshot.name}", card, audience="content")
+    result = (notify_once(f"pregame-card:{target_date}:{snapshot.name}", card, audience="content")
+              if SGM_TELEGRAM else {"status": "track_only"})
     _send_featured_card(target_date, snapshot, log)
     log.step(
         "telegram_partial_betting_card",
@@ -1429,7 +1435,7 @@ def run_pregame(
         # The user bets the 21:00 publication (2026-10-26). Morning refreshes keep the
         # snapshot and ledger current for evaluation but never re-publish picks; they
         # only warn when a player in a published combo is now ruled out or doubtful.
-        alert = published_leg_availability_alert(folder, target_date)
+        alert = published_leg_availability_alert(folder, target_date) if SGM_TELEGRAM else None
         if alert:
             sent = notify_once(f"pregame-availability:{target_date}:{hashlib.sha256(alert.encode()).hexdigest()[:16]}",
                                alert, audience="content")
@@ -1441,7 +1447,7 @@ def run_pregame(
         if update:
             log.step("dashboard", _deploy("NBA Wong Choi morning slip update", folder))
             sent = notify_once(f"pregame-morning-update:{target_date}:{hashlib.sha256(update.encode()).hexdigest()[:16]}",
-                               update, audience="content")
+                               update, audience="content") if SGM_TELEGRAM else {"status": "track_only"}
             log.step("telegram_morning_update", str(sent.get("status") or "unknown"))
         else:
             log.step("dashboard", "final_refresh_no_slip_change")
@@ -1512,7 +1518,7 @@ def run_pregame(
             f"pregame-card:{target_date}:{snapshot.name}",
             card,
             audience="content",
-        )
+        ) if SGM_TELEGRAM else {"status": "track_only"}
         log.step(
             "telegram_betting_card",
             str(card_result.get("status") or "unknown"),
@@ -1808,13 +1814,19 @@ def run_postgame(target_date: str, log: RunLog) -> str:
         log.step("telegram_performance", "skipped", reason="no_prediction")
     elif archive.is_dir():
         try:
-            performance_message = postgame_message(target_date, archive)
+            # Track-only SGM: its summary is not built, so a blocked SGM summary cannot hold back 精選.
+            performance_message = postgame_message(target_date, archive) if SGM_TELEGRAM else ""
             board_has_bets = _record_roi_board(target_date, log)
-            performance_message += "\n\n" + _steady_stop_text(target_date, log)
+            # The stop-loss check runs either way (it can pause the policy); its line is SGM-only.
+            steady_text = _steady_stop_text(target_date, log)
             featured_text = _featured_postgame_text(target_date, log)
-            if featured_text:
-                performance_message += "\n\n" + featured_text
-            performance_message += "\n\n" + _reliability_text(target_date, log)
+            if SGM_TELEGRAM:
+                performance_message += "\n\n" + steady_text
+                if featured_text:
+                    performance_message += "\n\n" + featured_text
+                performance_message += "\n\n" + _reliability_text(target_date, log)
+            else:
+                performance_message = featured_text
         except ValueError as exc:
             warning = notify_once(
                 f"postgame-performance-blocked:{target_date}",
@@ -1832,7 +1844,7 @@ def run_postgame(target_date: str, log: RunLog) -> str:
                 f"postgame-performance:{target_date}",
                 performance_message,
                 audience="content",
-            )
+            ) if performance_message else {"status": "skipped_no_featured"}
             log.step("telegram_performance", str(performance.get("status") or "unknown"))
             board_text = _roi_board_text(log) if board_has_bets else None
             if board_text:

@@ -532,6 +532,9 @@ Deploy wrapper：
 - **S2 shadow（EXP-20261111-05）**：`nba_minutes.py` 計賽前時間特徵 → package `minutes_context` → 每條腿 `p_s2`（sidecar／ledger）。
   **唔入 `p_final`**；forward 判 MS2（S 份額 0.35）對現行 MS。
 - **大細盤精選排頂，SGM 只追蹤（Kelvin 2026-11-16）**：dashboard NBA「今日投注」精選放最頂、SGM 放下面；ROI 只計精選（見上面 ROI 口徑）。
+  **SGM 唔再發 Telegram**（同日，EXP-20261116-09）：21:00／部分場次 SGM card、朝早換單通知、傷停提示、覆盤 SGM 摘要全部停；
+  content 只收精選 card、精選覆盤同 ROI 板。dashboard 照追蹤 SGM、穩膽停損照跑（暫停／S3 通知照發 primary）。
+  開關：`nba_daily_schedule.SGM_TELEGRAM`（`True` 即恢復）。milestone 腿唔好剷：精選嘅模型機率就係借 milestone 腿嘅 `p_final`。
 - **（歷史）SGM 照發，精選排喺後面（Kelvin 2026-11-10 改決定）**：SGM card 每日照發，「⭐ 大細盤精選（紙上盤）」card 跟喺 SGM 後面；
   覆盤先報 SGM 再報精選；ROI 板分兩行（`nba` = SGM、`nba_featured` = 精選）；穩膽停損照舊檢查。精選仍然係紙上盤、
   forward 測試照跑（F250／F1000）。同日較早嗰個「停發 SGM」決定（5b45a24e）未影響過任何一張 card 就已撤回。
