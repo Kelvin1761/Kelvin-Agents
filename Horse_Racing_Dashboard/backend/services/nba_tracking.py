@@ -85,17 +85,32 @@ def _daily_top(picks):
     return daily_top(picks)
 
 
-def _featured_records(day, day_picks, actuals):
-    """First verified publication per game, then the same-day cap; settled from the box score."""
+def _withdrawn(sources):
+    """game_tag → availability entry for 精選 whose Sportsbet O/U was pulled before tip-off."""
+    auto = Path(__file__).resolve().parents[3] / '.agents' / 'skills' / 'nba' / 'nba_daily_auto'
+    if str(auto) not in sys.path:
+        sys.path.insert(0, str(auto))
+    import nba_featured_availability as availability
+    return availability, availability.withdrawn(sources)
+
+
+def _featured_records(day, day_picks, actuals, sources=()):
+    """First verified publication per game, then the same-day cap; settled from the box score.
+
+    Kelvin 2026-11-17: a pick whose Sportsbet O/U market was withdrawn before tip-off could
+    not be bet, so it is void (not counted) whatever the box score says.
+    """
     if day < FEATURED_START_DATE or not day_picks:
         return []
+    availability, pulled = _withdrawn(sources)
     meta = {id(p): (tag, report, odds, published) for p, tag, report, odds, published in day_picks}
     out = []
     for pick in _daily_top([{**p, 'game_tag': tag} for p, tag, *_ in day_picks]):
         tag = pick['game_tag']
         _, report, odds, published = next(v for k, v in meta.items() if v[0] == tag)
         row = actuals.get((tag, pick['player'], pick['market']), {})
-        if row.get('outcome') == 'void':
+        gone = pulled.get(tag) if availability.matches(pulled.get(tag), pick) else None
+        if gone or row.get('outcome') == 'void':
             state, actual = 'void', 'void'
         elif _number(row.get('actual')):
             actual = row['actual']
@@ -111,6 +126,7 @@ def _featured_records(day, day_picks, actuals):
                     'tracking_kind': 'featured', 'rule': pick.get('rule'),
                     'edge': pick['edge'], 'p_model': pick.get('p_model'), 'p_fair': pick.get('p_fair'),
                     'state': state, 'profit': profit,
+                    **({'void_reason': 'market_withdrawn', 'withdrawn_at': gone.get('withdrawn_at')} if gone else {}),
                     'legs': [{'player': pick['player'], 'team': pick.get('team') or '', 'market': pick['market'],
                               'stat': pick.get('stat'), 'ou_line': pick['ou_line'], 'side': pick['side'],
                               'price': pick['price'], 'state': state, 'actual': actual,
@@ -269,7 +285,7 @@ def build_tracking(roots, ledger_root, firewall):
                     records[prior] = {**records.pop(), 'morning_update':{'at':published, 'from':first}}
             except (OSError, ValueError, KeyError, TypeError, AttributeError):
                 warnings.append(f'publication_unavailable:{day}:{tag}')
-        featured_records.extend(_featured_records(day, day_picks, actuals))
+        featured_records.extend(_featured_records(day, day_picks, actuals, sources))
     return {'schema_version':2, 'inception_date':TRACKING_START_DATE, 'basis':'first_verified_formal_or_steady_research', 'stake_dollars':1,
             'status':'valid' if folders else 'unavailable', 'generated_at':datetime.now(timezone.utc).isoformat(),
             'covered_dates':sorted(folders), 'records':records,

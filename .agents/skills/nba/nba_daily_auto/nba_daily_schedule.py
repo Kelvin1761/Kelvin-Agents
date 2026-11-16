@@ -51,6 +51,7 @@ import nba_reliability  # noqa: E402
 import nba_no_prediction as no_prediction  # noqa: E402
 import nba_forward_tracker as forward_tracker  # noqa: E402
 import nba_featured_card as featured_card  # noqa: E402
+import nba_featured_availability as featured_availability  # noqa: E402
 
 HOOK_DIR = (
     PROJECT_ROOT
@@ -1140,6 +1141,32 @@ def _morning_update_text(target_date: str, log: Any) -> str | None:
         return None
 
 
+def _check_featured_availability(target_date: str, folder: Path, tags: set[str], log: Any) -> None:
+    """Kelvin 2026-11-17: a 精選 whose Sportsbet O/U market was pulled before tip-off is void.
+
+    Runs after every pre-tip odds refresh (started games are excluded and their odds files are
+    restored byte-for-byte). A new withdrawal redeploys the dashboard and tells Kelvin + Heison
+    not to look for the bet. Never fails the refresh.
+    """
+    try:
+        from services.nba_tracking import export_tracking
+        rows = [r for r in export_tracking(PROJECT_ROOT).get("featured_records") or []
+                if r.get("day") == target_date and r.get("state") == "pending" and r.get("legs")]
+        picks = [{**r["legs"][0], "game_tag": r.get("game_tag")} for r in rows]
+        newly = featured_availability.check(folder, picks, tags, now=now_sydney())
+        log.step("featured_availability", "ok", checked=len(picks),
+                 withdrawn=sorted(str(p.get("game_tag")) for p in newly))
+        if not newly:
+            return
+        log.step("dashboard", _deploy("NBA Wong Choi featured market withdrawn", folder))
+        text = featured_availability.message(target_date, newly)
+        sent = notify_once(f"featured-withdrawn:{target_date}:{hashlib.sha256(text.encode()).hexdigest()[:16]}",
+                           text, audience="content")
+        log.step("telegram_featured_withdrawn", str(sent.get("status") or "unknown"))
+    except Exception as exc:  # noqa: BLE001 — a tracking check must not fail the refresh
+        log.step("featured_availability", "failed", error=f"{type(exc).__name__}: {exc}")
+
+
 def _featured_postgame_text(target_date: str, log: Any) -> str | None:
     try:
         from services.nba_tracking import export_tracking
@@ -1284,6 +1311,9 @@ def run_pregame(
             log=log,
             event_starts=event_starts if schedule_events is not None else None,
         )
+        if (freshness_role is not FreshnessRole.WARMUP
+                and season_context["automation_mode"] != "shadow"):
+            _check_featured_availability(target_date, folder, refreshable_tags, log)
         try:
             _run_orchestrator_refresh(
                 target_date,

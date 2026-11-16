@@ -875,3 +875,33 @@ def test_final_refresh_without_a_changed_slip_does_not_redeploy() -> None:
     status, deploy, notify = _final_refresh(None)
     assert status == "complete" and deploy.call_count == 0
     assert not [c for c in notify.call_args_list if c.args[0].startswith("pregame-morning-update")]
+
+
+def test_withdrawn_featured_market_redeploys_and_tells_content_once() -> None:
+    """Kelvin 2026-11-17: a 精選 whose Sportsbet O/U was pulled before tip-off is void and announced."""
+    record = {"day": "2026-11-17", "game_tag": "GSW_NOP", "state": "pending", "tracking_kind": "featured",
+              "legs": [{"player": "Herbert Jones", "market": "ast", "stat": "AST", "ou_line": 1.5,
+                        "side": "under", "price": 1.96}]}
+    with tempfile.TemporaryDirectory() as tmp:
+        folder = Path(tmp)
+        (folder / "Sportsbet_Odds_GSW_NOP.json").write_text(json.dumps(
+            {"player_props_two_way": {"assists": {"Zion Williamson": {"4.5": {"over": "1.9", "under": "1.9"}}}}}))
+        import services.nba_tracking as tracking
+        with mock.patch.object(tracking, "export_tracking", return_value={"featured_records": [record]}), \
+                mock.patch.object(schedule, "_deploy", return_value="ok") as deploy, \
+                mock.patch.object(schedule, "notify_once", return_value={"ok": True, "status": "sent"}) as notify:
+            schedule._check_featured_availability("2026-11-17", folder, {"GSW_NOP"}, _Log())
+            schedule._check_featured_availability("2026-11-17", folder, {"GSW_NOP"}, _Log())
+        assert deploy.call_count == 1 and notify.call_count == 1
+        assert notify.call_args.kwargs == {"audience": "content"}
+        assert "Herbert Jones - Assists｜Under 1.5" in notify.call_args.args[1]
+        assert json.loads((folder / "Featured_Availability.json").read_text())["GSW_NOP"]["withdrawn_at"]
+
+
+def test_featured_check_never_fails_the_refresh() -> None:
+    import services.nba_tracking as tracking
+    log = _Log()
+    with mock.patch.object(tracking, "export_tracking", side_effect=OSError("boom")), \
+            mock.patch.object(schedule, "_deploy") as deploy:
+        schedule._check_featured_availability("2026-11-17", Path("/nonexistent"), {"GSW_NOP"}, log)
+    assert deploy.call_count == 0
