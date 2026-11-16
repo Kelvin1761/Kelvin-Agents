@@ -1,0 +1,103 @@
+{
+ "counts": {
+  "pages": 370,
+  "pages_no_sectionals": 11,
+  "runners": 3506,
+  "rows": 26215,
+  "rows_l400": 25046,
+  "rows_l600": 25046,
+  "rows_l800": 24320,
+  "runners_with_prior_row": 3340,
+  "rows_all_blank": 1169,
+  "runners_no_rows": 166,
+  "runners_without_prior_row": 166,
+  "rows_l1000": 9917,
+  "rows_unparsed": 2
+ },
+ "columns_nonnull_prior_rows": {
+  "600m": 24320,
+  "400m": 25046,
+  "200m": 25046,
+  "Fnsh": 25046,
+  "800m": 9941,
+  "1000m": 6090
+ },
+ "by_distance": {
+  "<=1100": {
+   "rows": 5835,
+   "l400": 5553,
+   "l600": 5553,
+   "l800": 4990,
+   "l1000": 3
+  },
+  "1101-1400": {
+   "rows": 11786,
+   "l400": 11249,
+   "l600": 11249,
+   "l800": 11148,
+   "l1000": 5206
+  },
+  "1401-1800": {
+   "rows": 5954,
+   "l400": 5707,
+   "l600": 5707,
+   "l800": 5656,
+   "l1000": 3099
+  },
+  ">1800": {
+   "rows": 2640,
+   "l400": 2537,
+   "l600": 2537,
+   "l800": 2526,
+   "l1000": 1609
+  }
+ },
+ "rows_per_runner_hist": {
+  "7": 113,
+  "1": 172,
+  "3": 176,
+  "8": 119,
+  "0": 166,
+  "2": 179,
+  "10": 1995,
+  "4": 162,
+  "9": 140,
+  "5": 146,
+  "6": 138
+ },
+ "trial_check": {
+  "longform_trials_runner_url": 1757,
+  "runner1_sectional_rows": 2378
+ },
+ "distinct_runs": 25573,
+ "dup_mismatch": [
+  [
+   "our grecia girl",
+   "2025-09-28",
+   "Waverley",
+   [
+    4.43,
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   ],
+   [
+    11.1,
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   ]
+  ]
+ ],
+ "dup_mismatch_n": 1
+}
