@@ -110,6 +110,7 @@ DRAW_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_draw_forward.py"
 OVERSEAS_PROXY_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_overseas_proxy_forward.py"
 HEAVY_H2_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_heavy_h2_forward.py"
 DEBUT_NEUTRAL_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_debut_neutral_forward.py"
+LPOS_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_lpos_forward.py"
 GENERATE_STATIC = DASHBOARD_DIR / "generate_static.py"
 DEPLOY_SH = DASHBOARD_DIR / "deploy.sh"
 
@@ -1688,6 +1689,29 @@ def step_debut_neutral_forward(runlog: RunLog) -> bool:
     runlog.step("debut-neutral-forward", status.get("state", "unknown"), races=status.get("races_collected", 0),
                 target=status.get("target_races"), keep=(status.get("evaluation") or {}).get("keep"),
                 horses_moved=interim.get("horses_ability_moved"))
+    return True
+
+
+def step_lpos_forward(runlog: RunLog) -> bool:
+    """EXP-20261116-20 forward：末段扣位置（Lpos，手機逐駒分段）β 0.10 固定，live vs live＋Lpos。只追蹤，唔郁排名。
+    手機分段由 04:30 `mobile-sectionals` job 抓；呢度唔上網。未夠 2,500 場只記場數同覆蓋率（唔睇賽果），
+    夠數判一次並凍結，由 forward tracker 推 Telegram。失敗唔阻 live 分析，永遠唔會自動改模型。"""
+    status_path = WORK_DIR / "au-lpos-forward-status.json"
+    rc, out = run_cmd([sys.executable, str(LPOS_FORWARD), "--data-root", str(AU_RACING),
+                       "--output", str(status_path)], timeout=1800)
+    if rc != 0 or not status_path.exists():
+        detail = error_excerpt(out, rc)
+        runlog.warn(f"Lpos forward 更新失敗（唔影響 live 排名）：{detail}")
+        runlog.step("lpos-forward", "failed", detail=detail)
+        return False
+    try:
+        status = json.loads(status_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        runlog.step("lpos-forward", "failed", detail=str(exc))
+        return False
+    runlog.step("lpos-forward", status.get("state", "unknown"), races=status.get("races_collected", 0),
+                target=status.get("target_races"), lpos_share=(status.get("coverage") or {}).get("lpos_share"),
+                win=(status.get("evaluation") or {}).get("win"))
     return True
 
 
@@ -4418,6 +4442,7 @@ def run_evening(runlog: RunLog, args, review_day: date) -> int:
         step_overseas_proxy_forward(runlog)
         step_heavy_h2_forward(runlog)
         step_debut_neutral_forward(runlog)
+        step_lpos_forward(runlog)
         step_forward_tracker(runlog)
     publisher = None
     progressive = (not args.skip_deploy and not args.skip_analysis

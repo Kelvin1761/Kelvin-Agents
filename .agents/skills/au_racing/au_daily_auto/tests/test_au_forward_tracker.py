@@ -56,5 +56,5 @@ def test_s2_not_ready_below_minimum(tmp_path: Path) -> None:
 def test_registry_covers_known_forward_tests() -> None:
     experiments = " ".join(t.experiment for t in tracker.FORWARD_TESTS)
     for exp in ("EXP-20260927-02", "EXP-20261009-05", "EXP-20261016-03", "EXP-20261101-30", "EXP-20261102-08",
-                "EXP-20261102-12"):
+                "EXP-20261102-12", "EXP-20261116-20"):
         assert exp in experiments

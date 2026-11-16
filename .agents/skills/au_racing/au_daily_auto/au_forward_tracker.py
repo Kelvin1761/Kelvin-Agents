@@ -71,6 +71,11 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 "EXP-20261106-02", "status_file", 2000, "場",
                 "夠數就跑修訂協議嘅 Q1（走勢喺 BSP 以外有冇資訊）同 Q2（四條 BSP 規則，Holm）；只係研究，唔會自動落注",
                 status_file="au-betfair-log-status.json"),
+    ForwardTest("lpos_forward", "末段扣位置 Lpos（手機逐駒分段，β 0.10 固定，只追蹤唔郁排名）",
+                "EXP-20261116-20", "status_file", 2500, "場",
+                "scheduler 夠數會自動判一次（v3 fixed_rule：live vs live＋0.10×Lpos）並凍結；睇 au-lpos-forward-status.json，"
+                "win=true 先由你決定係咪上線（要另一個改動）",
+                status_file="au-lpos-forward-status.json"),
 )
 
 _S2_DAYS = re.compile(r"forward days with snapshot \+ results:\s*(\d+)\s*/\s*(\d+)")
