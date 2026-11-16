@@ -124,12 +124,19 @@ def draw_bucket(draw):
 
 
 def run_style(early, field):
-    """放頭 = in the first three at the first call, 後上 = back third, else 守中."""
-    if not early or not field:
-        return None
-    if early <= 3:
-        return "front"
-    return "back" if early > field * 2 / 3 else "middle"
+    """單仗跑法：同 Wong Choi 唯一標準（hkjc_racing_engine/run_style.py）—— 第一個沿途位 ÷ 完成匹數，
+    ≤ 0.30 放頭、≤ 0.60 守中、其餘後上。"""
+    label = _engine_run_style().classify(_engine_run_style().fraction(early, field))
+    return {"放頭": "front", "守中": "middle", "後上": "back"}.get(label)
+
+
+def _engine_run_style():
+    import importlib
+    import sys
+    scripts = Path(__file__).resolve().parents[3] / ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts"
+    if str(scripts) not in sys.path:
+        sys.path.insert(0, str(scripts))
+    return importlib.import_module("hkjc_racing_engine.run_style")
 
 
 def _tally(rows):

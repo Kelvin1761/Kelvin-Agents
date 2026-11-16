@@ -25,7 +25,7 @@ import re
 from pathlib import Path
 
 PURTON = "潘頓"
-BIG_DISTANCE_MOVE = 400          # 米；「大幅升程／縮程」
+DISTANCE_MOVE = 200              # 米；增程／減程（Kelvin 2026-11-17；EXP-20261117-02 診斷）
 SPECIALIST_MIN_STARTS = 3        # 首本路程：同程至少 3 仗
 SPECIALIST_PLACE_RATE = 0.4      # …而且上名率 ≥ 40% 或者勝出率 ≥ 25%
 SPECIALIST_WIN_RATE = 0.25
@@ -39,7 +39,7 @@ _TRAINER_TAGS = {
     ("人馬歷史", 1): ("人馬合拍", "good", 2.0),          # horse_history_supportive／strong
     ("人馬歷史", -1): ("人馬唔夾", "bad", 2.0),
     ("騎練組合", 1): ("騎練黃金組合", "good", 4.0),      # combo_elite
-    ("騎練組合", -1): ("騎練組合弱", "bad", 2.0),
+    ("騎練組合", -1): ("騎練唔合拍", "bad", 2.0),   # Kelvin 2026-11-17：負面要突出
     ("騎師同程", 1): ("騎師擅此程", "good", 3.0),        # jockey_distance_elite
     ("騎師同程", -1): ("騎師此程弱", "bad", 2.0),
     ("練馬師同程", 1): ("馬房擅此程", "good", 2.0),      # trainer_distance_elite
@@ -187,12 +187,15 @@ def _trainer_tags(auto: dict) -> list[dict]:
 
 def _jockey_change_tag(horse: dict, auto: dict, runs: list[dict]) -> list[dict]:
     today = str(horse.get("jockey") or "").strip()
-    prev = runs[0]["jockey"] if runs else ""
+    data = horse.get("_data") if isinstance(horse.get("_data"), dict) else {}
+    prev = (runs[0]["jockey"] if runs else "") or str(data.get("prev_jockey") or "").strip()
     scored = next((a for a in (auto.get("trainer_signal_detail") or {}).get("adjustments") or []
                    if a.get("factor") == "換騎" and a.get("delta")), None)
     if scored:
-        label = f"換騎（{prev}→{today}）" if prev and prev != today else "換騎"
-        return [_tag("jockey_change", label, "bad", why=str(scored.get("evidence") or ""), scored=True)]
+        label = f"換騎（{prev}→{today}）" if prev and prev != today else f"換騎（今仗 {today}）"
+        first = "首次合作" in str(data.get("jockey_change_note") or "")
+        why = str(scored.get("evidence") or "") + ("；今仗騎師首次策騎此駒" if first else "")
+        return [_tag("jockey_change", label, "bad", why=why, scored=True)]
     return []
 
 
@@ -263,10 +266,13 @@ def _distance_venue_tags(horse: dict, auto: dict, runs: list[dict], meta: dict) 
             out.append(_tag("first_distance", f"初跑{dist}米", "note",
                             why=f"香港 {len(runs)} 仗從未跑過 {dist}米；未入分。"))
         prev = runs[0]["distance"]
-        if prev and abs(dist - prev) >= BIG_DISTANCE_MOVE:
-            word = "升程" if dist > prev else "縮程"
-            out.append(_tag("distance_move", f"大幅{word}（{prev}→{dist}米）", "note",
-                            why=f"上仗 {prev}米，今仗 {dist}米；未入分。"))
+        if prev and dist - prev >= DISTANCE_MOVE:
+            out.append(_tag("distance_up", f"{'大幅' if dist - prev >= 400 else ''}增程（{prev}→{dist}米）", "bad",
+                            why=f"上仗 {prev}米，今仗 {dist}米。歷史上增程嘅馬入位率低過模型預測：增 ≥400 米 dev −1.5、"
+                                "holdout −2.6pp（7 季全負）；200–399 米 −0.6／−1.8pp。入分 A/B 過唔到閘（EXP-20261115-10）；未入分。"))
+        elif prev and prev - dist >= DISTANCE_MOVE:
+            out.append(_tag("distance_down", f"{'大幅' if prev - dist >= 400 else ''}減程（{prev}→{dist}米）", "note",
+                            why=f"上仗 {prev}米，今仗 {dist}米。歷史上減程略為好過模型預測（+0.8～+1.5pp）但唔顯著；未入分。"))
     out += _surface_tags(runs, meta, complete)
     if complete:
         if meta.get("awt") and not any(r["awt"] for r in runs):
@@ -431,6 +437,13 @@ def _form_pattern_tags(horse: dict, meta: dict) -> list[dict]:
         out.append(_tag("old_won_last", f"老馬贏後（在港 {f['starts']} 仗）", "bad",
                         why="在港 ≥35 仗嘅馬上仗贏咗，下仗入位率歷史上低過模型預測約 10pp（回放 dev −11.2pp、holdout −9.7pp）；"
                             "高班（評分 ≥95／一二班）唔計。未入分，forward 觀察中。"))
+    if f.get("rating_near_win"):
+        r, w = f["rating"], f["win_rating"]
+        label = f"評分跌返贏馬分（{r:.0f} ≤ 上次贏馬 {w:.0f}）" if r <= w else f"評分接近贏馬分（{r:.0f}，上次贏馬 {w:.0f}）"
+        out.append(_tag("rating_near_win", label, "note",
+                        why="今仗評分跌返或者接近（高 ≤2 分）最近一次贏馬時嘅評分。歷史：2020–23 入位率高過模型約 2pp，"
+                            "但 2024 起冇咗（holdout −0.3pp）；上仗入位＋跌返 dev +4.3／holdout +1.8pp 未確認；"
+                            "同降班一齊先穩定（另一個標籤）。未入分（EXP-20261117-02）。"))
     if f["classdrop_rating_back"]:
         out.append(_tag("classdrop_rating_back", f"降班＋評分跌返贏馬分（{f['rating']:.0f} ≤ 上次贏馬 {f['win_rating']:.0f}）", "good",
                         why="今仗降班，而且評分跌返最近一次贏馬時嘅分數或以下；歷史上入位率高過模型預測約 5pp"
@@ -438,27 +451,101 @@ def _form_pattern_tags(horse: dict, meta: dict) -> list[dict]:
     return out
 
 
-# Kelvin 2026-11-16：機不可失「預計跑法 守中」但 chip 寫「後上馬」—— 兩個唔同計法（預計跑法 = 近 3 仗第一個沿途位多數決；
-# 呢度 = 近 6 仗早段位置 ÷ 完成匹數 平均，> 60% 算偏後）。chip 用自己嘅字眼，tooltip 寫埋數字。
-_STYLE_WORD = {"F": "近仗早段偏前", "M": "近仗早段居中", "B": "近仗早段偏後", "U": "跑法未明"}
+# 檔位 chip（Kelvin 2026-11-17）：以前「檔位走位有利（1檔）」「近仗早段偏前抽內檔」「1檔額外著數」三個 chip 講同一樣嘢。
+# 而家：檔位分（race_shape 維度）＋逐檔修正＋跑法×檔位 合成一個「內檔／中檔／外檔 優勢／劣勢」；
+# 跑法本身明顯唔夾呢段檔位（同組同檔位段其他跑法平均差 ≥ 1pp）→ 另出扣分位「跑法唔夾檔位」。
+_STYLE_WORD_SHORT = {"F": "放頭", "M": "守中", "B": "後上"}
 _BAND_WORD = {"I": "內檔", "C": "中檔", "O": "外檔"}
+_GROUP_WORD = {"HVS": "跑馬地短途", "HVL": "跑馬地中長途", "STS": "沙田短途", "STL": "沙田中長途",
+               "AWTS": "泥地短途", "AWTL": "泥地中長途", "STRS": "沙田直路"}
+STYLE_NAME_MIN = 0.01   # 跑法格同同組同檔位段（按樣本加權）平均差 ≥ 1pp 先叫「跑法有關」
 
 
-def _draw_style_tag(auto: dict) -> list[dict]:
-    """檔位 × 跑法修正（EXP-20261116-01，入分）：|加減| ≥ 0.8 原始分先出 chip，講清楚係邊個跑法配邊段檔位。"""
-    delta = float(auto.get("draw_style_delta") or 0.0)
+def _band(d: int) -> str:
+    return "I" if d <= 4 else ("C" if d <= 9 else "O")
+
+
+def _style_vs_band(det: dict) -> float:
+    """跑法格值 − 同組同檔位段 F／M／B 加權平均（比例）；冇資料 = 0。"""
+    from .draw_style import frozen
+    fz = frozen()
+    g, st, band = det.get("group"), det.get("style"), _band(int(det.get("draw") or 0))
+    if st not in _STYLE_WORD_SHORT:
+        return 0.0
+    cells, ns = fz.get("style_cells") or {}, fz.get("style_n") or {}
+    keys = [f"{g}|{x}|{band}" for x in "FMB"]
+    tot = sum(ns.get(k, 0) for k in keys)
+    mean = sum(cells.get(k, 0.0) * ns.get(k, 0) for k in keys) / tot if tot else 0.0
+    return cells.get(f"{g}|{st}|{band}", 0.0) - mean
+
+
+def _draw_tags(horse: dict, auto: dict) -> list[dict]:
     det = auto.get("draw_style_detail") or {}
-    if abs(delta) < 0.8 or not det:
+    try:
+        d = int(horse.get("barrier") or horse.get("draw") or det.get("draw") or 0)
+    except (TypeError, ValueError):
+        d = 0
+    if d <= 0:
         return []
-    d = int(det.get("draw") or 0)
-    band = "I" if d <= 4 else ("C" if d <= 9 else "O")
-    label = f"{_STYLE_WORD.get(det.get('style'), '跑法未明')}抽{_BAND_WORD[band]}（{d}檔，{delta:+.1f}）"
-    habit = det.get("habit")
-    pos = (f"近 {det.get('habit_runs') or '?'} 仗第一個沿途位平均喺第 {100 * float(habit):.0f}% 位置"
-           "（≤30% 偏前、>60% 偏後）。") if habit is not None else ""
-    why = (f"檔位×跑法修正：{pos}跑法部分 {det.get('style_part', 0):+.2f}、逐檔部分 {det.get('curve_part', 0):+.2f}（原始分）。"
-           "同「預計跑法」（近 3 仗多數決）唔同計法，邊界馬兩個可以唔一樣。格值由 6,000 場歷史殘差估計（回放 dev／holdout 都改善）。")
-    return [_tag("draw_style", label, "good" if delta > 0 else "bad", why=why, scored=True, impact=round(delta, 2))]
+    band = _band(d)
+    dim = _impact(auto, "race_shape") or 0.0
+    style_part, curve_part = float(det.get("style_part") or 0.0), float(det.get("curve_part") or 0.0)
+    diff = _style_vs_band(det) if det else 0.0
+    style_named = abs(diff) >= STYLE_NAME_MIN and (diff > 0) == (style_part > 0) and abs(style_part) >= DRIVER_FLOOR
+    rest = dim + curve_part
+    misfit = style_named and style_part < 0 and rest > 0          # 檔位本身有利，但跑法唔夾 → 分開兩個 chip
+    total = rest + (0.0 if misfit else style_part)
+    rs = auto.get("run_style") or {}
+    place = _GROUP_WORD.get(det.get("group"), "呢個場地路程")
+    style = _STYLE_WORD_SHORT.get(det.get("style"), "")
+    basis = (f"慣性跑法{rs.get('label')}（近 {len(rs.get('runs') or [])} 仗第一個沿途位平均第 {100 * float(rs['habit']):.0f}%、"
+             f"{rs.get('same')} 仗同類，{rs.get('consistency')}）。") if rs.get("habit") is not None else ""
+    dim_why = _short_reason((auto.get("matrix_reasoning") or {}).get("race_shape"))
+    out = []
+    if abs(total) >= DRIVER_FLOOR:
+        good = total > 0
+        named_here = style_named and not misfit and (style_part > 0) == good
+        label = f"{_BAND_WORD[band]}{style if named_here else ''}{'優勢' if good else '劣勢'}（{d}檔）"
+        why = (f"{dim_why + '。' if dim_why else ''}組成（原始分）：檔位分 {dim:+.1f}、{place} {d} 檔歷史修正 {curve_part:+.1f}"
+               + ("" if misfit else f"、跑法×檔位 {style_part:+.1f}") + f"。{basis}"
+               + ("呢段檔位對呢個跑法特別有利／不利，所以寫埋跑法名。" if named_here else ""))
+        out.append(_tag("draw", label, "good" if good else "bad", why=why, scored=True, impact=round(total, 2)))
+    if misfit:
+        out.append(_tag("draw_style_misfit", f"跑法唔夾檔位（{style}馬抽{_BAND_WORD[band]}）", "bad", scored=True,
+                        impact=round(style_part, 2),
+                        why=f"{basis}{place}{style}馬抽{_BAND_WORD[band]}，歷史入位率低過同檔位段其他跑法約 {abs(diff) * 100:.1f}pp"
+                            f"（6,000 場回放，檔位×跑法組件）。檔位本身有利，但呢個跑法用唔到。"))
+    return out
+
+
+QUICK_BACKUP_DAYS = 10
+
+
+def _backup_tag(auto: dict) -> list[dict]:
+    """Kelvin 2026-11-17「七日匆匆再出／密集出賽要唔要扣分」：回放（EXP-20261117-02）≤7 日 +0.9／+0.3pp、8–10 日 +2.2／+1.2pp、
+    近 60 日 ≥3 仗 +1.2／−0.1pp —— 冇一致方向，模型已經處理；只係留意。"""
+    days = auto.get("days_since_last")
+    if not isinstance(days, (int, float)) or days <= 0 or days > QUICK_BACKUP_DAYS:
+        return []
+    return [_tag("quick_backup", f"相隔 {int(days)} 日再出", "note",
+                 why="上仗之後好快再出。歷史上匆匆再出／密集出賽冇穩定加或扣（回放 dev／holdout 方向唔一致），模型已經處理；未入分。")]
+
+
+def _gear_tags(codes: list[str], trainer_pattern_keys: set) -> list[dict]:
+    """配備（Kelvin 2026-11-17「有訊號但入唔到分嘅要突出」）。除去配備：歷史入位率高過模型預測約 1pp
+    （EXP-20261115-09 +1.10 [+0.40,+1.78]；EXP-20261115-10 對 live +0.8），單項入分 A/B 唔過 → 未入分。
+    首次配備：兩次量度 −1.3 同 −0.3，唔穩定 → 只係「留意」。練馬師專屬配備 pattern 已經有 chip 就唔重複。"""
+    from . import gear
+    out = []
+    rem, fst = gear.removed(codes), gear.first(codes)
+    if rem and "gear_removed" not in trainer_pattern_keys:
+        out.append(_tag("gear_removed", f"除去{'、'.join(gear.name(c) for c in rem)}", "good",
+                        why="今仗除去配備。歷史上除去配備嘅馬入位率高過模型預測約 1pp（兩個時段都正），"
+                            "但單項入分 A/B 過唔到閘；未入分。"))
+    if fst and "gear_first" not in trainer_pattern_keys:
+        out.append(_tag("gear_first", f"首次戴{'、'.join(gear.name(c) for c in fst)}", "note",
+                        why="今仗首次戴配備。歷史量度方向偏負但唔穩定（−1.3／−0.3pp）；未入分。"))
+    return out
 
 
 def _incident_tag(auto: dict) -> list[dict]:
@@ -497,6 +584,7 @@ def horse_tags(no: str, horse: dict, auto: dict, *, runs: list[dict], meta: dict
         covered.add("trainer_signal")   # 騎練訊號已由具體加減項講晒
     if any(t["key"] in ("specialist", "first_distance") for t in special):
         covered.add("distance_fit")
+    covered.add("race_shape")   # 檔位：_draw_tags 一個 chip 講晒（Kelvin 2026-11-17）
     tags = _driver_tags(horse, auto, covered) + special
     order = lambda t: (not t["scored"], -abs(t["impact"] or 0))
     return {tone: sorted([t for t in tags if t["tone"] == tone], key=order) for tone in ("good", "bad", "note")}
@@ -521,8 +609,10 @@ def race_tags(logic_data: dict, meeting_dir: Path | None = None) -> dict:
                 extra.setdefault(no, []).extend(items)
         for no, h in horses.items():
             extra.setdefault(no, []).extend(_debut_trainer_tag(h, meta) + _foreign_tag(h) + _form_pattern_tags(h, meta)
-                                            + _draw_style_tag(h["python_auto"]) + _incident_tag(h["python_auto"])
+                                            + _draw_tags(h, h["python_auto"]) + _incident_tag(h["python_auto"])
                                             + _trainer_pattern_tags(h, meta, gear.get(no, [])))
+            tp = {t["key"].split(":", 1)[1] for t in extra[no] if t["key"].startswith("trainer_pattern:")}
+            extra[no].extend(_gear_tags(gear.get(no, []), tp) + _backup_tag(h["python_auto"]))
         return {no: horse_tags(no, h, h["python_auto"], runs=runs_by_no.get(no) or [], meta=meta,
                                priority=priorities.get(no, ""), extra=extra.get(no))
                 for no, h in horses.items()}

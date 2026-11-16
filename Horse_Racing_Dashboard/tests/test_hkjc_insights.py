@@ -43,7 +43,8 @@ def test_race_day_standings_rank_by_placings_and_ignore_withdrawn(tmp_path):
     assert all(r['name'] != '丁' for r in day['jockeys'])
     assert next(r for r in day['combos'] if r['name'] == ['甲', 'T1'])['w'][:2] == [1, 1]
     assert day['bias']['draw']['inner']['w'][0] == 1 and day['bias']['draw']['outer']['w'][0] == 1
-    assert day['bias']['style']['front']['w'][0] == 1 and day['bias']['style']['back']['w'][0] == 1
+    # 跑法用 Wong Choi 唯一標準（第一個沿途位 ÷ 完成匹數，≤30% 放頭、≤60% 守中）：3 匹嘅場領放 = 33% → 守中。
+    assert day['bias']['style']['middle']['w'][0] == 1 and day['bias']['style']['back']['w'][0] == 1
     assert [r['race'] for r in day['races']] == [1, 2] and day['races'][0]['distance'] == 1200 and day['races'][0]['rail'] == 'C+3'
     assert 'win_odds' not in json.dumps(data) and 'profit' not in json.dumps(data)
 
