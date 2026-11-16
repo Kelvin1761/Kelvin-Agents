@@ -47,11 +47,13 @@ class FakeSession:
 
 ALLRACING = {"meetings": [{"name": "Scone", "events": [{"id": 111, "raceNumber": 1}, {"id": 112, "raceNumber": 2}]},
                           {"name": "Kyneton", "events": [{"id": 211, "raceNumber": 1}]}]}
-RACECARD = {"racecardEvent": {"markets": [{"selections": [
+RACECARD = {"racecardEvent": {"markets": [{"name": "Win or Place", "selections": [
     {"runnerNumber": 1, "isOut": True, "prices": [{"priceCode": "L", "winPrice": 3.0}]},
     {"runnerNumber": 2, "statusCode": "A", "prices": [{"priceCode": "L", "winPrice": 1.45, "placePrice": 1.13}]},
     {"runnerNumber": 3, "statusCode": "A", "prices": [{"priceCode": "NTL"}, {"priceCode": "L", "winPrice": 9.0}]},
-]}]}}
+]}, {"name": "Head to Head", "selections": [          # 賽日先有；唔可以覆蓋位置價
+    {"runnerNumber": 2, "prices": [{"priceCode": "L", "winPrice": 1.9}]},
+    {"name": "no number", "prices": [{"priceCode": "L", "winPrice": 2.0}]}]}]}}
 API_OK = {"AllRacing/2026-11-17": ALLRACING, "Events/111/RacecardWithContext": RACECARD}
 
 

@@ -33,3 +33,10 @@ Racecard 全部一樣；Formguide 只有賠率欄唔同，而賠率唔入評分�
   `close_browser` 嘅 run step 記 `fetch_mode`、`http_fallback`、`odds_sidecars`、`odds_missed`。
 - 賠率對唔上唯一一場（同名馬場同場次號唔唯一）就唔貼，寧願冇賠率。
 - 樣本：今次每類頁幾版到幾十版；第一晚 22:00 正式 run 係真正嘅量（約 100+ 版）。
+
+## 上線後第一個 run（2026-11-17 morning）
+
+- 32 版全部 HTTP 攞到，冇轉 Chrome，冇被擋；32 個賠率 sidecar。
+- **但位置價全部 `-`**：賽日 API 每場仲有「Head to Head」盤（同一個 `runnerNumber`、L 價只有獨贏），
+  逐盤讀覆蓋咗「Win or Place」嘅位置價 → 當日快照判無效、dashboard 0/N 匹有賠率、run 報 `odds-degraded`。
+  前一晚測試冇呢個盤，所以端到端對照冇捉到。已改為只讀「Win or Place」盤，測試加咗 Head to Head 個案（冇修正會失敗）。

@@ -235,7 +235,12 @@ class HttpFetcher:
         if resp.status_code != 200:
             return {}, f"API {resp.status_code}"
         out = {}
-        for market in (resp.json().get("racecardEvent") or {}).get("markets") or []:
+        markets = (resp.json().get("racecardEvent") or {}).get("markets") or []
+        # ⚠️ 只讀「Win or Place」盤。2026-11-17 morning run：賽日 API 仲有「Head to Head」
+        # 盤（同一個 runnerNumber、L 價只有獨贏），逐盤讀會覆蓋咗位置價 → PlcOdds 全部 `-`，
+        # 當日快照判無效、dashboard 0/N 匹有賠率。
+        wp = [m for m in markets if _norm(m.get("name")) == "winorplace"]
+        for market in wp[:1]:
             for sel in market.get("selections") or []:
                 num = sel.get("runnerNumber")
                 if not num or sel.get("isOut") or str(sel.get("statusCode") or "") == "S":
