@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Every 15 min: Betfair tennis MATCH_ODDS capture + Sportsbet-vs-Betfair paper decisions.
 
-EXP-20261116-19. Read-only on Betfair (the AU client refuses any non-read
+EXP-20261116-23. Read-only on Betfair (the AU client refuses any non-read
 method). Writes only `betfair_markets`, `betfair_price_snapshots` and
 `sharp_forward_picks`; the card, 精選, dashboard and every replay never read
 them. Never sends Telegram (the 18:00 daily run sends the milestones) and never

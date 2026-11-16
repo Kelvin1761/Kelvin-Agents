@@ -9,7 +9,7 @@ set -eu
 #   .recovery 10:30/12:30 reruns a failed 09:00 pass or a stale dashboard
 #   .preclose every 30 min: near-start price of each 精選 match (closing price)
 #   .settle   every hour at :35: settles finished 精選, redeploys if any settled
-#   .betfair  every 15 min: Betfair tennis prices + Sportsbet-vs-Betfair paper test (EXP-20261116-19)
+#   .betfair  every 15 min: Betfair tennis prices + Sportsbet-vs-Betfair paper test (EXP-20261116-23)
 #
 # Location-independent: WC_TENNIS_RUNTIME_ROOT points at the live data checkout
 # (database, .venv, logs); the scripts run from this checkout.

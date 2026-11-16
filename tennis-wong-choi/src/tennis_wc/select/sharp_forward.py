@@ -1,4 +1,4 @@
-"""Sportsbet vs Betfair paper forward test (EXP-20261116-19, pre-registered 2026-11-16).
+"""Sportsbet vs Betfair paper forward test (EXP-20261116-23, pre-registered 2026-11-16).
 
 One decision per match, frozen: at the match's first Sportsbet match-winner
 snapshot taken 20:45-22:30 Sydney (the 21:00 card run) and >=5 min before the
@@ -19,7 +19,7 @@ from tennis_wc.select import featured
 from tennis_wc.sources import betfair_prices as bf
 from tennis_wc.sources.name_matching import match_pair_score, normalise_player_name
 
-EXPERIMENT = "EXP-20261116-19"
+EXPERIMENT = "EXP-20261116-23"
 SYDNEY = ZoneInfo("Australia/Sydney")
 DECISION_FROM, DECISION_TO = time(20, 45), time(22, 30)
 MIN_LEAD = timedelta(minutes=5)
