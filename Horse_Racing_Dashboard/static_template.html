@@ -6317,17 +6317,16 @@ function dimFactorLabel(d) {
   return '';
 }
 
-// Kelvin 2026-11-05: 預計跑法 label，參考用，唔入評分。同即場形勢一樣嘅放頭／守中／後上；
-// 近 3 仗第一個沿途位多數決（backend parser_hkjc.run_style_outlook）。「多變」= 冇多數，唔出 label。
+// Kelvin 2026-11-05: 預計跑法 label，參考用。2026-11-16 起同入分、即場形勢同一個標準（engine run_style.py）：
+// 近 6 仗第一個沿途位 ÷ 完成匹數平均，≤30% 放頭、≤60% 守中、其餘後上；一致性 = 幾多仗同類。
 function renderRunStyleOutlook(outlook) {
   if (!outlook || !Array.isArray(outlook.runs) || !outlook.runs.length) return '';
   // Kelvin 2026-11-05：卡面只顯示跑法；每仗日期同沿途位留喺 tooltip。
   const hit = Number.isFinite(outlook.hit_rate) ? `，歷史命中 ${outlook.hit_rate.toFixed(1)}%` : '';
-  const tip = `近${outlook.runs.length}仗第一個沿途位：${outlook.runs.map(r => `${r.date} 第${r.first_call}位`).join('、')}`
-    + `${hit}。參考用，唔入評分。`;
-  const head = outlook.label
-    ? `預計跑法: <strong>${esc(outlook.label)}</strong> · ${esc(outlook.consistency)}`
-    : '預計跑法: <strong>多變</strong>';
+  const avg = Number.isFinite(outlook.habit) ? `平均第 ${Math.round(outlook.habit * 100)}% 位置；` : '';
+  const tip = `近${outlook.runs.length}仗第一個沿途位：${avg}${outlook.runs.map(r => `${r.date} 第${Math.round(r.frac * 100)}%（${r.style}）`).join('、')}`
+    + `${hit}。同檔位×跑法入分同一個標準。`;
+  const head = `預計跑法: <strong>${esc(outlook.label)}</strong> · ${esc(outlook.consistency)}`;
   return `<div class="horse-card__run-style" title="${esc(tip)}">🏃 ${head}</div>`;
 }
 

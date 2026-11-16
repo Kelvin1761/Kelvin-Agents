@@ -158,24 +158,6 @@ def _profile_season_key(date_str):
     return parsed.year if parsed.month >= 9 else parsed.year - 1
 
 
-def _style_from_positions(positions, field_size=12):
-    """Single-race tactical style from in-race positions (mirrors the engine's
-    position fallback): 前置 / 守好位 / 守中 / 後上."""
-    if not positions:
-        return None
-    fp = positions[0] if isinstance(positions[0], int) else None
-    if not fp or fp <= 0:
-        return None
-    mid_cut = max(int(field_size * 0.55), 4)
-    if fp == 1:
-        return "前置"
-    if fp <= 4:
-        return "守好位"
-    if fp <= mid_cut:
-        return "守中"
-    return "後上"
-
-
 def _enrich_profile_history(horses, *, as_of_date=None):
     """Inject point-in-time, display-only multi-season profile fields.
 
@@ -232,31 +214,20 @@ def _enrich_profile_history(horses, *, as_of_date=None):
                    and isinstance(e.get("rating"), int) and e["rating"] > 0]
             if cur:
                 data["rating_season_start"] = cur[-1]  # earliest race of current season
-        style_counts = {}
-        for e in ents[:6]:
-            st = _style_from_positions(e.get("running_positions"))
-            if st:
-                style_counts[st] = style_counts.get(st, 0) + 1
-        if style_counts:
-            order = ["前置", "守好位", "守中", "後上"]
-            data["style_breakdown_6"] = "、".join(
-                f"{style_counts[st]}場{st}" for st in order if style_counts.get(st))
         # Jockey change vs LAST start (authoritative: entries[0] = most recent race).
         # Only flag a real change, and if the new rider has ridden THIS horse before,
         # report the horse's running style under that rider.
         declared = str(h_obj.get("jockey") or "").strip()
         last_j = str(ents[0].get("jockey") or "").strip()
+        if last_j:
+            data["prev_jockey"] = last_j   # 換騎 chip 用（前→今），唔使再搵馬匹頁
         if declared and last_j and declared != last_j:
             prior = [e for e in ents if str(e.get("jockey") or "").strip() == declared]
             if prior:
                 wins = sum(1 for e in prior if e.get("placing") == 1)
-                pstyles = Counter(s for s in (_style_from_positions(e.get("running_positions"))
-                                              for e in prior) if s)
-                sstr = "、".join(f"{n}次{st}" for st, n in pstyles.most_common())
                 win_txt = f"，{wins}勝" if wins else ""
-                style_txt = f"，跑法：{sstr}" if sstr else ""
                 data["jockey_change_note"] = (
-                    f"今仗轉用騎師{declared}（曾策此駒{len(prior)}次{win_txt}{style_txt}）")
+                    f"今仗轉用騎師{declared}（曾策此駒{len(prior)}次{win_txt}）")
             else:
                 data["jockey_change_note"] = f"今仗轉用騎師{declared}（與此駒首次合作）"
 
