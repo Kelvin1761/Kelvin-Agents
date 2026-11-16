@@ -21,7 +21,7 @@ START = "2026-11-07T05:00:00.000Z"
 def fake_rpc(method, params):
     if method == "listMarketCatalogue":
         return [{"marketId": "1.1", "marketName": "R3 1200m Mdn", "marketStartTime": START,
-                 "description": {"marketType": "WIN"},
+                 "description": {"marketType": "WIN", "marketBaseRate": 10.0},
                  "event": {"id": "E1", "name": "Randwick (AUS) 7th Nov", "venue": "Randwick"},
                  "runners": [{"selectionId": 11, "runnerName": "1. A"}, {"selectionId": 12, "runnerName": "2. B"}]},
                 {"marketId": "1.3", "marketName": "To Be Placed", "marketStartTime": START,
@@ -58,6 +58,7 @@ class LoggerTests(unittest.TestCase):
         cat = lg.read(folder / "catalogue.jsonl")
         # 純種馬 WIN + 佢嘅 PLACE；harness 嘅 WIN 同 PLACE（名冇 Pace 字眼）都剔走
         self.assertEqual([(c["market"], c["type"]) for c in cat], [("1.1", "WIN"), ("1.3", "PLACE")])
+        self.assertEqual(cat[0]["mbr"], 10.0)                              # 佣金率記低
         snap = lg.read(folder / "snapshots.jsonl")[0]
         self.assertEqual(snap["runners"][0]["back"], 3.45)
         self.assertTrue(snap["delayed"])
@@ -77,6 +78,35 @@ class LoggerTests(unittest.TestCase):
         self.assertIsNotNone(lg.usable_race(snaps, START))
         self.assertIsNone(lg.usable_race(snaps[:2], START))                               # 冇 T−5
         self.assertIsNone(lg.usable_race(snaps[:2] + [{"ts": t0 - 6 * 60000, "status": "OPEN", "inplay": True}], START))
+
+
+class SettleWeightTests(unittest.TestCase):
+    """Betfair 每次 listMarketBook 權重上限 200：SP_TRADED = 7。用 40 個市場一批 → TOO_MUCH_DATA。"""
+
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory()
+        self._root = lg.LOG_ROOT
+        lg.LOG_ROOT = Path(self.tmp.name)
+
+    def tearDown(self) -> None:
+        lg.LOG_ROOT = self._root
+        self.tmp.cleanup()
+
+    def test_settle_batches_stay_under_weight_limit(self) -> None:
+        folder = lg.LOG_ROOT / "2026-11-14"
+        folder.mkdir()
+        lg.append(folder / "catalogue.jsonl", [{"market": f"1.{i}", "type": "WIN"} for i in range(102)])
+        sizes = []
+
+        def rpc(method, params):
+            if params["priceProjection"]["priceData"] == ["SP_TRADED"] and len(params["marketIds"]) * 7 > 200:
+                raise bf.BetfairError("listMarketBook: TOO_MUCH_DATA")
+            sizes.append(len(params["marketIds"]))
+            return [{"marketId": m, "status": "CLOSED", "runners": []} for m in params["marketIds"]]
+
+        self.assertEqual(lg.cmd_settle("2026-11-14", rpc), 102)
+        self.assertLessEqual(max(sizes) * 7, 200)
+        self.assertEqual(lg.cmd_settle("2026-11-14", rpc), 0)                 # 已結算唔再問
 
 
 class ExternalDiskTests(unittest.TestCase):
