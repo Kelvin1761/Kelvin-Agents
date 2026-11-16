@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""EXP-20261116-17 評估（跟預先登記）。
+"""EXP-20261116-19 評估（跟預先登記）。
 
     PYTHONDONTWRITEBYTECODE=1 python3 evaluate.py <raw/mob 目錄> <events.json> <out 目錄>
 

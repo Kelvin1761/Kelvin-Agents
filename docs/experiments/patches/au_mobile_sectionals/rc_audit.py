@@ -1,4 +1,4 @@
-"""EXP-20261116-17：RacecardWithContext 欄位洩漏審計（只量，唔開臂）。
+"""EXP-20261116-19：RacecardWithContext 欄位洩漏審計（只量，唔開臂）。
 
 用法：python3 -I rc_audit.py <rc json 目錄> <events.json> <allr_2026-11-17.json>
 
