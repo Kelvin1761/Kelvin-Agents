@@ -5620,6 +5620,34 @@ function renderTrackGeometry(geometry) {
   }</section>`;
 }
 
+// 戰場全景歷史形勢（Kelvin 2026-11-17）：呢個場地路程 2019 起，各跑法／檔位段上名率對全場平均；下面列今場邊幾匹屬於邊類。
+// 跑法 = 實際第一個沿途位（同 run_style.py 同一個標準）；放頭本身多數係較好嘅馬，所以睇同場地入面幾類之間嘅差距。
+function renderBattlefieldHistory(bf) {
+  const h = bf && bf.history;
+  if (!h || !h.base) return '';
+  const base = Number(h.base.place) || 0;
+  const max = Math.max(base, ...Object.values(h.style || {}).map(v => v.place), ...Object.values(h.draw || {}).map(v => v.place)) || 1;
+  const row = (label, stat, today) => {
+    if (!stat) return '';
+    const pct = Math.round(stat.place * 100), w = Math.round(stat.place / max * 100), bw = Math.round(base / max * 100);
+    const tone = stat.place >= base * 1.15 ? 'var(--color-success, #16a34a)' : stat.place <= base * 0.85 ? 'var(--color-danger, #dc2626)' : 'var(--color-text-muted, #94a3b8)';
+    return `<div class="bf-hist__row" style="display:grid;grid-template-columns:3.2em 1fr 3em;gap:6px;align-items:center;margin:3px 0">`
+      + `<span>${esc(label)}</span><span style="position:relative;height:10px;background:var(--color-bg,#f1f5f9);border-radius:5px">`
+      + `<i style="position:absolute;left:0;top:0;bottom:0;width:${w}%;background:${tone};border-radius:5px"></i>`
+      + `<b title="全場平均" style="position:absolute;left:${bw}%;top:-2px;bottom:-2px;width:2px;background:var(--color-text-secondary,#475569)"></b></span>`
+      + `<span style="text-align:right">${pct}%</span></div>`
+      + (today && today.length ? `<div style="margin:-1px 0 4px 3.6em;font-size:.75rem;color:var(--color-text-muted,#64748b)">今場：${today.map(n => esc(n) + ' 號').join('、')}</div>` : '');
+  };
+  const block = (title, stats, order, today) => `<div style="flex:1;min-width:220px"><div style="font-weight:700;margin-bottom:2px">${title}</div>`
+    + order.map(k => row(k, (stats || {})[k], (today || {})[k])).join('') + `</div>`;
+  return `<div class="bf-hist" style="margin-top:10px;border-top:1px solid var(--color-border,#e2e8f0);padding-top:8px">`
+    + `<div style="font-weight:700;margin-bottom:6px">🗺️ 戰場全景：${esc(bf.surface)} ${esc(bf.distance)}米歷史上名率（${esc(h.races)} 場，${esc(String(bf.since || '').slice(0, 4))} 起；直線 = 全場平均 ${Math.round(base * 100)}%）</div>`
+    + `<div style="display:flex;flex-wrap:wrap;gap:12px">`
+    + block('跑法（實際走位）', h.style, ['放頭', '守中', '後上'], bf.today_styles)
+    + block('檔位', h.draw, ['內檔', '中檔', '外檔'], bf.today_draws)
+    + `</div><div style="margin-top:4px;font-size:.72rem;color:var(--color-text-muted,#64748b)">「今場」跑法用慣性跑法（近 6 仗平均，同預計跑法同一個標準）；放頭本身多數係較好嘅馬，重點睇幾類之間差幾多。純顯示，唔入分。</div></div>`;
+}
+
 function renderBattlefieldOverview(text, horses = [], geometry = null) {
   const overview = parseBattlefieldOverview(text);
   const racePattern = splitBattlefieldRacePattern(overview.facts.find(fact => cleanBattlefieldCell(fact.label) === '賽事格局')?.value || '');
@@ -7976,8 +8004,10 @@ function renderSingleAnalystView(analysis, analystName) {
   html += renderMarketDivergenceBadge(analysis.market_divergence);
   // HKJC 全場重點（engine summary.race_summary）：首選有幾清楚，附歷史上名率
   if (analysis.race_summary && (analysis.race_summary.lines || []).length) {
-    html += `<div style="margin:0 0 12px;padding:8px 12px;border-radius:10px;background:var(--color-surface-alt);color:var(--color-text-secondary);font-size:.85rem;max-width:900px">`
-      + `<strong>📝 全場重點</strong> ${analysis.race_summary.lines.map(esc).join('；')}</div>`;
+    // Kelvin 2026-11-17：全場重點逐行列出；戰場全景歷史形勢用棒形圖（engine summary.battlefield）
+    html += `<div class="race-summary" style="margin:0 0 12px;padding:10px 12px;border-radius:10px;background:var(--color-surface-alt);color:var(--color-text-secondary);font-size:.85rem;max-width:900px">`
+      + `<strong>📝 全場重點</strong><ul style="margin:6px 0 0;padding-left:18px">${analysis.race_summary.lines.map(l => `<li>${esc(l)}</li>`).join('')}</ul>`
+      + renderBattlefieldHistory(analysis.race_summary.battlefield) + `</div>`;
   }
 
   // Horse cards

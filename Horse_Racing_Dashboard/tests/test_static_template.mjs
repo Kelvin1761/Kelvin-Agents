@@ -119,6 +119,7 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
       renderDimensionStrip: typeof renderDimensionStrip === "function" ? renderDimensionStrip : null,
       renderTrackworkTimeline: typeof renderTrackworkTimeline === "function" ? renderTrackworkTimeline : null,
       renderRunStyleOutlook: typeof renderRunStyleOutlook === "function" ? renderRunStyleOutlook : null,
+      renderBattlefieldHistory: typeof renderBattlefieldHistory === "function" ? renderBattlefieldHistory : null,
       buildHorseAnalysisSections,
       parseChronologySeries,
       renderChronologySeries,
@@ -2921,4 +2922,19 @@ test("HKJC tag chips are never folded into +N (Kelvin 2026-11-16)", () => {
   const m = src.match(/const TAG_LIMIT = \{([^}]*)\}/);
   assert.ok(m, "TAG_LIMIT defined");
   assert.doesNotMatch(m[1], /\d/, "no numeric cap on tag chips");
+});
+
+test("HKJC 戰場全景 history bars render style and draw rates with today's runners (Kelvin 2026-11-17)", () => {
+  const { renderBattlefieldHistory } = loadTemplateFunctions();
+  const html = renderBattlefieldHistory({
+    surface: "跑馬地", distance: 1200, since: "2019-09-01",
+    history: { races: 1066, base: { place: 0.25 }, style: { 放頭: { place: 0.36 }, 後上: { place: 0.16 } }, draw: { 內檔: { place: 0.34 } } },
+    today_styles: { 放頭: ["1", "5"] }, today_draws: { 內檔: ["1"] },
+  });
+  assert.match(html, /跑馬地 1200米歷史上名率（1066 場，2019 起；直線 = 全場平均 25%）/);
+  assert.match(html, /今場：1 號、5 號/);
+  assert.match(html, />36%</);
+  assert.doesNotMatch(html, /undefined|NaN/);
+  assert.equal(renderBattlefieldHistory(null), "");
+  assert.equal(renderBattlefieldHistory({ history: null }), "");
 });

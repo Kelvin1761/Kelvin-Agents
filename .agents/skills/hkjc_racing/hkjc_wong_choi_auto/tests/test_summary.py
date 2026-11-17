@@ -50,3 +50,35 @@ def test_race_summary_uses_measured_gap_buckets():
     assert any("斷層" in line for line in clear["lines"])
     ranking[1]["ability_score"] = 79.0
     assert summary.race_summary(ranking)["tightness"] == "close"
+
+
+def test_battlefield_and_detail_lines():
+    """Kelvin 2026-11-17：戰場全景歷史形勢＋今場分佈；全場重點加首選理由、歷史跑法／檔位、入分特別因素。"""
+    table = {"since": "2019-09-01", "cells": {"谷草|1200": {"races": 1066, "base": {"n": 100, "place": 0.25, "win": 0.08},
+             "style": {"放頭": {"n": 10, "place": 0.36, "win": 0.1}, "守中": {"n": 10, "place": 0.31, "win": 0.1},
+                       "後上": {"n": 10, "place": 0.16, "win": 0.05}},
+             "draw": {"內檔": {"n": 10, "place": 0.34, "win": 0.1}, "中檔": {"n": 10, "place": 0.24, "win": 0.1},
+                      "外檔": {"n": 10, "place": 0.17, "win": 0.05}}}}}
+
+    def h(style, barrier, tags=None):
+        return {"barrier": barrier, "python_auto": {"run_style": {"label": style} if style else None,
+                                                     "summary": {"tags": tags or {}}}}
+    logic = {"race_analysis": {"venue": "跑馬地", "track": "Turf", "distance": "1200m"},
+             "horses": {"1": h("放頭", "2", {"good": [{"key": "draw", "label": "內檔優勢（2檔）", "scored": True}]}),
+                        "2": h("後上", "11", {"bad": [{"key": "surface_move", "label": "跑馬地轉沙田草地", "scored": True}]}),
+                        "3": h(None, "6")}}
+    bf = summary.battlefield(logic, table)
+    assert bf["surface"] == "跑馬地" and bf["today_styles"]["放頭"] == ["1"] and bf["today_styles"]["未明"] == ["3"]
+    assert bf["today_draws"] == {"內檔": ["1"], "中檔": ["3"], "外檔": ["2"]}
+    summary._BATTLEFIELD = table
+    try:
+        out = summary.race_summary([{"horse_number": "1", "horse_name": "甲", "ability_score": 80},
+                                    {"horse_number": "2", "horse_name": "乙", "ability_score": 70}], logic)
+    finally:
+        summary._BATTLEFIELD = None
+    text = "\n".join(out["lines"])
+    assert "首選 [1] 主要靠：內檔優勢（2檔）" in text
+    assert "跑馬地 1200米歷史（1066 場）：放頭上名率 36%最高（全場平均 25%）；今場慣性放頭 1 匹（1 號）" in text
+    assert "檔位：內檔上名率 34%、外檔 17%；今場內檔：1 號（2 檔）" in text
+    assert "跑馬地轉沙田草地（扣分）：2 號" in text
+    assert out["battlefield"]["history"]["races"] == 1066

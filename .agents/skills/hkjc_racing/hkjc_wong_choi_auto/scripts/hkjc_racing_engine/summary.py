@@ -123,7 +123,105 @@ def horse_summary(horse: dict, auto: dict, field_size: int) -> dict:
     }
 
 
-def race_summary(ranking: list[dict]) -> dict:
+_BATTLEFIELD: dict | None = None
+SCORED_HIGHLIGHT_KEYS = ("surface_move", "distance_up", "incident_wide", "incident_medical", "draw_style_misfit")
+
+
+def load_battlefield(path=None) -> dict:
+    """HKJC_Sections/battlefield.json（hkjc_pit_sections_build 每晚重建）；冇就空。"""
+    global _BATTLEFIELD
+    if path is None and _BATTLEFIELD is not None:
+        return _BATTLEFIELD
+    import json
+    if path is None:
+        import wongchoi_paths
+        path = Path(wongchoi_paths.HK_RACING) / "HKJC_Sections" / "battlefield.json"
+    p = Path(path)
+    try:
+        _BATTLEFIELD = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+    except (OSError, ValueError):
+        _BATTLEFIELD = {}
+    return _BATTLEFIELD
+
+
+def _nos(items) -> str:
+    return "、".join(f"{n} 號" for n in items)
+
+
+def battlefield(logic_data: dict, table: dict | None = None) -> dict | None:
+    """戰場全景（Kelvin 2026-11-17）：呢個場地路程 2019 起歷史上邊種跑法／檔位段上名多，加今場邊幾匹屬於邊類。"""
+    from .surface_move import SURFACE_NAME, today_surface
+    from .run_style import classify  # noqa: F401  (標準嚟自 run_style.py，表都係用佢計)
+    ra = logic_data.get("race_analysis") or {}
+    surface = today_surface(ra)
+    m = re.search(r"\d{3,4}", str(ra.get("distance") or ""))
+    if not surface or not m:
+        return None
+    dist = int(m.group())
+    table = table if table is not None else load_battlefield()
+    cell = ((table or {}).get("cells") or {}).get(f"{surface}|{dist}")
+    horses = logic_data.get("horses") or {}
+    styles: dict[str, list] = {"放頭": [], "守中": [], "後上": [], "未明": []}
+    draws: dict[str, list] = {"內檔": [], "中檔": [], "外檔": []}
+    for no, h in horses.items():
+        auto = (h or {}).get("python_auto") if isinstance(h, dict) else None
+        if not isinstance(auto, dict):
+            continue
+        rs = auto.get("run_style") or {}
+        styles[rs.get("label") or "未明"].append(no)
+        try:
+            d = int(str(h.get("barrier") or h.get("draw") or "0").split(".")[0])
+        except ValueError:
+            d = 0
+        if d > 0:
+            draws["內檔" if d <= 4 else ("中檔" if d <= 9 else "外檔")].append(no)
+    key = lambda n: int(n) if str(n).isdigit() else 999
+    return {"surface": SURFACE_NAME.get(surface, surface), "distance": dist,
+            "history": cell, "since": (table or {}).get("since"),
+            "today_styles": {k: sorted(v, key=key) for k, v in styles.items()},
+            "today_draws": {k: sorted(v, key=key) for k, v in draws.items()}}
+
+
+def _detail_lines(logic_data: dict, ranking: list[dict], bf: dict | None) -> list[str]:
+    out = []
+    horses = logic_data.get("horses") or {}
+    if ranking:
+        top = horses.get(str(ranking[0].get("horse_number"))) or {}
+        tags = ((top.get("python_auto") or {}).get("summary") or {}).get("tags") or {}
+        good = [t["label"] for t in tags.get("good") or [] if t.get("scored")][:3]
+        bad = [t["label"] for t in tags.get("bad") or []][:2]
+        if good or bad:
+            out.append(f"首選 [{ranking[0].get('horse_number')}] 主要靠：{'、'.join(good) or '綜合分'}"
+                       + (f"；要留意：{'、'.join(bad)}" if bad else ""))
+    if bf and bf.get("history"):
+        h = bf["history"]
+        base = (h.get("base") or {}).get("place") or 0
+        st = {k: v["place"] for k, v in (h.get("style") or {}).items() if v}
+        dr = {k: v["place"] for k, v in (h.get("draw") or {}).items() if v}
+        fronts = bf["today_styles"].get("放頭") or []
+        if st:
+            best = max(st, key=st.get)
+            out.append(f"{bf['surface']} {bf['distance']}米歷史（{h.get('races')} 場）：{best}上名率 {st[best]:.0%}最高"
+                       f"（全場平均 {base:.0%}）；" + (f"今場慣性放頭 {len(fronts)} 匹（{_nos(fronts)}）" if fronts else "今場冇慣性放頭馬"))
+        if dr:
+            best, worst = max(dr, key=dr.get), min(dr, key=dr.get)
+            def with_draw(n):
+                return f"{n} 號（{str((horses.get(n) or {}).get('barrier') or '').split('.')[0]} 檔）"
+            today = "、".join(with_draw(n) for n in bf["today_draws"].get(best) or []) or "冇馬"
+            out.append(f"檔位：{best}上名率 {dr[best]:.0%}、{worst} {dr[worst]:.0%}；今場{best}：{today}")
+    groups: dict[str, list] = {}
+    for no, h in horses.items():
+        tags = (((h or {}).get("python_auto") or {}).get("summary") or {}).get("tags") or {} if isinstance(h, dict) else {}
+        for tone in ("good", "bad"):
+            for t in tags.get(tone) or []:
+                if t.get("key") in SCORED_HIGHLIGHT_KEYS:
+                    groups.setdefault(f"{t['label'].split('（')[0]}（{'加分' if tone == 'good' else '扣分'}）", []).append(no)
+    for label, nos in sorted(groups.items(), key=lambda kv: -len(kv[1]))[:4]:
+        out.append(f"{label}：{_nos(sorted(nos, key=lambda n: int(n) if str(n).isdigit() else 999))}")
+    return out
+
+
+def race_summary(ranking: list[dict], logic_data: dict | None = None) -> dict:
     """Field-level read: how clear the top pick is, with its historical hit rate."""
     if len(ranking) < 2:
         return {"lines": []}
@@ -149,7 +247,10 @@ def race_summary(ranking: list[dict]) -> dict:
             cliff = round(scores[3] - scores[4], 1)
             if cliff >= 4:
                 lines.append(f"第四名同第五名之間有 {cliff:.1f} 分斷層，頭四名以外較難入位")
-    return {"gap_1_2": gap, "tightness": tightness, "lines": lines}
+    bf = battlefield(logic_data) if logic_data else None
+    if logic_data:
+        lines += _detail_lines(logic_data, ranking, bf)
+    return {"gap_1_2": gap, "tightness": tightness, "lines": lines, "battlefield": bf}
 
 
 def attach(logic_data: dict, meeting_dir: Path | None = None) -> None:
@@ -172,4 +273,4 @@ def attach(logic_data: dict, meeting_dir: Path | None = None) -> None:
              for num, h in scored.items()),
             key=lambda item: item["rank"],
         )
-    logic_data["python_auto_race_summary"] = race_summary(ranking)
+    logic_data["python_auto_race_summary"] = race_summary(ranking, logic_data)

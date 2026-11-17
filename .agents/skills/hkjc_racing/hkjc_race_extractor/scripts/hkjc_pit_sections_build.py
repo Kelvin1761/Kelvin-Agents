@@ -271,6 +271,71 @@ def run_style_table() -> dict:
     return {"version": 1, "last_date": str(df["d"].max()), "horses": horses}
 
 
+def battlefield_table() -> dict:
+    """戰場全景歷史表（Kelvin 2026-11-17「呢個場地呢個距離，歷史上利放頭／守中／後上？利內中外檔？」）。
+
+    場地 × 路程（谷草／田草／泥地 × 米數），2019/20 起全部賽果：
+      實際走位 = 第一個沿途位 ÷ 完成匹數（同 run_style.py 同一個標準：≤30% 放頭、≤60% 守中、其餘後上）
+      檔位段  = 1–4 內、5–9 中、10+ 外（同 draw_style.draw_band 一樣）
+    每格：馬次、上名率（頭三）、勝出率；`base` = 全部馬次上名率。純顯示（戰場全景），唔入分。
+    """
+    import sys
+    sys.path.insert(0, str(REPO / ".agents/skills/hkjc_racing/hkjc_reflector/scripts"))
+    sys.path.insert(0, str(REPO / ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts"))
+    import hkjc_history_replay_pit
+    from hkjc_racing_engine.run_style import classify, fraction
+    df = hkjc_history_replay_pit.load_all_rows_extended()
+    df = df[df["Rank"].notna()].copy()
+    df["d"] = df["Date"].astype(str).str[:10]
+    df["F"] = df.groupby(["d", "RaceNo"])["Rank"].transform("count")
+    acc: dict = {}
+    races: dict = {}
+    for r in df.itertuples():
+        surface = "泥地" if str(r.Track) == "AWT" else ("谷草" if str(r.Venue) == "跑馬地" else "田草")
+        try:
+            dist = int(float(r.Distance))
+        except (TypeError, ValueError):
+            continue
+        key = f"{surface}|{dist}"
+        cell = acc.setdefault(key, {"all": [0, 0, 0], "style": {}, "draw": {}})
+        races.setdefault(key, set()).add((r.d, r.RaceNo))
+        placed, won = float(r.Rank <= 3), float(r.Rank == 1)
+
+        def add(slot):
+            slot[0] += 1; slot[1] += placed; slot[2] += won
+        add(cell["all"])
+        rp = str(r.RunningPos or "").split()
+        style = classify(fraction(rp[0], r.F)) if rp and rp[0].isdigit() else None
+        if style:
+            add(cell["style"].setdefault(style, [0, 0, 0]))
+        try:
+            d = int(float(r.Draw))
+        except (TypeError, ValueError):
+            d = 0
+        if d > 0:
+            band = "內檔" if d <= 4 else ("中檔" if d <= 9 else "外檔")
+            add(cell["draw"].setdefault(band, [0, 0, 0]))
+
+    def fmt(v):
+        return {"n": int(v[0]), "place": round(v[1] / v[0], 4), "win": round(v[2] / v[0], 4)} if v[0] else None
+    cells = {}
+    for key, c in acc.items():
+        if len(races[key]) < 20:
+            continue
+        cells[key] = {"races": len(races[key]), "base": fmt(c["all"]),
+                      "style": {k: fmt(v) for k, v in c["style"].items() if v[0] >= 30},
+                      "draw": {k: fmt(v) for k, v in c["draw"].items() if v[0] >= 30}}
+    return {"version": 1, "since": str(df["d"].min()), "last_date": str(df["d"].max()), "cells": cells}
+
+
+def write_battlefield(table: dict) -> Path:
+    p = out_path().with_name("battlefield.json")
+    tmp = p.with_suffix(".tmp")
+    tmp.write_text(json.dumps(table, ensure_ascii=False), encoding="utf-8")
+    os.replace(tmp, p)
+    return p
+
+
 def write_run_style(table: dict) -> Path:
     p = out_path().with_name("run_style.json")
     tmp = p.with_suffix(".tmp")
@@ -323,6 +388,7 @@ def update() -> int:
     write_market_history(mh)
     write_win_ratings(win_ratings_table())
     write_run_style(run_style_table())
+    write_battlefield(battlefield_table())
     ih = incident_history_table()
     write_incident_history(ih)
     sys.path.insert(0, str(REPO / ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts"))
@@ -345,6 +411,8 @@ def main() -> int:
     print(f"上仗賠率表 {len(mh['horses'])} 匹、到 {mh['last_date']} → {write_market_history(mh)}")
     rs = run_style_table()
     print(f"跑法歷史表 {len(rs['horses'])} 匹、到 {rs['last_date']} → {write_run_style(rs)}")
+    bf = battlefield_table()
+    print(f"戰場全景歷史表 {len(bf['cells'])} 個場地路程、{bf['since']} → {bf['last_date']} → {write_battlefield(bf)}")
     ih = incident_history_table()
     print(f"上仗事件報告表 {len(ih['horses'])} 匹、到 {ih['last_date']} → {write_incident_history(ih)}")
     ev = debut_events()
