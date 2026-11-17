@@ -199,6 +199,30 @@
       .hkr-odds { grid-column:4 !important; grid-row:1 !important; }
       .hkr-tagbtn { grid-column:2 / -1; justify-self:start; }
     }
+    /* 極簡行（Kelvin 2026-11-17） */
+    .hkm-list { display:flex; flex-direction:column; }
+    .hkm-row { padding:7px 4px 8px; border-top:1px solid var(--color-border); }
+    .hkm-row:first-child { border-top:0; }
+    .hkm-row--pick { background:linear-gradient(90deg,var(--color-primary-50),transparent 60%); border-radius:8px; }
+    .hkm-main { display:grid; grid-template-columns:22px 26px minmax(0,1fr) auto; gap:8px; align-items:center; }
+    .hkm-rank { font-size:.72rem; font-weight:800; color:var(--color-text-soft); text-align:center; line-height:1.1; }
+    .hkm-rank--1 { color:#b45309; } .hkm-rank--2 { color:#475569; } .hkm-rank--3 { color:#9a3412; }
+    .hkm-rank small { display:block; font-size:.56rem; font-weight:700; white-space:nowrap; }
+    .hkm-silk .silk, .hkm-silk img { max-width:24px; max-height:24px; }
+    .hkm-name { display:flex; align-items:center; gap:5px; flex-wrap:wrap; font-size:.8rem; font-weight:700; color:var(--color-text); cursor:pointer; }
+    .hkm-name:hover { color:var(--color-primary-700); }
+    .hkm-no { display:inline-grid; place-items:center; min-width:18px; height:18px; padding:0 4px; border-radius:5px; background:var(--color-primary-700); color:#fff; font-size:.64rem; }
+    .hkm-name .grade-badge, .hkm-name [class*="rating-badge"] { transform:scale(.85); transform-origin:left center; }
+    .hkm-meta { font-size:.66rem; color:var(--color-text-soft); margin-top:1px; line-height:1.4; }
+    .hkm-num { text-align:right; font-variant-numeric:tabular-nums; line-height:1.25; }
+    .hkm-num b { font-size:.84rem; color:var(--color-text); }
+    .hkm-num small { display:block; font-size:.62rem; color:var(--color-text-soft); white-space:nowrap; }
+    .hkm-tags { margin:3px 0 0 56px; }
+    .hkm-tags .verdicts { margin:0; gap:1px; max-width:none; }
+    .hkm-tags .verdict { grid-template-columns:44px minmax(0,1fr); gap:4px; font-size:.62rem; }
+    .hkm-tags .verdict__label { font-size:.6rem; padding-top:1px; color:var(--color-text-soft); font-weight:600; }
+    .hkm-tags .verdict__chip { font-size:.62rem; padding:0 6px; line-height:1.55; margin:1px 3px 1px 0; }
+    @media (max-width: 768px) { .hkm-tags { margin-left:0; } }
     .hkr__legend { margin-top:8px; font-size:.67rem; color:var(--color-text-soft); }
     @media (max-width: 768px) {
       .hkr-card { padding:12px; }
@@ -5705,7 +5729,6 @@ function renderTrackGeometry(geometry) {
 // 只改呢個表嘅「情境分／情境排名」，正式排名同 ROI 頭兩選唔郁。幅度同即場規則嚟自引擎 summary.scenario_constants()。
 const HKJC_SCENARIO = { style: 'default', draw: 'default' };
 const HKJC_RANKING_CACHE = {};
-const HKJC_TAGS_OPEN = { all: false, rows: new Set() };
 const HKJC_STYLE_OPTIONS = [['default', '預設'], ['inrace', '即場'], ['放頭', '利放頭'], ['守中', '利守中'], ['後上', '利後上']];
 // 檔位段同全 Wong Choi 一個標準：內 1–4、中 5–9、外 10+（檔位×跑法入分都係用呢三段）
 const HKJC_DRAW_OPTIONS = [['default', '預設'], ['inrace', '即場'], ['利內欄', '利內欄（1–4 檔）'], ['利中內', '利中內（1–9 檔）'],
@@ -5771,8 +5794,7 @@ function renderHkjcRanking(raceKey) {
   let html = `<div class="hkr" id="hkjc-ranking-${esc(raceKey)}"><div class="hkr__head"><div><div class="hkr__title">📊 全場綜合戰力排名</div>`
     + `<div class="hkr__sub">${rows.length} 匹${oddsAt ? ` · 賠率：HKJC 官方投注網，截至 ${esc(String(oddsAt).slice(11, 16))}（停售前最後一個快照，純參考、唔入分）` : ''}</div></div>`
     + `<div class="hkr__controls"><label class="hkr__control">情境 · 跑法 ${sel('style', HKJC_STYLE_OPTIONS, HKJC_SCENARIO.style)}</label>`
-    + `<label class="hkr__control">檔位 ${sel('draw', HKJC_DRAW_OPTIONS, HKJC_SCENARIO.draw)}</label>`
-    + `<button type="button" class="hkr__toggle-all" onclick="hkjcToggleTags('${esc(raceKey)}', null)">${HKJC_TAGS_OPEN.all ? '收埋全部標籤' : '展開全部標籤'}</button></div></div>`;
+    + `<label class="hkr__control">檔位 ${sel('draw', HKJC_DRAW_OPTIONS, HKJC_SCENARIO.draw)}</label></div></div>`;
   if (scenario) {
     const live = HKJC_SCENARIO.style === 'inrace' || HKJC_SCENARIO.draw === 'inrace';
     const name = (opts, v) => (opts.find(o => o[0] === v) || [v, v])[1];
@@ -5780,36 +5802,33 @@ function renderHkjcRanking(raceKey) {
       + `預設幅度 = 歷史強偏差日（被利一類上名率約 +10pp，約 ${bf && bf.scenario ? (10 * bf.scenario.pp_to_display).toFixed(1) : '?'} 分）。`
       + (live ? '即場 = 今日已跑場次嘅偏差 × 0.2（歷史上即場偏差只持續約兩成），上限 ±3pp。' : '') + `</div>`;
   }
-  html += '<div class="hkr__list">';
+  html += '<div class="hkm-list">';
   rows.forEach((r, i) => {
     const h = r.h;
     const pos = i + 1;
     const move = scenario ? r.rank - r.srank : 0;
-    const moveTxt = !scenario ? '' : move > 0 ? `<span class="hkr-rank__move" style="color:var(--color-up)">▲${move} · 正式${r.rank}</span>`
-      : move < 0 ? `<span class="hkr-rank__move" style="color:var(--color-down)">▼${-move} · 正式${r.rank}</span>` : `<span class="hkr-rank__move">正式${r.rank}</span>`;
+    const moveTxt = !scenario ? '' : `<small style="color:${move > 0 ? 'var(--color-up)' : move < 0 ? 'var(--color-down)' : 'var(--color-text-soft)'}">${move > 0 ? '▲' + move : move < 0 ? '▼' + (-move) : '＝'} 正式${r.rank}</small>`;
     const rs = h.run_style_outlook;
-    const fact = (label, value, small) => `<div class="hkr-fact"><span>${label}</span><strong>${value}${small ? `<small>${small}</small>` : ''}</strong></div>`;
-    const facts = [
-      fact('檔位', h.barrier ? esc(h.barrier) : '—', r.band ? esc(r.band) : ''),
-      fact('跑法', rs ? esc(rs.label) : '未明', rs ? esc(rs.consistency || '') : ''),
-      fact('馬齡', h.age ? esc(h.age) + ' 歲' : '—'),
-      fact('負磅', h.weight ? esc(h.weight) : '—'),
-      h.rating ? fact('評分', esc(h.rating)) : '',
-    ].join('');
+    const meta = [h.jockey, h.trainer,
+      h.barrier ? `${h.barrier}檔${r.band ? '（' + r.band.replace('檔', '') + '）' : ''}` : '',
+      rs ? `${rs.label}（${rs.consistency || ''}）` : '跑法未明',
+      h.age ? `${h.age}歲` : '', h.weight ? `${h.weight}磅` : ''].filter(Boolean).map(esc).join(' · ');
     const score = scenario
-      ? `<div class="hkr-score__value">${r.score.toFixed(1)}</div><div class="hkr-score__delta" style="color:${r.adj > 0 ? 'var(--color-up)' : r.adj < 0 ? 'var(--color-down)' : 'var(--color-text-soft)'}">${r.adj > 0 ? '+' : ''}${r.adj.toFixed(1)} · 原 ${r.base.toFixed(1)}</div>`
-      : `<div class="hkr-score__value">${r.base.toFixed(1)}</div>`;
-    html += `<article class="hkr-card${!scenario && pos <= 2 ? ' hkr-card--pick' : ''}"><div class="hkr-card__top">`
-      + `<div><div class="hkr-rank${pos <= 3 ? ' hkr-rank--' + pos : ''}">${pos}</div>${moveTxt}</div>`
-      + `<div class="hkr-horse hkr-horse--link" role="button" tabindex="0" title="撳睇 ${esc(h.horse_name)} 詳細分析" onclick="hkjcJumpToHorse('${esc(h.horse_number)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();hkjcJumpToHorse('${esc(h.horse_number)}')}">${typeof renderSilk === 'function' ? renderSilk(h, 'sm') : ''}<div style="min-width:0"><div class="hkr-horse__name"><span class="hkr-horse__no">${esc(h.horse_number)}</span>${esc(h.horse_name)}${typeof ratingBadge === 'function' ? ratingBadge(h.final_grade || '') : ''}</div>`
-      + `<div class="hkr-horse__meta">🏇 ${esc(h.jockey || '—')}　🏠 ${esc(h.trainer || '—')}</div></div></div>`
-      + `<div class="hkr-facts">${facts}</div>`
-      + `<div class="hkr-score">${score}<div class="hkr-score__bar"><i style="width:${Math.max(0, Math.min(100, scenario ? r.score : r.base))}%"></i></div></div>`
-      + `<div class="hkr-odds"><div>獨贏<strong>${h.market_win_odds ? esc(h.market_win_odds) : '—'}</strong></div><div>位置<strong>${h.market_place_odds ? esc(h.market_place_odds) : '—'}</strong></div></div>`
-      + hkjcTagButton(raceKey, h)
-      + `</div><div class="hkr-tags"${HKJC_TAGS_OPEN.all || HKJC_TAGS_OPEN.rows.has(raceKey + '#' + h.horse_number) ? '' : ' hidden'}>${h.analysis_summary && typeof renderTagChips === 'function' ? renderTagChips(h.analysis_summary) : ''}</div></article>`;
+      ? `<b>${r.score.toFixed(1)}</b><small style="color:${r.adj > 0 ? 'var(--color-up)' : r.adj < 0 ? 'var(--color-down)' : 'var(--color-text-soft)'}">${r.adj > 0 ? '+' : ''}${r.adj.toFixed(1)}（原 ${r.base.toFixed(1)}）</small>`
+      : `<b>${r.base.toFixed(1)}</b>`;
+    const odds = (h.market_win_odds || h.market_place_odds) ? `<small>獨 ${esc(h.market_win_odds || '—')} · 位 ${esc(h.market_place_odds || '—')}</small>` : '';
+    const summary = h.analysis_summary ? { ...h.analysis_summary, gaps: [] } : null;   // 排名表唔出「資料不足」
+    html += `<article class="hkm-row${!scenario && pos <= 2 ? ' hkm-row--pick' : ''}"><div class="hkm-main">`
+      + `<div class="hkm-rank${pos <= 3 ? ' hkm-rank--' + pos : ''}">${pos}${moveTxt}</div>`
+      + `<div class="hkm-silk">${typeof renderSilk === 'function' ? renderSilk(h, 'sm') : ''}</div>`
+      + `<div style="min-width:0"><div class="hkm-name" role="button" tabindex="0" title="撳睇 ${esc(h.horse_name)} 詳細分析" onclick="hkjcJumpToHorse('${esc(h.horse_number)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();hkjcJumpToHorse('${esc(h.horse_number)}')}">`
+      + `<span class="hkm-no">${esc(h.horse_number)}</span>${esc(h.horse_name)}${typeof ratingBadge === 'function' ? ratingBadge(h.final_grade || '') : ''}</div>`
+      + `<div class="hkm-meta">${meta}</div></div>`
+      + `<div class="hkm-num">${score}${odds}</div></div>`
+      + (summary && typeof renderTagChips === 'function' ? `<div class="hkm-tags">${renderTagChips(summary)}</div>` : '')
+      + `</article>`;
   });
-  html += `</div><div class="hkr__legend">撳馬名睇詳細分析；撳「＋－📌」展開嗰匹嘅標籤。標籤同馬匹卡一樣：✅ 加分位、⚠️ 扣分位、📌 留意；實線 = 入分、虛線 = 未入分（停喺標籤睇原因）。藍邊 = ROI 頭兩選。</div></div>`;
+  html += `</div><div class="hkr__legend">撳馬名睇詳細分析。✅ 加分位、⚠️ 扣分位、📌 留意；實線 = 入分、虛線 = 未入分（停喺標籤睇原因）。淺藍底 = ROI 頭兩選。</div></div>`;
   return html;
 }
 
@@ -5821,25 +5840,6 @@ function hkjcJumpToHorse(no) {
   el.classList.remove('analysis-flash');
   void el.offsetWidth;
   el.classList.add('analysis-flash');
-}
-
-function hkjcTagButton(raceKey, h) {
-  const tags = (h.analysis_summary && h.analysis_summary.tags) || {};
-  const n = k => (tags[k] || []).length;
-  const open = HKJC_TAGS_OPEN.all || HKJC_TAGS_OPEN.rows.has(raceKey + '#' + h.horse_number);
-  return `<button type="button" class="hkr-tagbtn" aria-expanded="${open}" title="${open ? '收埋' : '展開'}標籤" onclick="hkjcToggleTags('${esc(raceKey)}','${esc(h.horse_number)}')">`
-    + `<b class="g">＋${n('good')}</b><b class="r">－${n('bad')}</b><span>📌${n('note') + ((h.analysis_summary && h.analysis_summary.watch) || []).length}</span><span>${open ? '▴' : '▾'}</span></button>`;
-}
-
-// 標籤：逐匹展開，或者全部（Kelvin 2026-11-17：預設精簡，一眼睇晒）
-function hkjcToggleTags(raceKey, no) {
-  if (no === null) { HKJC_TAGS_OPEN.all = !HKJC_TAGS_OPEN.all; HKJC_TAGS_OPEN.rows.clear(); }
-  else {
-    const key = raceKey + '#' + no;
-    if (HKJC_TAGS_OPEN.rows.has(key)) HKJC_TAGS_OPEN.rows.delete(key); else HKJC_TAGS_OPEN.rows.add(key);
-  }
-  const el = document.getElementById('hkjc-ranking-' + raceKey);
-  if (el) el.outerHTML = renderHkjcRanking(raceKey);
 }
 
 function hkjcSetScenario(raceKey, kind, value) {

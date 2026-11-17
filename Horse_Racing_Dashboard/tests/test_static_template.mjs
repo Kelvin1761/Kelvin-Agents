@@ -2949,15 +2949,13 @@ test("HKJC 情境：利放頭 reorders the scenario ranking but not the official
   assert.deepEqual(out.rows.map(r => r.rank), [2, 1]);                    // 正式排名唔變
   HKJC_RANKING_CACHE["3-x"] = { horses, analysis };
   const html = renderHkjcRanking("3-x");
-  assert.match(html, /▲1 · 正式2/);                               // 情境升跌＋正式排名
-  assert.match(html, /獨贏<strong>3.5<\/strong>/);
-  assert.match(html, /位置<strong>1.5<\/strong>/);
+  assert.match(html, /▲1 正式2/);                                  // 情境升跌＋正式排名
+  assert.match(html, /獨 3.5 · 位 1.5/);
   assert.match(html, /HKJC 官方投注網，截至 19:30/);
-  assert.match(html, /加分位/);                                    // 三行標籤（同馬匹卡 renderTagChips），預設收埋
-  assert.match(html, /class="hkr-tags" hidden/);
-  assert.match(html, /展開全部標籤/);
+  assert.match(html, /加分位/);                                    // 標籤全部顯示（同馬匹卡 renderTagChips）
   assert.match(html, /內檔優勢/);
-  assert.match(html, /馬齡/);
+  assert.match(html, /12檔（外） · 後上（多變）/);                     // 檔位跑法做灰字
+  assert.doesNotMatch(html, /資料不足/);
   assert.doesNotMatch(html, /undefined|NaN/);
   HKJC_SCENARIO.style = "default";
 });
