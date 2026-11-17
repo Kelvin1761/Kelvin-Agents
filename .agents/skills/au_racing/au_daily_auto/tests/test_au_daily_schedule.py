@@ -249,6 +249,19 @@ class TestSnapshotShape(unittest.TestCase):
         self.assertEqual(S.snapshot_signature(a), S.snapshot_signature(snap(
             [{"rank": 1, "horse_number": 6, "grade": "B"}], "Soft 6")))
 
+    def test_signature_notices_odds_coverage_but_not_price_moves(self):
+        # 2026-11-17：冇位置價嘅 dashboard 之後修好咗都冇發佈，因為指紋淨係睇排名。
+        def snap(*horses):
+            return {"meetings": [], "races": {"k": {"races_by_analyst": {"Kelvin": [
+                {"race_number": 1, "horses": list(horses)}]}}}}
+        none = snap({"market_win_odds": 3.0, "market_place_odds": None})
+        priced = snap({"market_win_odds": 3.0, "market_place_odds": 1.4})
+        moved = snap({"market_win_odds": 3.5, "market_place_odds": 1.5})
+        with_bf = snap({"market_win_odds": 3.5, "market_place_odds": 1.5, "betfair_win_odds": 3.6})
+        self.assertNotEqual(S.snapshot_signature(none), S.snapshot_signature(priced))
+        self.assertEqual(S.snapshot_signature(priced), S.snapshot_signature(moved))
+        self.assertNotEqual(S.snapshot_signature(moved), S.snapshot_signature(with_bf))
+
     def test_signature_notices_a_new_race(self):
         a = {"meetings": [], "races": {"k": {"races_by_analyst": {"K": [{"race_number": 1}]}}}}
         b = {"meetings": [], "races": {"k": {"races_by_analyst": {
@@ -2513,3 +2526,50 @@ class TestSnapshotNeedsABase(unittest.TestCase):
         code = [ln for ln in src.splitlines()
                 if "deploy.sh 自己下載" in ln and not ln.strip().startswith("#")]
         self.assertEqual(code, [], "嗰句係假嘅，唔可以留返做 runlog 訊息")
+
+
+class TestBetfairDisplayPrices(unittest.TestCase):
+    """Betfair 價只係落注格底細灰字：攞到就追加寫檔；任何失敗只記一步，唔 warn、唔拋。"""
+
+    def _run(self, fake):
+        import json as _json
+        import tempfile as _tf
+        import types as _types
+        old = sys.modules.get("au_betfair_prices")
+        sys.modules["au_betfair_prices"] = _types.SimpleNamespace(
+            load_env_file=lambda: True, venue_prices=fake)
+        try:
+            with _tf.TemporaryDirectory() as tmp:
+                folder = Path(tmp) / "2026-11-18 Sandown Lakeside Race 1-8"
+                folder.mkdir()
+                runlog = S.RunLog("morning", S.date(2026, 11, 18), Path(tmp) / "run.json")
+                n = S.record_betfair_prices(runlog, folder, "morning-refresh")
+                path = folder / S.BETFAIR_ODDS_HISTORY
+                hist = _json.loads(path.read_text()) if path.exists() else None
+                return n, hist, runlog
+        finally:
+            if old is None:
+                sys.modules.pop("au_betfair_prices", None)
+            else:
+                sys.modules["au_betfair_prices"] = old
+
+    def test_prices_appended_by_name(self):
+        seen = {}
+
+        def fake(day, venue):
+            seen.update(day=day, venue=venue)
+            return {"dontbackdown": {"win": 4.2, "place": 1.8}}
+        n, hist, runlog = self._run(fake)
+        self.assertEqual((n, seen["venue"], str(seen["day"])), (1, "Sandown Lakeside", "2026-11-18"))
+        (stamp, prices), = hist.items()
+        self.assertTrue(stamp.endswith("|morning-refresh"))
+        self.assertEqual(prices, {"dontbackdown": [4.2, 1.8]})
+
+    def test_betfair_error_never_breaks_the_run(self):
+        def boom(day, venue):
+            raise RuntimeError("listMarketCatalogue: UNEXPECTED_ERROR")
+        n, hist, runlog = self._run(boom)
+        self.assertEqual((n, hist), (0, None))
+        self.assertEqual(runlog.data.get("warnings") or [], [])
+        self.assertTrue(any(s.get("step") == "betfair-prices" and s.get("status") == "skipped"
+                            for s in runlog.data.get("steps", [])))

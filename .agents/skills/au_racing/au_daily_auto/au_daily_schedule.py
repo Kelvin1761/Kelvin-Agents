@@ -2530,6 +2530,7 @@ def analyse_one_meeting(runlog: RunLog, day: str, plan: dict) -> tuple:
     # 先有第一個價 —— 即係嗰兩個場次淨係得當朝價，而當朝價實測貴 8.7pp。
     # 攞唔到賠率唔算致命（評分本身唔讀賠率），但一定要嘈，唔可以靜。
     odds_races = record_odds_snapshot(folder, "analysis")
+    record_betfair_prices(runlog, folder, "analysis")
     if odds_races == 0:
         runlog.step("odds-snapshot", "missing", meeting=folder.name,
                     label="analysis", races=0, scored=len(scored))
@@ -3097,6 +3098,47 @@ def record_odds_from_cache(runlog: RunLog, folder: Path, key: str,
     return added
 
 
+BETFAIR_ODDS_HISTORY = "betfair_odds_history.json"
+
+
+def record_betfair_prices(runlog: RunLog, folder: Path, label: str) -> int:
+    """Betfair 交易所最佳買入價 → `betfair_odds_history.json`（追加式，按馬名）。→ 影到幾多匹。
+
+    Kelvin 2026-11-17：ROI 同 dashboard 主要照用 Sportsbet；Betfair 只喺落注格底用細灰字顯示、
+    唔可以改。所以呢個檔**唔入評分、唔入 ROI、唔預填輸入格**，同 `odds_history.json` 分開。
+    任何失敗（冇 credentials、Betfair 出錯、對唔到場地）只記一步，唔 warn、唔影響 run。
+    """
+    m = re.match(r"^(\d{4}-\d{2}-\d{2}) (.+?) Race ", folder.name)
+    if not m:
+        return 0
+    try:
+        sys.path.insert(0, str(AU_SKILL / "au_betfair"))
+        import au_betfair_prices as bfp
+        if not bfp.load_env_file():
+            runlog.step("betfair-prices", "skipped", meeting=folder.name, detail="冇 Betfair credentials")
+            return 0
+        prices = bfp.venue_prices(date.fromisoformat(m.group(1)), m.group(2))
+    except Exception as exc:  # noqa: BLE001 — Betfair 只係顯示用，唔可以拖垮 run
+        runlog.step("betfair-prices", "skipped", meeting=folder.name, label=label,
+                    detail=f"{type(exc).__name__}: {str(exc)[:120]}")
+        return 0
+    if not prices:
+        runlog.step("betfair-prices", "empty", meeting=folder.name, label=label)
+        return 0
+    path = folder / BETFAIR_ODDS_HISTORY
+    try:
+        hist = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(hist, dict):
+            hist = {}
+    except (OSError, ValueError):
+        hist = {}
+    stamp = f"{datetime.now().isoformat(timespec='seconds')}|{label}"
+    hist[stamp] = {name: [p.get("win"), p.get("place")] for name, p in sorted(prices.items())}
+    path.write_text(json.dumps(hist, ensure_ascii=False, indent=1), encoding="utf-8")
+    runlog.step("betfair-prices", "ok", meeting=folder.name, label=label, horses=len(prices))
+    return len(prices)
+
+
 def record_odds_snapshot(folder: Path, label: str) -> int:
     """把每場嘅贏／位賠追加入 `odds_history.json`，**永不覆寫**。
 
@@ -3292,6 +3334,7 @@ def refresh_one_meeting(runlog: RunLog, folder: Path, api: dict) -> bool:
     market_drift(runlog, folder, _key)
     # 每次覆核都影一個賠率時間點，唔理有冇實質變動。
     odds_races = record_odds_from_cache(runlog, folder, _key, "morning-refresh")
+    record_betfair_prices(runlog, folder, "morning-refresh")
     if odds_races < len(stored):
         runlog.step("odds-snapshot", "missing" if odds_races == 0 else "partial",
                     meeting=folder.name, label="morning-refresh",
@@ -3477,10 +3520,18 @@ def race_content_fingerprint(entry: object) -> list:
             picks = [(p.get("rank"), p.get("horse_number"), p.get("grade"))
                      for p in (race.get("top_picks") or [])
                      if isinstance(p, dict)]
+            # 賠率**覆蓋**（幾多匹有價），唔係價錢本身：2026-11-17 早上一個 run 用咗冇位置價嘅
+            # 賠率重建 dashboard，之後修好咗都冇再發佈（指紋淨係睇排名），全日 0 匹有賠率。
+            # 食覆蓋數唔食價錢 → 有／冇價變咗先發佈，價錢郁唔會令每個 run 都發佈。
+            horses = [h for h in (race.get("horses") or []) if isinstance(h, dict)]
+            sb_priced = sum(bool(h.get("market_win_odds") and h.get("market_place_odds"))
+                            for h in horses)
+            bf_priced = sum(bool(h.get("betfair_win_odds") or h.get("betfair_place_odds"))
+                            for h in horses)
             out.append([analyst, str(race.get("race_number")),
                         str(race.get("going") or ""),
                         str(race.get("confidence") or ""),
-                        race.get("horses_count"), picks])
+                        race.get("horses_count"), picks, sb_priced, bf_priced])
     return out
 
 

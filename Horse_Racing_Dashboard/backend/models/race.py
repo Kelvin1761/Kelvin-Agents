@@ -133,6 +133,10 @@ class HorseAnalysis(BaseModel):
     market_win_odds: Optional[float] = None
     market_place_odds: Optional[float] = None
     market_odds_captured_at: Optional[str] = None
+    # Betfair 交易所最佳買入價：只係落注格底細灰字顯示（Kelvin 2026-11-17），唔入 ROI、唔預填。
+    betfair_win_odds: Optional[float] = None
+    betfair_place_odds: Optional[float] = None
+    betfair_odds_captured_at: Optional[str] = None
     # 市場參考層（D1，2026-10-14）：最早賽前盤去水後嘅機率（0–1）同市場排名。
     # 勝 = power 去水；位 = odds-ratio 去水；前三／前四 = discounted Harville
     # 由市場勝率推算。**係市場推算，唔係模型**，亦唔參與任何排序。

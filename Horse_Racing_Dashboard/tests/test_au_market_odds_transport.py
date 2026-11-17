@@ -39,3 +39,27 @@ def test_corrupt_odds_history_does_not_erase_existing_report_prices(tmp_path):
     horse = SimpleNamespace(horse_number=1, market_win_odds=3, market_place_odds=1.5)
     enrich_au_market_odds(meeting, {"Kelvin": [SimpleNamespace(race_number=1, horses=[horse])]})
     assert (horse.market_win_odds, horse.market_place_odds) == (3, 1.5)
+
+
+def test_betfair_display_prices_matched_by_name_and_never_touch_sportsbet(tmp_path):
+    from services.au_market_odds import enrich_betfair_odds
+    (tmp_path / "betfair_odds_history.json").write_text(json.dumps({
+        "2026-10-15T22:00:00|analysis": {"dontbackdown": [9.0, 3.0]},
+        "2026-10-16T10:00:00|morning-refresh": {"dontbackdown": [4.2, 1.8], "ironrebel": [None, 2.9]},
+        "2026-10-17T10:00:00|morning-refresh": {"dontbackdown": [2.0, 1.1]}}))     # 未來 → 唔用
+    meeting = SimpleNamespace(region=Region.AU, date="2026-10-16", folder_paths={"Kelvin": str(tmp_path)})
+    a = SimpleNamespace(horse_number=1, horse_name="Don't Back Down", horse_name_en=None,
+                        market_win_odds=5.0, market_place_odds=2.0)
+    b = SimpleNamespace(horse_number=2, horse_name="鐵叛", horse_name_en="Iron Rebel",
+                        market_win_odds=None, market_place_odds=None)
+    c = SimpleNamespace(horse_number=3, horse_name="Nobody", horse_name_en=None)
+    before = G._source_fingerprint(meeting)
+    enrich_betfair_odds(meeting, {"Kelvin": [SimpleNamespace(race_number=1, horses=[a, b, c])]},
+                        now=datetime(2026, 10, 16, 11, tzinfo=ZoneInfo("Australia/Sydney")))
+    assert (a.betfair_win_odds, a.betfair_place_odds) == (4.2, 1.8)
+    assert a.betfair_odds_captured_at.startswith("2026-10-16T10:00:00")
+    assert (b.betfair_win_odds, b.betfair_place_odds) == (None, 2.9)
+    assert not hasattr(c, "betfair_win_odds")
+    assert (a.market_win_odds, a.market_place_odds) == (5.0, 2.0)          # Sportsbet 照舊
+    (tmp_path / "betfair_odds_history.json").write_text("{}")
+    assert G._source_fingerprint(meeting) != before                         # 新 Betfair 價會令 cache 失效

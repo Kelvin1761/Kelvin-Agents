@@ -262,6 +262,7 @@
     .bh-step-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
     .bh-step-heading .bh-step-label { margin-bottom: 0; }
     .bh-step-label { font-size: 0.68rem; color: var(--color-text-soft); font-weight: 700; margin-bottom: 5px; letter-spacing: 0.01em; }
+    .bh-betfair { margin-top: 6px; font-size: 0.62rem; color: var(--color-text-soft); opacity: 0.8; user-select: text; font-variant-numeric: tabular-nums; }
     .bh-step-row { display: flex; align-items: center; justify-content: flex-end; gap: 7px; flex-wrap: wrap; }
     .bh-status { display: inline-flex; align-items: center; min-height: 22px; padding: 2px 7px; border-radius: 999px; font-size: 0.65rem; font-weight: 800; white-space: nowrap; }
     .bh-status--draft { color: var(--color-primary-700); background: var(--color-primary-50); }
@@ -5062,8 +5063,22 @@ function renderBetCard(c, m, raceNum) {
     h += `</div></div>`;
   }
 
+  h += renderBetfairNote(c, m, raceNum);
   h += '</div>';
   return h;
+}
+
+// Betfair 交易所價：落注格最底一行細灰字，純顯示、唔可以改、唔預填輸入格（Kelvin 2026-11-17）。
+// ROI 同輸入格照用 Sportsbet（getMarketOdds）。冇 Betfair 價就成行唔出。
+function renderBetfairNote(c, m, raceNum) {
+  const rec = getHorseRecord(m, raceNum, c.horse_number);
+  const win = rec?.betfair_win_odds, place = rec?.betfair_place_odds;
+  if (typeof win !== 'number' && typeof place !== 'number') return '';
+  const bits = [];
+  if (typeof win === 'number') bits.push(`贏 $${win.toFixed(2)}`);
+  if (typeof place === 'number') bits.push(`位 $${place.toFixed(2)}`);
+  const at = rec?.betfair_odds_captured_at ? String(rec.betfair_odds_captured_at).slice(11, 16) : '';
+  return `<div class="bh-betfair" title="Betfair 交易所最佳買入價，只供參考（未計佣金，唔入 ROI）">Betfair ${bits.join(' · ')}${at ? ` · ${esc(at)}` : ''}</div>`;
 }
 
 function renderMobileRoiRecord(b, mode = 'confirmed') {

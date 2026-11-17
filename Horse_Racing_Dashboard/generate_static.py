@@ -48,7 +48,7 @@ from services.nba_tracking import TRACKING_START_DATE
 from services.hkjc_insights import export_insights as export_hkjc_insights
 from services.hkjc_roi_meta import export_race_meta as export_hkjc_race_meta
 from services.roi_board_export import export_roi_board
-from services.au_market_odds import enrich_au_market_odds
+from services.au_market_odds import enrich_au_market_odds, enrich_betfair_odds
 from models.race import AnalystName, Meeting, Region
 
 
@@ -287,6 +287,7 @@ def _analysis_files(meeting):
         else:
             files.extend(folder.glob("*Racecard.md"))
             files.extend(folder.glob("odds_history.json"))
+            files.extend(folder.glob("betfair_odds_history.json"))   # 落注格底 Betfair 細灰字
         files.extend(folder.glob("Race_*_MC_Results.json"))
     return sorted(set(files), key=lambda path: str(path))
 
@@ -552,6 +553,7 @@ def _collect_meeting(meeting):
     all_races = load_meeting_races(meeting)
     enrich_race_display_metadata(meeting, all_races)
     enrich_au_market_odds(meeting, all_races)
+    enrich_betfair_odds(meeting, all_races)
     races_data = {
         "meeting": meeting_data,
         "races_by_analyst": {
