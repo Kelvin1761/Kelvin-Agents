@@ -216,6 +216,9 @@ def scrape_horse_profile(horse_id: str, timeout: int = 15) -> dict:
         return result
     
     soup = BeautifulSoup(resp.text, 'html.parser')
+    age_m = re.search(r'出生地\s*/\s*馬齡\s*:?\s*\S+\s*/\s*(\d+)', soup.get_text(' '))
+    if age_m:
+        result['age'] = int(age_m.group(1))   # Kelvin 2026-11-17「3 歲負 133 磅」標籤用（只係顯示）
     
     # Extract horse name from page title
     title = soup.find('title')

@@ -1,6 +1,6 @@
 {
   "platform": "hkjc",
-  "engine_fingerprint": "b923989dc810",
+  "engine_fingerprint": "6e41178fa575",
   "calibrated_from": {
     "races": 150,
     "horses": 1863,
@@ -12,7 +12,7 @@
     "class_score": {
       "horses": 1863,
       "neutral_rate": 0.1782,
-      "mean_within_race_spread": 3.8844,
+      "mean_within_race_spread": 3.8843,
       "min": 52.45,
       "max": 73.51
     },
@@ -26,14 +26,14 @@
     "consistency_score": {
       "horses": 1863,
       "neutral_rate": 0.0086,
-      "mean_within_race_spread": 9.0443,
+      "mean_within_race_spread": 9.0353,
       "min": 34.0,
       "max": 79.0
     },
     "distance_score": {
       "horses": 1863,
       "neutral_rate": 0.0118,
-      "mean_within_race_spread": 7.5736,
+      "mean_within_race_spread": 7.5734,
       "min": 54.0,
       "max": 72.0
     },
@@ -47,42 +47,42 @@
     "form_score": {
       "horses": 1863,
       "neutral_rate": 0.0456,
-      "mean_within_race_spread": 11.7503,
+      "mean_within_race_spread": 11.7481,
       "min": 40.0,
       "max": 100.0
     },
     "formline_strength_score": {
       "horses": 1863,
-      "neutral_rate": 0.2083,
-      "mean_within_race_spread": 10.8376,
+      "neutral_rate": 0.2077,
+      "mean_within_race_spread": 10.8303,
       "min": 60.0,
       "max": 96.0
     },
     "jockey_score": {
       "horses": 1863,
       "neutral_rate": 0.0156,
-      "mean_within_race_spread": 6.3597,
+      "mean_within_race_spread": 6.3596,
       "min": 47.79,
       "max": 89.0
     },
     "race_shape_context_score": {
       "horses": 1863,
       "neutral_rate": 0.0,
-      "mean_within_race_spread": 8.4048,
+      "mean_within_race_spread": 8.4029,
       "min": 45.65,
       "max": 79.29
     },
     "risk_score": {
       "horses": 1863,
       "neutral_rate": 0.0059,
-      "mean_within_race_spread": 4.4966,
+      "mean_within_race_spread": 4.4986,
       "min": 48.0,
       "max": 76.0
     },
     "speed_score": {
       "horses": 1863,
       "neutral_rate": 0.029,
-      "mean_within_race_spread": 8.3535,
+      "mean_within_race_spread": 8.3505,
       "min": 34.61,
       "max": 88.63
     },
@@ -96,14 +96,14 @@
     "trainer_score": {
       "horses": 1863,
       "neutral_rate": 0.0172,
-      "mean_within_race_spread": 2.4941,
+      "mean_within_race_spread": 2.494,
       "min": 56.17,
       "max": 85.0
     },
     "weight_score": {
       "horses": 1863,
       "neutral_rate": 0.0199,
-      "mean_within_race_spread": 5.0156,
+      "mean_within_race_spread": 5.0184,
       "min": 50.0,
       "max": 74.0
     }

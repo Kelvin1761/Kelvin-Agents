@@ -258,6 +258,136 @@ def _distance_move_tags(auto: dict) -> list[dict]:
     return out
 
 
+_CN_CLASS = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5}
+
+
+def _class_no(text) -> int | None:
+    """班次 → 數字（同回放 features.num 一樣：取第一個數字；中文「第四班」→ 4）。"""
+    t = str(text or "")
+    m = re.search(r"第([一二三四五])班", t)
+    if m:
+        return _CN_CLASS[m.group(1)]
+    m = re.search(r"\d+", t)
+    return int(m.group()) if m else None
+
+
+def _hist(horse: dict) -> list[dict]:
+    data = horse.get("_data") if isinstance(horse.get("_data"), dict) else {}
+    return [h for h in (data.get("hk_history") or []) if isinstance(h, dict)]
+
+
+def _surface_move_tags(horse: dict, auto: dict) -> list[dict]:
+    """轉場（EXP-20261117-06）：入分嘅四種寫埋影響；其他方向按回放殘差顯示（未入分）。"""
+    from .surface_move import BETA, LABEL, SURFACE_NAME
+    out = []
+    mv = auto.get("surface_move") or {}
+    parts = [LABEL[k] for k in BETA if mv.get(k)]
+    if parts:
+        delta = float(auto.get("surface_move_delta") or 0.0)
+        out.append(_tag("surface_move", "、".join(parts), "good" if delta > 0 else "bad", scored=True, impact=round(delta, 2),
+                        why="轉場（6,000 場回放）：跑馬地轉沙田草地入位率低過模型約 5pp（7 季全負）、沙田草地轉跑馬地高約 3pp、"
+                            "初次沙田草地約 −5～−7pp、初次泥地約 −3pp；dev／holdout 都改善（EXP-20261117-06）。"))
+    hist = _hist(horse)
+    today = mv.get("today")
+    if not hist or not today:
+        return out
+    prev = hist[0].get("surface")
+    unscored = {("谷草", "泥地"): ("bad", "dev −1.4、holdout −3.5pp"), ("泥地", "田草"): ("bad", "dev −3.0、holdout −2.0pp"),
+                ("泥地", "谷草"): ("good", "dev +3.1、holdout +0.7pp"), ("田草", "泥地"): ("note", "dev +1.6、holdout +0.1pp，冇訊號")}
+    if (prev, today) in unscored and not parts:
+        tone, nums = unscored[(prev, today)]
+        out.append(_tag("surface_move_info", f"{SURFACE_NAME[prev]}轉{SURFACE_NAME[today]}", tone,
+                        why=f"上仗{SURFACE_NAME[prev]}、今仗{SURFACE_NAME[today]}。回放殘差 {nums}；入分 A/B 冇包呢個方向，未入分。"))
+    if today == "谷草" and not any(h.get("surface") == "谷草" for h in hist):
+        out.append(_tag("first_hv", "初次跑馬地", "note", why="香港往績從未跑過跑馬地；回放殘差 dev +0.9、holdout +0.4pp，冇訊號。未入分。"))
+    return out
+
+
+def _class_move_tags(horse: dict, meta: dict) -> list[dict]:
+    """Kelvin 2026-11-17（EXP-20261117-06）：初落班＋同程上過名、升班輕磅（上仗未贏）。都未入分。"""
+    hist = _hist(horse)
+    today = _class_no(meta.get("race_class"))
+    if not hist or today is None:
+        return []
+    last = _class_no(hist[0].get("class"))
+    dist = meta.get("distance")
+    out = []
+    if last is not None and today > last and not any(_class_no(h.get("class")) == today for h in hist):
+        placed = [h for h in hist if h.get("distance") == dist and isinstance(h.get("placing"), int) and 1 <= h["placing"] <= 3]
+        if placed:
+            out.append(_tag("first_drop_placed", f"初落第{today}班＋{dist}米上過名（{len(placed)}次）", "good",
+                            why="第一次落到呢個班次，而且喺今仗路程上過名。回放殘差 dev +7.8、holdout +6.2pp（7 季 6 季正），"
+                                "但罕有，入分 A/B CI 上界啱啱到 0 → 未入分（EXP-20261117-06）。"))
+    try:
+        w = int(str(horse.get("weight") or "0").split(".")[0])
+    except ValueError:
+        w = 0
+    if last is not None and today < last and hist[0].get("placing") != 1 and 0 < w <= 118:
+        out.append(_tag("class_up_light", f"升班輕磅（{w}磅、上仗未贏）", "good",
+                        why="升班但唔係因為上仗贏咗即升，今仗負磅 ≤118。回放殘差 dev +3.3、holdout +1.2pp（同方向、holdout 唔顯著）；未入分。"))
+    return out
+
+
+def _age_weight_tag(horse: dict) -> list[dict]:
+    data = horse.get("_data") if isinstance(horse.get("_data"), dict) else {}
+    try:
+        age, w = int(data.get("age") or 0), int(str(horse.get("weight") or "0").split(".")[0])
+    except ValueError:
+        return []
+    if age == 3 and w >= 133:
+        return [_tag("young_top_weight", f"3 歲負 {w} 磅", "note",
+                     why="3 歲馬負頂磅。回放（只有現役馬有馬齡）dev +2.1、holdout −1.8pp，樣本細、冇訊號；未入分。")]
+    return []
+
+
+def _race_people_tags(horses: dict, meta: dict) -> dict:
+    """同場騎師揀馬／同馬房正選次選／下游騎師贏後轉潘頓（EXP-20261117-06；全部未入分）。"""
+    from .live_priors import get_jt_ratings
+    out: dict[str, list] = {}
+    jock = {str(h.get("jockey") or "").strip(): no for no, h in horses.items() if str(h.get("jockey") or "").strip()}
+    try:
+        jt = get_jt_ratings(meta.get("date"))
+    except Exception:
+        jt = None
+
+    def wr(name):
+        row = jt.lookup("jockey", name) if jt is not None else None
+        return float(row.get("win_rate") or 0) if row else None
+    for no, h in horses.items():
+        hist = _hist(h)
+        today_j = str(h.get("jockey") or "").strip()
+        last3 = [x.get("jockey") for x in hist[:3]]
+        if len(last3) == 3 and len(set(last3)) == 1 and last3[0] and last3[0] != today_j and last3[0] in jock \
+                and last3[0] != "潘頓":
+            other = jock[last3[0]]
+            out.setdefault(no, []).append(_tag("regular_jockey_left", f"常騎騎師{last3[0]}今場騎 {other} 號", "bad",
+                                               why=f"近三仗都係{last3[0]}騎，今場佢同場揀咗 {other} 號。回放殘差 dev −3.5、holdout −0.7pp"
+                                                   "（同方向、holdout 唔顯著）；未入分。"))
+            out.setdefault(other, []).append(_tag("regular_jockey_chose", f"{last3[0]}棄 {no} 號揀呢匹", "note",
+                                                  why=f"{last3[0]}近三仗都騎 {no} 號，今場轉騎呢匹。留意；未入分。"))
+        if hist and hist[0].get("placing") == 1 and today_j == "潘頓":
+            lj = hist[0].get("jockey") or ""
+            rate = wr(lj)
+            if lj and lj != "潘頓" and rate is not None and rate < 8.0:
+                out.setdefault(no, []).append(_tag("downtier_win_purton", f"上仗{lj}贏、今仗轉潘頓", "note",
+                                                   why=f"上仗由{lj}（勝率 {rate:.1f}%）策騎勝出，今仗潘頓接手。回放樣本太少（n 27／15），量唔到；未入分。"))
+    stables: dict[str, list] = {}
+    for no, h in horses.items():
+        t = str(h.get("trainer") or "").strip()
+        if t:
+            stables.setdefault(t, []).append(no)
+    for t, nos in stables.items():
+        if len(nos) < 2:
+            continue
+        ranked = sorted(nos, key=lambda n: -(wr(str(horses[n].get("jockey") or "").strip()) or 0))
+        for i, no in enumerate(ranked):
+            rate = wr(str(horses[no].get("jockey") or "").strip())
+            out.setdefault(no, []).append(_tag("stable_choice", f"同馬房 {len(nos)} 匹：{'正選' if i == 0 else '次選'}", "note",
+                                               why=f"{t}今場出 {len(nos)} 匹（{'、'.join(f'{n} 號' for n in ranked)}）；正選 = 騎師勝率最高"
+                                                   f"（呢匹騎師勝率 {rate if rate is not None else 0:.1f}%）。回放：正選 dev +2.1、holdout −0.3pp，冇訊號；未入分。"))
+    return out
+
+
 def _distance_venue_tags(horse: dict, auto: dict, runs: list[dict], meta: dict) -> list[dict]:
     out = []
     data = horse.get("_data") or {}
@@ -283,13 +413,7 @@ def _distance_venue_tags(horse: dict, auto: dict, runs: list[dict], meta: dict) 
             out.append(_tag("first_distance", f"初跑{dist}米", "note",
                             why=f"香港 {len(runs)} 仗從未跑過 {dist}米；未入分。"))
     out += _surface_tags(runs, meta, complete)
-    if complete:
-        if meta.get("awt") and not any(r["awt"] for r in runs):
-            out.append(_tag("first_awt", "初跑泥地", "note", why=f"香港 {len(runs)} 仗從未跑過全天候跑道；未入分。"))
-        venue = meta.get("venue")
-        if venue and not any(r["venue"] == venue for r in runs):
-            name = "沙田" if venue == "ST" else "跑馬地"
-            out.append(_tag("first_venue", f"初跑{name}", "note", why=f"香港 {len(runs)} 仗從未喺{name}跑過；未入分。"))
+    # 初次泥地／沙田草地／跑馬地 由 _surface_move_tags 出（同轉場組件同一份往績；EXP-20261117-06）
     return out
 
 
@@ -598,6 +722,7 @@ def _incident_tag(auto: dict) -> list[dict]:
 def horse_tags(no: str, horse: dict, auto: dict, *, runs: list[dict], meta: dict,
                priority: str = "", extra: list | None = None) -> dict:
     special = _trainer_tags(auto) + _jockey_change_tag(horse, auto, runs) + _distance_venue_tags(horse, auto, runs, meta) + _distance_move_tags(auto)
+    special += _surface_move_tags(horse, auto) + _class_move_tags(horse, meta) + _age_weight_tag(horse)
     special += extra or []
     if "+" in str(priority or ""):
         special.append(_tag("trainer_ace", "練馬師王牌", "note",
@@ -628,7 +753,7 @@ def race_tags(logic_data: dict, meeting_dir: Path | None = None) -> dict:
         priorities = load_priorities(meeting_dir, meta.get("race_no"))
         gear = load_gear(meeting_dir, meta.get("race_no"))
         extra: dict[str, list] = {}
-        for source in (_purton_tags(horses, runs_by_no), _fastest_finisher(horses)):
+        for source in (_purton_tags(horses, runs_by_no), _fastest_finisher(horses), _race_people_tags(horses, meta)):
             for no, items in source.items():
                 extra.setdefault(no, []).extend(items)
         for no, h in horses.items():

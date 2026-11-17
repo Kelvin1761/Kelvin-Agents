@@ -72,7 +72,7 @@ def test_runs_on_or_after_race_day_are_ignored(tmp_path):
     out = tags.race_tags(*_meeting(tmp_path, horses, profiles))
     assert "潘頓棄騎（揀咗 2 號）" not in _labels(out, "1", "bad")
     notes = _labels(out, "1", "note")
-    assert "初跑1650米" in notes and "初跑跑馬地" in notes
+    assert "初跑1650米" in notes and "初跑跑馬地" not in notes      # 初次跑馬地改由 _surface_move_tags 出
 
 
 def test_first_time_tags_need_complete_history(tmp_path):
@@ -95,7 +95,8 @@ def test_first_awt_and_specialist(tmp_path):
     out = tags.race_tags(*_meeting(tmp_path, horses, {"H1": runs}, venue="沙田AWT", track="AWT", distance="1200m"))
     good = out["1"]["good"]
     assert good[0]["label"] == "首本路程（1200米 4戰1勝3上名）" and good[0]["scored"] is True
-    assert "初跑泥地" in _labels(out, "1", "note")
+    # 「初次泥地」而家由轉場組件（引擎 surface_move）出，唔再由馬匹頁 runs 計（EXP-20261117-06）
+    assert "初跑泥地" not in _labels(out, "1", "note")
 
 
 def test_trainer_signal_tags_follow_engine_adjustments_and_skip_small_ones(tmp_path):
@@ -246,3 +247,47 @@ def test_scored_distance_move_always_has_a_chip_even_without_profile_runs():
     auto = {"distance_move": {"prev": 1200, "today": 1650, "up": True}, "distance_move_delta": -0.8}
     out = tags.horse_tags("1", {"_data": {}}, auto, runs=[], meta={"distance": 1650, "date": "2026-11-18"})
     assert "大幅增程（1200→1650米）" in [t["label"] for t in out["bad"]]
+
+
+def _hh(*rows):
+    return {"hk_history": [dict(zip(("surface", "class", "distance", "placing", "jockey"), r)) for r in rows]}
+
+
+def test_surface_tags_scored_and_info():
+    auto = {"surface_move": {"today": "田草", "hv_to_st": True, "first_st": True}, "surface_move_delta": -3.9}
+    t = tags._surface_move_tags({"_data": _hh(("谷草", "4", 1200, 5, "A"))}, auto)
+    assert t[0]["label"] == "跑馬地轉沙田草地、初次沙田草地" and t[0]["scored"] and t[0]["tone"] == "bad"
+    auto = {"surface_move": {"today": "泥地"}, "surface_move_delta": 0.0}
+    t = tags._surface_move_tags({"_data": _hh(("谷草", "4", 1200, 5, "A"))}, auto)
+    assert [(x["label"], x["tone"], x["scored"]) for x in t] == [("跑馬地轉泥地", "bad", False)]
+
+
+def test_class_move_tags():
+    h = {"weight": "116", "_data": _hh(("谷草", "3", 1200, 6, "A"), ("谷草", "4", 1200, 2, "A"))}
+    # 第三班 → 第四班：曾經跑過第四班 → 唔係「初落」
+    assert tags._class_move_tags(h, {"race_class": "第四班", "distance": 1200}) == []
+    h = {"weight": "116", "_data": _hh(("谷草", "3", 1200, 6, "A"), ("田草", "3", 1200, 2, "A"))}
+    t = tags._class_move_tags(h, {"race_class": "第四班（條件限制）", "distance": 1200})
+    assert t[0]["label"] == "初落第4班＋1200米上過名（1次）" and t[0]["tone"] == "good" and not t[0]["scored"]
+    h = {"weight": "116", "_data": _hh(("谷草", "4", 1200, 5, "A"))}
+    t = tags._class_move_tags(h, {"race_class": "第三班", "distance": 1200})
+    assert [x["label"] for x in t] == ["升班輕磅（116磅、上仗未贏）"]
+    h = {"weight": "116", "_data": _hh(("谷草", "4", 1200, 1, "A"))}            # 上仗贏即升班唔計
+    assert tags._class_move_tags(h, {"race_class": "第三班", "distance": 1200}) == []
+
+
+def test_race_people_tags_jockey_switch_and_stable():
+    hist3 = _hh(("谷草", "4", 1200, 5, "甲"), ("谷草", "4", 1200, 4, "甲"), ("谷草", "4", 1200, 6, "甲"))
+    horses = {"1": {"jockey": "乙", "trainer": "T1", "_data": hist3}, "2": {"jockey": "甲", "trainer": "T1", "_data": {}},
+              "3": {"jockey": "丙", "trainer": "T2", "_data": {}}}
+    out = tags._race_people_tags(horses, {"date": "2026-11-18"})
+    assert "常騎騎師甲今場騎 2 號" in [t["label"] for t in out["1"]]
+    assert "甲棄 1 號揀呢匹" in [t["label"] for t in out["2"]]
+    choices = sorted(t["label"] for no in ("1", "2") for t in out[no] if t["key"] == "stable_choice")
+    assert choices == ["同馬房 2 匹：次選", "同馬房 2 匹：正選"]
+    assert not [t for t in out.get("3", []) if t["key"] == "stable_choice"]
+
+
+def test_age_weight_tag():
+    assert tags._age_weight_tag({"weight": "133", "_data": {"age": 3}})[0]["label"] == "3 歲負 133 磅"
+    assert tags._age_weight_tag({"weight": "133", "_data": {"age": 4}}) == []

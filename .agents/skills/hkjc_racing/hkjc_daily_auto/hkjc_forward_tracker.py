@@ -166,6 +166,11 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 since="2026-11-18", arm="docs/experiments/patches/hkjc_arm_joint_signals_shadow.py",
                 action="自動判：forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議入分（等你決定）；否則維持唔入分",
                 extra={"pass_verdict": "建議入分（等你決定）"}),
+    # EXP-20261117-06 K2：轉場（谷草／田草／泥地）入分；回放 dev／holdout Holm 3 PASS。退回式 forward 監察。
+    ForwardTest("surface_move_post_live", "轉場組件上線後 vs 冇組件", "EXP-20261117-06", "harness_ab", 60,
+                since="2026-11-18", arm="docs/experiments/patches/hkjc_arm_surface_move_revert.py",
+                action="自動判：退回版 forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議退回（等你決定）；否則保留",
+                extra={"pass_verdict": "建議退回（等你決定）"}),
     ForwardTest("incident_history_post_live", "上仗事件報告上線後 vs 冇組件", "EXP-20261116-06", "harness_ab", 60,
                 since="2026-11-17", arm="docs/experiments/patches/hkjc_arm_incident_history_revert.py",
                 action="自動判：退回版 forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議退回（等你決定）；否則保留",

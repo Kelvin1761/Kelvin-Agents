@@ -534,6 +534,7 @@
 - EXP-20261115-22 HKJC 上仗事件報告診斷：走外疊冇遮擋兩段都 +2–4pp；醫療 −2–4pp；冷門有藉口好過乾淨冷門
 - [EXP-20261116-05](EXP-20261116-05-hkjc-weight-residual-ft-and-hiclass.md) — 負磅殘差：段速 FT 負磅換算三個 arm 打和、高班直接修正 H log-loss 跨零，全部 REJECT
 - [EXP-20261116-06](EXP-20261116-06-hkjc-incident-history-live.md) — HKJC 上仗事件報告入分（走外疊冇遮擋 +、醫療 −）：補抓 2019–23 後 dev／holdout PASS（Holm 2），上線＋forward 退回監察
+- [EXP-20261117-06](EXP-20261117-06-hkjc-kelvin-seven-labels.md) — HKJC Kelvin 七個構思：轉場（跑馬地轉沙田草地 −5pp、反方向 +3pp、初次沙田草地／泥地）入分上線（dev −0.00072、holdout −0.00095，Holm 3）；初落班＋同程上過名、騎師揀馬入分唔過 → 標籤；3 歲頂磅、同馬房正次選冇訊號 → 注意
 - [EXP-20261117-05](EXP-20261117-05-hkjc-joint-refit.md) — HKJC 13 個未入分訊號一齊 refit：線性 J1 dev −0.00062、holdout −0.00108（AUC +0.0019 顯著）但 holdout Good 下界 −1.28 穿護欄 → REJECT，改 forward shadow；GBM 輸線性
 - [EXP-20261117-04](EXP-20261117-04-hkjc-entries-warmup-forward.md) — HKJC 熱身：事後「下仗 ≤7 日」−2.5～−2.8pp（倒果為因會誇大）；開始儲 HKJC 報名表快照、「已報 N 日後」留意標籤；forward shadow 熱身 −1.465、上仗入位＋評分跌返 +1.51（各 150 場）
 - [EXP-20261117-03](EXP-20261117-03-hkjc-big-distance-increase-live.md) — HKJC 大幅增程（≥400 米）入分：dev −0.00011、holdout −0.00013（Holm 2 PASS）上線，107／107 忠實；短途轉一哩子集 REJECT；初出馬父系 dev 有梯度 holdout 平 → REJECT

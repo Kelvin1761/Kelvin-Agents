@@ -133,6 +133,12 @@ RANKING_ADJUSTMENTS = (
         "formula": "β·([今仗路程 − 上仗路程 ≥ 400 米] − 場均)，β = −0.926（原始分）；上仗 = HKJC 馬匹頁最近一場香港賽事、日期嚴格早過今仗（hkjc_racing_engine/distance_move.py）",
         "missing": "冇上仗（初出／外隊）= 冇旗；冇今仗路程 = 不套用；大幅減程只顯示、唔入分",
     },
+    {
+        "key": "surface_move",
+        "label": "轉場（EXP-20261117-06）",
+        "formula": "Σ β·(旗 − 場均)：跑馬地轉沙田草地 −2.65、沙田草地轉跑馬地 +1.12、初次沙田草地 −1.70、初次泥地 −2.03（原始分）；往績 = HKJC 馬匹頁香港賽事、日期嚴格早過今仗（hkjc_racing_engine/surface_move.py）",
+        "missing": "冇香港往績（初出／外隊）= 冇旗；其他轉場方向只顯示、唔入分",
+    },
 )
 
 DEBUT_MATRIX_WEIGHTS = dimensions.debut_weights()

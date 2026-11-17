@@ -50,6 +50,7 @@ from hkjc_racing_engine import past_runs
 from hkjc_racing_engine import market_history
 from hkjc_racing_engine import draw_style
 from hkjc_racing_engine import incident_history, distance_move
+from hkjc_racing_engine import surface_move
 from hkjc_racing_engine.validation import validate_engine_scripts, validate_logic_data
 from wongchoi_paths import is_materialized_file
 
@@ -198,7 +199,8 @@ def _enrich_profile_history(horses, *, as_of_date=None):
         if not hid:
             continue
         try:
-            ents = (scrape_horse_profile(hid) or {}).get("entries") or []
+            prof = scrape_horse_profile(hid) or {}
+            ents = prof.get("entries") or []
         except Exception:
             continue
         if as_of_date is not None:
@@ -211,6 +213,20 @@ def _enrich_profile_history(horses, *, as_of_date=None):
         if not ents:
             continue
         data = h_obj.setdefault("_data", {})
+        if prof.get("age"):
+            data["age"] = prof["age"]
+        # 香港往績（新 → 舊；EXP-20261117-06）：轉場組件、初落班／升班、騎師揀馬標籤共用；海外賽唔計
+        from hkjc_racing_engine.surface_move import surface_of
+        hist = []
+        for e in ents:
+            sf = surface_of(e.get("venue_track"))
+            d = _profile_entry_date(e.get("date"))
+            if sf is None or d is None:
+                continue
+            hist.append({"date": d.isoformat(), "surface": sf, "distance": e.get("distance"),
+                         "class": e.get("class_grade"), "placing": e.get("placing"),
+                         "jockey": str(e.get("jockey") or "").strip(), "weight": e.get("weight_carried")})
+        data["hk_history"] = hist[:40]
         # 大幅增程組件（EXP-20261117-03）：最近一場香港賽事路程（同回放用嘅馬匹頁往績一樣，海外紀錄唔計）
         hk_prev = next((e for e in ents if str(e.get("venue_track") or "").startswith(("沙田", "跑馬地"))), None)
         if hk_prev is not None and hk_prev.get("distance"):
@@ -331,6 +347,9 @@ def _refresh_grade_transparency(horses):
         dmove = float(auto.get("distance_move_delta", 0.0) or 0.0)
         if dmove:
             adjustments.append({"key": "distance_move", "label": "大幅增程", "raw": round(dmove, 2)})
+        smove = float(auto.get("surface_move_delta", 0.0) or 0.0)
+        if smove:
+            adjustments.append({"key": "surface_move", "label": "轉場", "raw": round(smove, 2)})
         transparency["adjustments"] = adjustments
         # 報告「評分總覽」嘅總分係引擎階段（後置調整之前）印嘅：補一行點樣去到最終分，唔然頂部同總覽對唔上。
         summary = transparency.get("summary")
@@ -1124,6 +1143,8 @@ class HKJCAutoOrchestrator:
         incident_history.apply(horses, race_context.get("race_date"))
         # 大幅增程（EXP-20261117-03 D1）：事件報告之後、grade／排名之前
         distance_move.apply(horses, race_context)
+        # 轉場（EXP-20261117-06 K2）：大幅增程之後、grade／排名之前
+        surface_move.apply(horses, race_context)
         _refresh_grade_transparency(horses)
         self._apply_7d_official_ranking(horses)
         # ensure_verdict owns the single deterministic ranking path, including
