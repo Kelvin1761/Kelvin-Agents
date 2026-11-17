@@ -223,24 +223,6 @@
     .hkm-tags .verdict__label { font-size:.6rem; padding-top:1px; color:var(--color-text-soft); font-weight:600; }
     .hkm-tags .verdict__chip { font-size:.62rem; padding:0 6px; line-height:1.55; margin:1px 3px 1px 0; }
     @media (max-width: 768px) { .hkm-tags { margin-left:0; } }
-    /* 一眼睇晒（Kelvin 2026-11-17）：名＋灰字同一行，標籤一行 */
-    .hkm-row { padding:4px 4px 5px !important; }
-    .hkm-main { grid-template-columns:18px 22px minmax(0,1fr) auto !important; gap:6px !important; align-items:start !important; }
-    .hkm-rank { padding-top:2px; }
-    .hkm-silk { padding-top:1px; }
-    .hkm-silk .silk, .hkm-silk img { max-width:20px !important; max-height:20px !important; }
-    .hkm-line { display:flex; flex-wrap:wrap; align-items:baseline; column-gap:8px; row-gap:0; }
-    .hkm-line .hkm-name { font-size:.78rem; }
-    .hkm-line .hkm-meta { margin-top:0; font-size:.64rem; }
-    .hkm-chips { display:flex; flex-wrap:wrap; gap:2px 3px; margin-top:2px; }
-    .hkm-chip { font-size:.6rem; line-height:1.5; padding:0 5px; border-radius:999px; border:1px solid; white-space:nowrap; cursor:help; }
-    .hkm-chip--good { background:#f0fdf4; color:#166534; border-color:#bbf7d0; }
-    .hkm-chip--bad { background:#fef2f2; color:#991b1b; border-color:#fecaca; }
-    .hkm-chip--note { background:var(--color-surface-alt); color:var(--color-text-secondary); border-color:var(--color-border); }
-    .hkm-chip--info { border-style:dashed; }
-    .hkm-num { padding-top:1px; }
-    .hkm-num b { font-size:.78rem !important; }
-    .hkm-num small { font-size:.58rem !important; }
     .hkr__legend { margin-top:8px; font-size:.67rem; color:var(--color-text-soft); }
     @media (max-width: 768px) {
       .hkr-card { padding:12px; }
@@ -1596,8 +1578,29 @@ body { background: var(--color-bg); font-feature-settings: "cv11", "ss01"; }
 }
 
 /* Floating controls */
-.back-to-top { background: var(--color-text); box-shadow: var(--shadow-lg); }
-.back-to-top:hover { background: var(--color-text); box-shadow: var(--shadow-xl); }
+/* 返回頂部（Kelvin 2026-11-17）：磨砂深色膠囊＋向上箭咀＋捲動進度環 */
+.back-to-top {
+  width: auto; height: 42px; padding: 0 16px 0 5px; gap: 8px; border-radius: 999px;
+  background: rgba(15, 23, 42, 0.86); color: #fff; font-size: .8rem; font-weight: 700; letter-spacing: .04em;
+  -webkit-backdrop-filter: blur(10px) saturate(1.4); backdrop-filter: blur(10px) saturate(1.4);
+  border: 1px solid rgba(255,255,255,0.14); box-shadow: 0 10px 28px rgba(15,23,42,0.28), 0 2px 6px rgba(15,23,42,0.18);
+}
+.back-to-top:hover { background: rgba(15, 23, 42, 0.96); box-shadow: 0 14px 32px rgba(15,23,42,0.34), 0 2px 6px rgba(15,23,42,0.2); transform: translateY(-2px); }
+.back-to-top:active { transform: translateY(0) scale(.97); }
+.btt-ring {
+  --btt-p: 0; position: relative; width: 32px; height: 32px; border-radius: 50%; flex: none;
+  display: grid; place-items: center;
+  background: conic-gradient(#60a5fa calc(var(--btt-p) * 1turn), rgba(255,255,255,0.16) 0);
+}
+.btt-ring::before { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: #0f172a; }
+.btt-ring svg { position: relative; width: 15px; height: 15px; transition: transform .2s ease; }
+.back-to-top:hover .btt-ring svg { transform: translateY(-2px); }
+.btt-label { white-space: nowrap; }
+@media (max-width: 768px) {
+  .back-to-top { width: auto; height: 40px; padding: 0 13px 0 4px; font-size: .74rem; }
+  .btt-ring { width: 30px; height: 30px; }
+}
+@media (prefers-reduced-motion: reduce) { .back-to-top, .btt-ring svg { transition: none; } }
 .update-pill { border: 0; background: var(--color-text); box-shadow: var(--shadow-xl); }
 
 /* Portfolio cards used to paint over the mobile tab bar: a positioned card
@@ -1773,7 +1776,7 @@ dialog.roi-modal-dialog::backdrop { background: rgba(11,18,32,.42); -webkit-back
   </button>
   <button type="button" class="update-pill__dismiss" onclick="dismissUpdatePill()" title="暫時唔理" aria-label="關閉更新提示">×</button>
 </div>
-<button type="button" class="back-to-top" id="backToTop" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="回到頂部" aria-label="回到頂部">↑</button>
+<button type="button" class="back-to-top" id="backToTop" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="返回頂部" aria-label="返回頂部"><span class="btt-ring" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg></span><span class="btt-label">返回頂部</span></button>
 
 <script>
 // ═══════════════════════════════════════════════
@@ -5839,31 +5842,18 @@ function renderHkjcRanking(raceKey) {
     html += `<article class="hkm-row${!scenario && pos <= 2 ? ' hkm-row--pick' : ''}"><div class="hkm-main">`
       + `<div class="hkm-rank${pos <= 3 ? ' hkm-rank--' + pos : ''}">${pos}${moveTxt}</div>`
       + `<div class="hkm-silk">${typeof renderSilk === 'function' ? renderSilk(h, 'sm') : ''}</div>`
-      + `<div style="min-width:0"><div class="hkm-line"><div class="hkm-name" role="button" tabindex="0" title="撳睇 ${esc(h.horse_name)} 詳細分析" onclick="hkjcJumpToHorse('${esc(h.horse_number)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();hkjcJumpToHorse('${esc(h.horse_number)}')}">`
+      + `<div style="min-width:0"><div class="hkm-name" role="button" tabindex="0" title="撳睇 ${esc(h.horse_name)} 詳細分析" onclick="hkjcJumpToHorse('${esc(h.horse_number)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();hkjcJumpToHorse('${esc(h.horse_number)}')}">`
       + `<span class="hkm-no">${esc(h.horse_number)}</span>${esc(h.horse_name)}${typeof ratingBadge === 'function' ? ratingBadge(h.final_grade || '') : ''}</div>`
-      + `<div class="hkm-meta">${meta}</div></div>${hkjcInlineChips(summary)}</div>`
+      + `<div class="hkm-meta">${meta}</div></div>`
       + `<div class="hkm-num">${score}${odds}</div></div>`
+      + (summary && typeof renderTagChips === 'function' ? `<div class="hkm-tags">${renderTagChips(summary)}</div>` : '')
       + `</article>`;
   });
-  html += `</div><div class="hkr__legend">撳馬名睇詳細分析。標籤：綠＋ 加分位、紅－ 扣分位、灰• 留意；實線 = 入分、虛線 = 未入分（停喺標籤睇原因）。淺藍底 = ROI 頭兩選。</div></div>`;
+  html += `</div><div class="hkr__legend">撳馬名睇詳細分析。✅ 加分位、⚠️ 扣分位、📌 留意；實線 = 入分、虛線 = 未入分（停喺標籤睇原因）。淺藍底 = ROI 頭兩選。</div></div>`;
   return html;
 }
 
 // 撳排名表嘅馬 → 捲去下面嗰匹馬嘅詳細分析卡（id = horse-<號>-<隨機>），閃一下標示（Kelvin 2026-11-17）
-// 一行標籤（排名表專用排版；資料同馬匹卡同一份 analysis_summary.tags＋watch，唔出資料不足）
-function hkjcInlineChips(summary) {
-  if (!summary) return '';
-  const tags = summary.tags || {};
-  const chip = (t, tone) => {
-    const tip = [t.why, t.scored ? (t.impact != null ? `入分（對綜合分 ${t.impact > 0 ? '+' : ''}${Number(t.impact).toFixed(1)}）` : '入分') : '未入分，只供參考'].filter(Boolean).join(' · ');
-    return `<span class="hkm-chip hkm-chip--${tone}${t.scored ? '' : ' hkm-chip--info'}" title="${esc(tip)}">${tone === 'good' ? '＋' : tone === 'bad' ? '－' : '•'}${esc(t.label)}</span>`;
-  };
-  const watch = (summary.watch || []).map(w => ({ label: w, scored: false, why: '' }));
-  const html = (tags.good || []).map(t => chip(t, 'good')).join('') + (tags.bad || []).map(t => chip(t, 'bad')).join('')
-    + [...(tags.note || []), ...watch].map(t => chip(t, 'note')).join('');
-  return html ? `<div class="hkm-chips">${html}</div>` : '';
-}
-
 function hkjcJumpToHorse(no) {
   const el = document.querySelector(`.horse-card[id^="horse-${String(no)}-"]`);
   if (!el) return;
@@ -9353,6 +9343,9 @@ window.addEventListener('scroll', () => {
   if (btn) {
     if (window.scrollY > 400) btn.classList.add('back-to-top--visible');
     else btn.classList.remove('back-to-top--visible');
+    const max = document.documentElement.scrollHeight - window.innerHeight;   // 進度環：已捲幾多
+    const ring = btn.querySelector('.btt-ring');
+    if (ring) ring.style.setProperty('--btt-p', max > 0 ? Math.min(1, window.scrollY / max).toFixed(3) : '0');
   }
 }, { passive: true });
 
