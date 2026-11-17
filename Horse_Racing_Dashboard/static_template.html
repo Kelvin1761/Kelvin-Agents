@@ -204,10 +204,11 @@
     .hkm-row { padding:7px 4px 8px; border-top:1px solid var(--color-border); }
     .hkm-row:first-child { border-top:0; }
     .hkm-row--pick { background:linear-gradient(90deg,var(--color-primary-50),transparent 60%); border-radius:8px; }
-    .hkm-main { display:grid; grid-template-columns:22px 26px minmax(0,1fr) auto; gap:8px; align-items:center; }
+    .hkm-main { display:grid; grid-template-columns:36px 26px minmax(0,1fr) auto; gap:8px; align-items:center; }
     .hkm-rank { font-size:.72rem; font-weight:800; color:var(--color-text-soft); text-align:center; line-height:1.1; }
     .hkm-rank--1 { color:#b45309; } .hkm-rank--2 { color:#475569; } .hkm-rank--3 { color:#9a3412; }
-    .hkm-rank small { display:block; font-size:.56rem; font-weight:700; white-space:nowrap; }
+    .hkm-rank small { display:block; font-size:.56rem; font-weight:700; white-space:nowrap; line-height:1.25; }
+    .hkm-rank .hkm-official { font-weight:600; color:var(--color-text-soft); font-size:.52rem; }
     .hkm-silk .silk, .hkm-silk img { max-width:24px; max-height:24px; }
     .hkm-name { display:flex; align-items:center; gap:5px; flex-wrap:wrap; font-size:.8rem; font-weight:700; color:var(--color-text); cursor:pointer; }
     .hkm-name:hover { color:var(--color-primary-700); }
@@ -217,7 +218,7 @@
     .hkm-num { text-align:right; font-variant-numeric:tabular-nums; line-height:1.25; }
     .hkm-num b { font-size:.84rem; color:var(--color-text); }
     .hkm-num small { display:block; font-size:.62rem; color:var(--color-text-soft); white-space:nowrap; }
-    .hkm-tags { margin:3px 0 0 56px; }
+    .hkm-tags { margin:3px 0 0 70px; }
     .hkm-tags .verdicts { margin:0; gap:1px; max-width:none; }
     .hkm-tags .verdict { grid-template-columns:44px minmax(0,1fr); gap:4px; font-size:.62rem; }
     .hkm-tags .verdict__label { font-size:.6rem; padding-top:1px; color:var(--color-text-soft); font-weight:600; }
@@ -5829,7 +5830,8 @@ function renderHkjcRanking(raceKey) {
     const h = r.h;
     const pos = i + 1;
     const move = scenario ? r.rank - r.srank : 0;
-    const moveTxt = !scenario ? '' : `<small style="color:${move > 0 ? 'var(--color-up)' : move < 0 ? 'var(--color-down)' : 'var(--color-text-soft)'}">${move > 0 ? '▲' + move : move < 0 ? '▼' + (-move) : '＝'} 正式${r.rank}</small>`;
+    // 情境升跌一行、「正式N」一行，唔會撞去彩衣
+    const moveTxt = !scenario ? '' : `<small style="color:${move > 0 ? 'var(--color-up)' : move < 0 ? 'var(--color-down)' : 'var(--color-text-soft)'}">${move > 0 ? '▲' + move : move < 0 ? '▼' + (-move) : '＝'}</small><small class="hkm-official">正式${r.rank}</small>`;
     const rs = h.run_style_outlook;
     const meta = [h.jockey, h.trainer,
       h.barrier ? `${h.barrier}檔${r.band ? '（' + r.band.replace('檔', '') + '）' : ''}` : '',
