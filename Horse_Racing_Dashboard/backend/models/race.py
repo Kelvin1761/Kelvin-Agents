@@ -79,6 +79,7 @@ class HorseAnalysis(BaseModel):
     weight: Optional[str] = None
     barrier: Optional[int] = None
     rating: Optional[int] = None  # Official rating number
+    age: Optional[int] = None  # HKJC 馬匹頁馬齡（抓頁當日；Kelvin 2026-11-17 排名表）
 
     # Context
     situation_tag: Optional[str] = None  # 情境標記

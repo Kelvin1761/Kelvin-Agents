@@ -993,6 +993,23 @@ def _load_run_style_map(analysis_path: Path) -> dict[int, dict]:
     return mapping
 
 
+def _load_logic_ages(analysis_path: Path) -> dict[int, int]:
+    logic_path = analysis_path.with_name(analysis_path.name.replace("_Auto_Analysis.md", "_Logic.json"))
+    try:
+        payload = json.loads(logic_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    out = {}
+    for raw_number, horse in (payload.get("horses") or {}).items():
+        try:
+            age = int(((horse or {}).get("_data") or {}).get("age") or 0)
+            if age:
+                out[int(raw_number)] = age
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
 def _load_prerace_odds(analysis_path: Path, race_number: int) -> tuple[dict[int, tuple], Optional[str]]:
     """HKJC_Odds_History.json → {馬號: (獨贏, 位置)}、抓取時間。只用 `pre_race`（兩個池仲賣緊）嘅最後一個快照，
     已跑嘅場次就係開跑前最後嗰個價。純 dashboard 顯示（Kelvin 2026-11-17「即場幾 win 幾 place」），唔入評分。"""
@@ -1240,6 +1257,9 @@ def parse_hkjc_analysis(filepath: str) -> Optional[RaceAnalysis]:
     run_styles = _load_run_style_map(path) if is_auto else {}
     for horse in horses:
         horse.run_style_outlook = run_styles.get(horse.horse_number)
+    ages = _load_logic_ages(path) if is_auto else {}
+    for horse in horses:
+        horse.age = ages.get(horse.horse_number)
     odds, odds_at = _load_prerace_odds(path, race_number) if is_auto else ({}, None)
     for horse in horses:
         win, place = odds.get(horse.horse_number, (None, None))

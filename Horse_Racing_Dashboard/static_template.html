@@ -129,6 +129,52 @@
        weight 400 — no structure, and visibly lighter than the ranking strip
        right above it. They now use the strip's typography (600, same size,
        same slate) so the card reads as one block. */
+
+    /* HKJC 全場綜合戰力排名 v2（Kelvin 2026-11-17：premium、標籤分三行） */
+    .hkr__head { display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; justify-content:space-between; margin-bottom:12px; }
+    .hkr__title { font-weight:800; font-size:1.02rem; color:var(--color-text); letter-spacing:.01em; }
+    .hkr__sub { font-size:.74rem; color:var(--color-text-soft); margin-top:2px; }
+    .hkr__controls { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+    .hkr__control { display:flex; align-items:center; gap:6px; font-size:.74rem; color:var(--color-text-soft); background:var(--color-surface-alt); border:1px solid var(--color-border); border-radius:999px; padding:3px 4px 3px 12px; }
+    .hkr__control select { font:inherit; font-size:.8rem; font-weight:700; color:var(--color-text); border:0; background:var(--color-surface,#fff); border-radius:999px; padding:4px 10px; cursor:pointer; }
+    .hkr__banner { margin:0 0 12px; padding:9px 12px; border-radius:12px; background:#fffbeb; border:1px solid #fde68a; color:#78350f; font-size:.76rem; line-height:1.5; }
+    .hkr__list { display:flex; flex-direction:column; gap:10px; }
+    .hkr-card { position:relative; background:var(--color-surface,#fff); border:1px solid var(--color-border); border-radius:16px; padding:14px 16px; box-shadow:0 1px 2px rgba(15,23,42,.04),0 6px 18px -12px rgba(15,23,42,.18); }
+    .hkr-card--pick { border-color:var(--color-primary-100,#dbeafe); box-shadow:inset 4px 0 0 var(--color-primary-700),0 6px 18px -12px rgba(37,99,235,.35); }
+    .hkr-card__top { display:grid; grid-template-columns:40px minmax(0,1.5fr) minmax(0,1.6fr) 112px 92px; gap:14px; align-items:center; }
+    .hkr-rank { width:36px; height:36px; border-radius:50%; display:grid; place-items:center; font-weight:800; font-size:.95rem; background:var(--color-surface-alt); color:var(--color-text-secondary); }
+    .hkr-rank--1 { background:linear-gradient(135deg,#fde68a,#f59e0b); color:#78350f; }
+    .hkr-rank--2 { background:linear-gradient(135deg,#e5e7eb,#9ca3af); color:#1f2937; }
+    .hkr-rank--3 { background:linear-gradient(135deg,#fed7aa,#c2410c); color:#fff7ed; }
+    .hkr-rank__move { display:block; text-align:center; font-size:.66rem; font-weight:700; margin-top:3px; color:var(--color-text-soft); }
+    .hkr-horse { display:flex; gap:10px; align-items:center; min-width:0; }
+    .hkr-horse__name { display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-weight:800; font-size:.95rem; color:var(--color-text); }
+    .hkr-horse__no { display:inline-grid; place-items:center; min-width:24px; height:24px; padding:0 6px; border-radius:7px; background:var(--color-primary-700); color:#fff; font-size:.78rem; }
+    .hkr-horse__meta { font-size:.74rem; color:var(--color-text-soft); margin-top:2px; }
+    .hkr-facts { display:flex; flex-wrap:wrap; gap:6px; }
+    .hkr-fact { display:flex; flex-direction:column; min-width:64px; padding:5px 10px; border-radius:10px; background:var(--color-surface-alt); border:1px solid var(--color-border-light,var(--color-border)); }
+    .hkr-fact span { font-size:.64rem; color:var(--color-text-soft); letter-spacing:.04em; }
+    .hkr-fact strong { font-size:.84rem; color:var(--color-text); }
+    .hkr-fact small { font-weight:600; color:var(--color-text-soft); margin-left:3px; }
+    .hkr-score { text-align:right; }
+    .hkr-score__value { font-size:1.35rem; font-weight:800; line-height:1.1; color:var(--color-text); font-variant-numeric:tabular-nums; }
+    .hkr-score__bar { height:5px; border-radius:999px; background:var(--color-surface-alt); margin-top:6px; overflow:hidden; }
+    .hkr-score__bar i { display:block; height:100%; border-radius:999px; background:linear-gradient(90deg,var(--color-primary-700),#60a5fa); }
+    .hkr-score__delta { font-size:.72rem; font-weight:700; }
+    .hkr-odds { text-align:right; font-variant-numeric:tabular-nums; }
+    .hkr-odds div { font-size:.72rem; color:var(--color-text-soft); }
+    .hkr-odds strong { font-size:.95rem; color:var(--color-text); margin-left:4px; }
+    .hkr-card .verdicts { margin-top:12px; padding-top:10px; border-top:1px dashed var(--color-border); max-width:none; }
+    .hkr__legend { margin-top:8px; font-size:.7rem; color:var(--color-text-soft); }
+    @media (max-width: 768px) {
+      .hkr-card { padding:12px; }
+      .hkr-card__top { grid-template-columns:36px minmax(0,1fr) auto; gap:10px; }
+      .hkr-facts { grid-column:1 / -1; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); }
+      .hkr-fact { min-width:0; padding:5px 8px; }
+      .hkr-odds { grid-column:3; grid-row:1; }
+      .hkr-score { grid-column:2 / -1; text-align:left; display:flex; align-items:center; gap:10px; }
+      .hkr-score__bar { flex:1; margin-top:0; }
+    }
     .verdicts { margin-top: 10px; max-width: 1040px; display: flex; flex-direction: column; gap: 6px; }
     .verdict { display: grid; grid-template-columns: 78px minmax(0, 1fr); align-items: start; gap: 8px; font-size: 0.75rem; }
     .verdict__label { font-weight: 700; white-space: nowrap; padding-top: 2px; }
@@ -5676,16 +5722,6 @@ function hkjcScenarioRows(horses, analysis) {
   return { rows: ordered, scenario };
 }
 
-function hkjcCompactChips(h) {
-  const tags = (h.analysis_summary && h.analysis_summary.tags) || {};
-  const style = { good: 'background:#dcfce7;color:#166534;border-color:#86efac', bad: 'background:#fee2e2;color:#991b1b;border-color:#fca5a5',
-                  note: 'background:#f1f5f9;color:#475569;border-color:#cbd5e1' };
-  const chip = (t, tone) => {
-    const tip = [t.why, t.scored ? (t.impact != null ? `入分（${t.impact > 0 ? '+' : ''}${Number(t.impact).toFixed(1)}）` : '入分') : '未入分'].filter(Boolean).join(' · ');
-    return `<span title="${esc(tip)}" style="display:inline-block;margin:2px 3px 0 0;padding:1px 6px;border-radius:999px;font-size:.72rem;border:1px ${t.scored ? 'solid' : 'dashed'};${style[tone]}">${tone === 'good' ? '＋' : tone === 'bad' ? '－' : '•'} ${esc(t.label)}</span>`;
-  };
-  return ['good', 'bad', 'note'].map(tone => (tags[tone] || []).map(t => chip(t, tone)).join('')).join('');
-}
 
 function renderHkjcRanking(raceKey) {
   const cached = HKJC_RANKING_CACHE[raceKey];
@@ -5693,41 +5729,48 @@ function renderHkjcRanking(raceKey) {
   const { horses, analysis } = cached;
   const { rows, scenario } = hkjcScenarioRows(horses, analysis);
   const bf = analysis && analysis.race_summary && analysis.race_summary.battlefield;
-  const odds = horses.find(h => h.market_odds_captured_at);
-  const sel = (id, opts, cur) => `<select aria-label="${id === 'style' ? '利咩跑法' : '利咩欄'}" onchange="hkjcSetScenario('${esc(raceKey)}','${id}',this.value)" style="font:inherit;font-size:.8rem;padding:3px 6px;border-radius:8px;border:1px solid var(--color-border,#cbd5e1)">${opts.map(([v, l]) => `<option value="${esc(v)}"${v === cur ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
-  let html = `<div class="hkjc-ranking" id="hkjc-ranking-${esc(raceKey)}">`;
-  html += `<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-bottom:8px"><div><strong>📊 全場綜合戰力排名</strong> <span style="font-size:.78rem;color:var(--color-text-muted,#64748b)">${rows.length} 匹${odds ? ` · 賠率截至 ${esc(String(odds.market_odds_captured_at).slice(11, 16))}（開跑前，純參考）` : ''}</span></div>`;
-  html += `<div style="display:flex;gap:6px;align-items:center;font-size:.8rem">情境：跑法 ${sel('style', HKJC_STYLE_OPTIONS, HKJC_SCENARIO.style)} 檔位 ${sel('draw', HKJC_DRAW_OPTIONS, HKJC_SCENARIO.draw)}</div></div>`;
+  const oddsAt = (horses.find(h => h.market_odds_captured_at) || {}).market_odds_captured_at;
+  const sel = (id, opts, cur) => `<select aria-label="${id === 'style' ? '利咩跑法' : '利咩欄'}" onchange="hkjcSetScenario('${esc(raceKey)}','${id}',this.value)">${opts.map(([v, l]) => `<option value="${esc(v)}"${v === cur ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
+  let html = `<div class="hkr" id="hkjc-ranking-${esc(raceKey)}"><div class="hkr__head"><div><div class="hkr__title">📊 全場綜合戰力排名</div>`
+    + `<div class="hkr__sub">${rows.length} 匹${oddsAt ? ` · 賠率：HKJC 官方投注網，截至 ${esc(String(oddsAt).slice(11, 16))}（停售前最後一個快照，純參考、唔入分）` : ''}</div></div>`
+    + `<div class="hkr__controls"><label class="hkr__control">情境 · 跑法 ${sel('style', HKJC_STYLE_OPTIONS, HKJC_SCENARIO.style)}</label>`
+    + `<label class="hkr__control">檔位 ${sel('draw', HKJC_DRAW_OPTIONS, HKJC_SCENARIO.draw)}</label></div></div>`;
   if (scenario) {
     const live = HKJC_SCENARIO.style === 'inrace' || HKJC_SCENARIO.draw === 'inrace';
-    html += `<div style="margin:0 0 8px;padding:6px 10px;border-radius:8px;background:#fef9c3;color:#713f12;font-size:.78rem">情境排名（假設${HKJC_SCENARIO.style !== 'default' ? '跑法「' + esc(HKJC_STYLE_OPTIONS.find(o => o[0] === HKJC_SCENARIO.style)[1]) + '」' : ''}${HKJC_SCENARIO.draw !== 'default' ? '檔位「' + esc(HKJC_DRAW_OPTIONS.find(o => o[0] === HKJC_SCENARIO.draw)[1]) + '」' : ''}）：只係睇排名會點變，正式排名同 ROI 頭兩選唔郁。`
+    const name = (opts, v) => (opts.find(o => o[0] === v) || [v, v])[1];
+    html += `<div class="hkr__banner">情境排名（假設${HKJC_SCENARIO.style !== 'default' ? '跑法「' + esc(name(HKJC_STYLE_OPTIONS, HKJC_SCENARIO.style)) + '」' : ''}${HKJC_SCENARIO.draw !== 'default' ? '檔位「' + esc(name(HKJC_DRAW_OPTIONS, HKJC_SCENARIO.draw)) + '」' : ''}）：只係睇排名會點變，正式排名同 ROI 頭兩選唔郁。`
       + `預設幅度 = 歷史強偏差日（被利一類上名率約 +10pp，約 ${bf && bf.scenario ? (10 * bf.scenario.pp_to_display).toFixed(1) : '?'} 分）。`
       + (live ? '即場 = 今日已跑場次嘅偏差 × 0.2（歷史上即場偏差只持續約兩成），上限 ±3pp。' : '') + `</div>`;
   }
-  html += `<div style="overflow-x:auto"><table class="hkjc-ranking__table" style="width:100%;border-collapse:collapse;font-size:.82rem">`;
-  html += `<thead><tr style="text-align:left;color:var(--color-text-muted,#64748b);font-size:.72rem">`
-    + `<th style="padding:4px">${scenario ? '情境' : '排名'}</th><th style="padding:4px">馬匹</th><th style="padding:4px">檔位</th><th style="padding:4px">跑法</th>`
-    + `<th style="padding:4px">綜合分</th>${scenario ? '<th style="padding:4px">情境分</th>' : ''}<th style="padding:4px">賠率 W／P</th></tr></thead><tbody>`;
+  html += '<div class="hkr__list">';
   rows.forEach((r, i) => {
     const h = r.h;
-    const medal = ['🥇', '🥈', '🥉'][i] || String(i + 1);
+    const pos = i + 1;
     const move = scenario ? r.rank - r.srank : 0;
-    const arrow = !scenario ? '' : move > 0 ? `<span style="color:#16a34a;font-size:.72rem"> ▲${move}</span>` : move < 0 ? `<span style="color:#dc2626;font-size:.72rem"> ▼${-move}</span>` : '';
+    const moveTxt = !scenario ? '' : move > 0 ? `<span class="hkr-rank__move" style="color:var(--color-up)">▲${move} · 正式${r.rank}</span>`
+      : move < 0 ? `<span class="hkr-rank__move" style="color:var(--color-down)">▼${-move} · 正式${r.rank}</span>` : `<span class="hkr-rank__move">正式${r.rank}</span>`;
     const rs = h.run_style_outlook;
-    const top = !scenario && i < 2;
-    html += `<tr style="border-top:1px solid var(--color-border,#e2e8f0);${top ? 'background:rgba(37,99,235,.05)' : ''}">`
-      + `<td style="padding:6px 4px;white-space:nowrap"><strong>${medal}</strong>${scenario ? `<div style="font-size:.7rem;color:var(--color-text-muted,#64748b)">正式 ${r.rank}${arrow}</div>` : ''}</td>`
-      + `<td style="padding:6px 4px"><div style="display:flex;gap:6px;align-items:center">${typeof renderSilk === 'function' ? renderSilk(h, 'sm') : ''}<div><strong>${esc(h.horse_number)} ${esc(h.horse_name)}</strong>${typeof ratingBadge === 'function' ? ' ' + ratingBadge(h.final_grade || '') : ''}`
-      + `<div style="font-size:.72rem;color:var(--color-text-muted,#64748b)">${esc(h.jockey || '')}${h.trainer ? ' ／ ' + esc(h.trainer) : ''}${h.weight ? ' · ' + esc(h.weight) + '磅' : ''}</div></div></div></td>`
-      + `<td style="padding:6px 4px;white-space:nowrap">${h.barrier ? esc(h.barrier) + ' 檔' : '—'}<div style="font-size:.7rem;color:var(--color-text-muted,#64748b)">${esc(r.band || '')}</div></td>`
-      + `<td style="padding:6px 4px;white-space:nowrap">${rs ? `<strong>${esc(rs.label)}</strong><div style="font-size:.7rem;color:var(--color-text-muted,#64748b)">${esc(rs.consistency || '')}</div>` : '<span style="color:var(--color-text-muted,#64748b)">未明</span>'}</td>`
-      + `<td style="padding:6px 4px;white-space:nowrap"><strong>${r.base.toFixed(1)}</strong><span style="display:block;height:4px;width:60px;background:#e2e8f0;border-radius:2px;margin-top:2px"><i style="display:block;height:4px;border-radius:2px;background:#2563eb;width:${Math.max(0, Math.min(100, r.base))}%"></i></span></td>`
-      + (scenario ? `<td style="padding:6px 4px;white-space:nowrap"><strong>${r.score.toFixed(1)}</strong><div style="font-size:.7rem;color:${r.adj > 0 ? '#16a34a' : r.adj < 0 ? '#dc2626' : 'var(--color-text-muted,#64748b)'}">${r.adj > 0 ? '+' : ''}${r.adj.toFixed(1)}</div></td>` : '')
-      + `<td style="padding:6px 4px;white-space:nowrap">${h.market_win_odds ? esc(h.market_win_odds) : '—'} ／ ${h.market_place_odds ? esc(h.market_place_odds) : '—'}</td></tr>`;
-    const chips = hkjcCompactChips(h);
-    if (chips) html += `<tr><td></td><td colspan="${scenario ? 6 : 5}" style="padding:0 4px 6px">${chips}</td></tr>`;
+    const fact = (label, value, small) => `<div class="hkr-fact"><span>${label}</span><strong>${value}${small ? `<small>${small}</small>` : ''}</strong></div>`;
+    const facts = [
+      fact('檔位', h.barrier ? esc(h.barrier) : '—', r.band ? esc(r.band) : ''),
+      fact('跑法', rs ? esc(rs.label) : '未明', rs ? esc(rs.consistency || '') : ''),
+      fact('馬齡', h.age ? esc(h.age) + ' 歲' : '—'),
+      fact('負磅', h.weight ? esc(h.weight) : '—'),
+      h.rating ? fact('評分', esc(h.rating)) : '',
+    ].join('');
+    const score = scenario
+      ? `<div class="hkr-score__value">${r.score.toFixed(1)}</div><div class="hkr-score__delta" style="color:${r.adj > 0 ? 'var(--color-up)' : r.adj < 0 ? 'var(--color-down)' : 'var(--color-text-soft)'}">${r.adj > 0 ? '+' : ''}${r.adj.toFixed(1)} · 原 ${r.base.toFixed(1)}</div>`
+      : `<div class="hkr-score__value">${r.base.toFixed(1)}</div>`;
+    html += `<article class="hkr-card${!scenario && pos <= 2 ? ' hkr-card--pick' : ''}"><div class="hkr-card__top">`
+      + `<div><div class="hkr-rank${pos <= 3 ? ' hkr-rank--' + pos : ''}">${pos}</div>${moveTxt}</div>`
+      + `<div class="hkr-horse">${typeof renderSilk === 'function' ? renderSilk(h, 'sm') : ''}<div style="min-width:0"><div class="hkr-horse__name"><span class="hkr-horse__no">${esc(h.horse_number)}</span>${esc(h.horse_name)}${typeof ratingBadge === 'function' ? ratingBadge(h.final_grade || '') : ''}</div>`
+      + `<div class="hkr-horse__meta">🏇 ${esc(h.jockey || '—')}　🏠 ${esc(h.trainer || '—')}</div></div></div>`
+      + `<div class="hkr-facts">${facts}</div>`
+      + `<div class="hkr-score">${score}<div class="hkr-score__bar"><i style="width:${Math.max(0, Math.min(100, scenario ? r.score : r.base))}%"></i></div></div>`
+      + `<div class="hkr-odds"><div>獨贏<strong>${h.market_win_odds ? esc(h.market_win_odds) : '—'}</strong></div><div>位置<strong>${h.market_place_odds ? esc(h.market_place_odds) : '—'}</strong></div></div>`
+      + `</div>${h.analysis_summary && typeof renderTagChips === 'function' ? renderTagChips(h.analysis_summary) : ''}</article>`;
   });
-  html += `</tbody></table></div><div style="margin-top:4px;font-size:.7rem;color:var(--color-text-muted,#64748b)">標籤：綠＝加分位、紅＝扣分位、灰＝注意；實線＝入分、虛線＝未入分（滑鼠停喺標籤睇原因）。賠率只作參考，永遠唔入評分。</div></div>`;
+  html += `</div><div class="hkr__legend">標籤同馬匹卡一樣：✅ 加分位、⚠️ 扣分位、📌 留意；實線 = 入分、虛線 = 未入分（停喺標籤睇原因）。藍邊 = ROI 頭兩選。</div></div>`;
   return html;
 }
 
@@ -5785,7 +5828,7 @@ function renderBattlefieldOverview(text, horses = [], geometry = null, analysis 
   if (hkjc) {
     const raceKey = String(analysis.race_number || '') + '-' + String((analysis.race_summary && analysis.race_summary.battlefield && analysis.race_summary.battlefield.date) || '');
     HKJC_RANKING_CACHE[raceKey] = { horses, analysis };
-    html += `<div class="battlefield-ranking" style="padding:10px 12px">${renderHkjcRanking(raceKey)}</div>`;
+    html += `<div class="battlefield-ranking" style="padding:14px 14px 12px">${renderHkjcRanking(raceKey)}</div>`;
   } else if (overview.ranking?.rows?.length) {
     html += `<div class="battlefield-ranking"><div class="battlefield-ranking__header"><div><span>📊</span><strong>全場綜合戰力排名</strong></div><span>${overview.ranking.rows.length} 匹馬</span></div>`;
     // Mobile keeps only the five columns that answer "who is rated where".

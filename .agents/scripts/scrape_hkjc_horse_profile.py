@@ -190,7 +190,7 @@ def scrape_horse_profile(horse_id: str, timeout: int = 15) -> dict:
     # Check disk cache (48 hours expiry)
     if horse_id in _profile_cache:
         cached = _profile_cache[horse_id]
-        if now - cached.get('_ts', 0) < 86400 * 2:
+        if now - cached.get('_ts', 0) < 86400 * 2 and 'age' in (cached.get('data') or {}):  # 2026-11-17：冇 age 欄嘅舊快取重抓一次
             return cached['data']
 
     if '_' in horse_id:
@@ -216,6 +216,7 @@ def scrape_horse_profile(horse_id: str, timeout: int = 15) -> dict:
         return result
     
     soup = BeautifulSoup(resp.text, 'html.parser')
+    result['age'] = None
     age_m = re.search(r'出生地\s*/\s*馬齡\s*:?\s*\S+\s*/\s*(\d+)', soup.get_text(' '))
     if age_m:
         result['age'] = int(age_m.group(1))   # Kelvin 2026-11-17「3 歲負 133 磅」標籤用（只係顯示）
