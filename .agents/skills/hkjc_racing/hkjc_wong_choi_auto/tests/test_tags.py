@@ -291,3 +291,14 @@ def test_race_people_tags_jockey_switch_and_stable():
 def test_age_weight_tag():
     assert tags._age_weight_tag({"weight": "133", "_data": {"age": 3}})[0]["label"] == "3 歲負 133 磅"
     assert tags._age_weight_tag({"weight": "133", "_data": {"age": 4}}) == []
+
+
+def test_trainer_awt_switch_pattern():
+    """EXP-20261117-09：容天鵬泥地／草地轉場（練馬師 pattern 表，未入分）。"""
+    from hkjc_racing_engine.trainer_patterns import patterns, matches
+    h = {"trainer": "容天鵬", "_data": {"hk_history": [{"surface": "泥地"}]}}
+    assert "awt_switch" in patterns(h, "第四班", 1200, [], "谷草")
+    assert "awt_switch" not in patterns(h, "第四班", 1200, [], "泥地")
+    assert "awt_switch" not in patterns(h, "第四班", 1200, [])                 # 冇今仗場地 = 唔判
+    assert [c["pattern"] for c in matches(h, "第四班", 1200, [], "田草")] == ["awt_switch"]
+    assert matches(dict(h, trainer="蔡約翰"), "第四班", 1200, [], "田草") == []

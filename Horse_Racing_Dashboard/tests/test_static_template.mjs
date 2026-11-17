@@ -2953,7 +2953,9 @@ test("HKJC 情境：利放頭 reorders the scenario ranking but not the official
   assert.match(html, /獨贏<strong>3.5<\/strong>/);
   assert.match(html, /位置<strong>1.5<\/strong>/);
   assert.match(html, /HKJC 官方投注網，截至 19:30/);
-  assert.match(html, /加分位/);                                    // 三行標籤（同馬匹卡 renderTagChips）
+  assert.match(html, /加分位/);                                    // 三行標籤（同馬匹卡 renderTagChips），預設收埋
+  assert.match(html, /class="hkr-tags" hidden/);
+  assert.match(html, /展開全部標籤/);
   assert.match(html, /內檔優勢/);
   assert.match(html, /馬齡/);
   assert.doesNotMatch(html, /undefined|NaN/);

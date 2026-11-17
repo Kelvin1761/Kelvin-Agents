@@ -230,6 +230,19 @@
    ],
    "early_pp": 2.7,
    "late_pp": 6.9
+  },
+  {
+   "trainer": "容天鵬",
+   "pattern": "awt_switch",
+   "n": 231,
+   "resid_pp": 6.2,
+   "ci": [
+    1.4,
+    11.5
+   ],
+   "early_pp": 5.7,
+   "late_pp": 7.0,
+   "source": "EXP-20261117-09（28 個練馬師入面唯一過關；可能撞彩）"
   }
  ]
 }

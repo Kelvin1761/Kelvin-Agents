@@ -156,7 +156,8 @@ def _trainer_pattern_tags(horse: dict, meta: dict, gear: list[str]) -> list[dict
     """個別練馬師出擊 pattern（EXP-20261115-20）：純顯示，唔入分。"""
     from .trainer_patterns import NAMES, matches
     out = []
-    for c in matches(horse, meta.get("race_class"), meta.get("distance"), gear):
+    today = "泥地" if meta.get("awt") else ("谷草" if meta.get("venue") == "HV" else ("田草" if meta.get("venue") == "ST" else None))
+    for c in matches(horse, meta.get("race_class"), meta.get("distance"), gear, today):
         good = c["resid_pp"] > 0
         out.append(_tag(f"trainer_pattern:{c['pattern']}", f"{c['trainer']}{NAMES[c['pattern']]}（歷史 {c['resid_pp']:+.0f}pp）",
                         "good" if good else "bad",

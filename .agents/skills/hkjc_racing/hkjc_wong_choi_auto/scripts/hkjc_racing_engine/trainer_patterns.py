@@ -15,7 +15,7 @@ from pathlib import Path
 
 NAMES = {"gear_removed": "除去配備", "gear_first": "首次配備", "last_close_2nd_3rd": "上仗二三名貼近", "quick_backup14": "14 日內再出",
          "layoff90": "休息 ≥90 日", "rest60": "休息 ≥60 日", "dist_up200": "加程 ≥200 米", "dist_down200": "減程 ≥200 米",
-         "classdrop_jchange": "降班＋換騎", "third_up": "復出第三仗"}
+         "classdrop_jchange": "降班＋換騎", "third_up": "復出第三仗", "awt_switch": "泥地／草地轉場"}
 _TABLE: dict | None = None
 _CLOSE = {"鼻": 0.05, "短頭": 0.1, "頭": 0.2, "頸": 0.3}
 
@@ -41,7 +41,7 @@ def _lengths(text) -> float | None:
     return float(m.group(1) or 0) + float(m.group(2)) / float(m.group(3))
 
 
-def patterns(horse: dict, race_class, distance, gear_codes: list[str]) -> set[str]:
+def patterns(horse: dict, race_class, distance, gear_codes: list[str], today_surface: str | None = None) -> set[str]:
     from .form_patterns import class_no
     d = horse.get("_data") if isinstance(horse.get("_data"), dict) else {}
     out = set()
@@ -85,13 +85,18 @@ def patterns(horse: dict, race_class, distance, gear_codes: list[str]) -> set[st
             pass
     if gap is not None and gap < 90 and len(dates) >= 3 and (dates[0] - dates[1]).days < 90 and (dates[1] - dates[2]).days >= 90:
         out.add("third_up")
+    # EXP-20261117-09：上仗同今仗一邊泥地、一邊草地（谷草／田草），用同轉場組件同一份 hk_history
+    data = horse.get("_data") if isinstance(horse.get("_data"), dict) else {}
+    hist = [h for h in (data.get("hk_history") or []) if isinstance(h, dict) and h.get("surface")]
+    if today_surface and hist and hist[0]["surface"] != today_surface and "泥地" in (hist[0]["surface"], today_surface):
+        out.add("awt_switch")
     return out
 
 
-def matches(horse: dict, race_class, distance, gear_codes: list[str]) -> list[dict]:
+def matches(horse: dict, race_class, distance, gear_codes: list[str], today_surface: str | None = None) -> list[dict]:
     trainer = str(horse.get("trainer") or "").strip()
     t = table()
-    hits = [p for p in sorted(patterns(horse, race_class, distance, gear_codes)) if (trainer, p) in t]
+    hits = [p for p in sorted(patterns(horse, race_class, distance, gear_codes, today_surface)) if (trainer, p) in t]
     if "layoff90" in hits and "rest60" in hits:      # 同一件事（休息），只出較嚴嗰個
         hits.remove("rest60")
     return [t[(trainer, p)] for p in hits]

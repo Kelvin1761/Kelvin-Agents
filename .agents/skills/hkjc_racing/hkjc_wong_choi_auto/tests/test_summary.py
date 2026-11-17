@@ -95,5 +95,5 @@ def test_scenario_constants():
     sc = summary.scenario_constants()
     assert 0.8 < sc["pp_to_display"] < 0.95
     assert sc["style"]["放頭"] == {"放頭": 10, "守中": 0, "後上": -10}
-    assert set(sc["draw"]) == {"利內欄", "利中內", "利中欄", "利中外"}
+    assert set(sc["draw"]) == {"利內欄", "利中內", "利中欄", "利中外", "利外欄"}
     assert sc["inrace"] == {"shrink": 0.2, "cap_pp": 3, "min_starts": 8}
