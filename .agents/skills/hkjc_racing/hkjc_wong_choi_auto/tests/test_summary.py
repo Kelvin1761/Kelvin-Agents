@@ -60,8 +60,10 @@ def test_battlefield_and_detail_lines():
              "draw": {"內檔": {"n": 10, "place": 0.34, "win": 0.1}, "中檔": {"n": 10, "place": 0.24, "win": 0.1},
                       "外檔": {"n": 10, "place": 0.17, "win": 0.05}}}}}
 
+    names = {"2": "甲", "11": "乙", "6": "丙"}
+
     def h(style, barrier, tags=None):
-        return {"barrier": barrier, "python_auto": {"run_style": {"label": style} if style else None,
+        return {"horse_name": names[barrier], "barrier": barrier, "python_auto": {"run_style": {"label": style} if style else None,
                                                      "summary": {"tags": tags or {}}}}
     logic = {"race_analysis": {"venue": "跑馬地", "track": "Turf", "distance": "1200m"},
              "horses": {"1": h("放頭", "2", {"good": [{"key": "draw", "label": "內檔優勢（2檔）", "scored": True}]}),
@@ -77,8 +79,21 @@ def test_battlefield_and_detail_lines():
     finally:
         summary._BATTLEFIELD = None
     text = "\n".join(out["lines"])
-    assert "首選 [1] 主要靠：內檔優勢（2檔）" in text
-    assert "跑馬地 1200米歷史（1066 場）：放頭上名率 36%最高（全場平均 25%）；今場慣性放頭 1 匹（1 號）" in text
-    assert "檔位：內檔上名率 34%、外檔 17%；今場內檔：1 號（2 檔）" in text
-    assert "跑馬地轉沙田草地（扣分）：2 號" in text
+    assert "首選 1 甲 主要靠：內檔優勢（2檔）" in text
+    assert "跑馬地 1200米歷史（1066 場）放頭最著數：上名率 36%（平均 25%）；今場慣性放頭：1 甲" in text
+    assert "檔位：內檔上名率 34%，外檔只有 17%；今場內檔：1 甲（2 檔）" in text
+    kinds = [it["kind"] for it in out["items"]]
+    assert kinds[:2] == ["top", "reasons"] and "style" in kinds and "draw" in kinds
+    # 半場或以下先列：3 匹入面 1 匹跑馬地轉沙田草地 → 列；名同號都有
+    fac = [it for it in out["items"] if it["kind"] == "factor"]
+    assert fac and fac[0]["horses"] == [{"no": "2", "name": "乙"}] and fac[0]["tone"] == "bad"
     assert out["battlefield"]["history"]["races"] == 1066
+
+
+def test_scenario_constants():
+    """情境幅度（EXP-20261117-08）：上名率 1pp ≈ 0.87 顯示分；預設 ±10pp；即場 ×0.2、上限 3pp。"""
+    sc = summary.scenario_constants()
+    assert 0.8 < sc["pp_to_display"] < 0.95
+    assert sc["style"]["放頭"] == {"放頭": 10, "守中": 0, "後上": -10}
+    assert set(sc["draw"]) == {"利內欄", "利中內", "利中欄", "利中外"}
+    assert sc["inrace"] == {"shrink": 0.2, "cap_pp": 3, "min_starts": 8}

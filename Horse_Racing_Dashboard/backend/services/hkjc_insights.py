@@ -19,7 +19,7 @@ from pathlib import Path
 
 VENUES = {"沙田": "ST", "ShaTin": "ST", "跑馬地": "HV", "HappyValley": "HV"}
 NOT_STARTED = re.compile(r"^(WV|WX|WXNR)", re.I)
-DRAW_BUCKETS = (("inner", 1, 4), ("middle", 5, 8), ("outer", 9, 99))
+DRAW_BUCKETS = (("inner", 1, 4), ("middle", 5, 9), ("outer", 10, 99))  # 同檔位×跑法、戰場全景一個標準（Kelvin 2026-11-16／17）
 STYLES = ("front", "middle", "back")
 MEETINGS_KEPT = 1  # only the newest meeting (Kelvin 2026-11-04: no need to show previous race days)
 TABLE_LIMIT = 80

@@ -176,81 +176,143 @@ def battlefield(logic_data: dict, table: dict | None = None) -> dict | None:
         if d > 0:
             draws["內檔" if d <= 4 else ("中檔" if d <= 9 else "外檔")].append(no)
     key = lambda n: int(n) if str(n).isdigit() else 999
-    return {"surface": SURFACE_NAME.get(surface, surface), "distance": dist,
+    return {"surface": SURFACE_NAME.get(surface, surface), "distance": dist, "scenario": scenario_constants(),
+            "date": str(ra.get("race_date") or "")[:10], "venue": str(ra.get("venue") or ""),
             "history": cell, "since": (table or {}).get("since"),
             "today_styles": {k: sorted(v, key=key) for k, v in styles.items()},
             "today_draws": {k: sorted(v, key=key) for k, v in draws.items()}}
 
 
-def _detail_lines(logic_data: dict, ranking: list[dict], bf: dict | None) -> list[str]:
-    out = []
+# 情境（Kelvin 2026-11-17「利咩跑法／利咩欄」；EXP-20261117-08）：純顯示，唔改正式排名同 ROI 頭兩選。
+#   上名率 1pp ≈ 0.87 顯示分：校準斜率 b ≈ 0.139 logit／原始分（回放 2020–26 逐季 0.137–0.15），p = 25% 時 1pp = 0.0533 logit，
+#   × 顯示尺 DISPLAY_SLOPE。預設幅度 = 「強偏差日」（回放每日每類殘差 90 百分位 ≈ ±10pp）。
+#   即場：今日已跑場次每類上名率 − 當日平均，× 0.2（回放：頭半場偏差喺下半場只剩約兩成），上限 ±3pp，每類 ≥ 8 匹先計。
+SCENARIO_LOGIT_PER_RAW = 0.139
+SCENARIO_STYLE_PP = {"放頭": {"放頭": 10, "守中": 0, "後上": -10}, "守中": {"放頭": -5, "守中": 10, "後上": -5},
+                     "後上": {"放頭": -10, "守中": 0, "後上": 10}}
+SCENARIO_DRAW_PP = {"利內欄": {"內檔": 10, "中檔": 0, "外檔": -10}, "利中內": {"內檔": 5, "中檔": 5, "外檔": -10},
+                    "利中欄": {"內檔": -5, "中檔": 10, "外檔": -5}, "利中外": {"內檔": -10, "中檔": 5, "外檔": 5}}
+SCENARIO_INRACE = {"shrink": 0.2, "cap_pp": 3, "min_starts": 8}
+
+
+def scenario_constants() -> dict:
+    from .scoring import DISPLAY_SLOPE
+    p0 = 0.25
+    pp = 0.01 / (p0 * (1 - p0)) / SCENARIO_LOGIT_PER_RAW * DISPLAY_SLOPE
+    return {"pp_to_display": round(pp, 3), "style": SCENARIO_STYLE_PP, "draw": SCENARIO_DRAW_PP, "inrace": SCENARIO_INRACE}
+
+
+def _horse_ref(horses: dict, no) -> dict:
+    h = horses.get(str(no)) or {}
+    return {"no": str(no), "name": str(h.get("horse_name") or "").strip()}
+
+
+def _refs_text(refs: list[dict], suffix=None) -> str:
+    return "、".join(f"{r['no']} {r['name']}".strip() + (suffix(r) if suffix else "") for r in refs)
+
+
+def _items(logic_data: dict, ranking: list[dict], bf: dict | None) -> list[dict]:
+    """全場重點（Kelvin 2026-11-17「唔好淨係講號碼，要講馬名」）：每項 = 分類、標題、內容、涉及嘅馬（號＋名）。"""
     horses = logic_data.get("horses") or {}
+    key = lambda n: int(n) if str(n).isdigit() else 999
+    items = []
     if ranking:
         top = horses.get(str(ranking[0].get("horse_number"))) or {}
         tags = ((top.get("python_auto") or {}).get("summary") or {}).get("tags") or {}
         good = [t["label"] for t in tags.get("good") or [] if t.get("scored")][:3]
         bad = [t["label"] for t in tags.get("bad") or []][:2]
         if good or bad:
-            out.append(f"首選 [{ranking[0].get('horse_number')}] 主要靠：{'、'.join(good) or '綜合分'}"
-                       + (f"；要留意：{'、'.join(bad)}" if bad else ""))
+            items.append({"kind": "reasons", "title": "首選理由", "horses": [_horse_ref(horses, ranking[0].get("horse_number"))],
+                          "good": good, "bad": bad})
     if bf and bf.get("history"):
         h = bf["history"]
         base = (h.get("base") or {}).get("place") or 0
         st = {k: v["place"] for k, v in (h.get("style") or {}).items() if v}
         dr = {k: v["place"] for k, v in (h.get("draw") or {}).items() if v}
-        fronts = bf["today_styles"].get("放頭") or []
         if st:
             best = max(st, key=st.get)
-            out.append(f"{bf['surface']} {bf['distance']}米歷史（{h.get('races')} 場）：{best}上名率 {st[best]:.0%}最高"
-                       f"（全場平均 {base:.0%}）；" + (f"今場慣性放頭 {len(fronts)} 匹（{_nos(fronts)}）" if fronts else "今場冇慣性放頭馬"))
+            fronts = [_horse_ref(horses, n) for n in bf["today_styles"].get("放頭") or []]
+            items.append({"kind": "style", "title": "跑法形勢",
+                          "text": f"{bf['surface']} {bf['distance']}米歷史（{h.get('races')} 場）{best}最著數：上名率 {st[best]:.0%}（平均 {base:.0%}）",
+                          "sub": "今場慣性放頭" if fronts else "今場冇慣性放頭馬", "horses": fronts})
         if dr:
             best, worst = max(dr, key=dr.get), min(dr, key=dr.get)
-            def with_draw(n):
-                return f"{n} 號（{str((horses.get(n) or {}).get('barrier') or '').split('.')[0]} 檔）"
-            today = "、".join(with_draw(n) for n in bf["today_draws"].get(best) or []) or "冇馬"
-            out.append(f"檔位：{best}上名率 {dr[best]:.0%}、{worst} {dr[worst]:.0%}；今場{best}：{today}")
-    groups: dict[str, list] = {}
+            refs = [dict(_horse_ref(horses, n), draw=str((horses.get(n) or {}).get("barrier") or "").split(".")[0])
+                    for n in bf["today_draws"].get(best) or []]
+            items.append({"kind": "draw", "title": "檔位形勢",
+                          "text": f"{best}上名率 {dr[best]:.0%}，{worst}只有 {dr[worst]:.0%}",
+                          "sub": f"今場{best}", "horses": refs})
+    field = sum(1 for h in horses.values() if isinstance(h, dict) and isinstance(h.get("python_auto"), dict))
+    groups: dict[tuple, list] = {}
     for no, h in horses.items():
         tags = (((h or {}).get("python_auto") or {}).get("summary") or {}).get("tags") or {} if isinstance(h, dict) else {}
         for tone in ("good", "bad"):
             for t in tags.get(tone) or []:
                 if t.get("key") in SCORED_HIGHLIGHT_KEYS:
-                    groups.setdefault(f"{t['label'].split('（')[0]}（{'加分' if tone == 'good' else '扣分'}）", []).append(no)
-    for label, nos in sorted(groups.items(), key=lambda kv: -len(kv[1]))[:4]:
-        out.append(f"{label}：{_nos(sorted(nos, key=lambda n: int(n) if str(n).isdigit() else 999))}")
-    return out
+                    groups.setdefault((t["label"].split("（")[0], tone), []).append(no)
+    # 超過半場都有嘅因素唔列（例如全場大部分馬增程）：場內置中之後對排名冇分別
+    shown = [(k, v) for k, v in groups.items() if field and len(v) * 2 <= field]
+    for (label, tone), nos in sorted(shown, key=lambda kv: len(kv[1]))[:4]:
+        items.append({"kind": "factor", "title": label, "tone": tone,
+                      "horses": [_horse_ref(horses, n) for n in sorted(nos, key=key)]})
+    return items
+
+
+def _item_line(item: dict) -> str:
+    if item["kind"] == "reasons":
+        r = item["horses"][0]
+        return (f"首選 {r['no']} {r['name']} 主要靠：{'、'.join(item['good']) or '綜合分'}"
+                + (f"；要留意：{'、'.join(item['bad'])}" if item["bad"] else ""))
+    if item["kind"] == "style":
+        return f"{item['text']}；{item['sub']}" + (f"：{_refs_text(item['horses'])}" if item["horses"] else "")
+    if item["kind"] == "draw":
+        return f"檔位：{item['text']}；{item['sub']}：" + (_refs_text(item["horses"], lambda r: f"（{r['draw']} 檔）") or "冇馬")
+    if item["kind"] == "factor":
+        return f"{item['title']}（{'加分' if item['tone'] == 'good' else '扣分'}）：{_refs_text(item['horses'])}"
+    return item.get("text", "")
 
 
 def race_summary(ranking: list[dict], logic_data: dict | None = None) -> dict:
     """Field-level read: how clear the top pick is, with its historical hit rate."""
     if len(ranking) < 2:
-        return {"lines": []}
+        return {"lines": [], "items": []}
     scores = [float(item.get("ability_score", 0)) for item in ranking]
     gap = round(scores[0] - scores[1], 1)
     top = ranking[0]
-    lines = []
+    items = []
     if gap >= CLEAR_GAP:
         tightness = "clear"
-        lines.append(f"首選 [{top['horse_number']}] {top['horse_name']} 拋離第二名 {gap:.1f} 分"
-                     f"（呢類場次歷史上首選上名約 {TOP_PICK_PLACE_RATE['clear']:.0%}）")
+        items.append({"kind": "top", "title": "首選", "horses": [{"no": str(top["horse_number"]), "name": top["horse_name"]}],
+                      "text": f"拋離第二名 {gap:.1f} 分", "sub": f"呢類場次歷史上首選上名約 {TOP_PICK_PLACE_RATE['clear']:.0%}"})
     else:
         tightness = "close"
         second = ranking[1]
-        lines.append(f"頭兩名 [{top['horse_number']}] {top['horse_name']}、[{second['horse_number']}] "
-                     f"{second['horse_name']} 只差 {gap:.1f} 分（呢類場次歷史上首選上名約 "
-                     f"{TOP_PICK_PLACE_RATE['close']:.0%}）")
+        items.append({"kind": "top", "title": "頭兩名", "horses": [{"no": str(top["horse_number"]), "name": top["horse_name"]},
+                                                                {"no": str(second["horse_number"]), "name": second["horse_name"]}],
+                      "text": f"只差 {gap:.1f} 分", "sub": f"呢類場次歷史上首選上名約 {TOP_PICK_PLACE_RATE['close']:.0%}"})
     if len(scores) >= 4:
         spread = round(scores[0] - scores[3], 1)
         if spread < 6:
-            lines.append(f"頭四名相差 {spread:.1f} 分以內，屬混戰")
+            items.append({"kind": "mix", "title": "混戰", "text": f"頭四名相差 {spread:.1f} 分以內",
+                          "horses": [{"no": str(r["horse_number"]), "name": r["horse_name"]} for r in ranking[:4]]})
         if len(scores) >= 5:
             cliff = round(scores[3] - scores[4], 1)
             if cliff >= 4:
-                lines.append(f"第四名同第五名之間有 {cliff:.1f} 分斷層，頭四名以外較難入位")
+                items.append({"kind": "mix", "title": "斷層", "text": f"第四同第五名之間差 {cliff:.1f} 分，頭四名以外較難入位",
+                              "horses": [{"no": str(r["horse_number"]), "name": r["horse_name"]} for r in ranking[:4]]})
     bf = battlefield(logic_data) if logic_data else None
     if logic_data:
-        lines += _detail_lines(logic_data, ranking, bf)
-    return {"gap_1_2": gap, "tightness": tightness, "lines": lines, "battlefield": bf}
+        items += _items(logic_data, ranking, bf)
+    lines = []
+    for it in items:
+        if it["kind"] == "top":
+            names = "、".join(f"[{r['no']}] {r['name']}" for r in it["horses"])
+            lines.append(f"{it['title']} {names} {it['text']}（{it['sub']}）")
+        elif it["kind"] == "mix":
+            lines.append(f"{it['title']}：{it['text']}")
+        else:
+            lines.append(_item_line(it))
+    return {"gap_1_2": gap, "tightness": tightness, "lines": lines, "items": items, "battlefield": bf}
 
 
 def attach(logic_data: dict, meeting_dir: Path | None = None) -> None:
