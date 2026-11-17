@@ -1596,6 +1596,7 @@ body { background: var(--color-bg); font-feature-settings: "cv11", "ss01"; }
 .btt-ring svg { position: relative; width: 15px; height: 15px; transition: transform .2s ease; }
 .back-to-top:hover .btt-ring svg { transform: translateY(-2px); }
 .btt-label { white-space: nowrap; }
+.hkr, .battlefield-ranking { scroll-margin-top: 84px; }   /* 返回排名：唔好俾頂部導航遮住標題 */
 @media (max-width: 768px) {
   .back-to-top { width: auto; height: 40px; padding: 0 13px 0 4px; font-size: .74rem; }
   .btt-ring { width: 30px; height: 30px; }
@@ -1776,7 +1777,7 @@ dialog.roi-modal-dialog::backdrop { background: rgba(11,18,32,.42); -webkit-back
   </button>
   <button type="button" class="update-pill__dismiss" onclick="dismissUpdatePill()" title="暫時唔理" aria-label="關閉更新提示">×</button>
 </div>
-<button type="button" class="back-to-top" id="backToTop" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="返回頂部" aria-label="返回頂部"><span class="btt-ring" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg></span><span class="btt-label">返回頂部</span></button>
+<button type="button" class="back-to-top" id="backToTop" onclick="backToTopOrRanking()" title="返回頂部" aria-label="返回頂部"><span class="btt-ring" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg></span><span class="btt-label">返回頂部</span></button>
 
 <script>
 // ═══════════════════════════════════════════════
@@ -9337,10 +9338,31 @@ function hideChartTip(chartId) {
   if (tip) tip.classList.remove('chart-tooltip--visible');
 }
 
+// 返回頂部（Kelvin 2026-11-17）：賽事分析頁入面，已經碌過咗「全場綜合戰力排名」就返去排名，否則返頂
+function backToTopTarget() {
+  const els = [...document.querySelectorAll('.hkr, .battlefield-ranking')].filter(el => el.offsetParent !== null);
+  let target = null;
+  for (const el of els) if (el.getBoundingClientRect().top < -40) target = el;   // 最近一個已經碌過咗嘅排名
+  return target;
+}
+function backToTopOrRanking() {
+  const target = backToTopTarget();
+  if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  else window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 // Back to top scroll listener
 window.addEventListener('scroll', () => {
   const btn = document.getElementById('backToTop');
   if (btn) {
+    const toRanking = !!backToTopTarget();
+    const label = toRanking ? '返回排名' : '返回頂部';
+    const lab = btn.querySelector('.btt-label');
+    if (lab && lab.textContent !== label) {
+      lab.textContent = label;
+      btn.title = toRanking ? '返回全場綜合戰力排名' : '返回頂部';
+      btn.setAttribute('aria-label', btn.title);
+    }
     if (window.scrollY > 400) btn.classList.add('back-to-top--visible');
     else btn.classList.remove('back-to-top--visible');
     const max = document.documentElement.scrollHeight - window.innerHeight;   // 進度環：已捲幾多
