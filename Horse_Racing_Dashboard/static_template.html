@@ -223,6 +223,24 @@
     .hkm-tags .verdict__label { font-size:.6rem; padding-top:1px; color:var(--color-text-soft); font-weight:600; }
     .hkm-tags .verdict__chip { font-size:.62rem; padding:0 6px; line-height:1.55; margin:1px 3px 1px 0; }
     @media (max-width: 768px) { .hkm-tags { margin-left:0; } }
+    /* 一眼睇晒（Kelvin 2026-11-17）：名＋灰字同一行，標籤一行 */
+    .hkm-row { padding:4px 4px 5px !important; }
+    .hkm-main { grid-template-columns:18px 22px minmax(0,1fr) auto !important; gap:6px !important; align-items:start !important; }
+    .hkm-rank { padding-top:2px; }
+    .hkm-silk { padding-top:1px; }
+    .hkm-silk .silk, .hkm-silk img { max-width:20px !important; max-height:20px !important; }
+    .hkm-line { display:flex; flex-wrap:wrap; align-items:baseline; column-gap:8px; row-gap:0; }
+    .hkm-line .hkm-name { font-size:.78rem; }
+    .hkm-line .hkm-meta { margin-top:0; font-size:.64rem; }
+    .hkm-chips { display:flex; flex-wrap:wrap; gap:2px 3px; margin-top:2px; }
+    .hkm-chip { font-size:.6rem; line-height:1.5; padding:0 5px; border-radius:999px; border:1px solid; white-space:nowrap; cursor:help; }
+    .hkm-chip--good { background:#f0fdf4; color:#166534; border-color:#bbf7d0; }
+    .hkm-chip--bad { background:#fef2f2; color:#991b1b; border-color:#fecaca; }
+    .hkm-chip--note { background:var(--color-surface-alt); color:var(--color-text-secondary); border-color:var(--color-border); }
+    .hkm-chip--info { border-style:dashed; }
+    .hkm-num { padding-top:1px; }
+    .hkm-num b { font-size:.78rem !important; }
+    .hkm-num small { font-size:.58rem !important; }
     .hkr__legend { margin-top:8px; font-size:.67rem; color:var(--color-text-soft); }
     @media (max-width: 768px) {
       .hkr-card { padding:12px; }
@@ -5821,18 +5839,31 @@ function renderHkjcRanking(raceKey) {
     html += `<article class="hkm-row${!scenario && pos <= 2 ? ' hkm-row--pick' : ''}"><div class="hkm-main">`
       + `<div class="hkm-rank${pos <= 3 ? ' hkm-rank--' + pos : ''}">${pos}${moveTxt}</div>`
       + `<div class="hkm-silk">${typeof renderSilk === 'function' ? renderSilk(h, 'sm') : ''}</div>`
-      + `<div style="min-width:0"><div class="hkm-name" role="button" tabindex="0" title="撳睇 ${esc(h.horse_name)} 詳細分析" onclick="hkjcJumpToHorse('${esc(h.horse_number)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();hkjcJumpToHorse('${esc(h.horse_number)}')}">`
+      + `<div style="min-width:0"><div class="hkm-line"><div class="hkm-name" role="button" tabindex="0" title="撳睇 ${esc(h.horse_name)} 詳細分析" onclick="hkjcJumpToHorse('${esc(h.horse_number)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();hkjcJumpToHorse('${esc(h.horse_number)}')}">`
       + `<span class="hkm-no">${esc(h.horse_number)}</span>${esc(h.horse_name)}${typeof ratingBadge === 'function' ? ratingBadge(h.final_grade || '') : ''}</div>`
-      + `<div class="hkm-meta">${meta}</div></div>`
+      + `<div class="hkm-meta">${meta}</div></div>${hkjcInlineChips(summary)}</div>`
       + `<div class="hkm-num">${score}${odds}</div></div>`
-      + (summary && typeof renderTagChips === 'function' ? `<div class="hkm-tags">${renderTagChips(summary)}</div>` : '')
       + `</article>`;
   });
-  html += `</div><div class="hkr__legend">撳馬名睇詳細分析。✅ 加分位、⚠️ 扣分位、📌 留意；實線 = 入分、虛線 = 未入分（停喺標籤睇原因）。淺藍底 = ROI 頭兩選。</div></div>`;
+  html += `</div><div class="hkr__legend">撳馬名睇詳細分析。標籤：綠＋ 加分位、紅－ 扣分位、灰• 留意；實線 = 入分、虛線 = 未入分（停喺標籤睇原因）。淺藍底 = ROI 頭兩選。</div></div>`;
   return html;
 }
 
 // 撳排名表嘅馬 → 捲去下面嗰匹馬嘅詳細分析卡（id = horse-<號>-<隨機>），閃一下標示（Kelvin 2026-11-17）
+// 一行標籤（排名表專用排版；資料同馬匹卡同一份 analysis_summary.tags＋watch，唔出資料不足）
+function hkjcInlineChips(summary) {
+  if (!summary) return '';
+  const tags = summary.tags || {};
+  const chip = (t, tone) => {
+    const tip = [t.why, t.scored ? (t.impact != null ? `入分（對綜合分 ${t.impact > 0 ? '+' : ''}${Number(t.impact).toFixed(1)}）` : '入分') : '未入分，只供參考'].filter(Boolean).join(' · ');
+    return `<span class="hkm-chip hkm-chip--${tone}${t.scored ? '' : ' hkm-chip--info'}" title="${esc(tip)}">${tone === 'good' ? '＋' : tone === 'bad' ? '－' : '•'}${esc(t.label)}</span>`;
+  };
+  const watch = (summary.watch || []).map(w => ({ label: w, scored: false, why: '' }));
+  const html = (tags.good || []).map(t => chip(t, 'good')).join('') + (tags.bad || []).map(t => chip(t, 'bad')).join('')
+    + [...(tags.note || []), ...watch].map(t => chip(t, 'note')).join('');
+  return html ? `<div class="hkm-chips">${html}</div>` : '';
+}
+
 function hkjcJumpToHorse(no) {
   const el = document.querySelector(`.horse-card[id^="horse-${String(no)}-"]`);
   if (!el) return;
