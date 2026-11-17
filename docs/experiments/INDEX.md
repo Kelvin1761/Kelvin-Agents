@@ -535,6 +535,7 @@
 - [EXP-20261116-05](EXP-20261116-05-hkjc-weight-residual-ft-and-hiclass.md) — 負磅殘差：段速 FT 負磅換算三個 arm 打和、高班直接修正 H log-loss 跨零，全部 REJECT
 - [EXP-20261116-06](EXP-20261116-06-hkjc-incident-history-live.md) — HKJC 上仗事件報告入分（走外疊冇遮擋 +、醫療 −）：補抓 2019–23 後 dev／holdout PASS（Holm 2），上線＋forward 退回監察
 - [EXP-20261117-06](EXP-20261117-06-hkjc-kelvin-seven-labels.md) — HKJC Kelvin 七個構思：轉場（跑馬地轉沙田草地 −5pp、反方向 +3pp、初次沙田草地／泥地）入分上線（dev −0.00072、holdout −0.00095，Holm 3）；初落班＋同程上過名、騎師揀馬入分唔過 → 標籤；3 歲頂磅、同馬房正次選冇訊號 → 注意
+- [EXP-20261117-08](EXP-20261117-08-hkjc-ranking-scenario.md) — HKJC 排名表重做（騎練、檔位、跑法、全部標籤、開跑前賠率）＋情境（利咩跑法／欄；強偏差日 ±10pp ≈ ±8.7 分；即場偏差只持續約兩成 → ×0.2）；全場重點改結構化、寫馬名
 - [EXP-20261117-07](EXP-20261117-07-hkjc-refit-ablation-trackwork-battlefield.md) — HKJC J1 逐個拎走（老馬贏後唯一單獨顯著、匆匆再出有害 → 精簡版 forward）；現行權重 refit AUC +0.0031 但 log-loss 跨零 REJECT；晨操×出賽頻率冇訊號；戰場全景 6 季跑法／檔位表
 - [EXP-20261117-05](EXP-20261117-05-hkjc-joint-refit.md) — HKJC 13 個未入分訊號一齊 refit：線性 J1 dev −0.00062、holdout −0.00108（AUC +0.0019 顯著）但 holdout Good 下界 −1.28 穿護欄 → REJECT，改 forward shadow；GBM 輸線性
 - [EXP-20261117-04](EXP-20261117-04-hkjc-entries-warmup-forward.md) — HKJC 熱身：事後「下仗 ≤7 日」−2.5～−2.8pp（倒果為因會誇大）；開始儲 HKJC 報名表快照、「已報 N 日後」留意標籤；forward shadow 熱身 −1.465、上仗入位＋評分跌返 +1.51（各 150 場）

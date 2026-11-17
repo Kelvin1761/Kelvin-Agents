@@ -993,6 +993,32 @@ def _load_run_style_map(analysis_path: Path) -> dict[int, dict]:
     return mapping
 
 
+def _load_prerace_odds(analysis_path: Path, race_number: int) -> tuple[dict[int, tuple], Optional[str]]:
+    """HKJC_Odds_History.json → {馬號: (獨贏, 位置)}、抓取時間。只用 `pre_race`（兩個池仲賣緊）嘅最後一個快照，
+    已跑嘅場次就係開跑前最後嗰個價。純 dashboard 顯示（Kelvin 2026-11-17「即場幾 win 幾 place」），唔入評分。"""
+    path = analysis_path.parent / "HKJC_Odds_History.json"
+    if not race_number or not path.exists():
+        return {}, None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}, None
+    best = None
+    for snap in payload.get("snapshots") or []:
+        race = (snap.get("races") or {}).get(str(race_number)) or {}
+        if race.get("pre_race") and race.get("runners"):
+            best = (snap.get("captured_at"), race)
+    if not best:
+        return {}, None
+    out = {}
+    for no, odds in (best[1].get("runners") or {}).items():
+        try:
+            out[int(no)] = (odds.get("win"), odds.get("place"))
+        except (TypeError, ValueError):
+            continue
+    return out, best[0]
+
+
 def _load_logic_scoring_map(analysis_path: Path) -> dict[int, dict]:
     """Read the canonical engine score objects for the dashboard score ledger."""
     logic_path = analysis_path.with_name(
@@ -1214,6 +1240,12 @@ def parse_hkjc_analysis(filepath: str) -> Optional[RaceAnalysis]:
     run_styles = _load_run_style_map(path) if is_auto else {}
     for horse in horses:
         horse.run_style_outlook = run_styles.get(horse.horse_number)
+    odds, odds_at = _load_prerace_odds(path, race_number) if is_auto else ({}, None)
+    for horse in horses:
+        win, place = odds.get(horse.horse_number, (None, None))
+        if win or place:
+            horse.market_win_odds, horse.market_place_odds = win, place
+            horse.market_odds_captured_at = odds_at
     matrix_details = _load_matrix_details(path) if is_auto else {}
     for horse in horses:
         details = matrix_details.get(horse.horse_number)

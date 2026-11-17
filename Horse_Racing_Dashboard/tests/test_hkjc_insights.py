@@ -42,7 +42,8 @@ def test_race_day_standings_rank_by_placings_and_ignore_withdrawn(tmp_path):
     assert day['jockeys'][0]['w'] == [1, 1, 0, 0] and day['jockeys'][2]['starts'] == 2
     assert all(r['name'] != '丁' for r in day['jockeys'])
     assert next(r for r in day['combos'] if r['name'] == ['甲', 'T1'])['w'][:2] == [1, 1]
-    assert day['bias']['draw']['inner']['w'][0] == 1 and day['bias']['draw']['outer']['w'][0] == 1
+    # 第 2 場頭馬 9 檔：而家屬中檔（1–4／5–9／10+）
+    assert day['bias']['draw']['inner']['w'][0] == 1 and day['bias']['draw']['middle']['w'][0] == 1
     # 跑法用 Wong Choi 唯一標準（第一個沿途位 ÷ 完成匹數，≤30% 放頭、≤60% 守中）：3 匹嘅場領放 = 33% → 守中。
     assert day['bias']['style']['middle']['w'][0] == 1 and day['bias']['style']['back']['w'][0] == 1
     assert [r['race'] for r in day['races']] == [1, 2] and day['races'][0]['distance'] == 1200 and day['races'][0]['rail'] == 'C+3'
@@ -52,7 +53,9 @@ def test_race_day_standings_rank_by_placings_and_ignore_withdrawn(tmp_path):
 def test_style_and_draw_buckets():
     assert run_style(2, 12) == 'front' and run_style(9, 12) == 'back' and run_style(6, 12) == 'middle'
     assert run_style(None, 12) is None
-    assert draw_bucket(4) == 'inner' and draw_bucket(5) == 'middle' and draw_bucket(9) == 'outer' and draw_bucket(None) is None
+    # 檔位段同全 Wong Choi 一個標準：1–4 內、5–9 中、10+ 外（Kelvin 2026-11-17）
+    assert draw_bucket(4) == 'inner' and draw_bucket(5) == 'middle' and draw_bucket(9) == 'middle' and draw_bucket(10) == 'outer'
+    assert draw_bucket(None) is None
 
 
 def test_missing_database_is_unavailable(tmp_path):

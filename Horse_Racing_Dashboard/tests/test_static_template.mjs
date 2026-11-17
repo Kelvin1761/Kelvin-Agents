@@ -119,7 +119,12 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
       renderDimensionStrip: typeof renderDimensionStrip === "function" ? renderDimensionStrip : null,
       renderTrackworkTimeline: typeof renderTrackworkTimeline === "function" ? renderTrackworkTimeline : null,
       renderRunStyleOutlook: typeof renderRunStyleOutlook === "function" ? renderRunStyleOutlook : null,
-      renderBattlefieldHistory: typeof renderBattlefieldHistory === "function" ? renderBattlefieldHistory : null,
+      renderHkjcRaceSummary: typeof renderHkjcRaceSummary === "function" ? renderHkjcRaceSummary : null,
+      hkjcScenarioRows: typeof hkjcScenarioRows === "function" ? hkjcScenarioRows : null,
+      hkjcInraceBias: typeof hkjcInraceBias === "function" ? hkjcInraceBias : null,
+      HKJC_SCENARIO: typeof HKJC_SCENARIO === "object" ? HKJC_SCENARIO : null,
+      renderHkjcRanking: typeof renderHkjcRanking === "function" ? renderHkjcRanking : null,
+      HKJC_RANKING_CACHE: typeof HKJC_RANKING_CACHE === "object" ? HKJC_RANKING_CACHE : null,
       buildHorseAnalysisSections,
       parseChronologySeries,
       renderChronologySeries,
@@ -2924,17 +2929,49 @@ test("HKJC tag chips are never folded into +N (Kelvin 2026-11-16)", () => {
   assert.doesNotMatch(m[1], /\d/, "no numeric cap on tag chips");
 });
 
-test("HKJC 戰場全景 history bars render style and draw rates with today's runners (Kelvin 2026-11-17)", () => {
-  const { renderBattlefieldHistory } = loadTemplateFunctions();
-  const html = renderBattlefieldHistory({
-    surface: "跑馬地", distance: 1200, since: "2019-09-01",
-    history: { races: 1066, base: { place: 0.25 }, style: { 放頭: { place: 0.36 }, 後上: { place: 0.16 } }, draw: { 內檔: { place: 0.34 } } },
-    today_styles: { 放頭: ["1", "5"] }, today_draws: { 內檔: ["1"] },
-  });
-  assert.match(html, /跑馬地 1200米歷史上名率（1066 場，2019 起；直線 = 全場平均 25%）/);
-  assert.match(html, /今場：1 號、5 號/);
-  assert.match(html, />36%</);
+
+test("HKJC 情境：利放頭 reorders the scenario ranking but not the official rank (Kelvin 2026-11-17)", () => {
+  const { hkjcScenarioRows, HKJC_SCENARIO, renderHkjcRanking, HKJC_RANKING_CACHE } = loadTemplateFunctions();
+  const sc = { pp_to_display: 0.87, style: { 放頭: { 放頭: 10, 守中: 0, 後上: -10 } }, draw: { 利內欄: { 內檔: 10, 中檔: 0, 外檔: -10 } }, inrace: { shrink: 0.2, cap_pp: 3, min_starts: 8 } };
+  const analysis = { race_number: 3, race_summary: { battlefield: { scenario: sc, date: "2026-11-18", venue: "跑馬地" } } };
+  const horses = [
+    { horse_number: 8, horse_name: "甲", ability_score: 80, barrier: 12, run_style_outlook: { label: "後上", consistency: "多變" }, analysis_summary: { tags: { good: [{ label: "內檔優勢", scored: true, impact: 1.2 }] } } },
+    { horse_number: 1, horse_name: "乙", ability_score: 75, barrier: 2, run_style_outlook: { label: "放頭", consistency: "穩定" }, market_win_odds: 3.5, market_place_odds: 1.5, market_odds_captured_at: "2026-11-18T19:30:00+08:00", analysis_summary: { tags: {} } },
+  ];
+  HKJC_SCENARIO.style = "default"; HKJC_SCENARIO.draw = "default";
+  let out = hkjcScenarioRows(horses, analysis);
+  assert.equal(out.scenario, false);
+  assert.deepEqual(out.rows.map(r => r.h.horse_number), [8, 1]);
+  HKJC_SCENARIO.style = "放頭";
+  out = hkjcScenarioRows(horses, analysis);
+  assert.equal(out.scenario, true);
+  assert.deepEqual(out.rows.map(r => r.h.horse_number), [1, 8]);          // 75+8.7 > 80−8.7
+  assert.deepEqual(out.rows.map(r => r.rank), [2, 1]);                    // 正式排名唔變
+  HKJC_RANKING_CACHE["3-x"] = { horses, analysis };
+  const html = renderHkjcRanking("3-x");
+  assert.match(html, /情境分/);
+  assert.match(html, /正式 2/);
+  assert.match(html, /3.5 ／ 1.5/);
+  assert.match(html, /賠率截至 19:30/);
+  assert.match(html, /＋ 內檔優勢/);
   assert.doesNotMatch(html, /undefined|NaN/);
-  assert.equal(renderBattlefieldHistory(null), "");
-  assert.equal(renderBattlefieldHistory({ history: null }), "");
+  HKJC_SCENARIO.style = "default";
+});
+
+test("HKJC 全場重點 shows horse number and name, grouped rows (Kelvin 2026-11-17)", () => {
+  const { renderHkjcRaceSummary } = loadTemplateFunctions();
+  const html = renderHkjcRaceSummary({ items: [
+    { kind: "top", title: "首選", horses: [{ no: "1", name: "禾道威" }], text: "拋離第二名 18.4 分", sub: "呢類場次歷史上首選上名約 58%" },
+    { kind: "reasons", title: "首選理由", horses: [{ no: "1", name: "禾道威" }], good: ["近績好"], bad: ["大幅增程"] },
+    { kind: "draw", title: "檔位形勢", text: "內檔上名率 35%，外檔只有 18%", sub: "今場內檔", horses: [{ no: "3", name: "甲", draw: "3" }] },
+    { kind: "factor", title: "上仗走外疊冇遮擋", tone: "good", horses: [{ no: "10", name: "乙" }] },
+  ] });
+  assert.match(html, /📝 全場重點/);
+  assert.match(html, /<b[^>]*>1<\/b>禾道威/);
+  assert.match(html, /＋ 近績好/);
+  assert.match(html, /－ 大幅增程/);
+  assert.match(html, /<b[^>]*>3<\/b>甲<small[^>]*>3檔/);
+  assert.match(html, /上仗走外疊冇遮擋（加分）/);
+  assert.doesNotMatch(html, /undefined|NaN/);
+  assert.equal(renderHkjcRaceSummary({ items: [] }), "");
 });

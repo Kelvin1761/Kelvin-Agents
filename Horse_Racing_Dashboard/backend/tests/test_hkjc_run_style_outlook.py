@@ -48,3 +48,15 @@ def test_parser_reads_engine_run_style(tmp_path: Path):
     assert by_no[1].run_style_outlook == OUTLOOK
     # 冇引擎跑法（舊 Logic）→ 唔出 label，唔准退返用另一套計法
     assert by_no[2].run_style_outlook is None
+
+
+def test_prerace_odds_use_last_snapshot_still_selling(tmp_path: Path):
+    """Kelvin 2026-11-17：排名表顯示開跑前最後一個賠率（純參考，唔入評分）。"""
+    from services.parser_hkjc import _load_prerace_odds
+    snaps = [{"captured_at": "2026-11-18T18:00:00+08:00", "races": {"3": {"pre_race": True, "runners": {"8": {"win": 3.1, "place": 1.4}}}}},
+             {"captured_at": "2026-11-18T19:30:00+08:00", "races": {"3": {"pre_race": True, "runners": {"8": {"win": 2.8, "place": 1.3}}}}},
+             {"captured_at": "2026-11-18T19:45:00+08:00", "races": {"3": {"pre_race": False, "runners": {"8": {"win": 2.5, "place": 1.2}}}}}]
+    (tmp_path / "HKJC_Odds_History.json").write_text(json.dumps({"snapshots": snaps}), encoding="utf-8")
+    odds, at = _load_prerace_odds(tmp_path / "Race_3_Auto_Analysis.md", 3)
+    assert odds == {8: (2.8, 1.3)} and at.startswith("2026-11-18T19:30")
+    assert _load_prerace_odds(tmp_path / "Race_3_Auto_Analysis.md", 4) == ({}, None)
