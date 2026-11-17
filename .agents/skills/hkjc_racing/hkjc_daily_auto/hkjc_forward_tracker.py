@@ -176,6 +176,11 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 since="2026-11-18", arm="docs/experiments/patches/hkjc_arm_joint_signals_lean_shadow.py",
                 action="自動判：forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議入分（等你決定）；否則維持唔入分",
                 extra={"pass_verdict": "建議入分（等你決定）"}),
+    # EXP-20261117-07 R1（Kelvin 2026-11-17「可以開 forward 觀察」）：9 個維度權重修正（穩定性、檔位走位減；評分與經驗變負）。
+    ForwardTest("weight_refit_shadow", "現行權重 refit（shadow）", "EXP-20261117-07", "harness_ab", 150,
+                since="2026-11-18", arm="docs/experiments/patches/hkjc_arm_weight_refit_shadow.py",
+                action="自動判：forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議改權重（等你決定）；否則維持",
+                extra={"pass_verdict": "建議改權重（等你決定）"}),
     ForwardTest("incident_history_post_live", "上仗事件報告上線後 vs 冇組件", "EXP-20261116-06", "harness_ab", 60,
                 since="2026-11-17", arm="docs/experiments/patches/hkjc_arm_incident_history_revert.py",
                 action="自動判：退回版 forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議退回（等你決定）；否則保留",
