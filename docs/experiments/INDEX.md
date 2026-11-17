@@ -561,3 +561,4 @@
 - [EXP-20261116-21](EXP-20261116-21-au-hkjc-style-ft-results.md) — 借 HKJC FT（前段＋全程對頭三名標準、扣當日場地速度）落 AU：手機殘差有（Holm 0.01，全程最強 c +0.087），但 QLD 疊加喺同場相對完成時間上全部跨零 → 係完成質素唔係段速；唔開第二 forward arm；建議用手機全國完成時間補 `full_time_speed` 來源
 - [EXP-20261116-23](EXP-20261116-23-tennis-sharp-forward.md) — Tennis Sportsbet 對 Betfair 即時價紙上前向測試（預先登記）：每 15 分鐘抓 Betfair 網球 MATCH_ODDS，每場喺 21:00 嗰輪做一次決定就凍結，EV>0 落 1u；300／1,000 注推 Telegram
 - [EXP-20261118-01](EXP-20261118-01-hkjc-good-form-gear-change.md) — HKJC 近績好（近3仗≥2入位）＋轉配備：整體冇訊號（+1.1／+3.4pp 跨零）；只除配備 dev +9.3 顯著、holdout +5.6 跨零未證實；首次配備贏馬 dev −5.3 唔穩定；唔改分
+- [EXP-20261118-02](EXP-20261118-02-hkjc-consistency-overlap.md) — 上名／大敗紀錄分係真訊號（AUC 0.672，控制 raw 後仍正）但同近績 ρ0.84、輸頭馬 ρ0.85；合併／對調明顯差、剷走打和 → 唔改；剷輸頭馬差距 dev PASS、holdout 跨零 REJECT；順手發現現行 main 回放差過 K2／D1（轉場組件往績來源懷疑），另查
