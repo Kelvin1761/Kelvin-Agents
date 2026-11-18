@@ -3068,8 +3068,7 @@ test("9維排名矩陣 carries the verdict, a one-liner under each bar, and open
   assert.match(html, /dim-row__tone--up">極強/);
   // reference dimension is a row too (no bar), and opens the same way
   assert.match(html, /data-dim="晨操狀態"[\s\S]*?參考 · 不入排名[\s\S]*?近21日快操3課/);
-  // the 9D chapter is not repeated inside 完整分析; 重點 still is
-  const detail = html.split('class="analysis-detail"')[1] || "";
-  assert.doesNotMatch(detail, /9D 評分矩陣逐項拆解/);
-  assert.match(detail, /重點/);
+  // 有總評就冇「完整分析」掣同面板（Kelvin 2026-11-18：重點同總評重覆）
+  assert.doesNotMatch(html, /horse-card__expand-btn/);
+  assert.doesNotMatch(html, /class="analysis-detail"/);
 });

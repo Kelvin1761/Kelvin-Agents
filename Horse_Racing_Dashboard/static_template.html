@@ -7183,15 +7183,20 @@ function renderHorseCard(horse, topPickRank, marketRanks, analysisRef) {
   }
   html += '</div>';
 
+  // 矩陣撳行要用同一份 bundle，所以 lazy ctx 一律登記（就算冇「完整分析」掣）。
+  if (lazyAnalysis) {
+    LAZY_ANALYSIS_CTX.set(cardId, {
+      slug: analysisRef.slug,
+      key: analysisRef.key,
+      rows: Array.isArray(horse.data_readout) ? horse.data_readout.filter(Boolean) : [],
+    });
+  }
+  // 有總評嘅卡（HKJC）：9D 拆解已經喺矩陣撳行打開，「完整分析」淨低嘅「重點」同總評重覆，
+  // 所以成個掣剷走（Kelvin 2026-11-18）。冇總評嘅卡照舊有掣。
+  const verdict = horse.analysis_summary && horse.analysis_summary.verdict;
+  const matrixOwnsAnalysis = !!(verdict && verdict.text);
   // Expand button — inside body, before expandable section
-  if (hasAnalysis) {
-    if (lazyAnalysis) {
-      LAZY_ANALYSIS_CTX.set(cardId, {
-        slug: analysisRef.slug,
-        key: analysisRef.key,
-        rows: Array.isArray(horse.data_readout) ? horse.data_readout.filter(Boolean) : [],
-      });
-    }
+  if (hasAnalysis && !matrixOwnsAnalysis) {
     const ref = lazyAnalysis ? ' data-analysis-lazy="1"' : '';
     const meta = lazyAnalysis ? '' : `${topicCount} 個章節 `;
     html += `<button type="button" class="horse-card__expand-btn" aria-expanded="false" aria-controls="${cardId}-detail"${ref} onclick="toggleCard('${cardId}', this)">
@@ -7201,7 +7206,9 @@ function renderHorseCard(horse, topPickRank, marketRanks, analysisRef) {
   }
 
   // Only the outer control collapses; once opened, every chapter stays visible.
-  if (lazyAnalysis) {
+  if (matrixOwnsAnalysis) {
+    // no 完整分析 panel
+  } else if (lazyAnalysis) {
     html += `<div id="${cardId}-detail" class="expand-animate expand-animate--collapsed" style="margin-top:0"></div>`;
   } else if (hasAnalysis) {
     html += `<div id="${cardId}-detail" class="expand-animate expand-animate--collapsed" style="margin-top:0">${renderAnalysisDetail(analysisSections, cardId)}</div>`;
