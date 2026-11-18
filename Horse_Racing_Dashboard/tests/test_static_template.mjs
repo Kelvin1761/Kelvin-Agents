@@ -160,6 +160,7 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
       calibrationBadge: typeof calibrationBadge === "function" ? calibrationBadge : null,
       dataRouteFor: typeof dataRouteFor === "function" ? dataRouteFor : null,
       renderDimensionBody: typeof renderDimensionBody === "function" ? renderDimensionBody : null,
+      RECENT_RUNS_BY_CARD: typeof RECENT_RUNS_BY_CARD !== "undefined" ? RECENT_RUNS_BY_CARD : null,
     };
   `;
   vm.runInContext(source, context);
@@ -519,10 +520,10 @@ test("long horse analysis shows every data row and every expanded section", () =
   assert.match(html, /horse-card__expand-btn" aria-expanded="false"/);
   assert.match(html, /5 個章節/);
   assert.match(html, /analysis-document/);
-  assert.match(html, /analysis-document__nav/);
+  assert.doesNotMatch(html, /analysis-document__nav|章節<\/span>/, "章節側欄已剷（Kelvin 2026-11-18）");
   assert.match(html, /rich-heading rich-heading--5">細節標題/);
   assert.equal((html.match(/analysis-document__section analysis-document__section--/g) || []).length, 5);
-  assert.match(html, /全部內容已展開 · 可用章節索引快速跳讀/);
+  assert.match(html, /全部內容已展開/);
   assert.doesNotMatch(html, /<details|analysis-topic|syncAnalysisAccordion|數據明細|重複數據內容/);
 });
 
@@ -2993,7 +2994,8 @@ test("HKJC 狀態與穩定性：近績分＋上名／大敗紀錄分合成一個
     "      - 第1仗(08/11/2026 第五班): 2名 1",
   ].join("\n");
   const html = renderDimensionBody(content, "狀態與穩定性");
-  assert.equal((html.match(/class="dim-sub"/g) || []).length, 1, "one box");
+  assert.equal((html.match(/class="dim-sub[ "]/g) || []).length, 1, "one box");
+  assert.match(html, /dim-sub dim-sub--wide/, "佔全行");
   assert.match(html, /dim-sub__name">近績</);
   assert.match(html, /dim-part__name">近績分<\/span>\s*<span class="dim-part__share">佔 56%/);
   assert.match(html, /dim-part__name">上名／大敗紀錄分<\/span>\s*<span class="dim-part__share">佔 44%/);
@@ -3001,4 +3003,34 @@ test("HKJC 狀態與穩定性：近績分＋上名／大敗紀錄分合成一個
   // 其他維度唔受影響
   const other = renderDimensionBody(content, "騎練訊號");
   assert.equal((other.match(/class="dim-sub"/g) || []).length, 2);
+});
+
+test("HKJC 近績格逐仗詳情：能量、評述、重播連結，取代舊近6場細表（Kelvin 2026-11-18）", () => {
+  const { renderDimensionBody, RECENT_RUNS_BY_CARD } = loadTemplateFunctions();
+  RECENT_RUNS_BY_CARD.set("card-x", [{
+    date: "08/11/2026", days: "20", venue: '沙田 "C+3" 1800 好', class: "5", rating: 40, draw: "14",
+    weight: "135", body_weight: "1213", jockey: "潘頓", trainer: "大衛希斯", placing: "2 / 14", margin: "1",
+    energy: "92", odds: 3.8, positions: "10 10 12 11 2", finish_time: "1.49.81", gear: "CP/TT",
+    sectionals: "14.46, 22.79, 24.68, 24.11, 23.77", comment: "慢步速(-)(2W4W) 自大外檔出閘普通",
+    replay_url: "https://racing.hkjc.com/contentAsset/videoplayer_v4/video-player-iframe_v4.html?type=replay-full&date=20261108&no=01",
+  }]);
+  const content = [
+    "- **評分構成:** 近績分 71.0 x 56%、上名／大敗紀錄分 68.4 x 44%",
+    "  - **維度計法:** 分項加權 ＝ 原始 69.9",
+    "    - 近績分 71 ← 近6仗名次 2-5-7-3-2-4",
+    "    - 上名／大敗紀錄分 68 ← 近6仗有3次前三",
+    "  - **數據:**",
+    "    - 近6場數據:",
+    "      - 第1仗(08/11/2026 第五班): 2名 1",
+  ].join("\n");
+  const html = renderDimensionBody(content, "狀態與穩定性", "card-x");
+  assert.match(html, /近1仗詳情/);
+  assert.match(html, /能量<\/em>92/);
+  assert.match(html, /慢步速\(-\)\(2W4W\)/);
+  assert.match(html, /date=20261108&amp;no=01[^>]*>▶ 重播/);
+  assert.doesNotMatch(html, /kv-group__title">近6場數據|近6場數據<\/div>/, "舊細表唔再重覆");
+  // 冇逐仗資料（舊場次）就照出舊細表
+  const old = renderDimensionBody(content, "狀態與穩定性", "card-none");
+  assert.doesNotMatch(old, /rrun-list/);
+  assert.match(old, /近6場數據/);
 });

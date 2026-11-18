@@ -63,7 +63,7 @@ from models.race import AnalystName, Meeting, Region
 # report bytes must not reuse a cache made before the parser carried the spec.
 # 7: AU modern panorama class is parsed from its third component; invalidate
 # unchanged-report cache entries carrying the old "Race N" class value.
-CACHE_VERSION = 9  # AU captured full-time speed metadata
+CACHE_VERSION = 10  # HKJC recent_runs (近績格逐仗表, 2026-11-18)
 DEFAULT_CACHE_PATH = Path(__file__).resolve().parent / ".cache" / "meeting-snapshot-cache.json"
 AU_MEETING_DIR_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})\s+(.+?)(?:\s+Race\s+\d+-\d+)?$")
 

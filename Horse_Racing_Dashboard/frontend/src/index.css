@@ -1104,23 +1104,9 @@ a:hover {
   background: #fff;
 }
 
-/* Desktop 完整分析 layout.
-   The horse card runs ~1300px on a 1440px screen while the reading measure is
-   capped at 86ch (~694px), so every chapter had ~540px of dead space to its
-   right and the chapter nav was a horizontal strip that scrolled away. At
-   >=1100px the nav becomes a sticky rail in that space: the width gets used,
-   the measure stays capped, and a 1240px document becomes navigable. */
-@media (min-width: 1100px) {
-  .analysis-detail {
-    display: grid;
-    grid-template-columns: 268px minmax(0, 1fr);
-    grid-template-areas:
-      'header header'
-      'nav    doc';
-    gap: 0 18px;
-    align-items: start;
-  }
-  .analysis-detail__header { grid-area: header; }
+/* 完整分析：章節側欄已剷（Kelvin 2026-11-18），文件用全闊。 */
+
+.analysis-detail__header { grid-area: header; }
   .analysis-document__nav {
     grid-area: nav;
     position: sticky;
@@ -4765,4 +4751,38 @@ a:hover {
   .bh-step--bet .bh-step-actions .bb { min-height: 36px; }
   .bh-step--bet .br-group { max-width: none; }
   .bh-step--bet .br { height: 40px; min-height: 40px; }
+}
+
+/* HKJC 近績格（Kelvin 2026-11-18）：佔全行＋逐仗詳情 */
+.dim-subs > .dim-sub--wide { grid-column: 1 / -1; }
+.rrun-list { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.rrun-list__title { font-size: 0.68rem; font-weight: 800; color: var(--color-text-secondary); display: flex; gap: 8px; align-items: baseline; }
+.rrun-list__title span { font-size: 0.6rem; font-weight: 600; color: var(--color-text-muted); }
+.rrun { border: 1px solid var(--color-surface-alt); border-radius: 8px; padding: 8px 10px; background: #fff; }
+.rrun--latest { border-color: #c7d7fe; background: #f8faff; }
+.rrun__top { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; }
+.rrun__when { display: flex; gap: 6px; align-items: baseline; font-size: 0.7rem; color: var(--color-text); white-space: nowrap; }
+.rrun__when span { font-size: 0.6rem; color: var(--color-text-muted); }
+.rrun__when b, .rrun__when span { white-space: nowrap; }
+.rrun__when .rrun__tag { color: #1e40af; font-weight: 700; }
+.rrun__race { font-size: 0.66rem; color: var(--color-text-secondary); min-width: 0; }
+.rrun__result { display: flex; gap: 8px; align-items: center; white-space: nowrap; }
+.rrun__place { font-size: 0.82rem; font-weight: 800; color: var(--color-text); font-variant-numeric: tabular-nums; }
+.rrun__place--win { color: #b45309; }
+.rrun__place--place { color: var(--color-up); }
+.rrun__place--poor { color: var(--color-text-muted); }
+.rrun__margin { font-size: 0.62rem; color: var(--color-text-soft); }
+.rrun__replay { font-size: 0.62rem; font-weight: 700; color: #fff; background: #1e40af; border-radius: 999px; padding: 2px 9px; text-decoration: none; }
+.rrun__replay:hover { background: #1e3a8a; }
+.rrun__facts { margin-top: 5px; display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 0.64rem; color: var(--color-text); font-variant-numeric: tabular-nums; }
+.rrun__fact em, .rrun__sect em { font-style: normal; color: var(--color-text-muted); margin-right: 4px; font-size: 0.6rem; }
+.rrun__link { color: #1e40af; text-decoration: none; font-weight: 700; }
+.rrun__sect { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; font-size: 0.62rem; font-variant-numeric: tabular-nums; color: var(--color-text-secondary); }
+.rrun__sect span { background: var(--color-surface-alt); border-radius: 4px; padding: 1px 5px; }
+.rrun__comment { margin-top: 5px; font-size: 0.66rem; line-height: 1.55; color: var(--color-text-secondary); border-left: 2px solid #c7d7fe; padding-left: 7px; }
+@media (max-width: 640px) {
+  .rrun__top { grid-template-columns: minmax(0, 1fr) auto; }
+  .rrun__race { grid-column: 1 / -1; grid-row: 2; }
+  .rrun__when { flex-wrap: wrap; white-space: normal; min-width: 0; gap: 2px 6px; }
+  .rrun-list__title { flex-wrap: wrap; }
 }

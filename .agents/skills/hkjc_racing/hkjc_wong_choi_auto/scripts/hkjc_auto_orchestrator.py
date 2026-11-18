@@ -227,6 +227,14 @@ def _enrich_profile_history(horses, *, as_of_date=None):
                          "class": e.get("class_grade"), "placing": e.get("placing"),
                          "jockey": str(e.get("jockey") or "").strip(), "weight": e.get("weight_carried")})
         data["hk_history"] = hist[:40]
+        # 純顯示（Kelvin 2026-11-18）：dashboard 近績格逐仗表＋重播連結。唔入任何評分。
+        data["profile_runs"] = [
+            {k: e.get(k) for k in ("race_date_full", "race_no", "racecourse", "date", "placing_raw",
+                                   "venue_track", "distance", "going", "class_grade", "barrier", "rating",
+                                   "trainer", "jockey", "margin_raw", "_win_odds", "weight_carried",
+                                   "running_positions_raw", "finish_time_raw", "declared_weight", "gear")}
+            for e in ents[:6]
+        ]
         # 大幅增程組件（EXP-20261117-03）：最近一場香港賽事路程（同回放用嘅馬匹頁往績一樣，海外紀錄唔計）
         hk_prev = next((e for e in ents if str(e.get("venue_track") or "").startswith(("沙田", "跑馬地"))), None)
         if hk_prev is not None and hk_prev.get("distance"):

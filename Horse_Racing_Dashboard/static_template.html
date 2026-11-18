@@ -6336,7 +6336,7 @@ function renderAnalysisDocumentSection(section, index, cardId) {
         <span class="analysis-sub__title">${esc(child.title)}</span>
         <span class="analysis-sub__chevron" aria-hidden="true">⌄</span>
       </button>
-      <div id="${childId}" class="analysis-sub__body" hidden>${renderDimensionBody(child.content, child.title)}</div>
+      <div id="${childId}" class="analysis-sub__body" hidden>${renderDimensionBody(child.content, child.title, cardId)}</div>
     </div>`;
   });
 
@@ -6836,6 +6836,7 @@ function renderHorseCard(horse, topPickRank, marketRanks, analysisRef) {
   const hasAnalysis = topicCount > 0 || lazyAnalysis;
   const officialHorseUrl = hkjcHorseProfileUrl(horse);
   const cardId = `horse-${horse.horse_number}-${Math.random().toString(36).slice(2,8)}`;
+  if (Array.isArray(horse.recent_runs) && horse.recent_runs.length) RECENT_RUNS_BY_CARD.set(cardId, horse.recent_runs);
   const topClass = topPickRank ? ` horse-card--top-pick rank-${topPickRank}` : '';
 
   let html = `<div class="horse-card${topClass}" id="${cardId}">`;
@@ -7628,7 +7629,7 @@ function renderSubScore(node, meta, routedGroups) {
   const children = meta && meta.extras.length
     ? [...flattenDetailNodes(node.children), ...flattenDetailNodes(meta.extras)]
     : flattenDetailNodes(node.children);
-  return `<div class="dim-sub">
+  return `<div class="dim-sub${meta && meta.wide ? ' dim-sub--wide' : ''}">
     <div class="dim-sub__head">
       <span class="dim-sub__name">${esc(name)}${form ? `<span class="dim-sub__form">${esc(form[1])}</span>` : ''}</span>
       ${score !== null ? `<span class="dim-sub__score">${esc(score)}</span>` : ''}
@@ -7654,6 +7655,7 @@ function renderSubScore(node, meta, routedGroups) {
               renderSubScoreDetails([...flattenDetailNodes(c.node.children || []), ...flattenDetailNodes(c.extras || [])], c.source)}</div>` : ''}
         ${renderInboxGroups(c.routed)}
       </div>`).join('')}</div>` : ''}
+    ${meta && meta.runsTable ? meta.runsTable : ''}
     ${renderInboxGroups(routedGroups)}
   </div>`;
 }
@@ -7680,11 +7682,49 @@ function renderFormLineTable(nodes) {
     </tr>`).join('')}</tbody></table></div>`;
 }
 
+// HKJC 近績格逐仗表（Kelvin 2026-11-18，純顯示）：賽績.md（速勢能量：能量、分段、評述）
+// ＋馬匹頁（班次、評分、練馬師、沿途走位、完成時間、賠率、配備、重播）。資料由
+// backend/services/hkjc_recent_runs.py 合併，呢度只負責顯示。
+const RECENT_RUNS_BY_CARD = new Map();
+function renderRecentRuns(runs) {
+  const cell = (label, value, title) => (value === undefined || value === null || value === '') ? ''
+    : `<span class="rrun__fact"${title ? ` title="${esc(title)}"` : ''}><em>${esc(label)}</em>${esc(value)}</span>`;
+  const rows = runs.map((r, i) => {
+    const place = String(r.placing || '').trim();
+    const pm = /^(\d+)/.exec(place);
+    const pn = pm ? Number(pm[1]) : null;
+    const tone = pn === 1 ? 'win' : (pn && pn <= 3 ? 'place' : (pn && pn >= 8 ? 'poor' : ''));
+    const head = [r.venue, r.class ? `第${r.class}班` : '', r.rating ? `評分 ${r.rating}` : ''].filter(Boolean).join(' · ');
+    const people = [r.jockey, r.trainer].filter(Boolean).join(' ／ ');
+    const sect = String(r.sectionals || '').split(/[,，\s]+/).filter(Boolean);
+    return `<div class="rrun${i === 0 ? ' rrun--latest' : ''}">
+      <div class="rrun__top">
+        <div class="rrun__when"><b>${esc(r.date || '')}</b>${r.days ? `<span>相隔 ${esc(r.days)} 日</span>` : ''}${i === 0 ? '<span class="rrun__tag">上仗</span>' : ''}</div>
+        <div class="rrun__race">${esc(head)}</div>
+        <div class="rrun__result">
+          <span class="rrun__place${tone ? ` rrun__place--${tone}` : ''}">${esc(place || '—')}</span>
+          ${r.margin ? `<span class="rrun__margin">輸 ${esc(r.margin)}</span>` : ''}
+          ${r.replay_url ? `<a class="rrun__replay" href="${esc(r.replay_url)}" target="_blank" rel="noopener">▶ 重播</a>` : ''}
+        </div>
+      </div>
+      <div class="rrun__facts">
+        ${cell('檔位', r.draw)}${cell('負磅', r.weight)}${cell('馬重', r.body_weight)}${cell('人馬', people)}
+        ${cell('能量', r.energy, '速勢能量數值（HKJC）')}${cell('獨贏', r.odds)}${cell('沿途走位', r.positions)}
+        ${cell('完成時間', r.finish_time)}${cell('配備', r.gear, r.gear ? translateGear(r.gear) : '')}
+        ${r.result_url ? `<a class="rrun__fact rrun__link" href="${esc(r.result_url)}" target="_blank" rel="noopener">賽果</a>` : ''}
+      </div>
+      ${sect.length ? `<div class="rrun__sect"><em>分段</em>${sect.map(x => `<span>${esc(x)}</span>`).join('')}</div>` : ''}
+      ${r.comment ? `<div class="rrun__comment">${esc(r.comment)}</div>` : ''}
+    </div>`;
+  }).join('');
+  return `<div class="rrun-list"><div class="rrun-list__title">近${runs.length}仗詳情<span>HKJC 賽績（速勢能量）＋馬匹頁</span></div>${rows}</div>`;
+}
+
 // Kelvin 2026-11-18：近績分同上名／大敗紀錄分睇嘅係同一批近仗名次，分開兩格好亂。
 // 純顯示：合成一個「近績」格，兩個部分照用引擎嘅比例同計法。引擎同 refit 仍然
 // 逐個 leaf 計（EXP-20261118-04 合併 refit 未證實更好，權重唔郁）。
 const FORM_GROUP_PARTS = [/^近績分$/, /^(?:上名／大敗紀錄分|穩定性分)$/];
-function groupFormSubScores(subs, formulaText, dimensionTitle) {
+function groupFormSubScores(subs, formulaText, dimensionTitle, runs) {
   if (!/狀態與穩定性|近績穩定性/.test(dimensionTitle || '')) return;
   const idx = FORM_GROUP_PARTS.map(re => subs.findIndex(x => re.test(x.name) && !x.components));
   if (idx.some(i => i < 0)) return;
@@ -7698,12 +7738,14 @@ function groupFormSubScores(subs, formulaText, dimensionTitle) {
     name: '近績', score: null, extras: [], node: { text: '', children: [] }, components: parts, source: '',
     note: '名次（近績分）同上名／大敗紀錄（連輸距）合成一格，兩部分分開計，按比例入分。段速表現另有一項輸頭馬加減。',
   };
+  group.wide = true;
+  if (runs && runs.length) group.runsTable = renderRecentRuns(runs);
   const first = Math.min(...idx);
   for (const i of [...idx].sort((a, b) => b - a)) subs.splice(i, 1);
   subs.splice(first, 0, group);
 }
 
-function renderDimensionBody(content, dimensionTitle) {
+function renderDimensionBody(content, dimensionTitle, cardId) {
   const blocks = parseIndentedBlocks(content);
   const labelled = blocks.filter(b => b.label);
   if (!labelled.length) return formatRichSection(content);
@@ -7767,9 +7809,13 @@ function renderDimensionBody(content, dimensionTitle) {
     }
     if (formula.children.length) {
       const { subs, unrouted, notes } = classifyFormulaChildren(formula.children);
-      groupFormSubScores(subs, formula.text, dimensionTitle);
+      groupFormSubScores(subs, formula.text, dimensionTitle, RECENT_RUNS_BY_CARD.get(cardId));
       if (subs.length) {
-        subs.forEach(x => (x.components || []).forEach(c => { c.routed = routedFor(routed, c.name); }));
+        subs.forEach(x => (x.components || []).forEach(c => {
+          c.routed = routedFor(routed, c.name);
+          // 逐仗表已經有晒近6場（仲多咗能量／評述／重播），唔再出舊嘅細表。
+          if (x.runsTable && c.routed) c.routed = c.routed.filter(g => !/近6場數據/.test(g.label));
+        }));
         h += `<div class="dim-subs">${subs.map(x => renderSubScore(x.node, x, routedFor(routed, x.name))).join('')}</div>`;
       }
       // Anything that names no sub-score is a dimension-level adjustment; it
@@ -7827,110 +7873,11 @@ function renderDimensionBody(content, dimensionTitle) {
 }
 
 function renderAnalysisDetail(sections, cardId) {
-  // The rail lists chapters AND each dimension inside the breakdown: the
-  // dimensions are what the reader actually jumps between, and they were
-  // reachable only by scrolling the chapter and hunting for the right toggle.
-  const links = sections.map((section, index) => {
-    const sectionId = `${cardId}-chapter-${index + 1}`;
-    let html = `<a class="analysis-nav__chapter" href="#${sectionId}" onclick="jumpToAnalysis(event, '${sectionId}')">`
-      + `<span class="analysis-nav__num">${String(index + 1).padStart(2, '0')}</span>`
-      + `<span class="analysis-nav__text">${esc(section.title)}</span></a>`;
-    (section.children || []).forEach((child, childIndex) => {
-      const childId = `${sectionId}-sub-${childIndex + 1}`;
-      // "狀態與穩定性：72.4 分　✅ 偏強" -> name + symbol, dropped the rest
-      const name = String(child.title).split(/[:：]/)[0].trim();
-      const symbol = (/([✅❌➖]+)/.exec(child.title) || [, ''])[1];
-      const tone = /❌/.test(symbol) ? 'down' : /✅/.test(symbol) ? 'up' : 'flat';
-      html += `<a class="analysis-nav__dim analysis-nav__dim--${tone}" href="#${childId}-anchor" onclick="jumpToAnalysis(event, '${childId}-anchor', true)">`
-        + `<span class="analysis-nav__dot" aria-hidden="true"></span>`
-        + `<span class="analysis-nav__text">${esc(name)}</span>`
-        + (symbol ? `<span class="analysis-nav__sym">${symbol}</span>` : '')
-        + `</a>`;
-    });
-    return html;
-  }).join('');
-
+  // 章節側欄（Kelvin 2026-11-18 剷）：維度喺文件入面逐個摺埋，側欄只係重覆一次標題。
   return `<div class="analysis-detail">
-        <div class="analysis-detail__header"><div class="analysis-detail__title">完整分析</div><div class="analysis-detail__hint">全部內容已展開 · 可用章節索引快速跳讀</div></div>
-        <nav class="analysis-document__nav" aria-label="完整分析章節"><span class="analysis-document__nav-label">章節</span>${links}</nav>
+        <div class="analysis-detail__header"><div class="analysis-detail__title">完整分析</div><div class="analysis-detail__hint">全部內容已展開</div></div>
         <div class="analysis-document">${sections.map((section, index) => renderAnalysisDocumentSection(section, index, cardId)).join('')}</div>
       </div>`;
-}
-
-// Scroll-spy: a 1,200px document with a fixed rail gave no clue where you were.
-// Implemented on a scroll listener rather than IntersectionObserver because IO
-// reports nothing while the document is not being rendered, which made it
-// impossible to verify -- getBoundingClientRect works either way.
-let analysisSpyCleanup = null;
-
-function attachAnalysisSpy(detail) {
-  if (analysisSpyCleanup) { analysisSpyCleanup(); analysisSpyCleanup = null; }
-  const nav = detail.querySelector('.analysis-document__nav');
-  if (!nav) return;
-  // Leaves only. A chapter element contains its dimensions, so mixing the two
-  // makes the containing chapter match at the same time as the dimension inside
-  // it and the rule has to arbitrate between a parent and its child.
-  const targets = [...detail.querySelectorAll('.analysis-document__section')]
-    .flatMap(sec => {
-      const subs = [...sec.querySelectorAll('.analysis-sub')].filter(el => el.id);
-      return subs.length ? subs : (sec.id ? [sec] : []);
-    });
-  if (!targets.length) return;
-
-  // Throttled on a timestamp rather than requestAnimationFrame: rAF does not
-  // fire while the document is not being rendered, which makes the behaviour
-  // depend on visibility and impossible to verify off-screen.
-  let last = 0;
-  const update = () => {
-    last = Date.now();
-    if (!detail.isConnected) { if (analysisSpyCleanup) analysisSpyCleanup(); return; }
-    // The first block not yet scrolled past. A percentage-of-viewport line does
-    // not work here: collapsed rows are ~46px, so a line at 25% of an 812px
-    // viewport sits three or four rows below the one being read, and the rail
-    // pointed three items ahead of the reader.
-    // 12px, not 72: a collapsed row is ~46px tall, so a 72px line sits below a
-    // row whose top is at the viewport top and the rail pointed one item ahead.
-    const mark = 12;
-    let best = null;
-    for (const el of targets) {
-      if (el.getBoundingClientRect().bottom > mark) { best = el; break; }
-    }
-    if (!best) best = targets[targets.length - 1];
-    nav.querySelectorAll('.is-current').forEach(a => a.classList.remove('is-current'));
-    nav.querySelector(`a[href="#${best.id}"]`)?.classList.add('is-current');
-  };
-  const onScroll = () => { if (Date.now() - last >= 60) update(); };
-
-  window.addEventListener('scroll', onScroll, { passive: true });
-  window.addEventListener('resize', onScroll, { passive: true });
-  analysisSpyCleanup = () => {
-    window.removeEventListener('scroll', onScroll);
-    window.removeEventListener('resize', onScroll);
-    analysisSpyCleanup = null;
-  };
-  update();
-}
-
-function jumpToAnalysis(event, targetId, expand) {
-  event.preventDefault();
-  const el = document.getElementById(targetId);
-  if (!el) return;
-  // A dimension link opens the block it points at -- jumping to a collapsed
-  // toggle and leaving it shut would look like the link did nothing.
-  if (expand) {
-    const body = el.querySelector('.analysis-sub__body');
-    const toggle = el.querySelector('.analysis-sub__toggle');
-    if (body && body.hidden && toggle) toggleAnalysisSub(body.id, toggle);
-  }
-  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  el.classList.remove('analysis-flash');
-  void el.offsetWidth;              // restart the animation on a repeat click
-  el.classList.add('analysis-flash');
-  const nav = el.closest('.analysis-detail')?.querySelector('.analysis-document__nav');
-  if (nav) {
-    nav.querySelectorAll('.is-active').forEach(a => a.classList.remove('is-active'));
-    nav.querySelector(`a[href="#${targetId}"]`)?.classList.add('is-active');
-  }
 }
 
 async function fillLazyAnalysis(panel, btn, cardId) {
@@ -7948,7 +7895,6 @@ async function fillLazyAnalysis(panel, btn, cardId) {
   }
   const sections = buildHorseAnalysisSections({ raw_text: raw, data_readout: ctx.rows });
   panel.innerHTML = renderAnalysisDetail(sections, cardId);
-  attachAnalysisSpy(panel);
   const meta = btn.querySelector('.horse-card__expand-meta');
   if (meta) meta.innerHTML = `${sections.length} 個章節 <span class="horse-card__expand-chevron" aria-hidden="true">⌄</span>`;
   delete btn.dataset.analysisLazy;   // loaded once; keep the DOM
@@ -9247,7 +9193,6 @@ function renderNow(main) {
   // The fetched bundles (ANALYSIS_BUNDLES) are deliberately NOT cleared --
   // they are keyed by meeting and are the point of the cache.
   LAZY_ANALYSIS_CTX.clear();
-  if (analysisSpyCleanup) analysisSpyCleanup();
   syncNavState();
   if (currentView === 'race') {
     main.innerHTML = renderRaceDetail();

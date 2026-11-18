@@ -657,14 +657,11 @@ def test_dimension_body_renderer_is_wired():
         "the plain-text fallback is gone; an unrecognised shape would render empty"
 
 
-def test_chapter_rail_lists_dimensions_and_is_desktop_only():
+def test_chapter_rail_is_removed():
+    # Kelvin 2026-11-18：完整分析唔再有章節側欄，文件用全闊。
     text = _template_text()
-    css = _stylesheet()
-    assert 'analysis-nav__dim' in text, "the rail no longer lists individual dimensions"
-    definitions, calls = _definition_and_call_counts(text, 'jumpToAnalysis')
-    assert definitions == 1 and calls >= 1, "the rail's jump handler is not wired"
-    assert re.search(r'@media \(max-width: 1099px\) \{\s*\.analysis-document__nav \{ display: none', css), \
-        "the rail is no longer hidden on phones"
+    assert 'analysis-nav__dim' not in text
+    assert 'aria-label="完整分析章節"' not in text
 
 
 def test_section_body_width_override_comes_after_its_base_rule():
@@ -778,24 +775,6 @@ def test_detail_lines_that_restate_their_caption_are_dropped():
     text = _template_text()
     assert "captionNumbers" in text and "restates" in text, \
         "the caption de-duplication rule was removed"
-
-
-def test_scroll_spy_tracks_leaves_with_a_line_shorter_than_a_row():
-    """Two bugs, both measured: mixing chapters with the dimensions they contain
-    makes the rule arbitrate parent vs child, and a reading line at 25% of the
-    viewport sits three collapsed 46px rows below the one being read."""
-    text = _template_text()
-    spy = re.search(r'function attachAnalysisSpy\(detail\) \{(.+?)\n\}\n', text, re.S)
-    assert spy, "attachAnalysisSpy is gone"
-    # Strip comments first: the reason rAF is not used is written in a comment
-    # inside this very function, so a raw substring check matches its own
-    # documentation (the same slip as the CSS-comment check earlier).
-    code = "\n".join(l for l in spy.group(1).split("\n") if not l.strip().startswith("//"))
-    assert "const mark = 12" in code, \
-        "the reading line moved; it must stay under one collapsed row (~46px)"
-    assert "requestAnimationFrame" not in code, \
-        "rAF does not fire while the document is not rendered, making this unverifiable"
-    assert "analysisSpyCleanup" in text, "the scroll listener is never removed"
 
 
 def test_kv_grid_stacks_label_over_value():

@@ -7,6 +7,7 @@ import re
 from pathlib import Path
 
 from models.race import Region
+from services.hkjc_recent_runs import load_meeting_recent_runs
 
 
 HKJC_SILK_BASE_URL = "https://racing.hkjc.com/racing/content/Images/RaceColor"
@@ -123,6 +124,16 @@ def _load_hkjc_silk_map(meeting):
             parsed = parse_hkjc_racecard_silks(racecard_path)
             if parsed:
                 silk_map.setdefault(int(race_match.group(1)), {}).update(parsed)
+    # 近績格逐仗表（純顯示，Kelvin 2026-11-18）
+    try:
+        ids = {race: {n: v.get("hkjc_horse_id") for n, v in horses.items() if v.get("hkjc_horse_id")}
+               for race, horses in silk_map.items()}
+        recent = load_meeting_recent_runs(meeting.folder_paths.values(), ids, str(meeting.date)[:10])
+    except Exception:
+        recent = {}
+    for race_number, horses in recent.items():
+        for horse_number, rows in horses.items():
+            silk_map.setdefault(race_number, {}).setdefault(horse_number, {})["recent_runs"] = rows
     return silk_map
 
 
@@ -137,7 +148,9 @@ def enrich_hkjc_display_metadata(meeting, all_races):
             race_silks = silk_map.get(race.race_number, {})
             for horse in race.horses:
                 silk = race_silks.get(horse.horse_number)
-                if silk:
+                if silk and silk.get("recent_runs"):
+                    horse.recent_runs = silk["recent_runs"]
+                if silk and silk.get("silk_url"):
                     horse.horse_code = silk["horse_code"]
                     horse.hkjc_horse_id = silk.get("hkjc_horse_id")
                     horse.horse_profile_url = silk.get("horse_profile_url")
@@ -244,7 +257,7 @@ def enrich_snapshot_display_metadata(data, meeting):
                 horse_count += 1
                 horse_number = int(horse.get("horse_number") or 0)
                 metadata = race_metadata.get(race_number, {}).get(horse_number, {})
-                for field in ("horse_code", "hkjc_horse_id", "horse_profile_url", "silk_url", "horse_name_en"):
+                for field in ("horse_code", "hkjc_horse_id", "horse_profile_url", "silk_url", "horse_name_en", "recent_runs"):
                     if metadata.get(field):
                         horse[field] = metadata[field]
                 if not horse.get("horse_name_en"):

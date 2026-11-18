@@ -86,6 +86,7 @@ class HorseAnalysis(BaseModel):
 
     # Performance
     recent_form: Optional[str] = None  # 近六場序列
+    recent_runs: Optional[list[dict]] = None  # HKJC 近績格逐仗表（賽績.md＋馬匹頁；純顯示）
     form_cycle: Optional[str] = None  # 狀態週期
     run_style_outlook: Optional[dict] = None  # HKJC 預計跑法（參考，唔入評分）
     statistics: Optional[str] = None
