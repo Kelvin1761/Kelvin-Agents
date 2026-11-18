@@ -123,6 +123,110 @@ def horse_summary(horse: dict, auto: dict, field_size: int) -> dict:
     }
 
 
+# ── 9維排名矩陣嘅一句話同總評（Kelvin 2026-11-18：完整分析要嵌入矩陣，每行一句）──────────
+# 純顯示：一句話係 matrix_reasoning 判讀句嘅精簡版（全文喺撳開嘅拆解度），唔另起一套判斷。
+BRIEF_LIMIT = 46
+_SCORE_CODE = re.compile(r"\s*\([+\-−]?\d+(?:\.\d+)?\)")
+_EXP_CODE = re.compile(r"[（(]EXP-[^）)]*[）)]")
+
+
+def _brief(text: str, limit: int = BRIEF_LIMIT) -> str:
+    """判讀句 → 一句：剷走「(+6.5)」同 EXP 編號，按「；」再按「、」截，唔喺字中間斬。"""
+    text = _SCORE_CODE.sub("", _EXP_CODE.sub("", _evidence({"text": text})))
+    text = re.sub(r"\s+", " ", text).strip("，,；; ")
+    if len(text) <= limit:
+        return text
+    out = ""
+    for clause in text.split("；"):
+        nxt = f"{out}；{clause}" if out else clause
+        if len(nxt) <= limit:
+            out = nxt
+            continue
+        # 下一句太長：按「、」逐段加，加唔落就收尾「…」
+        part_out = out
+        for part in clause.split("、"):
+            cand = f"{part_out}{'、' if part_out != out else ('；' if out else '')}{part}"
+            if len(cand) > limit:
+                break
+            part_out = cand
+        if part_out != out:
+            return part_out + "…"
+        break
+    return out or text[: limit - 1] + "…"
+
+
+def _trackwork_brief(auto: dict) -> str:
+    """晨操唔入分，判讀句只係講「退出排名」；用晨操讀數嘅工作量＋結論。"""
+    read = auto.get("trackwork_read") or {}
+    lines = read.get("lines") or []
+    load = str(lines[0]).split(" → ")[0] if lines else ""
+    load = "、".join(load.split("、")[:2])
+    tail = str(read.get("verdict") or "").strip("。 ")
+    return "；".join(x for x in (load, tail) if x)
+
+
+def dim_briefs(auto: dict) -> list[dict]:
+    """每個維度一句（排名矩陣行下面嗰句）。key／label 同 grade_transparency 一致。"""
+    reasoning = auto.get("matrix_reasoning") or {}
+    labels = {row.get("key"): row.get("label") for row in (auto.get("grade_transparency") or {}).get("rows") or []}
+    out = []
+    for key, item in reasoning.items():
+        text = _brief((item or {}).get("text") or "")
+        if key == "trackwork":
+            text = _trackwork_brief(auto) or text
+        if text:
+            out.append({"key": key, "label": labels.get(key) or (item or {}).get("label") or key, "text": text})
+    return out
+
+
+def verdict(summary: dict, auto: dict, field_scores: list[float]) -> dict:
+    """總評：定位一句＋本錢／隱憂／參考。只重組 headline、標籤同回放上名率，冇新判斷。"""
+    rank = int(auto.get("rank") or 0)
+    score = float(auto.get("ability_score") or 0)
+    ordered = sorted((float(x) for x in field_scores), reverse=True)
+    if rank == 1 and len(ordered) >= 2:
+        gap = round(ordered[0] - ordered[1], 1)
+        lead = f"模型首選，拋離第二名 {gap:.1f} 分" if gap >= CLEAR_GAP else f"模型首選，但只拋離第二名 {gap:.1f} 分"
+        rate = TOP_PICK_PLACE_RATE["clear" if gap >= CLEAR_GAP else "close"]
+        ref = f"呢類分差嘅場次，首選歷史上名約 {rate:.0%}"
+    elif rank >= 2 and ordered:
+        lead = f"排第 {rank}／{len(ordered)}，落後首選 {ordered[0] - score:.1f} 分"
+        ref = f"排第 {rank} 嘅馬歷史上名約 {RANK_PLACE_RATE[rank]:.0%}" if rank in RANK_PLACE_RATE else ""
+    else:
+        lead, ref = "", ""
+    tags = summary.get("tags") or {}
+    by_impact = lambda t: (not t.get("scored"), -abs(t.get("impact") or 0))
+    good = [t["label"] for t in sorted(tags.get("good") or [], key=by_impact)][:3]
+    bad = [t["label"] for t in sorted(tags.get("bad") or [], key=by_impact)][:3]
+    if not good:
+        good = [p["label"] for p in summary.get("plus") or []][:3]
+    if not bad:
+        bad = [m["label"] for m in summary.get("minus") or []][:3]
+    bad += [w for w in summary.get("watch") or [] if w not in bad][: max(0, 3 - len(bad))]
+    plus, minus = summary.get("plus") or [], summary.get("minus") or []
+    text = lead
+    if plus:
+        text += ("。" if text else "") + "主要靠" + "、".join(p["label"] for p in plus[:2])
+    if minus:
+        text += "；" + "、".join(m["label"] for m in minus[:1]) + "拖低"
+    elif bad:
+        text += "；要留意" + bad[0]
+    if not plus and not minus:
+        text += ("。" if text else "") + "各維度都接近中游，冇明顯強項或弱項"
+    return {"text": text + "。", "good": good, "bad": bad, "ref": ref}
+
+
+def enrich(summary: dict | None, auto: dict, field_scores: list[float]) -> dict | None:
+    """舊 Logic 冇 dims／verdict 時補返（dashboard 讀舊場次用同一份 code）。"""
+    if not isinstance(summary, dict):
+        return summary
+    if "dims" not in summary:
+        summary["dims"] = dim_briefs(auto)
+    if "verdict" not in summary:
+        summary["verdict"] = verdict(summary, auto, field_scores)
+    return summary
+
+
 _BATTLEFIELD: dict | None = None
 SCORED_HIGHLIGHT_KEYS = ("surface_move", "distance_up", "incident_wide", "incident_medical", "draw_style_misfit")
 
@@ -328,6 +432,9 @@ def attach(logic_data: dict, meeting_dir: Path | None = None) -> None:
     for num, horse in scored.items():
         horse["python_auto"]["summary"] = horse_summary(horse, horse["python_auto"], len(scored))
         horse["python_auto"]["summary"]["tags"] = tags.get(str(num)) or {"good": [], "bad": [], "note": []}
+    field_scores = [float(h["python_auto"].get("ability_score") or 0) for h in scored.values()]
+    for horse in scored.values():
+        enrich(horse["python_auto"]["summary"], horse["python_auto"], field_scores)
     ranking = (logic_data.get("python_auto_verdict") or {}).get("ranking") or []
     if not ranking:
         ranking = sorted(

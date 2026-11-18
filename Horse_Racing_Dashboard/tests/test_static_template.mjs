@@ -3027,7 +3027,7 @@ test("HKJC 近績格逐仗詳情：能量、評述、重播連結，取代舊近
   assert.match(html, /近1仗詳情/);
   assert.match(html, /能量<\/em>92/);
   assert.match(html, /rrun__comment"><em>走勢評述<\/em>慢步速\(-\)\(2W4W\)/);
-  assert.match(html, /rrun__incident"><em>賽後報告<\/em>早段搶口/);
+  assert.match(html, /rrun__incident"[^>]*><em>賽後報告<\/em>早段搶口/);
   assert.match(html, /rrun__split--slow" title="馬會標準 13\.95 秒，慢 0\.51 秒">14\.46<small>\+0\.51/);
   assert.match(html, /rrun__split--fast" title="馬會標準 24\.20 秒，快 0\.43 秒">23\.77<small>−0\.43/);
   assert.match(html, /date=20261108&amp;no=01[^>]*>▶ 重播/);
@@ -3036,4 +3036,40 @@ test("HKJC 近績格逐仗詳情：能量、評述、重播連結，取代舊近
   const old = renderDimensionBody(content, "狀態與穩定性", "card-none");
   assert.doesNotMatch(old, /rrun-list/);
   assert.match(old, /近6場數據/);
+});
+
+test("9維排名矩陣 carries the verdict, a one-liner under each bar, and opens each dimension in place (Kelvin 2026-11-18)", () => {
+  const { renderHorseCard } = loadTemplateFunctions();
+  const raw = [
+    "#### 🧮 9D 評分矩陣逐項拆解",
+    "##### 騎練訊號：`86.3分`　✅✅ 極強",
+    "- **Python 判讀:** 潘頓配大衛希斯",
+    "##### 晨操狀態（只作參考，未入分）",
+    "- **Python 判讀:** 晨操放緩",
+    "#### 📝 重點",
+    "**第1／12｜87.6 A+**",
+  ].join("\n");
+  const html = renderHorseCard({
+    horse_number: 1, horse_name: "禾道威", raw_text: raw,
+    dimension_details: [
+      { name: "騎練訊號", score: 86.3, weight_pct: 33, impact: 4.1, ranking_weighted: true, symbol: "✅✅" },
+      { name: "晨操狀態", score: 56.1, ranking_weighted: false, symbol: "➖" },
+    ],
+    analysis_summary: {
+      dims: [{ key: "trainer_signal", label: "騎練訊號", text: "潘頓（強）配大衛希斯（有支持）" },
+             { key: "trackwork", label: "晨操狀態", text: "近21日快操3課；操練放緩" }],
+      verdict: { text: "模型首選，拋離第二名 18.4 分。", good: ["近績好"], bad: ["大幅增程"], ref: "首選歷史上名約 58%" },
+    },
+  }, 1, {}, null);
+  assert.match(html, /strip-verdict__text">模型首選，拋離第二名 18\.4 分。/);
+  assert.match(html, /本錢<\/span><span>近績好/);
+  assert.match(html, /dim-row__brief">潘頓（強）配大衛希斯（有支持）/);
+  assert.match(html, /data-dim="騎練訊號"[^>]*onclick="toggleDimRow\(/);
+  assert.match(html, /dim-row__tone--up">極強/);
+  // reference dimension is a row too (no bar), and opens the same way
+  assert.match(html, /data-dim="晨操狀態"[\s\S]*?參考 · 不入排名[\s\S]*?近21日快操3課/);
+  // the 9D chapter is not repeated inside 完整分析; 重點 still is
+  const detail = html.split('class="analysis-detail"')[1] || "";
+  assert.doesNotMatch(detail, /9D 評分矩陣逐項拆解/);
+  assert.match(detail, /重點/);
 });

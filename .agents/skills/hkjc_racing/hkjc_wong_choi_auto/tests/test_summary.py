@@ -97,3 +97,41 @@ def test_scenario_constants():
     assert sc["style"]["放頭"] == {"放頭": 10, "守中": 0, "後上": -10}
     assert set(sc["draw"]) == {"利內欄", "利中內", "利中欄", "利中外", "利外欄"}
     assert sc["inrace"] == {"shrink": 0.2, "cap_pp": 3, "min_starts": 8}
+
+
+def test_brief_cuts_at_clause_and_drops_codes():
+    text = "L400 23.29→23.77s；段速優勢：輸頭馬少（< 0.3 秒）(+6.5)、原始分段後段快過前段（受路程影響）(+3.0)、末段速度波動(-1.0) → 73分，加分位。"
+    out = summary._brief(text)
+    assert "(+6.5)" not in out and "→ 73分" not in out
+    assert out.startswith("L400 23.29→23.77s；段速優勢：輸頭馬少")
+    assert len(out) <= summary.BRIEF_LIMIT + 1
+    assert summary._brief("晨操退出排名（EXP-20261029-02），只作顯示參考") == "晨操退出排名，只作顯示參考"
+
+
+def test_dim_briefs_cover_every_dimension_and_trackwork_uses_its_read():
+    auto = {
+        "grade_transparency": {"rows": [{"key": "race_shape", "label": "檔位與走位"}]},
+        "matrix_reasoning": {
+            "race_shape": {"label": "檔位與走位情境（不含步速）", "text": "排5檔：檔位中性，睇出閘搶位 → 62分，中性。"},
+            "trackwork": {"label": "晨操狀態", "text": "晨操退出排名（EXP-20261029-02），只作顯示參考"},
+        },
+        "trackwork_read": {"lines": ["近21日快操3課、試閘0課、踱步13課 → 工作量正常"], "verdict": "操練放緩，以正式賽績為準"},
+    }
+    dims = {d["key"]: d for d in summary.dim_briefs(auto)}
+    assert dims["race_shape"] == {"key": "race_shape", "label": "檔位與走位", "text": "排5檔：檔位中性，睇出閘搶位"}
+    assert dims["trackwork"]["text"] == "近21日快操3課、試閘0課；操練放緩，以正式賽績為準"
+
+
+def test_verdict_top_pick_and_chaser():
+    sm = {"plus": [{"label": "騎練訊號"}], "minus": [], "watch": [],
+          "tags": {"good": [{"label": "近績好", "scored": True, "impact": 3.3}],
+                   "bad": [{"label": "大幅增程", "scored": True, "impact": -0.1}]}}
+    top = summary.verdict(sm, {"rank": 1, "ability_score": 87.6}, [87.6, 69.2, 60.0])
+    assert top["text"] == "模型首選，拋離第二名 18.4 分。主要靠騎練訊號；要留意大幅增程。"
+    assert top["good"] == ["近績好"] and top["bad"] == ["大幅增程"]
+    assert "58%" in top["ref"]
+    second = summary.verdict(sm, {"rank": 2, "ability_score": 69.2}, [87.6, 69.2, 60.0])
+    assert second["text"].startswith("排第 2／3，落後首選 18.4 分")
+    assert "44%" in second["ref"]
+    enriched = summary.enrich(dict(sm), {"rank": 1, "ability_score": 87.6}, [87.6, 69.2])
+    assert "dims" in enriched and "verdict" in enriched

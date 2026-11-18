@@ -13,6 +13,7 @@ from models.race import (
     HorseAnalysis, RaceAnalysis, TopPick, MonteCarloPick, RatingDimension, RatingMatrix, DimensionDetail
 )
 from services.parser_au import _parse_monte_carlo_table
+from services.hkjc_summary_text import enrich_summary
 
 
 # ──────────────────────────────────────────────
@@ -1047,6 +1048,11 @@ def _load_logic_scoring_map(analysis_path: Path) -> dict[int, dict]:
     except (OSError, ValueError):
         return {}
     mapping = {}
+    field_scores = [
+        float((h.get("python_auto") or {}).get("ability_score") or 0)
+        for h in (payload.get("horses") or {}).values()
+        if isinstance(h, dict) and h.get("python_auto")
+    ]
     for raw_number, horse in (payload.get("horses") or {}).items():
         try:
             horse_number = int(raw_number)
@@ -1055,6 +1061,7 @@ def _load_logic_scoring_map(analysis_path: Path) -> dict[int, dict]:
         auto = (horse or {}).get("python_auto") or {}
         if not auto:
             continue
+        enrich_summary(auto, field_scores)
         distance = dict(auto.get("distance_suitability_adjustment") or {})
         ranking = {
             "rank": _number_or_none(auto.get("rank")),
