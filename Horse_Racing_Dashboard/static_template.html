@@ -7713,7 +7713,15 @@ function renderRecentRuns(runs) {
         ${cell('完成時間', r.finish_time)}${cell('配備', r.gear, r.gear ? translateGear(r.gear) : '')}
         ${r.result_url ? `<a class="rrun__fact rrun__link" href="${esc(r.result_url)}" target="_blank" rel="noopener">賽果</a>` : ''}
       </div>
-      ${sect.length ? `<div class="rrun__sect"><em>分段</em>${sect.map(x => `<span>${esc(x)}</span>`).join('')}</div>` : ''}
+      ${sect.length ? `<div class="rrun__sect"><em>分段</em>${sect.map((x, k) => {
+        // 對嗰仗班次嘅馬會標準（後端用引擎 past_runs.standard_sections，同段速「對馬會標準」一份）。
+        const std = Array.isArray(r.std_sections) ? Number(r.std_sections[k]) : NaN;
+        const d = Number(x) - std;
+        if (!Number.isFinite(d)) return `<span>${esc(x)}</span>`;
+        const tone = d > 0.005 ? 'slow' : (d < -0.005 ? 'fast' : 'par');
+        const word = tone === 'slow' ? '慢' : (tone === 'fast' ? '快' : '同');
+        return `<span class="rrun__split rrun__split--${tone}" title="馬會標準 ${std.toFixed(2)} 秒，${word}${tone === 'par' ? '' : ` ${Math.abs(d).toFixed(2)} 秒`}">${esc(x)}<small>${d > 0 ? '+' : (d < 0 ? '−' : '±')}${Math.abs(d).toFixed(2)}</small></span>`;
+      }).join('')}${Array.isArray(r.std_sections) ? '<i class="rrun__sect-note">對嗰仗班次馬會標準：綠快紅慢</i>' : ''}</div>` : ''}
       ${r.comment ? `<div class="rrun__comment"><em>走勢評述</em>${esc(r.comment)}</div>` : ''}
       ${r.incident ? `<div class="rrun__incident"><em>賽後報告</em>${esc(r.incident)}</div>` : ''}
     </div>`;

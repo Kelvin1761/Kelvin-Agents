@@ -97,6 +97,31 @@ def load_profile_runs(path):
     return out
 
 
+def _engine_past_runs():
+    """馬會標準分段只有一份：`hkjc_racing_engine/past_runs.standard_sections`（段速「對馬會標準」同一個來源）。"""
+    import importlib
+    import sys
+    scripts = Path(__file__).resolve().parents[3] / ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts"
+    if str(scripts) not in sys.path:
+        sys.path.insert(0, str(scripts))
+    return importlib.import_module("hkjc_racing_engine.past_runs")
+
+
+def standard_for(row):
+    """嗰仗自己班次嘅馬會標準分段；分段數對唔上或者冇標準就返 None（唔借第二個班次）。"""
+    venue = str(row.get("venue") or "")
+    m = re.search(r"\b(\d{3,4})\b", venue)
+    distance = int(row.get("distance") or (m.group(1) if m else 0) or 0)
+    cls = str(row.get("class") or "").strip()
+    pr = _engine_past_runs()
+    code = f"C{cls}" if re.fullmatch(r"[1-5]", cls) else pr.class_code(cls)
+    if not distance or not code:
+        return None
+    std = pr.standard_sections(venue, "全天候" in venue or "AWT" in venue.upper(), distance, code)
+    splits = [x for x in re.split(r"[,，\s]+", str(row.get("sectionals") or "")) if x]
+    return std if std and len(std) == len(splits) else None
+
+
 def merge_runs(formguide_runs, profile_runs):
     profile = {_profile_key(e): e for e in profile_runs or [] if _profile_key(e)}
     rows = []
@@ -130,6 +155,12 @@ def merge_runs(formguide_runs, profile_runs):
                 if p.get("racecourse"):
                     row["result_url"] = RESULT_URL.format(date=full, course=p["racecourse"], no=no)
                 row["race_no"] = no
+        try:
+            std = standard_for(row)
+        except Exception:
+            std = None
+        if std:
+            row["std_sections"] = std
         rows.append({k: v for k, v in row.items() if v not in (None, "")})
     return rows
 

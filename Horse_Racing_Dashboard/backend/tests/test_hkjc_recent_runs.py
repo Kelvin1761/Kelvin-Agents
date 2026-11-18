@@ -85,3 +85,14 @@ def test_incident_report_attached_by_brand_and_date(tmp_path):
     rows = rr.load_meeting_recent_runs([meeting], {1: {1: "HK_2023_J463"}}, "2026-11-18")[1][1]
     assert rows[0]["incident"] == "早段搶口。"
     assert "incident" not in rows[1]
+
+
+def test_standard_sections_use_the_engine_standard_for_that_race_class(tmp_path):
+    p = tmp_path / "11-18 Race 1 賽績.md"
+    p.write_text(FORMGUIDE, encoding="utf-8")
+    row = rr.merge_runs(rr.parse_formguide(p)[1], PROFILE[1:])[0]
+    engine = rr._engine_past_runs()
+    assert row["std_sections"] == engine.standard_sections('沙田 "C+3" 1800 好', False, 1800, "C5")
+    assert len(row["std_sections"]) == 5
+    # 冇班次（冇馬匹頁）就唔估
+    assert "std_sections" not in rr.merge_runs(rr.parse_formguide(p)[1], [])[0]
