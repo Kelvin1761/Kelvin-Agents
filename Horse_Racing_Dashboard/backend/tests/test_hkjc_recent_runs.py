@@ -72,3 +72,16 @@ def test_logic_profile_runs_take_priority(tmp_path):
         {"horses": {"1": {"_data": {"profile_runs": [dict(PROFILE[1], rating=41)]}}}}), encoding="utf-8")
     rows = rr.load_meeting_recent_runs([meeting])[1][1]
     assert rows[0]["rating"] == 41
+
+
+def test_incident_report_attached_by_brand_and_date(tmp_path):
+    meeting = tmp_path / "2026-11-18_HappyValley"
+    meeting.mkdir()
+    (meeting / "11-18 Race 1 賽績.md").write_text(FORMGUIDE, encoding="utf-8")
+    (tmp_path / "HKJC_Sections").mkdir()
+    (tmp_path / "HKJC_Sections" / "incident_reports.json").write_text(json.dumps(
+        {"version": 1, "horses": {"J463": {"2026-11-08": "早段搶口。", "2026-11-18": "今仗唔應該出現"}}}),
+        encoding="utf-8")
+    rows = rr.load_meeting_recent_runs([meeting], {1: {1: "HK_2023_J463"}}, "2026-11-18")[1][1]
+    assert rows[0]["incident"] == "早段搶口。"
+    assert "incident" not in rows[1]

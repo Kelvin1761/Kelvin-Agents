@@ -158,14 +158,38 @@ def _before(entry, meeting_date):
     return bool(k) and f"{k[6:]}-{k[3:5]}-{k[:2]}" < meeting_date
 
 
+def _incident_reports(folders):
+    """`HKJC_Sections/incident_reports.json`（`hkjc_pit_sections_build` 每個賽日後重建；HKJC 競賽事件報告全文）。
+    場次資料夾嘅上一層就係 HK 資料根。"""
+    for f in folders:
+        p = Path(f).parent / "HKJC_Sections" / "incident_reports.json"
+        try:
+            return (json.loads(p.read_text(encoding="utf-8")) or {}).get("horses") or {}
+        except (OSError, ValueError):
+            continue
+    return {}
+
+
+def _attach_incidents(rows, reports):
+    for row in rows:
+        m = re.match(r"(\d{2})/(\d{2})/(\d{4})$", str(row.get("date") or ""))
+        if m:
+            text = reports.get(f"{m.group(3)}-{m.group(2)}-{m.group(1)}")
+            if text:
+                row["incident"] = text
+    return rows
+
+
 def load_meeting_recent_runs(folder_paths, horse_ids=None, meeting_date=None):
     """`{場次: {馬號: [row, ...]}}` for one HKJC meeting.
 
     horse_ids: `{場次: {馬號: HK_2023_J463}}`（排位表），用嚟喺 Logic 冇 profile_runs 時查馬匹頁 cache。
     meeting_date: ISO 日期；cache 補嘅往績一定要早過佢。
+    賽後報告（HKJC 競賽事件報告全文）按烙號＋日期貼落每仗（`incident`）。
     """
     folder_paths = list(folder_paths)
     caches = None
+    incidents = None
     out = {}
     for folder in folder_paths:
         folder = Path(folder)
@@ -187,6 +211,11 @@ def load_meeting_recent_runs(folder_paths, horse_ids=None, meeting_date=None):
                         prof[n] = [e for e in caches[ids[n]] if _before(e, meeting_date)][:MAX_RUNS]
             for number in sorted(set(fg) | set(prof)):
                 rows = merge_runs(fg.get(number), prof.get(number))
+                code = str(ids.get(number) or "").rsplit("_", 1)[-1]
+                if rows and code:
+                    if incidents is None:
+                        incidents = _incident_reports(folder_paths)
+                    _attach_incidents(rows, incidents.get(code) or {})
                 if rows:
                     out.setdefault(race, {})[number] = rows
     return out

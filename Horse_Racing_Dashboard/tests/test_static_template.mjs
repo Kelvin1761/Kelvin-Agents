@@ -3011,7 +3011,7 @@ test("HKJC 近績格逐仗詳情：能量、評述、重播連結，取代舊近
     date: "08/11/2026", days: "20", venue: '沙田 "C+3" 1800 好', class: "5", rating: 40, draw: "14",
     weight: "135", body_weight: "1213", jockey: "潘頓", trainer: "大衛希斯", placing: "2 / 14", margin: "1",
     energy: "92", odds: 3.8, positions: "10 10 12 11 2", finish_time: "1.49.81", gear: "CP/TT",
-    sectionals: "14.46, 22.79, 24.68, 24.11, 23.77", comment: "慢步速(-)(2W4W) 自大外檔出閘普通",
+    sectionals: "14.46, 22.79, 24.68, 24.11, 23.77", comment: "慢步速(-)(2W4W) 自大外檔出閘普通", incident: "早段搶口，接近一千米處時收慢避開「觀萬物」。",
     replay_url: "https://racing.hkjc.com/contentAsset/videoplayer_v4/video-player-iframe_v4.html?type=replay-full&date=20261108&no=01",
   }]);
   const content = [
@@ -3027,6 +3027,7 @@ test("HKJC 近績格逐仗詳情：能量、評述、重播連結，取代舊近
   assert.match(html, /近1仗詳情/);
   assert.match(html, /能量<\/em>92/);
   assert.match(html, /慢步速\(-\)\(2W4W\)/);
+  assert.match(html, /rrun__incident"><em>賽後報告<\/em>早段搶口/);
   assert.match(html, /date=20261108&amp;no=01[^>]*>▶ 重播/);
   assert.doesNotMatch(html, /kv-group__title">近6場數據|近6場數據<\/div>/, "舊細表唔再重覆");
   // 冇逐仗資料（舊場次）就照出舊細表

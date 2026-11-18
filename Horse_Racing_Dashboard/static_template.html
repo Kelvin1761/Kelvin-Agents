@@ -7682,7 +7682,7 @@ function renderFormLineTable(nodes) {
     </tr>`).join('')}</tbody></table></div>`;
 }
 
-// HKJC 近績格逐仗表（Kelvin 2026-11-18，純顯示）：賽績.md（速勢能量：能量、分段、評述）
+// HKJC 近績格逐仗表（Kelvin 2026-11-18，純顯示）：賽績.md（速勢能量：能量、分段、評述）＋賽後報告（競賽事件報告）
 // ＋馬匹頁（班次、評分、練馬師、沿途走位、完成時間、賠率、配備、重播）。資料由
 // backend/services/hkjc_recent_runs.py 合併，呢度只負責顯示。
 const RECENT_RUNS_BY_CARD = new Map();
@@ -7715,9 +7715,10 @@ function renderRecentRuns(runs) {
       </div>
       ${sect.length ? `<div class="rrun__sect"><em>分段</em>${sect.map(x => `<span>${esc(x)}</span>`).join('')}</div>` : ''}
       ${r.comment ? `<div class="rrun__comment">${esc(r.comment)}</div>` : ''}
+      ${r.incident ? `<div class="rrun__incident"><em>賽後報告</em>${esc(r.incident)}</div>` : ''}
     </div>`;
   }).join('');
-  return `<div class="rrun-list"><div class="rrun-list__title">近${runs.length}仗詳情<span>HKJC 賽績（速勢能量）＋馬匹頁</span></div>${rows}</div>`;
+  return `<div class="rrun-list"><div class="rrun-list__title">近${runs.length}仗詳情<span>HKJC 賽績（速勢能量）＋馬匹頁＋競賽事件報告</span></div>${rows}</div>`;
 }
 
 // Kelvin 2026-11-18：近績分同上名／大敗紀錄分睇嘅係同一批近仗名次，分開兩格好亂。

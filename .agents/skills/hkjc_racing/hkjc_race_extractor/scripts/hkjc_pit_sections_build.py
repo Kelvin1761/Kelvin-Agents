@@ -215,6 +215,44 @@ def incident_history_table() -> dict:
     return {"version": 1, "last_date": max(d for d, _ in races) if races else None, "horses": horses}
 
 
+def incident_text_table() -> dict:
+    """競賽事件報告全文（Kelvin 2026-11-18，純顯示：dashboard 近績格逐仗「賽後報告」）。
+    同 incident_history_table 同一個來源（賽果庫 full_day_results.json），只取賽果庫有嘅季（約兩季）；
+    {code: {日期: 句子}}，冇報告嘅仗唔寫。唔入任何評分。"""
+    import json as _json
+    sys.path.insert(0, str(REPO / ".agents/skills/hkjc_racing/hkjc_reflector/scripts"))
+    import build_comprehensive_stats as bcs
+    import hkjc_history_replay_build as rb
+    horses: dict[str, dict] = {}
+    last = None
+    for fp in sorted(bcs.DB_ROOT.glob("hkjc results */*/full_day_results.json")):
+        try:
+            data = _json.loads(fp.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        for _key, race in data.items():
+            if not isinstance(race, dict):
+                continue
+            if not race.get("racedate"):
+                race = rb._normalise_new_schema(race, fp)
+                if race is None:
+                    continue
+            d = str(race["racedate"])[:10]
+            last = max(last or d, d)
+            for code, sentence in rb._incident_by_horse(race.get("incident_report") or "").items():
+                if sentence:
+                    horses.setdefault(code, {})[d] = sentence
+    return {"version": 1, "last_date": last, "horses": horses}
+
+
+def write_incident_text(table: dict) -> Path:
+    p = out_path().with_name("incident_reports.json")
+    tmp = p.with_suffix(".tmp")
+    tmp.write_text(json.dumps(table, ensure_ascii=False), encoding="utf-8")
+    os.replace(tmp, p)
+    return p
+
+
 def write_incident_history(table: dict) -> Path:
     p = out_path().with_name("incident_history.json")
     tmp = p.with_suffix(".tmp")
@@ -391,6 +429,7 @@ def update() -> int:
     write_battlefield(battlefield_table())
     ih = incident_history_table()
     write_incident_history(ih)
+    write_incident_text(incident_text_table())
     sys.path.insert(0, str(REPO / ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts"))
     from hkjc_racing_engine.incident_history import wording_check
     for warn in wording_check(ih):
@@ -415,6 +454,8 @@ def main() -> int:
     print(f"戰場全景歷史表 {len(bf['cells'])} 個場地路程、{bf['since']} → {bf['last_date']} → {write_battlefield(bf)}")
     ih = incident_history_table()
     print(f"上仗事件報告表 {len(ih['horses'])} 匹、到 {ih['last_date']} → {write_incident_history(ih)}")
+    it = incident_text_table()
+    print(f"事件報告全文表 {len(it['horses'])} 匹、到 {it['last_date']} → {write_incident_text(it)}")
     ev = debut_events()
     print(f"初出馬事件 {len(ev)} → {write_debut(ev)}")
     return 0
