@@ -99,6 +99,21 @@ def test_first_awt_and_specialist(tmp_path):
     assert "初跑泥地" not in _labels(out, "1", "note")
 
 
+def test_specialist_needs_place_rate_above_two_thirds(tmp_path):
+    # EXP-20261118-05：2/2 係首本；3/5（60%）同 1 勝 1/4 唔係（舊門檻會出）
+    def run(placings):
+        horses = {"1": _horse("甲", "巴度", hid="H1", hk_starts=len(placings), rows=[("distance_fit", 0.43)])}
+        runs = [_entry(f"0{i + 1}/10/2026", "沙田草地\"A\"", 1200, "巴度", p) for i, p in enumerate(placings)]
+        d = tmp_path / str(len(placings)) / "".join(map(str, placings))
+        d.mkdir(parents=True)
+        out = tags.race_tags(*_meeting(d, horses, {"H1": runs}, distance="1200m"))
+        return [t for t in out["1"]["good"] if t["key"] == "specialist"]
+    two = run([2, 3])
+    assert two and "上名率 > 2/3" in two[0]["why"]
+    assert not run([1, 2, 3, 6, 7])
+    assert not run([1, 6, 7, 8])
+
+
 def test_trainer_signal_tags_follow_engine_adjustments_and_skip_small_ones(tmp_path):
     horses = {"1": _horse("甲", "巴度", hid="H1", adjustments=[
         ("人馬歷史", 4.0), ("騎練組合", 4.0), ("騎練組合", 2.0), ("騎師同程", 1.5), ("練馬師同程", -1.5), ("換騎", -1.5)],

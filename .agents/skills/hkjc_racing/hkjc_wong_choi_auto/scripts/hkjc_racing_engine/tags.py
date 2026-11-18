@@ -26,9 +26,10 @@ from pathlib import Path
 
 PURTON = "潘頓"
 from .distance_move import BIG_MOVE  # 大幅增減程門檻（400 米）只有一份：引擎組件
-SPECIALIST_MIN_STARTS = 3        # 首本路程：同程至少 3 仗
-SPECIALIST_PLACE_RATE = 0.4      # …而且上名率 ≥ 40% 或者勝出率 ≥ 25%
-SPECIALIST_WIN_RATE = 0.25
+# 首本路程（EXP-20261118-05，Kelvin 2026-11-18）：同程 ≥2 仗而且上名率 > 2/3。舊門檻（≥3 仗、上名率 ≥40% 或勝率 ≥25%）
+# 冇量過；回放只有上名率 >2/3 嗰組實際入頭三多過模型（dev／holdout 都 +3.5pp），34–66%、有贏過都 ≈0。
+SPECIALIST_MIN_STARTS = 2
+SPECIALIST_PLACE_RATE = 2 / 3
 L400_RUNS = 3                    # 末段：近 3 仗 L400 平均
 DRIVER_FLOOR = 0.5               # 維度影響（原始尺）細過呢個唔寫，同 summary.IMPACT_FLOOR 一致
 
@@ -404,11 +405,12 @@ def _distance_venue_tags(horse: dict, auto: dict, runs: list[dict], meta: dict) 
         same = [r for r in runs if r["distance"] == dist]
         places = sum(1 for r in same if isinstance(r["placing"], int) and 1 <= r["placing"] <= 3)
         wins = sum(1 for r in same if r["placing"] == 1)
-        if len(same) >= SPECIALIST_MIN_STARTS and (places / len(same) >= SPECIALIST_PLACE_RATE
-                                                   or wins / len(same) >= SPECIALIST_WIN_RATE):
+        if len(same) >= SPECIALIST_MIN_STARTS and places / len(same) > SPECIALIST_PLACE_RATE:
             impact = _impact(auto, "distance_fit")
             out.append(_tag("specialist", f"首本路程（{dist}米 {len(same)}戰{wins}勝{places}上名）", "good",
-                            why=f"香港 {dist}米 {len(same)} 仗 {wins} 勝、{places} 次上名。",
+                            why=f"香港 {dist}米 {len(same)} 仗 {wins} 勝、{places} 次上名（上名率 > 2/3）。"
+                                "「同程有上名」已入分（同 1 次上名一樣）；上名率咁高嘅馬，回放實際入頭三仲多過模型預測約 3.5pp"
+                                "（dev／holdout 都過零），但加大入分 A/B 令 Good 跌 → 額外部分未入分（EXP-20261118-05）。",
                             scored=bool(impact and impact > 0), impact=impact))
         elif not same and complete:
             out.append(_tag("first_distance", f"初跑{dist}米", "note",
