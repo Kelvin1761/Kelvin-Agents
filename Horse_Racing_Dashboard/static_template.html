@@ -7714,7 +7714,7 @@ function renderRecentRuns(runs) {
         ${r.result_url ? `<a class="rrun__fact rrun__link" href="${esc(r.result_url)}" target="_blank" rel="noopener">賽果</a>` : ''}
       </div>
       ${sect.length ? `<div class="rrun__sect"><em>分段</em>${sect.map(x => `<span>${esc(x)}</span>`).join('')}</div>` : ''}
-      ${r.comment ? `<div class="rrun__comment">${esc(r.comment)}</div>` : ''}
+      ${r.comment ? `<div class="rrun__comment"><em>走勢評述</em>${esc(r.comment)}</div>` : ''}
       ${r.incident ? `<div class="rrun__incident"><em>賽後報告</em>${esc(r.incident)}</div>` : ''}
     </div>`;
   }).join('');

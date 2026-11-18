@@ -3026,7 +3026,7 @@ test("HKJC 近績格逐仗詳情：能量、評述、重播連結，取代舊近
   const html = renderDimensionBody(content, "狀態與穩定性", "card-x");
   assert.match(html, /近1仗詳情/);
   assert.match(html, /能量<\/em>92/);
-  assert.match(html, /慢步速\(-\)\(2W4W\)/);
+  assert.match(html, /rrun__comment"><em>走勢評述<\/em>慢步速\(-\)\(2W4W\)/);
   assert.match(html, /rrun__incident"><em>賽後報告<\/em>早段搶口/);
   assert.match(html, /date=20261108&amp;no=01[^>]*>▶ 重播/);
   assert.doesNotMatch(html, /kv-group__title">近6場數據|近6場數據<\/div>/, "舊細表唔再重覆");
