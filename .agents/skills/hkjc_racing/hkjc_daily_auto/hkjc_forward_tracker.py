@@ -171,6 +171,11 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 since="2026-11-18", arm="docs/experiments/patches/hkjc_arm_surface_move_revert.py",
                 action="自動判：退回版 forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議退回（等你決定）；否則保留",
                 extra={"pass_verdict": "建議退回（等你決定）"}),
+    # EXP-20261119-01（Kelvin「兩個都上線」）：同程上名要同場地（V2）＋馬齡（A2）入分；回放 dev／holdout Holm 2 PASS。退回式 forward 監察。
+    ForwardTest("venue_age_post_live", "同程場地＋馬齡上線後 vs 冇組件", "EXP-20261119-01", "harness_ab", 60,
+                since="2026-11-20", arm="docs/experiments/patches/hkjc_arm_venue_age_revert.py",
+                action="自動判：退回版 forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議退回（等你決定）；否則保留",
+                extra={"pass_verdict": "建議退回（等你決定）"}),
     # EXP-20261117-07：J1 精簡版（9 個特徵，逐個拎走揀；揀用咗 dev → 只由 forward 判）。
     ForwardTest("joint_signals_lean_shadow", "未入分訊號 refit 精簡版（9 個，shadow）", "EXP-20261117-07", "harness_ab", 150,
                 since="2026-11-18", arm="docs/experiments/patches/hkjc_arm_joint_signals_lean_shadow.py",

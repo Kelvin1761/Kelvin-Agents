@@ -565,3 +565,4 @@
 - [EXP-20261118-03](EXP-20261118-03-hkjc-replay-profile-history-fix.md) — 轉場 live 對唔返測試：回放冇 horseid → D1／K2 喺回放完全冇郁（已修，讀馬匹頁存檔）；修後 live = K2 測試；live 馬匹頁只得近季（已加 Option=1 全部往績）
 - [EXP-20261118-04](EXP-20261118-04-hkjc-form-merge-refit.md) — 近績＋上名／大敗＋輸頭馬合併 refit：F1 dev −0.00048 但 Holm 3 唔過；M1 剷段速輸頭馬 holdout 跨零 → 全部 REJECT，live 唔改
 - [EXP-20261118-05](EXP-20261118-05-hkjc-same-distance-rate-and-layoff.md) — 同程上名率 >2/3 殘差 +3.5pp（dev＋holdout）但入分 S1／S2 dev REJECT（Good 護欄）；1/5 冇被高估；長休冇額外訊號
+- [EXP-20261119-01](EXP-20261119-01-hkjc-same-distance-venue-and-age.md) — 同程上名全喺另一場地被高估（dev −2.7／holdout −4.6pp）→ V2 β −1.27 上線；馬齡 A2（6 歲後 −0.37／歲）上線；一仗馬收縮 K1／K2 REJECT

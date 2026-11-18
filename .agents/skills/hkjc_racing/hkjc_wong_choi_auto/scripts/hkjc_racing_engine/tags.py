@@ -305,6 +305,31 @@ def _surface_move_tags(horse: dict, auto: dict) -> list[dict]:
     return out
 
 
+def _same_distance_venue_tags(auto: dict) -> list[dict]:
+    """同程上名要同場地（EXP-20261119-01）：同程上名全部喺另一場地 → 一個 chip 講晒（連 distance_fit 嗰 +0.43）。"""
+    from .venue_distance import label
+    info = auto.get("same_distance_venue") or {}
+    if not info.get("on"):
+        return []
+    delta = float(auto.get("same_distance_venue_delta") or 0.0)
+    return [_tag("same_distance_venue", label(info, info.get("distance")), "bad", scored=True, impact=round(delta, 2),
+                 why=f"今仗路程上過 {info.get('n')} 次名，但冇一次喺今仗場地。「同程有上名」+0.43 照計，"
+                     "另外再扣：沙田直路 1000 同谷草彎路 1000（或者兩邊 1200）唔係同一件事。6,000 場回放，"
+                     "呢類馬入頭三少過模型估計 dev 2.7pp、holdout 4.6pp；修正後兩個窗都改善（EXP-20261119-01）。")]
+
+
+def _horse_age_tag(auto: dict) -> list[dict]:
+    """馬齡（EXP-20261119-01）：7 歲或以上先出 chip（6 歲或以下全部一樣 = 中性）。"""
+    info = auto.get("horse_age") or {}
+    if not info.get("years_over"):
+        return []
+    delta = float(auto.get("horse_age_delta") or 0.0)
+    return [_tag("horse_age", f"{info['age']} 歲", "bad" if delta < 0 else "note", scored=True, impact=round(delta, 2),
+                 why=f"6 歲之後每大一歲扣 0.37 原始分（{info['age']} 歲 = 扣 {0.37 * info['years_over']:.2f}，再同全場平均比）。"
+                     "回放：8 歲以上入頭三少過模型估計約 1.5–2pp；入分後機率準咗（dev／holdout log-loss 都改善），"
+                     "但排名指標冇升（EXP-20261119-01）。")]
+
+
 def _class_move_tags(horse: dict, meta: dict) -> list[dict]:
     """Kelvin 2026-11-17（EXP-20261117-06）：初落班＋同程上過名、升班輕磅（上仗未贏）。都未入分。"""
     hist = _hist(horse)
@@ -726,6 +751,10 @@ def horse_tags(no: str, horse: dict, auto: dict, *, runs: list[dict], meta: dict
                priority: str = "", extra: list | None = None) -> dict:
     special = _trainer_tags(auto) + _jockey_change_tag(horse, auto, runs) + _distance_venue_tags(horse, auto, runs, meta) + _distance_move_tags(auto)
     special += _surface_move_tags(horse, auto) + _class_move_tags(horse, meta) + _age_weight_tag(horse)
+    venue = _same_distance_venue_tags(auto)
+    if venue:   # 同一件事（同程）只出一個 chip：場地 chip 已講晒 distance_fit
+        special = [t for t in special if t["key"] != "specialist"]
+    special += venue + _horse_age_tag(auto)
     special += extra or []
     if "+" in str(priority or ""):
         special.append(_tag("trainer_ace", "練馬師王牌", "note",
@@ -734,7 +763,7 @@ def horse_tags(no: str, horse: dict, auto: dict, *, runs: list[dict], meta: dict
     covered = set()
     if any(t["key"].startswith("trainer:") or t["key"] == "jockey_change" for t in special):
         covered.add("trainer_signal")   # 騎練訊號已由具體加減項講晒
-    if any(t["key"] in ("specialist", "first_distance") for t in special):
+    if any(t["key"] in ("specialist", "first_distance", "same_distance_venue") for t in special):
         covered.add("distance_fit")
     covered.add("race_shape")   # 檔位：_draw_tags 一個 chip 講晒（Kelvin 2026-11-17）
     tags = _driver_tags(horse, auto, covered) + special

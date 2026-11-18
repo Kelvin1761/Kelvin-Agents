@@ -139,6 +139,18 @@ RANKING_ADJUSTMENTS = (
         "formula": "Σ β·(旗 − 場均)：跑馬地轉沙田草地 −2.65、沙田草地轉跑馬地 +1.12、初次沙田草地 −1.70、初次泥地 −2.03（原始分）；往績 = HKJC 馬匹頁香港賽事、日期嚴格早過今仗（hkjc_racing_engine/surface_move.py）",
         "missing": "冇香港往績（初出／外隊）= 冇旗；其他轉場方向只顯示、唔入分",
     },
+    {
+        "key": "same_distance_venue",
+        "label": "同程上名場地（EXP-20261119-01）",
+        "formula": "β·([今仗路程有上名、但冇一次喺今仗場地（谷草／田草／泥地）] − 場均)，β = −1.27（原始分）；同程有上名嘅 +0.4284 照留；往績 = HKJC 馬匹頁香港賽事、日期嚴格早過今仗（hkjc_racing_engine/venue_distance.py）",
+        "missing": "冇香港往績（初出／外隊）= 冇旗；冇今仗路程 = 不套用",
+    },
+    {
+        "key": "horse_age",
+        "label": "馬齡（EXP-20261119-01）",
+        "formula": "β·(max(0, 馬齡 − 6) − 場均)，β = −0.37／歲（原始分）；馬齡 = HKJC 馬匹頁（hkjc_racing_engine/horse_age.py）",
+        "missing": "冇馬齡 = 當 ≤6 歲（中性）",
+    },
 )
 
 DEBUT_MATRIX_WEIGHTS = dimensions.debut_weights()
