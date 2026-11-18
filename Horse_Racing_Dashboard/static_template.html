@@ -1705,6 +1705,127 @@ dialog.roi-modal-dialog::backdrop { background: rgba(11,18,32,.42); -webkit-back
   .roi-modal { width: 100%; max-height: calc(100vh - 24px - env(safe-area-inset-top)); border-radius: var(--radius-xl) var(--radius-xl) 0 0; padding-bottom: env(safe-area-inset-bottom); }
 }
 </style>
+<style id="wc-card-refresh">
+/* ─── 馬卡＋完整分析：premium minimalist（Kelvin 2026-11-18「brackets over brackets」）───
+   原則：一層只得一個容器。外層白卡已經係框，入面唔再加框；分組靠留白＋髮絲線，
+   顏色只留畀「有意思」嘅嘢（加減分、快慢、賽後報告）。純顯示，唔郁任何資料。 */
+:root { --wc-hair: #EEF1F5; --wc-hair-strong: #E3E8EF; --wc-ink-3: #94A3B8; }
+
+/* 馬卡上半部 */
+.horse-card .mkt { background: #F8FAFC; border: 0; border-radius: 10px; padding: 9px 14px; }
+.horse-card .dim-strip { background: #FAFBFC; border: 1px solid var(--wc-hair); border-radius: 14px; padding: 16px 20px 14px; }
+.horse-card .dim-strip__title { font-size: .7rem; font-weight: 700; color: var(--color-text-soft); letter-spacing: .03em; }
+.horse-card .dim-row { padding: 5px 0; }
+.horse-card .dim-row__name { color: var(--color-text); font-weight: 600; }
+.horse-card .dim-row__track { height: 6px; border-radius: 999px; background: #EEF2F6; }
+.horse-card .dim-row__track::before { background: #D5DCE5; }
+.horse-card .dim-row__fill { top: 0; bottom: 0; border-radius: 999px; }
+.horse-card .dim-strip__driver { border-top: 1px solid var(--wc-hair-strong); margin-top: 12px; padding-top: 10px; }
+.horse-card .tw-box { border: 0; border-top: 1px solid var(--wc-hair); border-bottom: 1px solid var(--wc-hair); border-radius: 0; background: transparent; margin-top: 12px; }
+.horse-card .tw-box summary { padding: 10px 2px; }
+.horse-card .verdicts { margin-top: 14px; }
+.horse-card .verdict { padding: 3px 0; }
+.horse-card__expand-btn { background: #fff; border: 1px solid var(--wc-hair-strong); box-shadow: 0 1px 2px rgba(15, 23, 42, .04); }
+.horse-card__expand-btn:hover { background: #F8FAFC; border-color: #CBD5E1; }
+.horse-card__expand-label { color: var(--color-text); font-weight: 750; }
+
+/* 完整分析：去框 */
+.analysis-detail { border-top: 1px solid var(--wc-hair); padding: 22px 6px 8px; }
+.analysis-detail__header { margin-bottom: 14px; }
+.analysis-detail__title { font-size: .9rem; }
+.analysis-document { border: 0; border-radius: 0; background: transparent; overflow: visible; }
+.analysis-document__section + .analysis-document__section { border-top: 0; margin-top: 28px; }
+.analysis-document__section-title,
+.analysis-document__section--emerald .analysis-document__section-title,
+.analysis-document__section--rose .analysis-document__section-title {
+  background: transparent; border-bottom: 1px solid var(--wc-hair-strong); padding: 0 2px 10px; min-height: 0; font-size: .92rem;
+}
+.analysis-document__section-body,
+.analysis-document__section-body { padding: 6px 2px 4px; }
+
+/* 9 個維度：一行一個，髮絲線分隔，冇框冇底色 */
+.analysis-sub { margin: 0; border: 0; border-bottom: 1px solid var(--wc-hair); border-radius: 0; background: transparent; overflow: visible; box-shadow: none; }
+.analysis-sub:has(.is-open) { border-color: var(--wc-hair); box-shadow: none; }
+.analysis-sub__toggle { background: transparent; padding: 14px 4px; min-height: 52px; font-size: .8rem; color: var(--color-text); font-weight: 650; border-radius: 8px; }
+.analysis-sub__toggle:hover { background: #F8FAFC; }
+.analysis-sub__toggle.is-open { background: transparent; font-weight: 800; }
+.analysis-sub__body, .analysis-sub__body { background: transparent; border-top: 0; padding: 2px 4px 26px; font-size: .74rem; }
+
+/* 「點計出嚟」「對綜合分」：一行字，唔係框 */
+.dim-formula { background: transparent; border: 0; border-radius: 0; padding: 4px 0; gap: 16px; }
+.dim-formula + .dim-formula { padding-top: 0; }
+.dim-formula__result { font-size: 1.6rem; color: var(--color-text); letter-spacing: -.02em; }
+.dim-formula--calc .dim-formula__body { color: var(--color-text-muted); }
+
+/* 分項：冇框，髮絲線頂，留白分組 */
+.dim-subs { margin-top: 18px; gap: 0 32px; }
+.dim-sub, .dim-sub--anchor { border: 0; border-top: 1px solid var(--wc-hair-strong); border-radius: 0; background: transparent; padding: 16px 0 6px; }
+.dim-sub__name { font-size: .78rem; font-weight: 800; color: var(--color-text); }
+.dim-sub__score { font-size: 1.15rem; color: var(--color-text); }
+.dim-sub__score--tag { font-size: .6rem; color: var(--color-text-muted); }
+.dim-sub__score--up { color: var(--color-up); }
+.dim-sub__score--down { color: var(--color-down); }
+.dim-sub__detail { border-top: 0; padding-top: 2px; margin-top: 8px; }
+.dim-adj { border-bottom: 1px solid #F3F5F8; padding: 7px 0; }
+.dim-adj--anchor, .dim-adj--total { background: transparent; padding: 7px 0; border-radius: 0; }
+.dim-parts { margin-top: 14px; gap: 0; }
+.dim-part { background: transparent; border: 0; border-top: 1px solid var(--wc-hair); border-radius: 0; padding: 14px 0 10px; }
+.dim-part:first-child { border-top: 0; padding-top: 4px; }
+.dim-part__name { font-size: .76rem; }
+.dim-part__score { font-size: 1.05rem; color: var(--color-text); }
+.dim-part__bar { height: 4px; border-radius: 999px; background: #EEF2F6; margin-top: 8px; }
+.dim-part__bar span { background: #64748B; border-radius: 999px; }
+.dim-part__why { color: var(--color-text-secondary); font-size: .7rem; margin-top: 8px; }
+.kv-group, .kv-group--inbox { background: transparent; border: 0; border-radius: 0; padding: 0; margin-top: 14px; }
+.kv-group__title { font-size: .64rem; color: var(--wc-ink-3); letter-spacing: .06em; margin-bottom: 6px; }
+.kv-line { border-bottom: 1px solid #F3F5F8; }
+.dim-verdict { background: transparent; border-left: 2px solid #CBD5E1; padding: 2px 0 2px 12px; margin-top: 16px; }
+.dim-note { border-left: 0; padding-left: 0; }
+.analysis-sub__body .rich-quote, .analysis-sub__body .rich-kv--quote, .analysis-document__section-body > .rich-quote, .analysis-document__section-body > .rich-kv--quote { background: transparent; border-left: 0; padding-left: 0; color: var(--wc-ink-3); font-size: .7rem; }
+
+/* 近6仗詳情：一仗一段，髮絲線分隔，資料 label 喺上 value 喺下 */
+.rrun-list { margin-top: 22px; gap: 0; }
+.rrun-list__title { font-size: .78rem; color: var(--color-text); padding-bottom: 10px; border-bottom: 1px solid var(--wc-hair-strong); }
+.rrun-list__title span { font-weight: 500; color: var(--wc-ink-3); }
+.rrun, .rrun--latest { border: 0; border-bottom: 1px solid var(--wc-hair); border-radius: 0; background: transparent; padding: 18px 2px 20px; }
+.rrun__top { gap: 4px 16px; }
+.rrun__when { font-size: .8rem; }
+.rrun__when b { font-weight: 800; }
+.rrun__when .rrun__tag { font-size: .58rem; font-weight: 800; color: #1E40AF; background: #EEF4FF; border-radius: 999px; padding: 1px 7px; }
+.rrun__race { font-size: .72rem; color: var(--color-text-secondary); }
+.rrun__place { font-size: 1.05rem; letter-spacing: -.01em; }
+.rrun__margin { font-size: .66rem; color: var(--wc-ink-3); }
+.rrun__replay { background: transparent; color: #1E40AF; border: 1px solid #C7D7FE; padding: 3px 11px; }
+.rrun__replay:hover { background: #EEF4FF; }
+.rrun__facts { display: grid; grid-template-columns: repeat(auto-fill, 118px); gap: 12px 20px; margin-top: 14px; font-size: .74rem; font-weight: 600; }
+.rrun__fact em { display: block; margin: 0 0 2px; font-size: .58rem; font-weight: 600; letter-spacing: .04em; color: var(--wc-ink-3); }
+.rrun__link { align-self: end; }
+.rrun__sect { margin-top: 14px; gap: 6px; }
+.rrun__sect > em { width: 100%; font-size: .58rem; letter-spacing: .04em; color: var(--wc-ink-3); margin: 0 0 2px; }
+.rrun__sect span { padding: 4px 9px; border-radius: 8px; background: #F4F6F9; }
+.rrun__split--slow { background: #FEF2F2 !important; border-color: transparent; }
+.rrun__split--fast { background: #ECFDF5 !important; border-color: transparent; }
+.rrun__sect-note { width: 100%; margin: 2px 0 0; }
+.rrun__body { margin-top: 14px; }
+.rrun__body .rrun__facts { margin-top: 0; }
+.rrun__notes { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+.rrun__notes .rrun__comment, .rrun__notes .rrun__incident { margin-top: 0; }
+.rrun__link { font-size: .66rem; font-weight: 700; color: #1E40AF; text-decoration: none; }
+.rrun__link:hover { text-decoration: underline; }
+@media (min-width: 1000px) {
+  .rrun__body { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+  .rrun__notes { margin-top: 0; }
+}
+.rrun__comment, .rrun__incident { margin-top: 14px; border: 0; border-radius: 10px; padding: 11px 14px; font-size: .74rem; line-height: 1.75; }
+.rrun__comment { background: #F3F7FF; color: #1E293B; }
+.rrun__incident { background: #FFFAEB; color: #1E293B; }
+.rrun__comment em, .rrun__incident em { font-size: .6rem; letter-spacing: .04em; margin-bottom: 4px; }
+@media (max-width: 640px) {
+  .rrun__facts { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 12px; }
+  .analysis-sub__toggle { padding: 13px 2px; }
+  .horse-card .dim-strip { padding: 12px 12px 10px; }
+}
+</style>
 </head>
 <body>
 <!-- __NBA_LOGO_SPRITE__ -->
@@ -6333,7 +6454,7 @@ function renderAnalysisDocumentSection(section, index, cardId) {
     body += `<div class="analysis-sub" id="${childId}-anchor">
       <button type="button" class="analysis-sub__toggle" aria-expanded="false" aria-controls="${childId}" onclick="toggleAnalysisSub('${childId}', this)">
         ${child.icon ? `<span class="analysis-sub__icon" aria-hidden="true">${child.icon}</span>` : ''}
-        <span class="analysis-sub__title">${esc(child.title)}</span>
+        <span class="analysis-sub__title">${esc(String(child.title).replace(/`/g, ''))}</span>
         <span class="analysis-sub__chevron" aria-hidden="true">⌄</span>
       </button>
       <div id="${childId}" class="analysis-sub__body" hidden>${renderDimensionBody(child.content, child.title, cardId)}</div>
@@ -7705,13 +7826,14 @@ function renderRecentRuns(runs) {
           <span class="rrun__place${tone ? ` rrun__place--${tone}` : ''}">${esc(place || '—')}</span>
           ${r.margin ? `<span class="rrun__margin">輸 ${esc(r.margin)}</span>` : ''}
           ${r.replay_url ? `<a class="rrun__replay" href="${esc(r.replay_url)}" target="_blank" rel="noopener">▶ 重播</a>` : ''}
+          ${r.result_url ? `<a class="rrun__link" href="${esc(r.result_url)}" target="_blank" rel="noopener">賽果 ↗</a>` : ''}
         </div>
       </div>
+      <div class="rrun__body"><div class="rrun__data">
       <div class="rrun__facts">
         ${cell('檔位', r.draw)}${cell('負磅', r.weight)}${cell('馬重', r.body_weight)}${cell('人馬', people)}
         ${cell('能量', r.energy, '速勢能量數值（HKJC）')}${cell('獨贏', r.odds)}${cell('沿途走位', r.positions)}
         ${cell('完成時間', r.finish_time)}${cell('配備', r.gear, r.gear ? translateGear(r.gear) : '')}
-        ${r.result_url ? `<a class="rrun__fact rrun__link" href="${esc(r.result_url)}" target="_blank" rel="noopener">賽果</a>` : ''}
       </div>
       ${sect.length ? `<div class="rrun__sect"><em>分段</em>${sect.map((x, k) => {
         // 對嗰仗班次嘅馬會標準（後端用引擎 past_runs.standard_sections，同段速「對馬會標準」一份）。
@@ -7722,8 +7844,10 @@ function renderRecentRuns(runs) {
         const word = tone === 'slow' ? '慢' : (tone === 'fast' ? '快' : '同');
         return `<span class="rrun__split rrun__split--${tone}" title="馬會標準 ${std.toFixed(2)} 秒，${word}${tone === 'par' ? '' : ` ${Math.abs(d).toFixed(2)} 秒`}">${esc(x)}<small>${d > 0 ? '+' : (d < 0 ? '−' : '±')}${Math.abs(d).toFixed(2)}</small></span>`;
       }).join('')}${Array.isArray(r.std_sections) ? '<i class="rrun__sect-note">對嗰仗班次馬會標準：綠快紅慢</i>' : ''}</div>` : ''}
+      </div>${(r.comment || r.incident) ? `<div class="rrun__notes">
       ${r.comment ? `<div class="rrun__comment"><em>走勢評述</em>${esc(r.comment)}</div>` : ''}
       ${r.incident ? `<div class="rrun__incident"><em>賽後報告</em>${esc(r.incident)}</div>` : ''}
+      </div>` : ''}</div>
     </div>`;
   }).join('');
   return `<div class="rrun-list"><div class="rrun-list__title">近${runs.length}仗詳情<span>HKJC 賽績（速勢能量）＋馬匹頁＋競賽事件報告</span></div>${rows}</div>`;
