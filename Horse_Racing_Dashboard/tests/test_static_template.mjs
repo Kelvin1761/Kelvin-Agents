@@ -2977,3 +2977,28 @@ test("HKJC 全場重點 shows horse number and name, grouped rows (Kelvin 2026-1
   assert.doesNotMatch(html, /undefined|NaN/);
   assert.equal(renderHkjcRaceSummary({ items: [] }), "");
 });
+
+test("HKJC 狀態與穩定性：近績分＋上名／大敗紀錄分合成一個「近績」格（Kelvin 2026-11-18，純顯示）", () => {
+  const { renderDimensionBody } = loadTemplateFunctions();
+  const content = [
+    "- **評分構成:** 近績分 71.0 x 56%、上名／大敗紀錄分 68.4 x 44%",
+    "  - **維度計法:** 分項加權 ＝ 原始 69.9（顯示尺 71.7）；佔綜合分 24.5%，貢獻 0.2451 ×（69.9 − 60）＝ +2.42 分",
+    "    - 近績分 71 ← 近6仗名次 2-5-7-3-2-4；3次前三",
+    "      · 計法：名次分：1名100、2名85 ＝ 71.1",
+    "    - 上名／大敗紀錄分 68 ← 近6仗有3次前三、0次八名或以後。",
+    "      · 計法：58 ＋ 18 × 跑近前列比例 0.74 ＝ 68.4",
+    "  - **判讀:** 近三仗轉差 → 72分，加分位。",
+    "  - **數據:**",
+    "    - 近6場數據:",
+    "      - 第1仗(08/11/2026 第五班): 2名 1",
+  ].join("\n");
+  const html = renderDimensionBody(content, "狀態與穩定性");
+  assert.equal((html.match(/class="dim-sub"/g) || []).length, 1, "one box");
+  assert.match(html, /dim-sub__name">近績</);
+  assert.match(html, /dim-part__name">近績分<\/span>\s*<span class="dim-part__share">佔 56%/);
+  assert.match(html, /dim-part__name">上名／大敗紀錄分<\/span>\s*<span class="dim-part__share">佔 44%/);
+  assert.match(html, /68\.4/, "consistency workings kept");
+  // 其他維度唔受影響
+  const other = renderDimensionBody(content, "騎練訊號");
+  assert.equal((other.match(/class="dim-sub"/g) || []).length, 2);
+});

@@ -7634,6 +7634,7 @@ function renderSubScore(node, meta, routedGroups) {
       ${score !== null ? `<span class="dim-sub__score">${esc(score)}</span>` : ''}
     </div>
     ${person ? `<div class="dim-sub__person">${esc(person)}</div>` : ''}
+    ${meta && meta.note ? `<div class="dim-part__why">${esc(meta.note)}</div>` : ''}
     ${chart}
     ${stats}
     ${caption ? renderCaption(caption) : ''}
@@ -7648,9 +7649,9 @@ function renderSubScore(node, meta, routedGroups) {
         ${c.share != null ? `<div class="dim-part__bar"><span style="width:${
           Math.max(2, Math.min(100, Number(c.share)))}%"></span></div>` : ''}
         ${c.source ? `<div class="dim-part__why">${esc(c.source)}</div>` : ''}
-        ${c.node && c.node.children && c.node.children.length
+        ${c.node && ((c.node.children && c.node.children.length) || (c.extras && c.extras.length))
           ? `<div class="dim-part__detail">${
-              renderSubScoreDetails(flattenDetailNodes(c.node.children), c.source)}</div>` : ''}
+              renderSubScoreDetails([...flattenDetailNodes(c.node.children || []), ...flattenDetailNodes(c.extras || [])], c.source)}</div>` : ''}
         ${renderInboxGroups(c.routed)}
       </div>`).join('')}</div>` : ''}
     ${renderInboxGroups(routedGroups)}
@@ -7677,6 +7678,29 @@ function renderFormLineTable(nodes) {
       <td class="formline__cell--wide">${esc(r.rival) || '—'}</td>
       <td class="formline__cell--wide">${esc(r.after) || '—'}</td>
     </tr>`).join('')}</tbody></table></div>`;
+}
+
+// Kelvin 2026-11-18：近績分同上名／大敗紀錄分睇嘅係同一批近仗名次，分開兩格好亂。
+// 純顯示：合成一個「近績」格，兩個部分照用引擎嘅比例同計法。引擎同 refit 仍然
+// 逐個 leaf 計（EXP-20261118-04 合併 refit 未證實更好，權重唔郁）。
+const FORM_GROUP_PARTS = [/^近績分$/, /^(?:上名／大敗紀錄分|穩定性分)$/];
+function groupFormSubScores(subs, formulaText, dimensionTitle) {
+  if (!/狀態與穩定性|近績穩定性/.test(dimensionTitle || '')) return;
+  const idx = FORM_GROUP_PARTS.map(re => subs.findIndex(x => re.test(x.name) && !x.components));
+  if (idx.some(i => i < 0)) return;
+  const parts = idx.map(i => subs[i]);
+  for (const part of parts) {
+    const m = new RegExp(`${part.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*[\\d.]+\\s*[x×]\\s*([\\d.]+)%`).exec(formulaText || '');
+    if (m) part.share = parseFloat(m[1]);
+    part.routed = undefined;
+  }
+  const group = {
+    name: '近績', score: null, extras: [], node: { text: '', children: [] }, components: parts, source: '',
+    note: '名次（近績分）同上名／大敗紀錄（連輸距）合成一格，兩部分分開計，按比例入分。段速表現另有一項輸頭馬加減。',
+  };
+  const first = Math.min(...idx);
+  for (const i of [...idx].sort((a, b) => b - a)) subs.splice(i, 1);
+  subs.splice(first, 0, group);
 }
 
 function renderDimensionBody(content, dimensionTitle) {
@@ -7743,6 +7767,7 @@ function renderDimensionBody(content, dimensionTitle) {
     }
     if (formula.children.length) {
       const { subs, unrouted, notes } = classifyFormulaChildren(formula.children);
+      groupFormSubScores(subs, formula.text, dimensionTitle);
       if (subs.length) {
         subs.forEach(x => (x.components || []).forEach(c => { c.routed = routedFor(routed, c.name); }));
         h += `<div class="dim-subs">${subs.map(x => renderSubScore(x.node, x, routedFor(routed, x.name))).join('')}</div>`;
