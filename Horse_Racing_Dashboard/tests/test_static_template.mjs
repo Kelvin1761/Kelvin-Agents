@@ -3000,6 +3000,9 @@ test("HKJC 狀態與穩定性：近績分＋上名／大敗紀錄分合成一個
   assert.match(html, /dim-part__name">近績分<\/span>\s*<span class="dim-part__share">佔 56%/);
   assert.match(html, /dim-part__name">上名／大敗紀錄分<\/span>\s*<span class="dim-part__share">佔 44%/);
   assert.match(html, /68\.4/, "consistency workings kept");
+  // 計法收埋喺「計法」掣（Kelvin 2026-11-18「好難讀」），內容照留、前綴「· 計法：」唔重覆
+  assert.equal((html.match(/<details class="dim-calc"><summary>計法<\/summary>/g) || []).length, 2);
+  assert.match(html, /dim-calc[\s\S]*?<div class="dim-note">58 ＋ 18 × 跑近前列比例/);
   // 其他維度唔受影響
   const other = renderDimensionBody(content, "騎練訊號");
   assert.equal((other.match(/class="dim-sub"/g) || []).length, 2);

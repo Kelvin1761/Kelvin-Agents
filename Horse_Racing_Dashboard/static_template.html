@@ -1870,6 +1870,65 @@ dialog.roi-modal-dialog::backdrop { background: rgba(11,18,32,.42); -webkit-back
 .dim-item__body { margin: 2px 0 12px; padding: 14px 18px 6px; background: #F8FAFC; border-radius: 12px; }
 .dim-item__body > :first-child { margin-top: 0; }
 .dim-item__loading { font-size: .72rem; color: var(--wc-ink-3); padding-bottom: 8px; }
+/* ── 撳開嘅維度拆解：一套字級（Kelvin 2026-11-18「全部好大、淺色之後突然黑大字、唔和諧」）──
+   只用三級：內文 12px／註 11px／標籤 10px；字重 400／600；顏色 #0F172A 標題同數字、#334155 內文、#64748B 註、#94A3B8 標籤。
+   數字唔再特大（以前 16.8px 800），同標題一樣大、靠字重分。 */
+.dim-item__body { font-size: .75rem; line-height: 1.6; color: #334155; padding: 12px 16px 4px; }
+.dim-item__body .dim-formula { padding: 1px 0; gap: 8px; }
+.dim-item__body .dim-formula__body { font-size: .75rem; color: #334155; line-height: 1.6; }
+.dim-item__body .dim-formula--calc .dim-formula__body { color: #64748B; font-size: .6875rem; }
+.dim-item__body .dim-formula__label { display: inline; margin-right: 8px; font-size: .625rem; font-weight: 600; color: #94A3B8; letter-spacing: .02em; }
+.dim-item__body .dim-formula__result { font-size: .875rem; font-weight: 600; }
+.dim-item__body .dim-subs { margin-top: 10px; }
+.dim-item__body .dim-sub, .dim-item__body .dim-sub--anchor { padding: 10px 0 4px; border-top-color: var(--wc-hair); }
+.dim-item__body .dim-sub__head { align-items: baseline; }
+.dim-item__body .dim-sub__name { font-size: .75rem; font-weight: 600; color: #0F172A; }
+.dim-item__body .dim-sub__score { font-size: .8125rem; font-weight: 600; color: #0F172A; font-variant-numeric: tabular-nums; }
+.dim-item__body .dim-sub__score--tag { font-size: .625rem; font-weight: 600; color: #94A3B8; }
+.dim-item__body .dim-part__why, .dim-item__body .dim-note { font-size: .6875rem; line-height: 1.6; color: #64748B; margin-top: 4px; }
+.dim-item__body .dim-sub > .dim-part__why { max-width: 60em; }
+.dim-item__body .dim-parts { margin-top: 8px; }
+.dim-item__body .dim-part { padding: 8px 0 6px; }
+.dim-item__body .dim-part__head { display: flex; align-items: baseline; gap: 8px; }
+.dim-item__body .dim-part__name { font-size: .75rem; font-weight: 600; color: #0F172A; }
+.dim-item__body .dim-part__share { font-size: .625rem; font-weight: 600; color: #94A3B8; }
+.dim-item__body .dim-part__score { margin-left: auto; font-size: .8125rem; font-weight: 600; color: #0F172A; font-variant-numeric: tabular-nums; }
+.dim-item__body .dim-part__bar { height: 3px; margin-top: 5px; background: #E9EDF2; }
+.dim-item__body .dim-part__bar span { background: #94A3B8; }
+.dim-item__body .dim-part > .dim-part__why { color: #334155; font-size: .75rem; }
+.dim-item__body .dim-kv__row dt, .dim-item__body .dim-kv__row dd { font-size: .6875rem; }
+.dim-calc { margin-top: 4px; }
+.dim-calc > summary { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; list-style: none; font-size: .625rem; font-weight: 600; color: #94A3B8; padding: 1px 0; }
+.dim-calc > summary::-webkit-details-marker { display: none; }
+.dim-calc > summary::after { content: '⌄'; font-size: .7rem; line-height: 1; transition: transform .2s ease; }
+.dim-calc[open] > summary::after { transform: rotate(180deg); }
+.dim-calc > summary:hover { color: #64748B; }
+.dim-calc .dim-note { margin-top: 2px; color: #94A3B8; }
+/* 近仗：日期、名次同其他字一樣級數，名次只係加粗＋顏色 */
+.dim-item__body .rrun-list { margin-top: 12px; }
+.dim-item__body .rrun-list__title { font-size: .75rem; font-weight: 600; padding-bottom: 6px; border-bottom-color: var(--wc-hair); }
+.dim-item__body .rrun-list__title span { font-size: .625rem; font-weight: 400; margin-left: 6px; }
+.dim-item__body .rrun, .dim-item__body .rrun--latest { padding: 9px 0 10px; }
+.dim-item__body .rrun__when { font-size: .75rem; }
+.dim-item__body .rrun__when b { font-weight: 600; color: #0F172A; }
+.dim-item__body .rrun__when .rrun__tag { font-size: .5625rem; font-weight: 600; }
+.dim-item__body .rrun__race { font-size: .6875rem; color: #64748B; }
+.dim-item__body .rrun__place { font-size: .8125rem; font-weight: 600; }
+.dim-item__body .rrun__margin { font-size: .625rem; }
+.dim-item__body .rrun__replay { font-size: .625rem; padding: 1px 8px; }
+.dim-item__body .rrun__link { font-size: .625rem; font-weight: 600; }
+.dim-item__body .rrun__facts { font-size: .6875rem; font-weight: 400; color: #334155; }
+.dim-item__body .rrun__fact em { font-size: .625rem; font-weight: 400; color: #94A3B8; }
+.dim-item__body .rrun__sect > em, .dim-item__body .rrun__sect-note { font-size: .625rem; color: #94A3B8; }
+.dim-item__body .rrun__split { font-size: .625rem; font-weight: 600; }
+.dim-item__body .rrun__comment, .dim-item__body .rrun__incident { font-size: .6875rem; line-height: 1.6; color: #334155; }
+.dim-item__body .rrun__comment em, .dim-item__body .rrun__incident em { font-size: .5625rem; font-weight: 600; }
+@media (min-width: 1000px) {
+  /* 兩個組成部分並排，唔再各自橫跨成闊（一行百幾字好難跟） */
+  .dim-item__body .dim-parts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 28px; }
+  .dim-item__body .dim-part, .dim-item__body .dim-part:first-child { border-top: 0; padding-top: 4px; }
+  .dim-item__body .rrun__body { margin-top: 5px; }
+}
 @media (max-width: 768px) {
   .dim-row--toggle { grid-template-columns: minmax(0, 1fr) auto auto; }
   .dim-row--toggle .dim-row__tone { grid-column: 3; grid-row: 1 / 3; align-self: center; }
@@ -7925,13 +7984,22 @@ function renderSubScore(node, meta, routedGroups) {
           Math.max(2, Math.min(100, Number(c.share)))}%"></span></div>` : ''}
         ${c.source ? `<div class="dim-part__why">${esc(c.source)}</div>` : ''}
         ${c.node && ((c.node.children && c.node.children.length) || (c.extras && c.extras.length))
-          ? `<div class="dim-part__detail">${
-              renderSubScoreDetails([...flattenDetailNodes(c.node.children || []), ...flattenDetailNodes(c.extras || [])], c.source)}</div>` : ''}
+          ? renderPartDetail(renderSubScoreDetails([...flattenDetailNodes(c.node.children || []), ...flattenDetailNodes(c.extras || [])], c.source)) : ''}
         ${renderInboxGroups(c.routed)}
       </div>`).join('')}</div>` : ''}
     ${meta && meta.runsTable ? meta.runsTable : ''}
     ${renderInboxGroups(routedGroups)}
   </div>`;
+}
+
+// 計法（一長串算式）預設收埋，撳「計法」先見（Kelvin 2026-11-18「好難讀」）。只得計法行先收；有其他內容照出。
+function renderPartDetail(html) {
+  if (!html) return '';
+  if (/^(?:<div class="dim-note">· 計法[\s\S]*?<\/div>)+$/.test(html.trim())) {
+    const body = html.replace(/<div class="dim-note">· 計法\s*[:：]\s*/g, '<div class="dim-note">');
+    return `<details class="dim-calc"><summary>計法</summary>${body}</details>`;
+  }
+  return `<div class="dim-part__detail">${html}</div>`;
 }
 
 function renderFormLineTable(nodes) {
