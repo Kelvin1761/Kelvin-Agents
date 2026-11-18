@@ -190,13 +190,15 @@ def scrape_horse_profile(horse_id: str, timeout: int = 15) -> dict:
     # Check disk cache (48 hours expiry)
     if horse_id in _profile_cache:
         cached = _profile_cache[horse_id]
-        if now - cached.get('_ts', 0) < 86400 * 2 and 'age' in (cached.get('data') or {}):  # 2026-11-17：冇 age 欄嘅舊快取重抓一次
+        if now - cached.get('_ts', 0) < 86400 * 2 and (cached.get('data') or {}).get('full_record'):  # 2026-11-18：舊快取（只有近季往績）重抓一次
             return cached['data']
 
+    # Option=1 = 全部往績。預設頁只顯示近幾季（例如 42 場只出 26 場），令轉場組件嘅「初次田草／初次泥地」
+    # 對長年資馬判錯（EXP-20261118-03；K2 測試用嘅係完整往績）。
     if '_' in horse_id:
-        url = f"https://racing.hkjc.com/zh-hk/local/information/horse?horseid={horse_id}"
+        url = f"https://racing.hkjc.com/zh-hk/local/information/horse?horseid={horse_id}&Option=1"
     else:
-        url = f"https://racing.hkjc.com/zh-hk/local/information/horse?HorseNo={horse_id}"
+        url = f"https://racing.hkjc.com/zh-hk/local/information/horse?HorseNo={horse_id}&Option=1"
     
     result = {
         'horse_id': horse_id,
@@ -204,6 +206,7 @@ def scrape_horse_profile(horse_id: str, timeout: int = 15) -> dict:
         'trainer': '',
         'entries': [],
         'error': None,
+        'full_record': True,
     }
     
     try:

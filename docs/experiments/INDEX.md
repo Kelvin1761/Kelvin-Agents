@@ -562,3 +562,5 @@
 - [EXP-20261116-23](EXP-20261116-23-tennis-sharp-forward.md) — Tennis Sportsbet 對 Betfair 即時價紙上前向測試（預先登記）：每 15 分鐘抓 Betfair 網球 MATCH_ODDS，每場喺 21:00 嗰輪做一次決定就凍結，EV>0 落 1u；300／1,000 注推 Telegram
 - [EXP-20261118-01](EXP-20261118-01-hkjc-good-form-gear-change.md) — HKJC 近績好（近3仗≥2入位）＋轉配備：整體冇訊號（+1.1／+3.4pp 跨零）；只除配備 dev +9.3 顯著、holdout +5.6 跨零未證實；首次配備贏馬 dev −5.3 唔穩定；唔改分
 - [EXP-20261118-02](EXP-20261118-02-hkjc-consistency-overlap.md) — 上名／大敗紀錄分係真訊號（AUC 0.672，控制 raw 後仍正）但同近績 ρ0.84、輸頭馬 ρ0.85；合併／對調明顯差、剷走打和 → 唔改；剷輸頭馬差距 dev PASS、holdout 跨零 REJECT；順手發現現行 main 回放差過 K2／D1（轉場組件往績來源懷疑），另查
+- [EXP-20261118-03](EXP-20261118-03-hkjc-replay-profile-history-fix.md) — 轉場 live 對唔返測試：回放冇 horseid → D1／K2 喺回放完全冇郁（已修，讀馬匹頁存檔）；修後 live = K2 測試；live 馬匹頁只得近季（已加 Option=1 全部往績）
+- [EXP-20261118-04](EXP-20261118-04-hkjc-form-merge-refit.md) — 近績＋上名／大敗＋輸頭馬合併 refit：F1 dev −0.00048 但 Holm 3 唔過；M1 剷段速輸頭馬 holdout 跨零 → 全部 REJECT，live 唔改
