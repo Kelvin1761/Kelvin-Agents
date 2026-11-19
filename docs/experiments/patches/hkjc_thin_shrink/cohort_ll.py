@@ -18,8 +18,6 @@ for arm in ("S1", "S3"):
         changed = [i for i, (h, g) in enumerate(zip(x["horses"], y["horses"])) if h["raw"] != g["raw"] and h["pos"]]
         if not changed: continue
         s = c.season(x["date"])
-        for X, ab, store in ((x, fb[s], 0), (y, fc[s], 1)):
-            pass
         hs_b = [h for h in x["horses"] if h["pos"]]; hs_c = [h for h in y["horses"] if h["pos"]]
         rb = np.array([h["raw"] for h in hs_b]); rc_ = np.array([h["raw"] for h in hs_c])
         pb = 1/(1+np.exp(-(fb[s][0]+fb[s][1]*(rb-rb.mean())))); pc = 1/(1+np.exp(-(fc[s][0]+fc[s][1]*(rc_-rc_.mean()))))
@@ -32,6 +30,6 @@ for arm in ("S1", "S3"):
         rk.append((rb_rank, rc_rank, yv))
     d = np.array(diffs); rng = np.random.default_rng(0)
     bt = [d[rng.integers(0, len(d), len(d))].mean() for _ in range(2000)]
-    top2b = [r for r in rk if r[0] <= 2]; 
+    top2b = [r for r in rk if r[0] <= 2]
     print(f"{arm} dev 群組馬 n={len(d)}  Δlog-loss（每匹）{d.mean():+.4f} [{np.percentile(bt,2.5):+.4f},{np.percentile(bt,97.5):+.4f}]；"
           f"base 排頭2 嘅 {len(top2b)} 匹 → 收窄後排名 {[r[1] for r in top2b]}，入位 {[r[2] for r in top2b]}")
