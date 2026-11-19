@@ -508,6 +508,28 @@ def classify_trend(gallop_times: list[float], active_days: int, blank_days: int)
     return "stable"
 
 
+def race_jockey_work(entries: list[dict[str, Any]], race_jockey: str) -> dict[str, int]:
+    """賽日騎師喺呢段時間親自做咗幾多課（唯一定義：「賽日騎師有參與操練」同騎師快操／試閘標籤都用呢個）。
+
+    配對 = 騎手欄或者詳情有騎師名；排位表騎師名嘅減磅「(-7)」要剷走先配（以前見習騎師永遠配唔中）。
+    出賽行唔計（比賽策騎唔係操練）。
+    """
+    name = normalize_person_name(re.sub(r"\s*[（(][^)）]*[)）]\s*", "", str(race_jockey or "")))
+    out = {"any": 0, "gallops": 0, "trials": 0}
+    if not name:
+        return out
+    for e in entries:
+        if is_race_row(e):
+            continue
+        if name in normalize_person_name(e.get("rider", "")) or name in normalize_person_name(e.get("details", "")):
+            out["any"] += 1
+            if e.get("type") == "gallop":
+                out["gallops"] += 1
+            elif e.get("type") == "trial":
+                out["trials"] += 1
+    return out
+
+
 def is_race_row(entry: dict[str, Any]) -> bool:
     """晨操表入面嘅「出賽」行係比賽，唔係操練。"""
     return str(entry.get("type_raw") or "") == "出賽"
@@ -530,14 +552,7 @@ def make_digest(horse: dict[str, Any], entries: list[dict[str, Any]],
     gallop_times = [t for e in entries if e["type"] == "gallop" for t in [entry_trend_time(e)] if t is not None]
     trial_times = [t for e in entries if e["type"] == "trial" for t in [entry_trend_time(e)] if t is not None]
     trend = classify_trend(gallop_times, active_days, blank_days)
-    race_jockey_involved = False
-    normalized_race_jockey = normalize_person_name(race_jockey)
-    if normalized_race_jockey:
-        race_jockey_involved = any(
-            normalized_race_jockey in normalize_person_name(e.get("rider", ""))
-            or normalized_race_jockey in normalize_person_name(e.get("details", ""))
-            for e in entries
-        )
+    race_jockey_involved = race_jockey_work(entries, race_jockey)["any"] > 0
     gear_training = sorted({e["gear"] for e in entries if e.get("gear")})
     positive_flags: list[str] = []
     risk_flags: list[str] = []
@@ -657,6 +672,9 @@ def summarize_trackwork(horse: dict[str, Any], entries: list[dict[str, Any]],
         "trial_final_times": [e.get("final_time") for e in entries if e["type"] == "trial" and e.get("final_time") is not None],
         "gallop_time_trend": digest.get("workout_intensity_trend"),
         "race_jockey_involved": "賽日騎師有參與操練" in digest.get("stability_positive_flags", []),
+        # 賽日騎師親自快操／試閘課數（Kelvin 2026-11-19；純顯示，唔入分）
+        "race_jockey_gallops_21d": race_jockey_work(entries, horse.get("jockey", ""))["gallops"],
+        "race_jockey_trials_21d": race_jockey_work(entries, horse.get("jockey", ""))["trials"],
         "named_rider_count": len({e.get("rider") for e in entries if e.get("rider")}),
         "rider_role_counts": {
             role: sum(1 for e in entries if e.get("rider_role") == role)

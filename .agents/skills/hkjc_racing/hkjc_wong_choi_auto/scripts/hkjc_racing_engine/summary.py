@@ -228,7 +228,7 @@ def enrich(summary: dict | None, auto: dict, field_scores: list[float]) -> dict 
 
 
 _BATTLEFIELD: dict | None = None
-SCORED_HIGHLIGHT_KEYS = ("surface_move", "same_distance_venue", "horse_age", "distance_up", "incident_wide", "incident_medical", "draw_style_misfit")
+SCORED_HIGHLIGHT_KEYS = ("surface_move", "same_distance_venue", "horse_age", "thin_evidence", "distance_up", "incident_wide", "incident_medical", "draw_style_misfit")
 
 
 def load_battlefield(path=None) -> dict:

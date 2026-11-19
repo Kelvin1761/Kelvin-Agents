@@ -176,6 +176,12 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 since="2026-11-20", arm="docs/experiments/patches/hkjc_arm_venue_age_revert.py",
                 action="自動判：退回版 forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議退回（等你決定）；否則保留",
                 extra={"pass_verdict": "建議退回（等你決定）"}),
+    # EXP-20261119-05（Kelvin「實驗性上線收窄，呢類情況寧願保守啲」）：薄證據長休馬收窄；回放 dev REJECT（冇功效）→ 退回式 forward。
+    # 呢類馬每季只有 ~20 匹次，60 場 forward 大部分場次兩邊一樣 —— 判唔到唔代表冇效，判決要人手睇郁過嘅場次。
+    ForwardTest("thin_shrink_post_live", "薄證據收窄上線後 vs 冇收窄", "EXP-20261119-05", "harness_ab", 60,
+                since="2026-11-22", arm="docs/experiments/patches/hkjc_arm_thin_shrink_revert.py",
+                action="自動判：退回版 forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議退回（等你決定）；否則保留",
+                extra={"pass_verdict": "建議退回（等你決定）"}),
     # EXP-20261117-07：J1 精簡版（9 個特徵，逐個拎走揀；揀用咗 dev → 只由 forward 判）。
     ForwardTest("joint_signals_lean_shadow", "未入分訊號 refit 精簡版（9 個，shadow）", "EXP-20261117-07", "harness_ab", 150,
                 since="2026-11-18", arm="docs/experiments/patches/hkjc_arm_joint_signals_lean_shadow.py",

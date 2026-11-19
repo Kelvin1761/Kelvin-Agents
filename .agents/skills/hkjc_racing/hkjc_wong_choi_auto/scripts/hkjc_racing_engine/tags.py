@@ -330,6 +330,19 @@ def _horse_age_tag(auto: dict) -> list[dict]:
                      "但排名指標冇升（EXP-20261119-01）。")]
 
 
+def _thin_evidence_tag(auto: dict) -> list[dict]:
+    """薄證據收窄（EXP-20261119-05，實驗性上線）：一個 chip 講晒仗數、休幾耐、郁咗幾多。"""
+    info = auto.get("thin_evidence") or {}
+    if not info:
+        return []
+    delta = float(auto.get("thin_evidence_delta") or 0.0)
+    return [_tag("thin_evidence", f"證據薄：香港 {info['starts']} 仗、休 {info['gap']} 日", "bad" if delta < 0 else "note",
+                 scored=True, impact=round(delta, 2),
+                 why="香港得 1–2 仗又休咗半年以上，綜合分向全場平均收窄一半（高分跌、低分升，唔係扣分）。"
+                     "歷史同類馬（本地 116 匹）模型排頭 2 嘅入位 29%、模型估 55%；排 3–5 就準（33%／28%）。"
+                     "⚠️ 實驗性上線、未證實改善（回放樣本太少，把尺量唔到；EXP-20261119-05）。")]
+
+
 def _class_move_tags(horse: dict, meta: dict) -> list[dict]:
     """Kelvin 2026-11-17（EXP-20261117-06）：初落班＋同程上過名、升班輕磅（上仗未贏）。都未入分。"""
     hist = _hist(horse)
@@ -367,8 +380,21 @@ def _age_weight_tag(horse: dict) -> list[dict]:
     return []
 
 
+def jockey_work(horse: dict) -> dict:
+    """今仗騎師近 21 日親自快操／試閘課數 —— 讀抽取層 `extract_trackwork.race_jockey_work` 寫入晨操摘要嘅結果（唯一定義）。
+    舊晨操檔冇呢兩欄 = 0（唔扮有）。"""
+    tw = horse.get("trackwork") if isinstance(horse.get("trackwork"), dict) else {}
+    sm = tw.get("summary") if isinstance(tw.get("summary"), dict) else {}
+    def n(key):
+        try:
+            return max(0, int(sm.get(key) or 0))
+        except (TypeError, ValueError):
+            return 0
+    return {"gallops": n("race_jockey_gallops_21d"), "trials": n("race_jockey_trials_21d")}
+
+
 def _race_people_tags(horses: dict, meta: dict) -> dict:
-    """同場騎師揀馬／同馬房正選次選／下游騎師贏後轉潘頓（EXP-20261117-06；全部未入分）。"""
+    """同場騎師揀馬／同馬房正選次選／下游騎師入位後轉潘頓／今仗騎師親自快操試閘（EXP-20261117-06、Kelvin 2026-11-19；全部未入分）。"""
     from .live_priors import get_jt_ratings
     out: dict[str, list] = {}
     jock = {str(h.get("jockey") or "").strip(): no for no, h in horses.items() if str(h.get("jockey") or "").strip()}
@@ -392,12 +418,36 @@ def _race_people_tags(horses: dict, meta: dict) -> dict:
                                                    "（同方向、holdout 唔顯著）；未入分。"))
             out.setdefault(other, []).append(_tag("regular_jockey_chose", f"{last3[0]}棄 {no} 號揀呢匹", "note",
                                                   why=f"{last3[0]}近三仗都騎 {no} 號，今場轉騎呢匹。留意；未入分。"))
-        if hist and hist[0].get("placing") == 1 and today_j == "潘頓":
+        work = jockey_work(h)
+        downtier = None
+        place = hist[0].get("placing") if hist else None
+        if isinstance(place, int) and 1 <= place <= 3 and today_j == PURTON:
             lj = hist[0].get("jockey") or ""
             rate = wr(lj)
-            if lj and lj != "潘頓" and rate is not None and rate < 8.0:
-                out.setdefault(no, []).append(_tag("downtier_win_purton", f"上仗{lj}贏、今仗轉潘頓", "note",
-                                                   why=f"上仗由{lj}（勝率 {rate:.1f}%）策騎勝出，今仗潘頓接手。回放樣本太少（n 27／15），量唔到；未入分。"))
+            if lj and lj != PURTON and rate is not None and rate < 8.0:
+                downtier = (lj, rate, place)
+        if downtier and work["gallops"] and work["trials"]:
+            # 一樣嘢一個 chip（Kelvin 2026-11-16）：接手＋親自操＋試閘合成一個，組成寫喺 tooltip
+            lj, rate, place = downtier
+            out.setdefault(no, []).append(_tag(
+                "purton_takeover_full_prep", f"潘頓接手{lj}匹馬＋親自快操＋試閘", "good",
+                why=f"上仗{lj}（勝率 {rate:.1f}%）騎跑第 {place}；今仗潘頓接手，而且近 21 日親自快操 {work['gallops']} 課、"
+                    f"試閘 {work['trials']} 次。Kelvin：潘頓搶下游騎師跑得好嘅馬兼親自做齊操練，通常係大訊號。"
+                    "未量度、未入分（純顯示）。"))
+        elif downtier:
+            lj, rate, place = downtier
+            out.setdefault(no, []).append(_tag("downtier_win_purton", f"上仗{lj}{'贏' if place == 1 else f'跑第{place}'}、今仗轉潘頓",
+                                               "note",
+                                               why=f"上仗由{lj}（勝率 {rate:.1f}%）策騎跑第 {place}，今仗潘頓接手。"
+                                                   "只計上仗贏嘅版本回放樣本太少（n 27／15）量唔到；入位版未量度；未入分。"))
+        # 快操 1 課係例行（11-18 跑馬地 108 匹有 41 匹）→ 要快操 ≥2 課或者有試閘先出
+        if (work["gallops"] >= 2 or work["trials"]) and not (downtier and work["gallops"] and work["trials"]):
+            parts = ([f"快操 {work['gallops']} 課"] if work["gallops"] else []) + ([f"試閘 {work['trials']} 次"] if work["trials"] else [])
+            both = bool(work["gallops"] and work["trials"])
+            out.setdefault(no, []).append(_tag(
+                "race_jockey_work", f"{today_j}親自{'＋'.join(parts)}", "good" if both else "note",
+                why=f"近 21 日晨操紀錄：今仗騎師{today_j}親自策騎{'、'.join(parts)}（唔計比賽）。"
+                    "騎師親自操＋試閘通常代表有部署；未量度、未入分（純顯示）。"))
     stables: dict[str, list] = {}
     for no, h in horses.items():
         t = str(h.get("trainer") or "").strip()
@@ -754,7 +804,7 @@ def horse_tags(no: str, horse: dict, auto: dict, *, runs: list[dict], meta: dict
     venue = _same_distance_venue_tags(auto)
     if venue:   # 同一件事（同程）只出一個 chip：場地 chip 已講晒 distance_fit
         special = [t for t in special if t["key"] != "specialist"]
-    special += venue + _horse_age_tag(auto)
+    special += venue + _horse_age_tag(auto) + _thin_evidence_tag(auto)
     special += extra or []
     if "+" in str(priority or ""):
         special.append(_tag("trainer_ace", "練馬師王牌", "note",

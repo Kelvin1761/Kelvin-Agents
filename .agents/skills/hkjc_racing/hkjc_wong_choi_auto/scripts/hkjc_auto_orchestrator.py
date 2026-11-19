@@ -52,6 +52,7 @@ from hkjc_racing_engine import draw_style
 from hkjc_racing_engine import incident_history, distance_move
 from hkjc_racing_engine import surface_move
 from hkjc_racing_engine import venue_distance, horse_age
+from hkjc_racing_engine import thin_evidence
 from hkjc_racing_engine.validation import validate_engine_scripts, validate_logic_data
 from wongchoi_paths import is_materialized_file
 
@@ -365,6 +366,9 @@ def _refresh_grade_transparency(horses):
         hage = float(auto.get("horse_age_delta", 0.0) or 0.0)
         if hage:
             adjustments.append({"key": "horse_age", "label": "馬齡", "raw": round(hage, 2)})
+        thin = float(auto.get("thin_evidence_delta", 0.0) or 0.0)
+        if thin:
+            adjustments.append({"key": "thin_evidence", "label": "薄證據收窄", "raw": round(thin, 2)})
         transparency["adjustments"] = adjustments
         # 報告「評分總覽」嘅總分係引擎階段（後置調整之前）印嘅：補一行點樣去到最終分，唔然頂部同總覽對唔上。
         summary = transparency.get("summary")
@@ -1163,6 +1167,8 @@ class HKJCAutoOrchestrator:
         # 同程上名要同場地（EXP-20261119-01 V2）＋馬齡（A2）：轉場之後、grade／排名之前
         venue_distance.apply(horses, race_context)
         horse_age.apply(horses, race_context)
+        # 薄證據長休馬收窄信心（EXP-20261119-05 S3，實驗性上線）：最後一個後置組件，grade／排名之前
+        thin_evidence.apply(horses, race_context)
         _refresh_grade_transparency(horses)
         self._apply_7d_official_ranking(horses)
         # ensure_verdict owns the single deterministic ranking path, including

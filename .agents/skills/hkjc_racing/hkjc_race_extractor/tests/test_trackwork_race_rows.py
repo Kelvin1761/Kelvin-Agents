@@ -51,3 +51,17 @@ def test_rows_on_race_day_are_dropped():
 def test_treadmill_rows_are_not_gallops():
     assert xt.normalize_work_type("馬匹跑步機", "快操 (助手)") == "treadmill"
     assert xt.normalize_work_type("快操", "30.4 27.1 (57.5) (助手)") == "gallop"
+
+
+def test_race_jockey_work_counts_gallops_trials_and_strips_claim():
+    """賽日騎師親自快操／試閘（Kelvin 2026-11-19）：排位表「袁幸堯 (-7)」都要配到晨操「袁幸堯」；出賽行唔計。"""
+    rows = [
+        {**_row("2026-11-01", "gallop", "沙田 全天候 快操 (袁幸堯)"), "rider": "袁幸堯"},
+        {**_row("2026-11-05", "trial", "1050M 試閘 (袁幸堯)", type_raw="試閘"), "rider": "袁幸堯"},
+        {**_row("2026-11-07", "gallop", "快操 (助手)"), "rider": "助手"},
+        {**_row("2026-11-08", "other", "1200M (袁幸堯) (2/12)"), "rider": "袁幸堯"},
+    ]
+    w = xt.race_jockey_work(rows, "袁幸堯 (-7)")
+    assert w == {"any": 2, "gallops": 1, "trials": 1}
+    assert xt.race_jockey_work(rows, "潘頓") == {"any": 0, "gallops": 0, "trials": 0}
+    assert xt.race_jockey_work(rows, "") == {"any": 0, "gallops": 0, "trials": 0}
