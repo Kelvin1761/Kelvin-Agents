@@ -152,6 +152,12 @@ RANKING_ADJUSTMENTS = (
         "missing": "冇馬齡 = 當 ≤6 歲（中性）",
     },
     {
+        "key": "excuse_streak",
+        "label": "連續兩仗有藉口（EXP-20261119-06 X1，實驗性上線、未證實改善）",
+        "formula": "β·([上兩仗都有事件報告藉口（受阻／走外疊冇遮擋／騎法被質疑）而且兩仗都未入位] − 場均)，β = +1.69（原始分）；事件報告 = incident_history 表、日期嚴格早過今仗；名次 = HKJC 馬匹頁（hkjc_racing_engine/excuse_streak.py）",
+        "missing": "外隊馬／冇事件報告表／上兩仗任何一仗冇報告或者搵唔到名次 = 不套用",
+    },
+    {
         "key": "thin_evidence",
         "label": "薄證據收窄（EXP-20261119-05，實驗性上線、未證實改善）",
         "formula": "本地馬、香港往績 ≤2 仗、上一仗距今 >180 日：raw' = 場均 + 0.5·(raw − 場均)，再全場置中（收窄、唔係扣分：高分跌、低分升）；往績 = HKJC 馬匹頁香港賽事、日期嚴格早過今仗（hkjc_racing_engine/thin_evidence.py）",

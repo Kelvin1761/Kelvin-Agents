@@ -330,6 +330,21 @@ def _horse_age_tag(auto: dict) -> list[dict]:
                      "但排名指標冇升（EXP-20261119-01）。")]
 
 
+def _excuse_streak_tag(auto: dict) -> list[dict]:
+    """連續兩仗有藉口（EXP-20261119-06 X1，實驗性上線）：一個 chip，組成（邊兩仗、咩藉口、名次）寫喺 tooltip。"""
+    info = auto.get("excuse_streak") or {}
+    if not info:
+        return []
+    name = {"B": "受阻", "W": "走外疊", "R": "騎法被質疑"}
+    parts = [f"{d[5:]} 第{p}名（{'、'.join(name[c] for c in 'BWR' if c in (f or ''))}）"
+             for d, f, p in zip(info.get("dates", []), info.get("flags", []), info.get("placings", []))]
+    delta = float(auto.get("excuse_streak_delta") or 0.0)
+    return [_tag("excuse_streak", "連續兩仗有藉口", "good" if delta > 0 else "note", scored=True, impact=round(delta, 2),
+                 why=f"上兩仗：{'；'.join(parts)}。兩仗都有事件報告藉口而且都跑唔入位，近績扣得太盡。"
+                     "回放：呢類馬入頭三多過模型估計 dev 3.8pp、holdout 4.2pp（7 季全正）。"
+                     "⚠️ 實驗性上線、未證實改善（改善嘅係機率準度、唔係排名；EXP-20261119-06）。")]
+
+
 def _thin_evidence_tag(auto: dict) -> list[dict]:
     """薄證據收窄（EXP-20261119-05，實驗性上線）：一個 chip 講晒仗數、休幾耐、郁咗幾多。"""
     info = auto.get("thin_evidence") or {}
@@ -803,7 +818,7 @@ def horse_tags(no: str, horse: dict, auto: dict, *, runs: list[dict], meta: dict
     venue = _same_distance_venue_tags(auto)
     if venue:   # 同一件事（同程）只出一個 chip：場地 chip 已講晒 distance_fit
         special = [t for t in special if t["key"] != "specialist"]
-    special += venue + _horse_age_tag(auto) + _thin_evidence_tag(auto)
+    special += venue + _horse_age_tag(auto) + _excuse_streak_tag(auto) + _thin_evidence_tag(auto)
     special += extra or []
     if "+" in str(priority or ""):
         special.append(_tag("trainer_ace", "練馬師王牌", "note",

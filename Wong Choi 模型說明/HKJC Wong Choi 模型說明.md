@@ -40,6 +40,7 @@
 | 轉場（EXP-20261117-06） `surface_move` | Σ β·(旗 − 場均)：跑馬地轉沙田草地 −2.65、沙田草地轉跑馬地 +1.12、初次沙田草地 −1.70、初次泥地 −2.03（原始分）；往績 = HKJC 馬匹頁香港賽事、日期嚴格早過今仗（hkjc_racing_engine/surface_move.py） | 冇香港往績（初出／外隊）= 冇旗；其他轉場方向只顯示、唔入分 |
 | 同程上名場地（EXP-20261119-01） `same_distance_venue` | β·([今仗路程有上名、但冇一次喺今仗場地（谷草／田草／泥地）] − 場均)，β = −1.27（原始分）；同程有上名嘅 +0.4284 照留；往績 = HKJC 馬匹頁香港賽事、日期嚴格早過今仗（hkjc_racing_engine/venue_distance.py） | 冇香港往績（初出／外隊）= 冇旗；冇今仗路程 = 不套用 |
 | 馬齡（EXP-20261119-01） `horse_age` | β·(max(0, 馬齡 − 6) − 場均)，β = −0.37／歲（原始分）；馬齡 = HKJC 馬匹頁（hkjc_racing_engine/horse_age.py） | 冇馬齡 = 當 ≤6 歲（中性） |
+| 連續兩仗有藉口（EXP-20261119-06 X1，實驗性上線、未證實改善） `excuse_streak` | β·([上兩仗都有事件報告藉口（受阻／走外疊冇遮擋／騎法被質疑）而且兩仗都未入位] − 場均)，β = +1.69（原始分）；事件報告 = incident_history 表、日期嚴格早過今仗；名次 = HKJC 馬匹頁（hkjc_racing_engine/excuse_streak.py） | 外隊馬／冇事件報告表／上兩仗任何一仗冇報告或者搵唔到名次 = 不套用 |
 | 薄證據收窄（EXP-20261119-05，實驗性上線、未證實改善） `thin_evidence` | 本地馬、香港往績 ≤2 仗、上一仗距今 >180 日：raw' = 場均 + 0.5·(raw − 場均)，再全場置中（收窄、唔係扣分：高分跌、低分升）；往績 = HKJC 馬匹頁香港賽事、日期嚴格早過今仗（hkjc_racing_engine/thin_evidence.py） | 外隊馬／初出／冇香港往績 = 不套用 |
 
 **「權重」同「實測影響力」有咩分別？**  權重係配方上寫死嘅數。實測影響力係
@@ -222,10 +223,10 @@ Grade 只係一個閱讀標籤，排名純粹按分數高低，唔會因為 Grad
 
 ## 呢份文件由邊度嚟
 
-- 生成時間：`2026-11-19 18:56 AEDT`
-- Git commit：`571711dc`
+- 生成時間：`2026-11-19 20:15 AEDT`
+- Git commit：`61facbc0`
 - Scoring contract：`HKJC_9D_CONTRACT_2026_10_10_REGISTRY_TRACKWORK_DISTANCE_FIT_RACE_SHAPE_ROBUST_WINSOR10_PIT_RAIL_DRAW_V2_DISTANCE_COMPONENT_V1`
-- `scoring.py` 指紋：`453d88815fd0`
+- `scoring.py` 指紋：`37717b149ab9`
 - `matrix_mapper.py` 指紋：`a675ec199a4c`
 - `renderer.py` 指紋：`e07926aa2737`
 - 實測樣本：**119 場、1468 匹馬**，由 `2026-10-11_ShaTin` 到 `2026-11-18_HappyValley`（跳過 351 個舊格式檔案）

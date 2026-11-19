@@ -52,7 +52,7 @@ from hkjc_racing_engine import draw_style
 from hkjc_racing_engine import incident_history, distance_move
 from hkjc_racing_engine import surface_move
 from hkjc_racing_engine import venue_distance, horse_age
-from hkjc_racing_engine import thin_evidence
+from hkjc_racing_engine import thin_evidence, excuse_streak
 from hkjc_racing_engine.validation import validate_engine_scripts, validate_logic_data
 from wongchoi_paths import is_materialized_file
 
@@ -366,6 +366,9 @@ def _refresh_grade_transparency(horses):
         hage = float(auto.get("horse_age_delta", 0.0) or 0.0)
         if hage:
             adjustments.append({"key": "horse_age", "label": "馬齡", "raw": round(hage, 2)})
+        exc = float(auto.get("excuse_streak_delta", 0.0) or 0.0)
+        if exc:
+            adjustments.append({"key": "excuse_streak", "label": "連續兩仗有藉口", "raw": round(exc, 2)})
         thin = float(auto.get("thin_evidence_delta", 0.0) or 0.0)
         if thin:
             adjustments.append({"key": "thin_evidence", "label": "薄證據收窄", "raw": round(thin, 2)})
@@ -1167,6 +1170,8 @@ class HKJCAutoOrchestrator:
         # 同程上名要同場地（EXP-20261119-01 V2）＋馬齡（A2）：轉場之後、grade／排名之前
         venue_distance.apply(horses, race_context)
         horse_age.apply(horses, race_context)
+        # 連續兩仗有藉口（EXP-20261119-06 X1，實驗性上線）：馬齡之後、薄證據收窄之前
+        excuse_streak.apply(horses, race_context.get("race_date"))
         # 薄證據長休馬收窄信心（EXP-20261119-05 S3，實驗性上線）：最後一個後置組件，grade／排名之前
         thin_evidence.apply(horses, race_context)
         _refresh_grade_transparency(horses)
