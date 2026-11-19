@@ -289,22 +289,27 @@ def battlefield(logic_data: dict, table: dict | None = None) -> dict | None:
 
 # 情境（Kelvin 2026-11-17「利咩跑法／利咩欄」；EXP-20261117-08）：純顯示，唔改正式排名同 ROI 頭兩選。
 #   上名率 1pp ≈ 0.87 顯示分：校準斜率 b ≈ 0.139 logit／原始分（回放 2020–26 逐季 0.137–0.15），p = 25% 時 1pp = 0.0533 logit，
-#   × 顯示尺 DISPLAY_SLOPE。預設幅度 = 「強偏差日」（回放每日每類殘差 90 百分位 ≈ ±10pp）。
-#   即場：今日已跑場次每類上名率 − 當日平均，× 0.2（回放：頭半場偏差喺下半場只剩約兩成），上限 ±3pp，每類 ≥ 8 匹先計。
+#   × 顯示尺 DISPLAY_SLOPE。
+#   幅度（Kelvin 2026-11-19 改用實測，EXP-20261119-10）：舊版 ±10pp 係「實際走位」偏差日 90 百分位，但情境按慣性跑法加減；
+#   回放真強偏差日（同日其他場次某類 ≥ +10pp），慣性放頭只多 +1.8／≈0pp、守中 +1.0／+2.7、內檔 +2.7／+3.2（dev／holdout）
+#   → 跑法 ±2pp、檔位 ±3pp（被利一類 +滿、對面 −滿、其餘按舊比例縮）。
+#   即場：今日已跑場次每類上名率 − 當日平均，× 0.2（回放：頭半場偏差喺下半場只剩約兩成），上限 ±2pp（舊 ±3），每類 ≥ 8 匹先計。
 SCENARIO_LOGIT_PER_RAW = 0.139
-SCENARIO_STYLE_PP = {"放頭": {"放頭": 10, "守中": 0, "後上": -10}, "守中": {"放頭": -5, "守中": 10, "後上": -5},
-                     "後上": {"放頭": -10, "守中": 0, "後上": 10}}
-SCENARIO_DRAW_PP = {"利內欄": {"內檔": 10, "中檔": 0, "外檔": -10}, "利中內": {"內檔": 5, "中檔": 5, "外檔": -10},
-                    "利中欄": {"內檔": -5, "中檔": 10, "外檔": -5}, "利中外": {"內檔": -10, "中檔": 5, "外檔": 5},
-                    "利外欄": {"內檔": -10, "中檔": 0, "外檔": 10}}
-SCENARIO_INRACE = {"shrink": 0.2, "cap_pp": 3, "min_starts": 8}
+SCENARIO_STYLE_FULL_PP, SCENARIO_DRAW_FULL_PP = 2, 3
+SCENARIO_STYLE_PP = {"放頭": {"放頭": 2, "守中": 0, "後上": -2}, "守中": {"放頭": -1, "守中": 2, "後上": -1},
+                     "後上": {"放頭": -2, "守中": 0, "後上": 2}}
+SCENARIO_DRAW_PP = {"利內欄": {"內檔": 3, "中檔": 0, "外檔": -3}, "利中內": {"內檔": 1.5, "中檔": 1.5, "外檔": -3},
+                    "利中欄": {"內檔": -1.5, "中檔": 3, "外檔": -1.5}, "利中外": {"內檔": -3, "中檔": 1.5, "外檔": 1.5},
+                    "利外欄": {"內檔": -3, "中檔": 0, "外檔": 3}}
+SCENARIO_INRACE = {"shrink": 0.2, "cap_pp": 2, "min_starts": 8}
 
 
 def scenario_constants() -> dict:
     from .scoring import DISPLAY_SLOPE
     p0 = 0.25
     pp = 0.01 / (p0 * (1 - p0)) / SCENARIO_LOGIT_PER_RAW * DISPLAY_SLOPE
-    return {"pp_to_display": round(pp, 3), "style": SCENARIO_STYLE_PP, "draw": SCENARIO_DRAW_PP, "inrace": SCENARIO_INRACE}
+    return {"pp_to_display": round(pp, 3), "style": SCENARIO_STYLE_PP, "draw": SCENARIO_DRAW_PP, "inrace": SCENARIO_INRACE,
+            "full_pp": {"style": SCENARIO_STYLE_FULL_PP, "draw": SCENARIO_DRAW_FULL_PP}}
 
 
 def _horse_ref(horses: dict, no) -> dict:

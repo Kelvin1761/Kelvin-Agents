@@ -2961,6 +2961,22 @@ test("HKJC 情境：利放頭 reorders the scenario ranking but not the official
   HKJC_SCENARIO.style = "default";
 });
 
+test("HKJC 情境 banner follows measured magnitudes from the engine (EXP-20261119-10)", () => {
+  const { HKJC_SCENARIO, renderHkjcRanking, HKJC_RANKING_CACHE } = loadTemplateFunctions();
+  const sc = { pp_to_display: 0.87, style: { 放頭: { 放頭: 2, 守中: 0, 後上: -2 } }, draw: { 利內欄: { 內檔: 3, 中檔: 0, 外檔: -3 } },
+               inrace: { shrink: 0.2, cap_pp: 2, min_starts: 8 }, full_pp: { style: 2, draw: 3 } };
+  const analysis = { race_number: 4, race_summary: { battlefield: { scenario: sc, date: "2026-11-18", venue: "跑馬地" } } };
+  const horses = [{ horse_number: 1, horse_name: "乙", ability_score: 75, barrier: 2, run_style_outlook: { label: "放頭", consistency: "穩定" }, analysis_summary: { tags: {} } },
+                  { horse_number: 2, horse_name: "丙", ability_score: 70, barrier: 11, run_style_outlook: { label: "後上", consistency: "穩定" }, analysis_summary: { tags: {} } }];
+  HKJC_RANKING_CACHE["4-x"] = { horses, analysis };
+  HKJC_SCENARIO.style = "inrace"; HKJC_SCENARIO.draw = "利內欄";
+  const html = renderHkjcRanking("4-x");
+  assert.match(html, /跑法約 ±2pp（約 1\.7 分）、檔位約 ±3pp（約 2\.6 分）/);
+  assert.match(html, /上限 ±2pp/);
+  assert.doesNotMatch(html, /\+10pp|undefined|NaN/);
+  HKJC_SCENARIO.style = "default"; HKJC_SCENARIO.draw = "default";
+});
+
 test("HKJC 全場重點 shows horse number and name, grouped rows (Kelvin 2026-11-17)", () => {
   const { renderHkjcRaceSummary } = loadTemplateFunctions();
   const html = renderHkjcRaceSummary({ items: [

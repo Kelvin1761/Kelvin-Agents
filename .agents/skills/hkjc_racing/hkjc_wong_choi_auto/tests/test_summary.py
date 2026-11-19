@@ -91,12 +91,17 @@ def test_battlefield_and_detail_lines():
 
 
 def test_scenario_constants():
-    """情境幅度（EXP-20261117-08）：上名率 1pp ≈ 0.87 顯示分；預設 ±10pp；即場 ×0.2、上限 3pp。"""
+    """情境幅度（EXP-20261117-08；EXP-20261119-10 改實測）：上名率 1pp ≈ 0.87 顯示分；跑法 ±2pp、檔位 ±3pp；即場 ×0.2、上限 2pp。"""
     sc = summary.scenario_constants()
     assert 0.8 < sc["pp_to_display"] < 0.95
-    assert sc["style"]["放頭"] == {"放頭": 10, "守中": 0, "後上": -10}
+    assert sc["style"]["放頭"] == {"放頭": 2, "守中": 0, "後上": -2}
+    assert sc["draw"]["利內欄"] == {"內檔": 3, "中檔": 0, "外檔": -3}
+    assert sc["full_pp"] == {"style": 2, "draw": 3}
+    # 每個情境：被利一類 = 滿幅、冇一格超過滿幅
+    assert all(max(abs(v) for v in d.values()) == sc["full_pp"]["style"] for d in sc["style"].values())
+    assert all(max(abs(v) for v in d.values()) == sc["full_pp"]["draw"] for d in sc["draw"].values())
     assert set(sc["draw"]) == {"利內欄", "利中內", "利中欄", "利中外", "利外欄"}
-    assert sc["inrace"] == {"shrink": 0.2, "cap_pp": 3, "min_starts": 8}
+    assert sc["inrace"] == {"shrink": 0.2, "cap_pp": 2, "min_starts": 8}
 
 
 def test_brief_cuts_at_clause_and_drops_codes():
