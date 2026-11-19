@@ -82,6 +82,20 @@ def test_vet_active_horse_without_records_is_zero_not_missing():
     assert b.parse_vet(html) == []
 
 
+def test_vet_active_page_without_table_is_zero_records():
+    """真頁（HK_2025_L426）：現役冇紀錄嘅頁冇 oveHorse_details div，只有 CSS 提到。"""
+    html = '<style>.oveHorse_details thead td{ padding:4px; }</style><table class="horseProfile"></table>'
+    assert b.looks_valid("vet", html) == "ok"
+    assert b.parse_vet(html) == []
+
+
+def test_vet_retired_page_with_css_is_still_retired():
+    html = ('<style>.oveHorse_details thead td{}</style><table class="horseProfile"></table>'
+            '<a href="/zh-hk/local/information/otherhorse?horseid=X">')
+    assert b.looks_valid("vet", html) == "empty"
+    assert b.parse_vet(html) is None
+
+
 def test_vet_retired_redirect_is_empty_and_block_page_fails():
     retired = '<table class="horseProfile"></table><a href="/zh-hk/local/information/otherhorse?horseid=X">'
     assert b.looks_valid("vet", retired) == "empty"

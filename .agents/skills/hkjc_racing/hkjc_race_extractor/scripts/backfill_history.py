@@ -149,10 +149,13 @@ def vet_path(h: str) -> Path:
 def looks_valid(kind: str, html: str) -> str | None:
     """返回 'ok' / 'empty'（頁面話未有資料）/ None（唔似預期 → 當失敗）。"""
     if kind == "vet":
-        if "oveHorse_details" in html:      # 現役馬頁（冇記錄都係 ok：0 條）
+        # 退役馬轉去 otherhorse 頁；現役馬冇紀錄嘅頁冇表格，淨係 CSS 提到 oveHorse_details（2026-11-20 解析 351 頁先發現）
+        if 'class="oveHorse_details"' in html:
             return "ok"
-        if "otherhorse" in html and "horseProfile" in html:   # 退役馬轉頁
+        if "otherhorse" in html and "horseProfile" in html:
             return "empty"
+        if "oveHorse_details" in html and "horseProfile" in html:
+            return "ok"
         return None
     if kind == "trackwork":
         if "晨操" not in html:
@@ -395,7 +398,8 @@ def parse_vet(html: str) -> list[dict] | None:
     from bs4 import BeautifulSoup
     box = BeautifulSoup(html, "html.parser").find("div", class_="oveHorse_details")
     if box is None:
-        return None
+        # 現役馬冇傷患紀錄：頁面冇表格（只有 CSS）＝ 0 條；退役轉頁 ＝ None
+        return None if ("otherhorse" in html or "oveHorse_details" not in html) else []
     out = []
     for tr in box.select("tbody tr"):
         c = [_txt(td) for td in tr.find_all("td")]
