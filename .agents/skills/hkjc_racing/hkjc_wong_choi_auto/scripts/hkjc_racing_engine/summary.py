@@ -162,7 +162,8 @@ def _trackwork_brief(auto: dict) -> str:
     load = str(lines[0]).split(" → ")[0] if lines else ""
     load = "、".join(load.split("、")[:2])
     tail = str(read.get("verdict") or "").strip("。 ")
-    return "；".join(x for x in (load, tail) if x)
+    kind = ((read.get("type") or {}).get("text") or "").strip()    # 晨操類型（_explain._trackwork_type，唯一定義）
+    return "；".join(x for x in (kind, load, tail) if x)
 
 
 def dim_briefs(auto: dict) -> list[dict]:

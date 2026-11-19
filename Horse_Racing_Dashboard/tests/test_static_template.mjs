@@ -3057,6 +3057,19 @@ test("HKJC 近績格逐仗詳情：能量、評述、重播連結，取代舊近
   assert.match(old, /近6場數據/);
 });
 
+test("晨操格退出排名：冇假分數，顯示晨操類型 (Kelvin 2026-11-20)", () => {
+  const { renderHorseCard } = loadTemplateFunctions();
+  const html = renderHorseCard({
+    horse_number: 3, horse_name: "通情達理", raw_text: "#### 📝 重點\n**第2／12｜86.5 A+**",
+    dimension_details: [
+      { name: "狀態與穩定性", score: 88.5, weight_pct: 24.5, impact: 8.1, ranking_weighted: true, symbol: "✅✅" },
+      { name: "晨操狀態", score: null, verdict: "操練少＋試閘2次", ranking_weighted: false, symbol: null },
+    ],
+  }, 1, {}, null);
+  assert.match(html, /data-dim="晨操狀態"[\s\S]*?dim-row__score[^>]*>—<[\s\S]*?退出排名 · 只作參考[\s\S]*?操練少＋試閘2次/);
+  assert.doesNotMatch(html, /56\.1/);
+});
+
 test("9維排名矩陣 carries the verdict, a one-liner under each bar, and opens each dimension in place (Kelvin 2026-11-18)", () => {
   const { renderHorseCard } = loadTemplateFunctions();
   const raw = [

@@ -6908,9 +6908,11 @@ function renderDimensionStrip(horse, cardId) {
   });
   // 參考 · 不入排名（晨操等）：同一款行，冇條，一樣撳得開。
   reference.forEach(d => {
+    // 晨操退出排名（Kelvin 2026-11-20）：冇分數，顯示引擎寫嘅晨操類型（操練密／正常／放鬆為主／少＋試閘）
+    const read = d.score == null && d.verdict ? d.verdict : '';
     let row = `<span class="dim-row__name" title="${esc(d.name)}">${esc(d.name)}</span>`;
     row += `<span class="dim-row__score" style="color:var(--color-text-soft)">${d.score != null ? d.score.toFixed(1) : '—'}</span>`;
-    row += '<span class="dim-row__track dim-row__track--ref">參考 · 不入排名</span><span class="dim-row__meta"></span>';
+    row += `<span class="dim-row__track dim-row__track--ref">${read ? '退出排名 · 只作參考' : '參考 · 不入排名'}</span><span class="dim-row__meta">${read ? esc(read) : ''}</span>`;
     h += item(d, row);
   });
 

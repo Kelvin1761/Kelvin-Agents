@@ -10,6 +10,7 @@ from .matrix_mapper import (
     MATRIX_FORMULAS,
 )
 from . import dimensions
+from . import scoring as _scoring_mod
 from .gear import GEAR_NAMES
 from .scoring import (CENTRED_MATRIX_WEIGHTS, DEBUT_MATRIX_WEIGHTS, FEATURE_KEYS, MATRIX_WEIGHTS, clip_score, score_band, to_dimension_display,
                       to_display_scale)
@@ -1485,6 +1486,30 @@ class Explanations:
         "操練放緩": "操練力度回落",
     }
 
+    def _trackwork_counts(self):
+        """近 21 日（快操, 試閘, 踱步, 游水）課數；讀唔到 → None。晨操讀數同晨操類型共用。"""
+        digest = self._clean(self._value("trackwork_digest") or "")
+        m = re.search(r"快操(\d+)課.*?試閘(\d+)課.*?踱步(\d+)課.*?游水(\d+)課", digest)
+        return tuple(int(x) for x in m.groups()) if m else None
+
+    def _trackwork_type(self):
+        """晨操類型（Kelvin 2026-11-20「操練密／操練少／放鬆為主」）—— 唯一定義，報告表格、晨操讀數、dashboard 共用。
+        門檻同以前「工作量」句一樣：快操 ≥5 課 = 操練密；2–4 = 操練正常；≤1 而游水 ≥10 = 放鬆為主；其餘 = 操練少。純顯示，唔入分。"""
+        counts = self._trackwork_counts()
+        if counts is None:
+            return None
+        gallops, trials, _trotting, swimming = counts
+        if gallops >= 5:
+            label = "操練密"
+        elif gallops >= 2:
+            label = "操練正常"
+        elif swimming >= 10:
+            label = "放鬆為主"
+        else:
+            label = "操練少"
+        return {"label": label, "trials": trials, "gallops": gallops, "swimming": swimming,
+                "text": label + (f"＋試閘{trials}次" if trials else "")}
+
     def _trackwork_interpretation(self):
         """晨操判讀（display-only）：將 digest 原文轉化成揀馬可用嘅判讀 —
         備戰量夠唔夠、趨勢代表乜、邊啲訊號係出擊部署、三個分數點解讀。
@@ -1507,19 +1532,14 @@ class Explanations:
 
         lines = []
 
-        # 1. 備戰量 — 課數點解讀
-        if gallops is not None:
+        # 1. 備戰量 — 課數點解讀（類型由 _trackwork_type 一處定義）
+        tw_type = self._trackwork_type()
+        if gallops is not None and tw_type:
             vol = f"近21日快操{gallops}課、試閘{trials}課、踱步{trotting}課、游水{swimming}課"
             # 呢行只講「工作量」；快慢方向由下面統一 pattern 講，避免兩行打架
             # 4課快操＝大隊眾數，只算正常；5課以上先叫充足
-            if gallops >= 5:
-                read = "工作量充足，多過大隊平均"
-            elif gallops >= 2:
-                read = "工作量正常（大隊水平）"
-            elif (swimming or 0) >= 10:
-                read = "實地操練少，游水為主"
-            else:
-                read = "操練量偏少"
+            read = {"操練密": "工作量充足，多過大隊平均", "操練正常": "工作量正常（大隊水平）",
+                    "放鬆為主": "實地操練少，游水為主", "操練少": "操練量偏少"}[tw_type["label"]]
             if trials:
                 read += "，有試閘"
             lines.append(f"{vol} → {read}")
@@ -1580,7 +1600,7 @@ class Explanations:
         else:
             verdict = "中性，冇特別訊號"
 
-        return {"lines": lines, "verdict": verdict}
+        return {"lines": lines, "verdict": verdict, "type": tw_type}
 
     def _grade_computation_transparency(self, matrix_scores, ability_score, grade, feature_scores=None):
         """The ONE scoring-summary block: the matrix contribution table (score × weight
@@ -1610,11 +1630,19 @@ class Explanations:
             # Centred dimensions add weight × (score − 60) on top (see dimensions.py).
             contribution = round(weight * (raw_score - 60.0) if centred else raw_score * weight, 2)
             weighted_sum += contribution
-            rows.append({"key": key, "label": label,
-                         "score": round(disp_score, 2),
-                         "score_raw": round(raw_score, 2),
-                         "weight": weight, "contribution": contribution, "band": band})
-            if centred:
+            row = {"key": key, "label": label,
+                   "score": round(disp_score, 2),
+                   "score_raw": round(raw_score, 2),
+                   "weight": weight, "contribution": contribution, "band": band}
+            # 晨操退出排名（EXP-20261029-02）：分數永遠係中性 60 —— 唔印假分數，改印晨操類型（Kelvin 2026-11-20）
+            retired = key == "trackwork" and _scoring_mod.TRACKWORK_SCORING != "on"
+            if retired:
+                tw_type = self._trackwork_type()
+                row.update(retired=True, read=(tw_type or {}).get("text") or "冇晨操紀錄")
+            rows.append(row)
+            if retired:
+                lines.append(f"| {label} | — | — | 退出排名 · 只作參考 | — | {row['read']} |")
+            elif centred:
                 lines.append(f"| {label} | {disp_score:.1f} | {raw_score:.1f} | "
                              f"{weight * 100:.1f}%（以 60 為中心） | {contribution:+.2f} | {band} |")
             elif weight == 0.0:

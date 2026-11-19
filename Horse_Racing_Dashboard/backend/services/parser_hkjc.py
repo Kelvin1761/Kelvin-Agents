@@ -848,16 +848,19 @@ def _load_matrix_details(analysis_path: Path) -> dict[int, list]:
                 if not isinstance(row, dict):
                     continue
                 try:
+                    # 晨操退出排名（Kelvin 2026-11-20）：唔畀分數（永遠係中性 60），歸入「參考 · 不入排名」，顯示晨操類型
+                    retired = bool(row.get("retired"))
                     details.append(DimensionDetail(
                         name=str(row.get("label") or row.get("key") or "").strip(),
-                        score=float(row["score"]),
+                        score=None if retired else float(row["score"]),
                         # `weight` is a fraction here; weight_pct is a percentage.
                         weight_pct=float(row["weight"]) * 100,
                         contribution=float(row["contribution"]),
                         score_raw=_optional_float(row.get("score_raw")),
                         impact=_optional_float(row.get("impact")),
-                        symbol=(row.get("band") or "").strip() or None,
-                        ranking_weighted=True,
+                        symbol=None if retired else ((row.get("band") or "").strip() or None),
+                        verdict=(str(row.get("read") or "").strip() or None) if retired else None,
+                        ranking_weighted=not retired,
                     ))
                 except (KeyError, TypeError, ValueError):
                     continue
