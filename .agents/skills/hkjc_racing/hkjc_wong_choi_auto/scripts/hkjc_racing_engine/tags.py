@@ -443,9 +443,8 @@ def _race_people_tags(horses: dict, meta: dict) -> dict:
         # 快操 1 課係例行（11-18 跑馬地 108 匹有 41 匹）→ 要快操 ≥2 課或者有試閘先出
         if (work["gallops"] >= 2 or work["trials"]) and not (downtier and work["gallops"] and work["trials"]):
             parts = ([f"快操 {work['gallops']} 課"] if work["gallops"] else []) + ([f"試閘 {work['trials']} 次"] if work["trials"] else [])
-            both = bool(work["gallops"] and work["trials"])
             out.setdefault(no, []).append(_tag(
-                "race_jockey_work", f"{today_j}親自{'＋'.join(parts)}", "good" if both else "note",
+                "race_jockey_work", f"{today_j}親自{'＋'.join(parts)}", "good",   # Kelvin 2026-11-19：放加分位（虛線 = 未入分）
                 why=f"近 21 日晨操紀錄：今仗騎師{today_j}親自策騎{'、'.join(parts)}（唔計比賽）。"
                     "騎師親自操＋試閘通常代表有部署；未量度、未入分（純顯示）。"))
     stables: dict[str, list] = {}

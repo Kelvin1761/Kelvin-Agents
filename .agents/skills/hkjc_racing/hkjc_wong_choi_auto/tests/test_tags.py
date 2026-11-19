@@ -347,7 +347,7 @@ def test_downtier_placed_to_purton_and_full_prep_merge(monkeypatch):
     assert "purton_takeover_full_prep" in two and "downtier_win_purton" not in two and "race_jockey_work" not in two
     assert two["purton_takeover_full_prep"]["tone"] == "good" and "快操 2 課" in two["purton_takeover_full_prep"]["why"]
     three = [t for t in out["3"] if t["key"] == "race_jockey_work"]
-    assert three and three[0]["label"] == "乙親自快操 2 課" and three[0]["tone"] == "note"
+    assert three and three[0]["label"] == "乙親自快操 2 課" and three[0]["tone"] == "good" and not three[0]["scored"]
     assert not [t for t in out.get("4", []) if t["key"] == "race_jockey_work"]     # 快操 1 課係例行，唔出
 
 
