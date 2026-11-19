@@ -1,6 +1,6 @@
 """HKJC 歷史數據補抓（docs/plans/2026-11-13-hkjc-historic-backfill.md）。
 
-抓兩類頁（2019-09 起）：
+抓兩類頁（2019-09 起；另有 horse_all／trackwork／vet 三類，清單喺 state/）：
   sectional  分段時間及位置（每場一頁）：每匹每段時間、走位、落後頭馬距離、尾段每 200 米
   horse      馬匹資料頁（每匹一頁，連退役馬）：逐仗評分、配備、體重、欄位、場地狀況……
 （試閘頁只有近一季日期，舊日期會靜靜返最新一頁 → 唔抓，見計劃。）
@@ -42,6 +42,9 @@ SECT_URL = "https://racing.hkjc.com/racing/information/Chinese/Racing/DisplaySec
 HORSE_URL = "https://racing.hkjc.com/zh-hk/local/information/horse?horseid={h}"
 # 馬匹晨操頁（Kelvin 2026-11-15「晨操數據」）：現役馬有來港以來全部晨操；退役馬冇（當 empty）
 TW_URL = "https://racing.hkjc.com/zh-hk/local/information/trackworkresult?horseid={h}"
+# 馬匹傷患紀錄頁（Kelvin 2026-11-19「查 HKJC 馬匹頁有冇歷史傷患紀錄，補落回放」，EXP-20261119-03）：
+# 現役馬有來港以來全部記錄（日期、詳情、通過日期）；退役馬會轉去 otherhorse 頁（當 empty）
+VET_URL = "https://racing.hkjc.com/zh-hk/local/information/ovehorse?horseid={h}"
 DELAY = (4.0, 8.0)
 LONG_PAUSE_EVERY, LONG_PAUSE = 100, (120.0, 180.0)
 FAIL_WAIT, MAX_CONSEC_FAIL = 15 * 60, 3
@@ -51,7 +54,7 @@ HKT = dt.timezone(dt.timedelta(hours=8))
 def require_volume() -> None:
     if not os.path.ismount(VOLUME):
         sys.exit(f"❌ 外置碟 {VOLUME} 冇掛載 —— 唔寫（避免靜靜寫返 Mac 內置碟）")
-    for p in (RAW / "sectional", RAW / "horse", RAW / "horse_all", RAW / "trackwork", PARSED, STATE):
+    for p in (RAW / "sectional", RAW / "horse", RAW / "horse_all", RAW / "trackwork", RAW / "vet", PARSED, STATE):
         p.mkdir(parents=True, exist_ok=True)
 
 
@@ -139,8 +142,18 @@ def trackwork_path(h: str) -> Path:
     return RAW / "trackwork" / f"{h}.html.gz"
 
 
+def vet_path(h: str) -> Path:
+    return RAW / "vet" / f"{h}.html.gz"
+
+
 def looks_valid(kind: str, html: str) -> str | None:
     """返回 'ok' / 'empty'（頁面話未有資料）/ None（唔似預期 → 當失敗）。"""
+    if kind == "vet":
+        if "oveHorse_details" in html:      # 現役馬頁（冇記錄都係 ok：0 條）
+            return "ok"
+        if "otherhorse" in html and "horseProfile" in html:   # 退役馬轉頁
+            return "empty"
+        return None
     if kind == "trackwork":
         if "晨操" not in html:
             return None
@@ -201,6 +214,14 @@ def cmd_run(args) -> None:
                 p = trackwork_path(h)
                 if not p.exists() and str(p) not in empty:
                     yield "trackwork", TW_URL.format(h=h), p
+
+        if "vet" in args.kinds:
+            # 同晨操同一份清單（state/trackwork_ids.json：2024-09 後有出賽嘅馬）
+            ids_file = STATE / "trackwork_ids.json"
+            for h in (json.loads(ids_file.read_text()) if ids_file.exists() else []):
+                p = vet_path(h)
+                if not p.exists() and str(p) not in empty:
+                    yield "vet", VET_URL.format(h=h), p
 
     kinds = set(args.kinds.split(","))
     log(f"開始：kinds={sorted(kinds)}")
@@ -369,6 +390,44 @@ def cmd_parse(_args) -> None:
     print(f"horse：解析 {n_ok}，失敗 {n_bad}")
 
 
+def parse_vet(html: str) -> list[dict] | None:
+    """傷患紀錄頁 → [{date, detail, passed}]（ISO 日期；通過日期可能冇）。唔係現役馬頁 → None。"""
+    from bs4 import BeautifulSoup
+    box = BeautifulSoup(html, "html.parser").find("div", class_="oveHorse_details")
+    if box is None:
+        return None
+    out = []
+    for tr in box.select("tbody tr"):
+        c = [_txt(td) for td in tr.find_all("td")]
+        if len(c) < 2 or not re.match(r"\d{2}/\d{2}/\d{4}$", c[0]):
+            continue
+        iso = lambda d: f"{d[6:10]}-{d[3:5]}-{d[0:2]}" if re.match(r"\d{2}/\d{2}/\d{4}$", d or "") else None
+        out.append({"date": iso(c[0]), "detail": c[1], "passed": iso(c[2]) if len(c) > 2 else None})
+    return out
+
+
+def cmd_parse_vet(_args) -> None:
+    """raw/vet → parsed/vet.jsonl.gz：{horse_id, active, records}；退役（empty）馬 active=False、records=None。"""
+    empty = set(json.loads((STATE / "empty.json").read_text())) if (STATE / "empty.json").exists() else set()
+    final = PARSED / "vet.jsonl.gz"
+    tmp = final.with_suffix(".tmp")
+    n_ok = n_bad = n_ret = n_rec = 0
+    with gzip.open(tmp, "wt", encoding="utf-8") as out:
+        for p in sorted((RAW / "vet").glob("*.html.gz")):
+            recs = parse_vet(gzip.open(p, "rt", encoding="utf-8", errors="ignore").read())
+            if recs is None:
+                n_bad += 1
+                continue
+            n_ok += 1; n_rec += len(recs)
+            out.write(json.dumps({"horse_id": p.name.split(".")[0], "active": True, "records": recs}, ensure_ascii=False) + "\n")
+        for e in sorted(empty):
+            if "/raw/vet/" in e:
+                n_ret += 1
+                out.write(json.dumps({"horse_id": Path(e).name.split(".")[0], "active": False, "records": None}) + "\n")
+    os.replace(tmp, final)
+    print(f"vet：現役 {n_ok}（{n_rec} 條記錄）、退役 {n_ret}、解析失敗 {n_bad}")
+
+
 def cmd_status(_args) -> None:
     races = json.loads((STATE / "races.json").read_text(encoding="utf-8")) if (STATE / "races.json").exists() else []
     got = sum(1 for _ in (RAW / "sectional").rglob("*.html.gz"))
@@ -385,9 +444,10 @@ def main() -> None:
     r.add_argument("--kinds", default="sectional,horse")
     r.add_argument("--quiet", action="store_true", help="完成唔推 Telegram（排程每日更新用；失敗照推）")
     sub.add_parser("parse")
+    sub.add_parser("parse-vet")
     sub.add_parser("status")
     args = ap.parse_args()
-    {"tasks": cmd_tasks, "run": cmd_run, "parse": cmd_parse, "status": cmd_status}[args.cmd](args)
+    {"tasks": cmd_tasks, "run": cmd_run, "parse": cmd_parse, "parse-vet": cmd_parse_vet, "status": cmd_status}[args.cmd](args)
 
 
 if __name__ == "__main__":

@@ -58,3 +58,32 @@ def test_active_horse_two_digit_year_dates():
     assert len(d["runs"]) >= 10
     r = d["runs"][0]
     assert (r["date"], r["pos"], r["rating"], r["season"]) == ("01/11/2026", "01", "40", "26/27")
+
+
+# 傷患紀錄頁（EXP-20261119-03）：結構跟真頁（ovehorse?horseid=HK_2025_L183，2026-11-19）
+_VET_ROWS = """<table class="horseProfile"></table><div class="oveHorse_details"><table class="table_bd"><thead><tr>
+<td>日期</td><td>詳情</td><td>通過日期</td></tr></thead><tbody>
+<tr><td class="f_ffmA">22/04/2026</td><td>右前腿韌帶受傷</td><td>09/10/2026</td></tr>
+<tr><td class="f_ffmA">03/10/2025</td><td>接受閹割手術</td><td></td></tr>
+</tbody></table></div>"""
+
+
+def test_vet_page_records_parsed_with_iso_dates():
+    assert b.looks_valid("vet", _VET_ROWS) == "ok"
+    assert b.parse_vet(_VET_ROWS) == [
+        {"date": "2026-04-22", "detail": "右前腿韌帶受傷", "passed": "2026-10-09"},
+        {"date": "2025-10-03", "detail": "接受閹割手術", "passed": None},
+    ]
+
+
+def test_vet_active_horse_without_records_is_zero_not_missing():
+    html = '<table class="horseProfile"></table><div class="oveHorse_details"></div>'
+    assert b.looks_valid("vet", html) == "ok"
+    assert b.parse_vet(html) == []
+
+
+def test_vet_retired_redirect_is_empty_and_block_page_fails():
+    retired = '<table class="horseProfile"></table><a href="/zh-hk/local/information/otherhorse?horseid=X">'
+    assert b.looks_valid("vet", retired) == "empty"
+    assert b.parse_vet(retired) is None
+    assert b.looks_valid("vet", "<html>Access denied</html>") is None
