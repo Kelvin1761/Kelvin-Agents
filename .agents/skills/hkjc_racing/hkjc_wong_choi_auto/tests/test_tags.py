@@ -317,3 +317,43 @@ def test_trainer_awt_switch_pattern():
     assert "awt_switch" not in patterns(h, "第四班", 1200, [])                 # 冇今仗場地 = 唔判
     assert [c["pattern"] for c in matches(h, "第四班", 1200, [], "田草")] == ["awt_switch"]
     assert matches(dict(h, trainer="蔡約翰"), "第四班", 1200, [], "田草") == []
+
+
+def _fake_jt(monkeypatch, rates):
+    from hkjc_racing_engine import live_priors
+
+    class JT:
+        def lookup(self, kind, name):
+            return {"win_rate": rates[name]} if name in rates else None
+    monkeypatch.setattr(live_priors, "get_jt_ratings", lambda *_a, **_k: JT())
+
+
+def _tw(gallops, trials):
+    return {"summary": {"race_jockey_gallops_21d": gallops, "race_jockey_trials_21d": trials}}
+
+
+def test_downtier_placed_to_purton_and_full_prep_merge(monkeypatch):
+    """Kelvin 2026-11-19：下游騎師入位（唔止贏）→ 潘頓；潘頓兼親自快操＋試閘 = 一個合併 chip。全部未入分。"""
+    _fake_jt(monkeypatch, {"甲": 4.0, "潘頓": 25.0})
+    placed2 = _hh(("谷草", "4", 1200, 2, "甲"))
+    horses = {"1": {"jockey": "潘頓", "trainer": "T1", "_data": placed2},
+              "2": {"jockey": "潘頓", "trainer": "T2", "_data": placed2, "trackwork": _tw(2, 1)},
+              "3": {"jockey": "乙", "trainer": "T3", "_data": {}, "trackwork": _tw(2, 0)},
+              "4": {"jockey": "丁", "trainer": "T4", "_data": {}, "trackwork": _tw(1, 0)}}
+    out = tags._race_people_tags(horses, {"date": "2026-11-18"})
+    one = [t for t in out["1"] if t["key"] == "downtier_win_purton"]
+    assert one and one[0]["label"] == "上仗甲跑第2、今仗轉潘頓" and not one[0]["scored"]
+    two = {t["key"]: t for t in out["2"]}
+    assert "purton_takeover_full_prep" in two and "downtier_win_purton" not in two and "race_jockey_work" not in two
+    assert two["purton_takeover_full_prep"]["tone"] == "good" and "快操 2 課" in two["purton_takeover_full_prep"]["why"]
+    three = [t for t in out["3"] if t["key"] == "race_jockey_work"]
+    assert three and three[0]["label"] == "乙親自快操 2 課" and three[0]["tone"] == "note"
+    assert not [t for t in out.get("4", []) if t["key"] == "race_jockey_work"]     # 快操 1 課係例行，唔出
+
+
+def test_downtier_needs_weak_last_jockey_and_old_trackwork_has_no_chip(monkeypatch):
+    _fake_jt(monkeypatch, {"甲": 12.0})
+    horses = {"1": {"jockey": "潘頓", "trainer": "T1", "_data": _hh(("谷草", "4", 1200, 1, "甲")),
+                    "trackwork": {"summary": {"race_jockey_involved": True}}}}
+    out = tags._race_people_tags(horses, {"date": "2026-11-18"})
+    assert not [t for t in out.get("1", []) if t["key"] in ("downtier_win_purton", "race_jockey_work", "purton_takeover_full_prep")]

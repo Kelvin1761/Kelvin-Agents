@@ -151,6 +151,12 @@ RANKING_ADJUSTMENTS = (
         "formula": "β·(max(0, 馬齡 − 6) − 場均)，β = −0.37／歲（原始分）；馬齡 = HKJC 馬匹頁（hkjc_racing_engine/horse_age.py）",
         "missing": "冇馬齡 = 當 ≤6 歲（中性）",
     },
+    {
+        "key": "thin_evidence",
+        "label": "薄證據收窄（EXP-20261119-05，實驗性上線、未證實改善）",
+        "formula": "本地馬、香港往績 ≤2 仗、上一仗距今 >180 日：raw' = 場均 + 0.5·(raw − 場均)，再全場置中（收窄、唔係扣分：高分跌、低分升）；往績 = HKJC 馬匹頁香港賽事、日期嚴格早過今仗（hkjc_racing_engine/thin_evidence.py）",
+        "missing": "外隊馬／初出／冇香港往績 = 不套用",
+    },
 )
 
 DEBUT_MATRIX_WEIGHTS = dimensions.debut_weights()

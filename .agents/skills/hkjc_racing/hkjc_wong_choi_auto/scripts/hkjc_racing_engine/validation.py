@@ -203,6 +203,7 @@ def _validate_auto_namespace(horse_num: str, auto: dict) -> list[str]:
             expected += float(auto.get("surface_move_delta", 0.0) or 0.0)    # EXP-20261117-06
             expected += float(auto.get("same_distance_venue_delta", 0.0) or 0.0)   # EXP-20261119-01
             expected += float(auto.get("horse_age_delta", 0.0) or 0.0)             # EXP-20261119-01
+            expected += float(auto.get("thin_evidence_delta", 0.0) or 0.0)         # EXP-20261119-05
         except (TypeError, ValueError):
             errors.append(f"SCORE-010 horse {horse_num} invalid market history delta")
         if abs(float(ability_raw) - expected) > 0.05:
