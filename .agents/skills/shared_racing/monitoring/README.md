@@ -21,7 +21,9 @@ performed and telemetry is disabled. Run directly with:
 
 Automatic reports are saved to `scratch/wongchoi-drift/<platform>/<meeting>/<run>/`:
 `drift.json`, `pooled_exploratory.html` when sufficient data exists, `run.log`
-and `status.json`. History includes native and catalog-verified WARM corpus
+and `status.json`. Retention: after each run, report folders older than 3 days move to
+`/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/wongchoi-drift/` (same layout); if that disk
+is not mounted they stay local, and are dropped after 30 days. Nothing reads old reports back. History includes native and catalog-verified WARM corpus
 through the existing `corpus_paths` reader. Read failures produce a failed
 advisory, never a success based on a silently smaller sample.
 

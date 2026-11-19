@@ -1,14 +1,88 @@
 """Run the optional isolated drift environment after successful scoring."""
 from __future__ import annotations
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
+import sys
 import uuid
 
 REPO = Path(__file__).resolve().parents[5]
 MONITOR = REPO / ".agents/skills/shared_racing/monitoring"
+
+# Retention (2026-11-19): every scoring run wrote a new report folder here and
+# nothing ever removed them — 702MB in five weeks on a Mac with ~15GB free.
+# Nothing reads old reports back, so after LOCAL_KEEP_DAYS they move to the
+# external archive; if that disk is not mounted they stay put (never written to
+# a /Volumes path that silently lands on the internal disk) until
+# UNMOUNTED_DELETE_DAYS, after which the advisory output is dropped.
+LOCAL_KEEP_DAYS = 3
+UNMOUNTED_DELETE_DAYS = 30
+STAMP_FORMAT = "%Y%m%dT%H%M%SZ"
+
+
+def _archive_base() -> Path:
+    sys.path.insert(0, str(REPO))
+    from wongchoi_paths import SNAPSHOT_ARCHIVE_ROOT  # one definition of the external archive
+    return SNAPSHOT_ARCHIVE_ROOT.parent / "scratch" / "wongchoi-drift"
+
+
+def _mounted(path: Path) -> bool:
+    parts = Path(path).parts
+    if len(parts) < 3 or parts[1] != "Volumes":
+        return Path(path).is_dir()
+    return os.path.ismount(Path("/Volumes") / parts[2])
+
+
+def _run_time(run: Path) -> datetime:
+    try:
+        return datetime.strptime(run.name.split("-", 1)[0], STAMP_FORMAT).replace(tzinfo=timezone.utc)
+    except ValueError:
+        return datetime.fromtimestamp(run.stat().st_mtime, timezone.utc)
+
+
+def prune_old_reports(root: Path, archive: Path | None = None, now: datetime | None = None) -> dict:
+    """Move <platform>/<meeting>/<run> folders older than LOCAL_KEEP_DAYS off the Mac."""
+    now = now or datetime.now(timezone.utc)
+    result = {"moved": 0, "deleted": 0, "kept_unmounted": 0, "errors": 0}
+    if not root.is_dir():
+        return result
+    try:
+        archive = archive or _archive_base()
+    except Exception:  # noqa: BLE001 — retention must never fail a scoring run
+        archive = None
+    mounted = archive is not None and _mounted(archive)
+    for run in sorted(root.glob("*/*/*")):
+        if not run.is_dir():
+            continue
+        try:
+            age = now - _run_time(run)
+            if age < timedelta(days=LOCAL_KEEP_DAYS):
+                continue
+            if mounted:
+                target = archive / run.relative_to(root)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                if target.exists():
+                    shutil.rmtree(run)
+                else:
+                    shutil.move(str(run), str(target))
+                result["moved"] += 1
+            elif age >= timedelta(days=UNMOUNTED_DELETE_DAYS):
+                shutil.rmtree(run)
+                result["deleted"] += 1
+            else:
+                result["kept_unmounted"] += 1
+        except OSError:
+            result["errors"] += 1
+    for meeting in root.glob("*/*"):
+        try:
+            if meeting.is_dir() and not any(meeting.iterdir()):
+                meeting.rmdir()
+        except OSError:
+            pass
+    return result
 
 
 def run_drift_advisory(platform: str, meeting: Path) -> dict:
@@ -43,4 +117,8 @@ def run_drift_advisory(platform: str, meeting: Path) -> dict:
         (out / "status.json").write_text(json.dumps(status, indent=2) + "\n")
     except OSError:
         pass
+    try:
+        status["retention"] = prune_old_reports(REPO / "scratch/wongchoi-drift")
+    except Exception as exc:  # noqa: BLE001 — advisory housekeeping, never fails scoring
+        status["retention"] = {"error": str(exc)}
     return status
