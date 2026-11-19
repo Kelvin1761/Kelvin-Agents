@@ -213,24 +213,28 @@ class Explanations:
         if has_incident:
             lines.append("醫療欄有紀錄，或屬傷病後復出，須留意復原情況")
 
-        # 長休 × 晨操 context（#6）：長休（>60日）要睇操練夠唔夠
-        # 以前 strong = 「快操」或「試閘」出現 —— 但每份摘要都有「近#日快操#課、試閘#課」
-        # 模板字，所以長休馬一律印「操練量充足」（897 匹只有 1 匹兩樣都係 0）。
-        # 而家睇實際課數（EXP-20261018-10，純顯示，唔入分）。
+        # 長休 × 晨操 context（#6）：長休（>60日）要睇操練夠唔夠（純顯示，唔入分）。
+        # 「夠唔夠」用 _trackwork_type 嘅晨操類型（唯一定義，Kelvin 2026-11-20 統一）——
+        # 以前呢度另有一套「快操 ≥3＋試閘 ≥1 = 充足」，同晨操格嘅「快操 ≥5 = 操練密」打交。
         tw = self._text("trackwork_digest") + self._text("trackwork_trainer")
         if days is not None and days > 60:
-            counts = re.search(r"近(\d+)日快操(\d+)課、試閘(\d+)課", tw)
-            gallops = int(counts.group(2)) if counts else None
-            trials = int(counts.group(3)) if counts else None
-            seen = f"（近{counts.group(1)}日快操{gallops}課、試閘{trials}課）" if counts else ""
+            tw_type = self._trackwork_type()
+            counts = self._trackwork_counts()
+            seen = f"（近21日快操{counts[0]}課、試閘{counts[1]}課）" if counts else ""
             slowing = any(k in tw for k in ("放緩", "偏保守", "操練量少", "操練不足"))
-            enough = bool(counts) and ((gallops >= 3 and trials >= 1) or gallops >= 5)
-            light = bool(counts) and gallops <= 2 and trials == 0
-            if enough and not slowing:
-                lines.append(f"復出前操練量充足{seen}，狀態有支持")
-            elif enough:
-                lines.append(f"復出前有實際操練{seen}，但近期操練趨勢放緩，狀態須觀察")
-            elif light or slowing:
+            label = tw_type["label"] if tw_type else None
+            kind = tw_type["text"] if tw_type else ""
+            if label in ("操練少", "放鬆為主"):
+                lines.append(f"長休後{kind}{seen}，操練偏保守，狀態須觀察")
+            elif label and slowing:
+                lines.append(f"復出前{kind}{seen}，但近期操練趨勢放緩，狀態須觀察")
+            elif label == "操練密":
+                lines.append(f"復出前{kind}{seen}，備戰充足，狀態有支持")
+            elif label == "操練正常" and tw_type["trials"]:
+                lines.append(f"復出前{kind}{seen}，備戰正常")
+            elif label == "操練正常":
+                lines.append(f"復出前{kind}{seen}，未見試閘，宜對照晨操判斷備戰")
+            elif slowing:
                 lines.append(f"長休後操練偏保守{seen}，狀態須觀察")
             else:
                 lines.append(f"長休復出{seen}，宜對照晨操判斷備戰")

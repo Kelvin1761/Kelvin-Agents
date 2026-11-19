@@ -509,7 +509,7 @@ class LeafScores:
 
         final_score = scoring.clip_score(base_score + activity_bonus)
         if activity_bonus > 2.0:
-            note += f"；操練量充足（活躍度+{activity_bonus:.1f}）"
+            note += f"；操練活躍度+{activity_bonus:.1f}"  # 「充足」只由 _explain._trackwork_type 判
 
         return final_score, note, "trackwork_digest"
 

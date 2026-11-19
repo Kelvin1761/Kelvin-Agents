@@ -17,9 +17,18 @@ def readout(gallops, trials, trainer="", days=120):
 
 
 class LayoffReadoutTests(unittest.TestCase):
-    def test_real_work_is_sufficient(self):
-        self.assertIn("操練量充足", readout(3, 1))
-        self.assertIn("操練量充足", readout(5, 0))
+    """2026-11-20 起「夠唔夠」跟 _trackwork_type（快操 ≥5 = 操練密），唔再另有 3＋1 門檻。"""
+
+    def test_only_dense_work_is_sufficient(self):
+        text = readout(5, 0)
+        self.assertIn("操練密", text)
+        self.assertIn("備戰充足", text)
+        self.assertNotIn("充足", readout(3, 1))   # 舊門檻叫「充足」，而家同晨操格一致 = 操練正常
+
+    def test_normal_with_trial(self):
+        text = readout(3, 1)
+        self.assertIn("操練正常＋試閘1次", text)
+        self.assertIn("備戰正常", text)
 
     def test_no_work_is_not_called_sufficient(self):
         text = readout(0, 0)
@@ -31,12 +40,16 @@ class LayoffReadoutTests(unittest.TestCase):
         text = readout(3, 0)
         self.assertNotIn("充足", text)
         self.assertNotIn("偏保守", text)
+        self.assertIn("未見試閘", text)
 
     def test_real_work_with_slowing_trend_says_both(self):
         text = readout(4, 1, trainer="操練趨勢放緩")
-        self.assertIn("有實際操練", text)
+        self.assertIn("操練正常", text)
         self.assertIn("放緩", text)
         self.assertNotIn("偏保守", text)
+        text = readout(6, 1, trainer="操練趨勢放緩")
+        self.assertNotIn("充足", text)
+        self.assertIn("放緩", text)
 
     def test_light_work_with_slowing_is_conservative(self):
         self.assertIn("偏保守", readout(1, 0, trainer="操練趨勢放緩"))
