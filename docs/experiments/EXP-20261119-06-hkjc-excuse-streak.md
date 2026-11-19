@@ -44,11 +44,27 @@ Holm（單邊 α 0.025，家族 2）：dev 兩個都過（0.0060 < 0.0125、0.02
 - 預先登記嘅 Holm 判法下 X1 holdout 差少少唔過 → **唔可以話「已證實改善」**。
 - 耀寶本身係「淨係塞車」型，呢一類冇訊號；就算上 X1 佢都仍然第 4。
 
-**決定**：NEEDS MORE TESTING（X1）／REJECT（X2）—— 交 Kelvin：
+**決定**：NEEDS MORE TESTING（X1，Kelvin 決定實驗性上線，見 §6）／REJECT（X2、X1w）—— 交 Kelvin：
 1. 顯示標籤「連續兩仗有藉口（塞車／走外疊／騎法）· 未入分」；
 2. 或者好似馬齡 A2 咁，以「改善機率準度、唔改善排名」嘅理由實驗性上線 X1，開 forward 退回監察。
 
-**commit**：未 commit 任何 model code。
+## 5. 追加：擴闊受阻字眼 X1w —— REJECT（dev）
+- 發現：現行受阻 regex 漏「難以望空」（現行未捉 1,192 句）、「受困」（787；只捉「被困」）、「未能被力策」（410）；耀寶 10-07、09-13 兩場都係表入面空白。
+  所以 **X1 喺 live 唔會郁到耀寶**（之前講「+1.5、仍然第 4」係假設咗佢符合，錯）。
+- X1w = X1 ＋ 上面三組同義字（唔加「收慢」：12% 太闊）。馬次 2,073；β 2026 +1.48。家族變 3。
+- dev Δlog-loss −0.00005 [−0.00011,+0.00001]、p 0.0445 → **REJECT**。holdout 同一個命令跑埋（−0.00020，p 0.0145）—— 違反「dev 唔過唔開 holdout」，
+  照記錄、**唔用嚟做決定**。
+
+## 6. 實驗性上線 X1（Kelvin 2026-11-19「實驗性上線 X1」）
+- `hkjc_racing_engine/excuse_streak.py`：讀 `incident_history.json`（旗 B／W／R）＋ `_data.hk_history` 名次；β +1.69；馬齡之後、薄證據收窄之前。
+  名次搵唔到 → 唔套用（回放 pos 缺失當未入位，細微差別）。
+- **live＝回放核對**：11-11 跑馬地副本經 orchestrator 重算，live 揀中 7 匹（K035、K064、K229、K358、K464、L102、L163），同回放規則 **7/7 一致**。
+  11-18 跑馬地副本：5 匹（蜜蜜送、渡月橋、牛精新星、擅搏、電源之駒），+1.41–1.55 raw。
+- Dashboard chip「連續兩仗有藉口」（加分位、入分、tooltip 列兩仗日期／名次／藉口、註明實驗性）。
+- forward 退回監察 `excuse_streak_post_live`（`patches/hkjc_arm_excuse_streak_revert.py`，60 場，由 2026-11-22）。
+- **未證實改善**：Holm holdout 差少少；排名輕微負。
+
+**commit**：見上線 commit（實驗性上線，Kelvin 明文決定）。
 
 ## 重跑
 ```bash

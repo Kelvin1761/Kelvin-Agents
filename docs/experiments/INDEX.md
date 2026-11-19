@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261119-07](EXP-20261119-07-hkjc-fast-closer-poor-finish.md) | 2026-11-19 | HKJC | 末段快（L400 嗰場前三）但名次差嘅馬被低估（耀寶型） | **REJECT（診斷）**：上仗 dev +1.4／holdout −1.1；耀寶型 +2.9／−0.1；冇一組兩段同方向顯著，段速維度已捉到 |
 | [EXP-20261119-06](EXP-20261119-06-hkjc-excuse-streak.md) | 2026-11-19 | HKJC | 連續兩仗有藉口（塞車／走外疊／騎法被質疑）入分（X1＋都未入位、X2） | **X1 NEEDS MORE TESTING**：殘差 +3.8／+4.2pp 逐季全正；dev／holdout Δlog-loss −0.00007／−0.00020 名義 PASS，但 Holm holdout p 0.0155 > 0.0125；排名輕微負。X2 holdout REJECT。淨係塞車冇訊號（耀寶型）|
 | [EXP-20261119-05](EXP-20261119-05-hkjc-thin-evidence-confidence-shrink.md) | 2026-11-19 | HKJC | 本地、≤2 仗、休 >180 日嘅馬收窄信心（raw 向場均，λ 0.5／walk-forward） | **REJECT（dev，冇功效）**：歷史排頭 2 入位 29% vs 估 55%（14 匹），逐季 λ 0.14–0.50 方向一致，但每季 ~20 匹次，Δlog-loss CI 跨零；建議顯示「證據薄」標籤或由 Kelvin 決定實驗性上線 |
 | [EXP-20261119-04](EXP-20261119-04-hkjc-trainer-layoff-record.md) | 2026-11-19 | HKJC | 練馬師長休（≥90 日）後殘差，賽前已知（只用之前季）收縮入分（k 50／150） | **REJECT（dev）**：Δlog-loss +0.00003／+0.00004、好過 null 只 25–28%；β 早兩季負、2023 後先轉正 → 全期揀嘅 −6.9pp 格唔延續，維持標籤 |
