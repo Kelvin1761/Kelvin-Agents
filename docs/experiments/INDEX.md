@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261120-50](EXP-20261120-50-tennis-forward-review.md) | 2026-11-20 | Tennis | 上線兩星期覆核：精選、cap3 shadow、Sportsbet 對 Betfair | **唯讀覆核，冇改動**。精選 129 注 −11.9% [−28.6,+5.3]；讓局 −37.9% [−68.9,−6.6] 同上線前同方向；21:00 +21% vs 09:00 −33% 但 CLV 兩邊都係零（運氣）；賠率 ≥3 0/12（cap3 shadow 測緊）。Betfair 測試 3 晚 5 場 0 注：決定窗只得 21:00，Tour／Challenger 價第二朝先有；改任何輪亦只有 1/67 場 Sportsbet 高過 Betfair。prop_price_log 11-05 起停寫；ATP 排名 11-17 起被拒 |
 | [EXP-20261119-03](EXP-20261119-03-hkjc-vet-history-results.md) | 2026-11-20 | HKJC | 歷史傷患紀錄（HKJC 馬匹傷患頁，現役 999 匹）入分：嚴重傷患／任何醫療／傷後第一仗（[協議](EXP-20261119-03-hkjc-vet-history-protocol.md)） | **REJECT ×3**：β 正（存活偏差），覆蓋 94% 嘅 2026/27 殘差 ≈0；holdout／terminal Δlog-loss 全部 ≥0；建議 B1 維持 off |
 | [EXP-20261119-11](EXP-20261119-11-hkjc-draw-double-and-blocked-wording.md) | 2026-11-19 | HKJC | 檔位計兩次直接量度（walk-forward 檔位×跑法）＋塞車擴闊字眼純診斷 | **兩樣都唔使改**：係數比 維度 1.03／0.99、檔位×跑法 1.17／0.81（CI 包 1）；新增字眼「難以望空／受困」下仗 holdout −4.3pp，唔係藉口 |
 | [EXP-20261119-09](EXP-20261119-09-hkjc-night-hot-hand.md) | 2026-11-19 | HKJC | 當晚騎師／練馬師手風（舊季，唔掂 forward） | **REJECT（診斷）**：holdout 全部貼近 0（已贏 ≥1 +0.1、≥2 −0.8、冷手 −0.2）；對照組都 +0.4；唔調整 |
@@ -16,6 +17,7 @@
 | [EXP-20261119-04](EXP-20261119-04-hkjc-trainer-layoff-record.md) | 2026-11-19 | HKJC | 練馬師長休（≥90 日）後殘差，賽前已知（只用之前季）收縮入分（k 50／150） | **REJECT（dev）**：Δlog-loss +0.00003／+0.00004、好過 null 只 25–28%；β 早兩季負、2023 後先轉正 → 全期揀嘅 −6.9pp 格唔延續，維持標籤 |
 | [EXP-20261119-02](EXP-20261119-02-hkjc-thin-evidence-first-hv.md) | 2026-11-19 | HKJC | 通情達理型薄證據疊加；經驗淺（≤3 仗）初次谷草被高估，加指標扣分（F1）或唔畀田草轉谷草加分（F2） | **REJECT（dev）**：β 每季都負，殘差 −1.5／−3.4pp，但 F1 Δlog-loss −0.00002 CI 跨零、F2 −0.00003 跨零；涉及馬太少。通情達理就算上線都仍然排第 2；真缺口係傷患／晨操復出資訊（回放冇數據源） |
 | [EXP-20261113-30](EXP-20261113-30-hkjc-long-history-results.md) | 2026-11-13 | HKJC | 狀態／輸距穩定性延長至十二仗、同程調整改同場同程；四 arm＋對稱 walk-forward refit | **未證實改善，live 不改**：290場；單獨延長窗 Good各−0.34pp；合併 Gold／Good打和、微弱排序訊號 family Holm p=0.384；同場同程 Good−1.03pp，泥地僅7場 |
+| [EXP-20261113-50](EXP-20261113-50-tennis-challenger-surface.md) | 2026-11-13 | Tennis | 「數據完整度 65」點解永遠一樣；Challenger 補返場地（維基 ATP Challenger 賽程，94% 覆蓋、295/295 同 TML 一致）會唔會令勝負模型更準 | **REJECT（唔駁入定價）**。分數警告扣分上限 35 → 冇錯誤一律 65＝門檻；分數同門檻冇改（精選預先登記）。補場地後 449 場 ΔLL +0.0182 [−0.0002,+0.0375]，硬地／紅土／前後半全部變差；Challenger 分場地 Elo 唔準。只上線 dashboard 文字：剷 65 分句，改講「場地未知」。場地來源 code 留分支 d48ae706 |
 | [EXP-20261113-24](EXP-20261113-24-au-l600-weight-conversion-results.md) | 2026-11-13 | AU | HKJC L400 負磅換算搬去 AU：L600 環境分逐仗按今仗－該仗負磅換算（係數用判決窗前 84,677 仗量） | **REJECT ×2，效果近乎零**：AU 每 kg 只多輸 0.004 秒（長途 0.026），HKJC 約 0.035；Gold／Good 只差 1 場 |
 | [EXP-20261113-23](EXP-20261113-23-au-new-components-results.md) | 2026-11-13 | AU | 新計分組件：騎練 point-in-time 情境率（近期／地況／路程／休後）、試閘覆蓋擴闊、長途段速、短直路前置加分 | **十個 arm 全部 REJECT**：情境率覆蓋 ~90% 但冇好過 LY 整體率；試閘擴闊覆蓋反而蝕；長途段速同短直路前置打和 |
 | [EXP-20261113-22](EXP-20261113-22-au-trial-wet-improve-and-loo-results.md) | 2026-11-13 | AU | 試閘只計今次備戰期、場地×濕地重疊減半、其餘每個入分組件逐個剷走 | **改善 arm 全 REJECT**（只計今次令試閘覆蓋跌到 95–97% 中性）；消融：每個組件都蝕，**只有高班實績證明剷咗唔蝕**（Gold +0.13、Good +0.05，CI 跨零）→ **用戶決定剷走**（`PROVEN_CLASS_LIVE=False`，真引擎重評驗證一致）；dashboard overlay 歸組顯示 |

@@ -185,14 +185,14 @@ def _compare(hold_gap: float, break_gap: float, sel_name: str, opp_name: str) ->
     return "，".join(parts) + "。"
 
 
-def _caveats(evidence: dict, sel_id, opp_id) -> str | None:
+def _caveats(evidence: dict, sel_id, opp_id, court: str | None = None) -> str | None:
+    # No "數據完整度 N/100" line: warning deductions are capped at 35, so every
+    # match without a hard error scored exactly 65, the entry bar itself
+    # (2,216 of 2,364 rows priced 2026-11-01..13). It said nothing. Name the
+    # input that is actually missing instead.
     notes = []
-    quality = _num(evidence.get("data_quality_score"))
-    if quality is not None:
-        if quality <= 1:
-            quality *= 100
-        if quality < 80:
-            notes.append(f"數據完整度 {quality:.0f}/100（入選門檻 65）")
+    if court == "":
+        notes.append("場地未知，場地 Elo 用緊整體 Elo 代替")
     profiles = (evidence.get("profiles") or {}).get("serve_return") or {}
     counts = [int(_num((profiles.get(str(pid)) or {}).get("matches")) or 0) for pid in (sel_id, opp_id)]
     if profiles and min(counts) < 10:
@@ -203,8 +203,8 @@ def _caveats(evidence: dict, sel_id, opp_id) -> str | None:
 
 
 def pick_reasons(featured: dict, prop: dict, match: dict, players: dict,
-                 match_pred: dict | None = None) -> list[str]:
-    """Plain-language reasons for one featured pick, most important first."""
+                 match_pred: dict | None = None, court: str | None = None) -> list[str]:
+    """``court``: the tournament surface, "" when unknown, None when not looked up."""
     try:
         family = _family(featured.get("market_key") or prop.get("market_key"))
         sel_id, opp_id = _selected_player(prop, match, family)
@@ -219,7 +219,7 @@ def pick_reasons(featured: dict, prop: dict, match: dict, players: dict,
         ]
         if sel_id is not None:
             reasons += _form_reasons(evidence, sel_id, opp_id, sel_name, opp_name)
-            reasons.append(_caveats(evidence, sel_id, opp_id))
+            reasons.append(_caveats(evidence, sel_id, opp_id, court))
         return [r for r in reasons if r]
     except Exception:  # noqa: BLE001 - an explanation must never break the export
         return []
