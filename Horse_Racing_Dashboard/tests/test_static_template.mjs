@@ -2973,6 +2973,8 @@ test("HKJC 情境 banner follows measured magnitudes from the engine (EXP-202611
   const html = renderHkjcRanking("4-x");
   assert.match(html, /跑法約 ±2pp（約 1\.7 分）、檔位約 ±3pp（約 2\.6 分）/);
   assert.match(html, /上限 ±2pp/);
+  assert.match(html, /即場（只作參考）/);                           // EXP-20261120-03：同日偏差唔延續，只作參考
+  assert.match(html, /唔係預測/);
   assert.doesNotMatch(html, /\+10pp|undefined|NaN/);
   HKJC_SCENARIO.style = "default"; HKJC_SCENARIO.draw = "default";
 });

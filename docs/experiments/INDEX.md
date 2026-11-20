@@ -582,3 +582,4 @@
 - [EXP-20261119-01](EXP-20261119-01-hkjc-same-distance-venue-and-age.md) — 同程上名全喺另一場地被高估（dev −2.7／holdout −4.6pp）→ V2 β −1.27 上線；馬齡 A2（6 歲後 −0.37／歲）上線；一仗馬收縮 K1／K2 REJECT
 - [EXP-20261120-01](EXP-20261120-01-hkjc-1114-shatin-review-going.md) — 11-14 沙田覆盤：R6 取消令 R7–R11 賽果漏抓（抽取 break，已修）；黏地唔利後追（6 季：前 34.3%／後 12.3%）、黏地往績市場已計入 → 唔開
 - [EXP-20261120-02](EXP-20261120-02-hkjc-going-record.md) — HKJC 黏地／濕地往績入分：殘差跨零、適性對比冇訊號、β 逐季調轉；G1 dev Δlog-loss −0.00000 → REJECT（冇開 holdout）
+- [EXP-20261120-03](EXP-20261120-03-hkjc-inrace-bias-persistence.md) — HKJC 同日偏差唔延續（沙田 288 日 r −0.003、跑馬地 292 日 r +0.031，CI 跨零）→ dashboard「即場」改標只作參考（純顯示）

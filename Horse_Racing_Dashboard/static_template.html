@@ -5986,9 +5986,9 @@ function renderTrackGeometry(geometry) {
 // 只改呢個表嘅「情境分／情境排名」，正式排名同 ROI 頭兩選唔郁。幅度同即場規則嚟自引擎 summary.scenario_constants()。
 const HKJC_SCENARIO = { style: 'default', draw: 'default' };
 const HKJC_RANKING_CACHE = {};
-const HKJC_STYLE_OPTIONS = [['default', '預設'], ['inrace', '即場'], ['放頭', '利放頭'], ['守中', '利守中'], ['後上', '利後上']];
+const HKJC_STYLE_OPTIONS = [['default', '預設'], ['inrace', '即場（只作參考）'], ['放頭', '利放頭'], ['守中', '利守中'], ['後上', '利後上']];
 // 檔位段同全 Wong Choi 一個標準：內 1–4、中 5–9、外 10+（檔位×跑法入分都係用呢三段）
-const HKJC_DRAW_OPTIONS = [['default', '預設'], ['inrace', '即場'], ['利內欄', '利內欄（1–4 檔）'], ['利中內', '利中內（1–9 檔）'],
+const HKJC_DRAW_OPTIONS = [['default', '預設'], ['inrace', '即場（只作參考）'], ['利內欄', '利內欄（1–4 檔）'], ['利中內', '利中內（1–9 檔）'],
   ['利中欄', '利中欄（5–9 檔）'], ['利中外', '利中外（5 檔或以外）'], ['利外欄', '利外欄（10 檔或以外）']];
 const HKJC_INS_STYLE = { front: '放頭', middle: '守中', back: '後上' };
 const HKJC_INS_DRAW = { inner: '內檔', middle: '中檔', outer: '外檔' };
@@ -6059,7 +6059,7 @@ function renderHkjcRanking(raceKey) {
       + (() => { const sc = bf && bf.scenario, fp = (sc && sc.full_pp) || { style: 10, draw: 10 }, k = sc ? sc.pp_to_display : null;
           const part = (lab, pp) => `${lab}約 ±${pp}pp（約 ${k ? (pp * k).toFixed(1) : '?'} 分）`;
           return `幅度 = 實測：歷史上真係強偏差嘅日子，被利嗰類實際只多咗 ${part('跑法', fp.style)}、${part('檔位', fp.draw)}（按慣性跑法；EXP-20261119-10）。`; })()
-      + (live ? `即場 = 今日已跑場次嘅偏差 × 0.2（歷史上即場偏差只持續約兩成），上限 ±${bf && bf.scenario ? bf.scenario.inrace.cap_pp : 2}pp。` : '') + `</div>`;
+      + (live ? `即場（只作參考）= 今日已跑場次嘅偏差 × 0.2，上限 ±${bf && bf.scenario ? bf.scenario.inrace.cap_pp : 2}pp。6 季實測同日偏差唔延續落後半日（沙田 288 日 r≈0、跑馬地 292 日 r≈0；EXP-20261120-03），所以只係俾你自己睇吓「如果偏差持續」會點，唔係預測。` : '') + `</div>`;
   }
   html += '<div class="hkm-list">';
   rows.forEach((r, i) => {
