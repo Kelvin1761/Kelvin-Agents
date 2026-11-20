@@ -354,12 +354,16 @@ def _progress_line(perf: dict) -> str:
 
 
 def telegram_message(match_date: str, picks: list[dict], *, kind: str, perf: dict) -> str:
-    """kind: 'main' (21:00, always sent) or 'topup' (23:00 / 09:00, new picks only)."""
+    """kind: 'main' (23:00, always sent) or 'topup' (09:00, new picks only).
+
+    The main card lists every pick frozen for the date so far, the silent
+    21:00 pass included (Kelvin 2026-11-20 moved the card from 21:00).
+    """
     if kind == "main":
         head = [f"🎾 Tennis Wong Choi｜精選｜{match_date}",
-                f"聽日精選 {len(picks)}／{MAX_PER_DAY} 注（每注 1 單位，今晚 21:00–00:00 落）"]
+                f"聽日精選 {len(picks)}／{MAX_PER_DAY} 注（每注 1 單位，收到就可以落；按開賽時間排）"]
         if not picks:
-            head.append("聽日暫時無精選。23:00 同明朝 09:00 會再睇，有先通知。")
+            head.append("聽日暫時無精選。明朝 09:00 會再睇，有先通知。")
     else:
         head = [f"🎾 Tennis Wong Choi｜補充精選｜{match_date}",
                 f"新增 {len(picks)} 注（之前未開盤）"]

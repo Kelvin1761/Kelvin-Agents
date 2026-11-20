@@ -1,4 +1,7 @@
-"""Sunday Telegram: is 21:00 the right time to bet? (plan 2026-11-05, stage 1 monitoring)
+"""Sunday Telegram: is the main card time right? (plan 2026-11-05, stage 1 monitoring)
+
+The main card moved 21:00 -> 23:00 on 2026-11-20; picks frozen at 21:00 or
+23:00 are both on it, so the share that counts is (21:00 + 23:00) / all.
 
 For the last 7 days of 精選:
   * how many came at 21:00 vs the 23:00 / 09:00 top-ups;
@@ -47,8 +50,8 @@ def weekly_text(today: str) -> str:
              f"精選 {len(picks)} 注：21:00 {by_label.get('21:00', 0)}｜23:00 {by_label.get('23:00', 0)}"
              f"｜09:00 {by_label.get('09:00', 0)}"]
     if picks:
-        share = by_label.get("21:00", 0) / len(picks)
-        lines.append(f"21:00 佔 {share:.0%}" + ("（少過一半，要諗吓改時間）" if share < 0.5 else ""))
+        share = (by_label.get("21:00", 0) + by_label.get("23:00", 0)) / len(picks)
+        lines.append(f"23:00 主 card 已包 {share:.0%}" + ("（少過一半，要諗吓改時間）" if share < 0.5 else ""))
     if moves:
         shorter = sum(1 for m in moves if m < -0.005)
         longer = sum(1 for m in moves if m > 0.005)

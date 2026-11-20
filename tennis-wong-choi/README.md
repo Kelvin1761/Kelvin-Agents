@@ -33,8 +33,8 @@ PYTHONPATH=src .venv/bin/python -m pytest -q
 
 | When | Job | Telegram |
 |---|---|---|
-| 21:00 | price tomorrow, record 精選 | main card to Kelvin + Heison (always, 0–10 picks) |
-| 23:00 | re-price tomorrow | 補充精選, only if new picks |
+| 21:00 | price tomorrow, record 精選 (frozen at this price) | none |
+| 23:00 | re-price tomorrow, record new 精選 | **main card** to Kelvin + Heison (always, 0–10 picks, the 21:00 ones included; Kelvin 2026-11-20) |
 | 09:00 | re-price today | 補充精選, only if new picks |
 | 18:00 | settle yesterday, ROI board, archive, warm tomorrow; Sundays the timing check | ROI board row (if settled picks); weekly check to Kelvin |
 | 10:30, 12:30 | recovery of a failed 09:00 run | failures only |

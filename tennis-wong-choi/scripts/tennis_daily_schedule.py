@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Tennis Wong Choi scheduled runs (Sydney time; launchd templates in ../launchd).
 
-  --night [auto|21:00|23:00]  21:00 prices TOMORROW and always sends 精選;
-                              23:00 re-prices and sends only new picks.
+  --night [auto|21:00|23:00]  21:00 prices TOMORROW and records 精選 silently;
+                              23:00 re-prices and always sends the main card
+                              (every 精選 frozen so far, Kelvin 2026-11-20).
   --refresh-today             09:00 backup: prices TODAY, sends 補充精選 if any.
   (default)                   18:00 daily: review yesterday, archive, warm tomorrow.
 
@@ -156,8 +157,12 @@ def analyse(match_date: str, *, today: str) -> dict:
     return payload
 
 
-def publish(match_date: str, label: str, *, main: bool, payload: dict | None = None) -> list[dict]:
-    """Record 精選, deploy the dashboard, then send Telegram (in that order)."""
+def publish(match_date: str, label: str, *, main: bool, payload: dict | None = None,
+            send: bool = True) -> list[dict]:
+    """Record 精選, deploy the dashboard, then send Telegram (in that order).
+
+    ``send=False`` records and deploys only (the silent 21:00 pass).
+    """
     from tennis_wc.publish.telegram import publish_featured
 
     deployed = []
@@ -167,7 +172,7 @@ def publish(match_date: str, label: str, *, main: bool, payload: dict | None = N
         publish_dashboard(match_date, payload)
 
     try:
-        return publish_featured(match_date, label, main=main, before_send=deploy)
+        return publish_featured(match_date, label, main=main, before_send=deploy, send=send)
     except Exception as exc:  # noqa: BLE001 - never mask the run outcome
         log(f"精選 {label} failed: {exc}")
         return []
@@ -193,9 +198,15 @@ def publish_dashboard(match_date: str, payload: dict | None) -> None:
 # --------------------------------------------------------------------------- the three jobs
 
 def night(today: date, label: str) -> int:
-    """21:00 main card / 23:00 top-up for tomorrow. Never raises."""
+    """Tomorrow's 精選: 21:00 records silently, 23:00 sends the main card. Never raises.
+
+    Kelvin 2026-11-20: the main card moved 21:00 -> 23:00. In the week before,
+    21:00 saw 15-30 priced props and 23:00 40-80, and 21:00 found no pick on
+    four nights running. 21:00 still runs and freezes picks at its price, so
+    the forward test (EXP-20261105-10) is unchanged; only the message moved.
+    """
     target = (today + timedelta(days=1)).isoformat()
-    main = label == "21:00"
+    main = label == "23:00"
     failure = None
     payload = None
     try:
@@ -204,10 +215,15 @@ def night(today: date, label: str) -> int:
     except Exception as exc:  # noqa: BLE001 - still publish what was priced
         failure = f"{type(exc).__name__}: {exc}"
         log(f"NIGHT {label}: analysis failed: {failure}")
-    added = publish(target, label, main=main and failure is None, payload=payload)
+    if main:
+        # The main card goes out even after a failed pass: it lists the picks
+        # frozen at 21:00, which are still good.
+        added = publish(target, label, main=True, payload=payload)
+    else:
+        added = publish(target, label, main=False, payload=payload, send=False)
     if failure and main:
-        notify(f"⚠️ Tennis 21:00 精選抓盤失敗（{target}）：{failure[:300]}\n"
-               f"已記錄 {len(added)} 注；23:00 同明朝 09:00 會再試。")
+        notify(f"⚠️ Tennis 23:00 精選抓盤失敗（{target}）：{failure[:300]}\n"
+               f"主 card 照發已記錄嘅 {len(added)} 注新精選連 21:00 嗰批；明朝 09:00 會再試。")
     log(f"NIGHT {label}: done, +{len(added)} 精選")
     return 1 if failure else 0
 
