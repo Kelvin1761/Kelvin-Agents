@@ -3104,3 +3104,14 @@ test("9維排名矩陣 carries the verdict, a one-liner under each bar, and open
   assert.doesNotMatch(html, /horse-card__expand-btn/);
   assert.doesNotMatch(html, /class="analysis-detail"/);
 });
+
+test('NBA 大細盤精選 tab shows the v2 paper arm beside v1 over the same window, never as a bet',()=>{
+  const v1=(id,day,state,side)=>({id,day,event_name:'OKC @ POR',game_tag:'OKC_POR',start_time_utc:'2099-01-01T00:00:00Z',odds:1.8,stake:1,tracking_kind:'featured',edge:0.05,p_model:0.6,p_fair:0.55,state,legs:[{player:'P',team:'OKC',market:'pts',stat:'PTS',ou_line:9.5,side,price:1.8,state,actual:8}]});
+  const v2=(day,state,side)=>({day,id:day+'|X',game_tag:'OKC_POR',player:'Mikal Bridges',stat:'PTS',ou_line:14.5,side,odds:2.0,state,profit:state==='won'?1:-1});
+  const api=loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,sports_feed:{sports:{nba:{tracking:{status:'valid',records:[],featured_records:[v1('old','2026-11-15','won','under'),v1('a','2026-11-21','won','under'),v1('b','2026-11-21','lost','under')],featured_v2:{status:'valid',experiment:'EXP-20261120-60',start:'2026-11-21',records:[v2('2026-11-21','won','over'),v2('2026-11-21','lost','under')]}}}}}});
+  api.setSportsTabForTest('featured');const html=api.renderSportsWorkspace('nba');
+  for(const text of ['紙上對照：精選 v2','未發佈 · 唔好跟 · 唔入 ROI','v1（現行）','v2（紙上）','Mikal Bridges - Points Over 14.5 @2.00 ✓','EXP-20261120-60'])assert.ok(html.includes(text),text);
+  assert.match(html,/v1（現行）<\/th><td>2<\/td>/);   // the 11-15 v1 pick is before the shared window
+  assert.match(html,/<td>1 \/ 1<\/td>/);              // v2: one over, one under
+  api.setSportsTabForTest('history');assert.doesNotMatch(api.renderSportsWorkspace('nba'),/紙上對照：精選 v2/);
+});

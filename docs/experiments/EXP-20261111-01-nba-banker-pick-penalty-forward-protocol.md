@@ -47,3 +47,8 @@ H：被穩膽揀中，本身會令條腿嘅命中率低過模型機率，而且�
 python3 docs/experiments/patches/nba_pick_penalty/evaluate.py status
 python3 docs/experiments/patches/nba_pick_penalty/evaluate.py evaluate
 ```
+
+## 結案（2026-11-20，冇判決）
+Kelvin 同意提早結束。原因：穩膽停損 11-14 起暫停，SGM 只追蹤唔再係主產品（ROI 以大細盤精選為準），揀中組每日得約 10 腿，
+要約 40 日先夠 400 腿；就算 PASS 都唔會再用嚟改穩膽規則。結束時進度 7/20 日、70/400 腿，**冇睇過結果、冇判決**。
+已由 `nba_forward_tracker` 移除；凍結判決腳本保留。相關發現（「差一」係腿數 × 命中率嘅結構）見 EXP-20261111-04。

@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261120-60](EXP-20261120-60-nba-featured-v2-shadow-protocol.md) | 2026-11-20 | NBA | 大細盤精選 v2 紙上：修正模型低估「大」（logit 加 δ）、剔 ≤1.5 線、門檻 3pp | **FORWARD 預先登記（紙上）**：模型 P(大) 45.2% 對實際 48.9%、去水 48.7% —— v1 永遠揀細係模型偏差；修正後仍輸去水價 log-loss。11-21 起 250 注中期、600 注終判；dashboard 精選 tab 有 v1／v2 同期對照。EXP-20261111-01 P 同日結案（冇判決） |
 | [EXP-20261120-50](EXP-20261120-50-tennis-forward-review.md) | 2026-11-20 | Tennis | 上線兩星期覆核：精選、cap3 shadow、Sportsbet 對 Betfair | **唯讀覆核，冇改動**。精選 129 注 −11.9% [−28.6,+5.3]；讓局 −37.9% [−68.9,−6.6] 同上線前同方向；21:00 +21% vs 09:00 −33% 但 CLV 兩邊都係零（運氣）；賠率 ≥3 0/12（cap3 shadow 測緊）。Betfair 測試 3 晚 5 場 0 注：決定窗只得 21:00，Tour／Challenger 價第二朝先有；改任何輪亦只有 1/67 場 Sportsbet 高過 Betfair。prop_price_log 11-05 起停寫；ATP 排名 11-17 起被拒 |
 | [EXP-20261120-51](EXP-20261120-51-tennis-featured-no-game-hcp-shadow.md) | 2026-11-20 | Tennis | 精選剔走全場讓局會唔會好啲（上線前 349 注 −15.8%、前向 29 注 −37.9%，同方向） | **shadow arm 預先登記（Kelvin 決定）**。規則同精選一樣，只係 `player_game_handicap` 唔做候選；同時同價寫入 `featured_shadow_picks`；250／600 注判、夠數 Telegram。紙上，唔發、唔改真精選 |
 | [EXP-20261119-03](EXP-20261119-03-hkjc-vet-history-results.md) | 2026-11-20 | HKJC | 歷史傷患紀錄（HKJC 馬匹傷患頁，現役 999 匹）入分：嚴重傷患／任何醫療／傷後第一仗（[協議](EXP-20261119-03-hkjc-vet-history-protocol.md)） | **REJECT ×3**：β 正（存活偏差），覆蓋 94% 嘅 2026/27 殘差 ≈0；holdout／terminal Δlog-loss 全部 ≥0；建議 B1 維持 off |
@@ -580,5 +581,6 @@
 - [EXP-20261118-04](EXP-20261118-04-hkjc-form-merge-refit.md) — 近績＋上名／大敗＋輸頭馬合併 refit：F1 dev −0.00048 但 Holm 3 唔過；M1 剷段速輸頭馬 holdout 跨零 → 全部 REJECT，live 唔改
 - [EXP-20261118-05](EXP-20261118-05-hkjc-same-distance-rate-and-layoff.md) — 同程上名率 >2/3 殘差 +3.5pp（dev＋holdout）但入分 S1／S2 dev REJECT（Good 護欄）；1/5 冇被高估；長休冇額外訊號
 - [EXP-20261119-01](EXP-20261119-01-hkjc-same-distance-venue-and-age.md) — 同程上名全喺另一場地被高估（dev −2.7／holdout −4.6pp）→ V2 β −1.27 上線；馬齡 A2（6 歲後 −0.37／歲）上線；一仗馬收縮 K1／K2 REJECT
+- [EXP-20261120-60](EXP-20261120-60-nba-featured-v2-shadow-protocol.md) — NBA 精選 v2 紙上 arm：修正模型低估「大」、剔低線、3pp；v1 照舊。
 - [EXP-20261120-01](EXP-20261120-01-hkjc-1114-shatin-review-going.md) — 11-14 沙田覆盤：R6 取消令 R7–R11 賽果漏抓（抽取 break，已修）；黏地唔利後追（6 季：前 34.3%／後 12.3%）、黏地往績市場已計入 → 唔開
 - [EXP-20261120-02](EXP-20261120-02-hkjc-going-record.md) — HKJC 黏地／濕地往績入分：殘差跨零、適性對比冇訊號、β 逐季調轉；G1 dev Δlog-loss −0.00000 → REJECT（冇開 holdout）
