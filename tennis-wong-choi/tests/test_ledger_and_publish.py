@@ -109,8 +109,19 @@ def test_main_card_is_sent_even_with_no_picks(conn, monkeypatch):
     sent = []
     monkeypatch.setenv("TENNIS_NOTIFY_BETS", "1")
     monkeypatch.setattr(telegram, "notify", lambda text, audience="primary": sent.append((audience, text)))
-    assert telegram.publish_featured("2026-11-07", "21:00", main=True) == []
+    assert telegram.publish_featured("2026-11-07", "23:00", main=True) == []
     assert sent and sent[0][0] == "content" and "暫時無精選" in sent[0][1]
+
+
+def test_the_silent_pass_records_but_sends_nothing(conn, monkeypatch):
+    from tennis_wc.publish import telegram
+
+    sent, deployed = [], []
+    monkeypatch.setenv("TENNIS_NOTIFY_BETS", "1")
+    monkeypatch.setattr(telegram, "notify", lambda text, audience="primary": sent.append(text))
+    telegram.publish_featured("2026-11-07", "21:00", main=False, send=False,
+                              before_send=lambda: deployed.append(True))
+    assert sent == [] and deployed == [True]
 
 
 def test_top_up_sends_only_when_new_picks_and_respects_the_switch(conn, monkeypatch):
@@ -172,7 +183,7 @@ def test_weekly_counts_picks_by_run_and_price_move(conn):
                  "'2026-11-07T09:00:00Z','now')")
     conn.commit()
     text = weekly_text("2026-11-08")
-    assert "21:00 1" in text and "21:00 佔 100%" in text
+    assert "21:00 1" in text and "23:00 主 card 已包 100%" in text
     assert "平均 -9.1%" in text
 
 

@@ -91,8 +91,11 @@ def notify(text: str, *, audience: str = "primary", path: Path | None = None) ->
     return sent == len(chats)
 
 
-def publish_featured(match_date: str, run_label: str, *, main: bool, before_send=None) -> list[dict]:
+def publish_featured(match_date: str, run_label: str, *, main: bool, before_send=None,
+                     send: bool = True) -> list[dict]:
     """Record 精選 for the date, then send the main card or a top-up of new picks.
+
+    ``send=False`` (the 21:00 pass) records and deploys but sends nothing.
 
     ``before_send`` runs between recording and sending (the dashboard deploy),
     so the dashboard already shows the picks when the message arrives.
@@ -113,6 +116,8 @@ def publish_featured(match_date: str, run_label: str, *, main: bool, before_send
     _LOG.info("精選 %s @ %s: +%d (total %d)", match_date, run_label, len(added), len(today))
     if before_send is not None:
         before_send()
+    if not send:
+        return added
     if main:
         message = featured.telegram_message(match_date, today, kind="main", perf=perf)
     elif added:
