@@ -162,6 +162,21 @@ def _slip(record):
                      'category':l.get('category'), 'line':l.get('line')} for l in record.get('legs') or []]}
 
 
+def _featured_v2(ledger_root):
+    """EXP-20261120-60 paper arm: picks straight from the frozen evaluator, never published."""
+    try:
+        import importlib.util
+        script = Path(__file__).resolve().parents[3] / 'docs' / 'experiments' / 'patches' / 'nba_featured_v2' / 'evaluate.py'
+        spec = importlib.util.spec_from_file_location('nba_featured_v2_evaluate', script)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        root = Path(ledger_root)
+        rows = module.records(root / 'ledger', cache_dir=root / 'reports')
+        return {'status':'valid', 'experiment':module.EXPERIMENT, 'start':module.START, 'records':rows}
+    except Exception as exc:  # noqa: BLE001 — a paper arm must never break tracking
+        return {'status':'unavailable', 'error':f'{type(exc).__name__}: {exc}', 'records':[]}
+
+
 def build_tracking(roots, ledger_root, firewall):
     from .multisport_exporter import nba_combos, nba_report_sidecar
     ledger_root = Path(ledger_root)
@@ -292,6 +307,7 @@ def build_tracking(roots, ledger_root, firewall):
             # EXP-20261110-01 大細盤精選 paper bets: kept apart so the ROI board, the steady
             # stop-loss and the SGM views (which all read `records`) never see them.
             'featured_records':featured_records, 'featured_inception_date':FEATURED_START_DATE,
+            'featured_v2':_featured_v2(ledger_root),
             'warnings':sorted(set(warnings))}
 
 

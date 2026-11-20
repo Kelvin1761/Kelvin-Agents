@@ -46,9 +46,14 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
     ForwardTest("under_edge", "大細盤 under：模型同去水價分歧 ≥8pp（紙上，300 注）",
                 "EXP-20261110-03 FU_EDGE", "docs/experiments/patches/nba_under/evaluate.py", "FU_EDGE",
                 "PASS（97.5% CI 下限 > 0）先考慮將精選門檻由 5pp 改 8pp（要新 RULE）；未過就記低"),
-    ForwardTest("pick_penalty", "穩膽揀中嘅腿，命中率係咪低過模型自己估嘅（對照：合資格但冇揀嘅腿）",
-                "EXP-20261111-01 P", "docs/experiments/patches/nba_pick_penalty/evaluate.py", "P",
-                "PASS = 揀腿規則本身拖低命中，下一步係預先登記一個新揀腿規則再比；未過 = 冇證據，穩膽規則唔郁"),
+    # EXP-20261111-01 P closed 2026-11-20 without a verdict (Kelvin): the banker is paused and SGM is
+    # track-only, so its legs arrive ~10 a day and a pass could no longer change anything.
+    ForwardTest("featured_v2_250", "大細盤精選 v2 紙上（修正模型低估「大」、剔 ≤1.5 線）：中期檢查（250 注）",
+                "EXP-20261120-60 V2_250", "docs/experiments/patches/nba_featured_v2/evaluate.py", "V2_250",
+                "中期唔會判 PASS；STOP（CI 上限 < 0）就停呢個紙上 arm，否則繼續到 600 注"),
+    ForwardTest("featured_v2_600", "大細盤精選 v2 紙上：終判（600 注）",
+                "EXP-20261120-60 V2_600", "docs/experiments/patches/nba_featured_v2/evaluate.py", "V2_600",
+                "PASS（ROI CI 下限 > 0）先考慮用 v2 取代現行精選（要 Kelvin 決定）；未過就記低、v1 照舊"),
     ForwardTest("s2_blend", "自己模型佔更大份額：市場＋S2（新上場時間預測）對現行發佈機率",
                 "EXP-20261111-05 S2", "docs/experiments/patches/nba_s2_forward/evaluate.py", "S2",
                 "PASS（log-loss 差 95% CI 上限 < 0）先可以申請將發佈機率換做 MS2，要過 model-regression-gate；未過就維持現行"),
@@ -66,7 +71,7 @@ def _load(script: str):
 def _verdict(result: dict) -> str:
     if result.get("status") == "not_ready":
         return "未夠數"
-    if result.get("test") == "F250":
+    if result.get("test") in ("F250", "V2_250"):
         return "⛔ STOP（明顯蝕緊）" if result.get("stop") else "➡️ 繼續（中期唔判 PASS）"
     return "✅ PASS（訊號成立）" if result.get("pass") else "❌ 未過（冇證據）"
 
@@ -74,7 +79,7 @@ def _verdict(result: dict) -> str:
 def _numbers(test: ForwardTest, result: dict) -> str:
     ci = result.get("ci95") or [None, None]
     fmt = lambda v: "N/A" if v is None else f"{v * 100:+.1f}pp"  # noqa: E731
-    if test.test.startswith("F"):
+    if test.test.startswith(("F", "V2_")):
         pct = lambda v: "N/A" if v is None else f"{v * 100:+.1f}%"  # noqa: E731
         hit = result.get("hit_rate")
         return (f"{result.get('n_bets')} 注、{result.get('days')} 日；命中 {'N/A' if hit is None else f'{hit * 100:.1f}%'}；"
@@ -130,10 +135,10 @@ def summary_line(report: dict) -> str:
         item = report.get(test.key) or {}
         if item.get("error"):
             parts.append(f"{test.experiment} ⚠️")
-        elif test.test.startswith("F"):
+        elif test.test.startswith(("F", "V2_")):
             parts.append(f"{test.experiment} {item.get('bets')}/{item['checkpoint']['bets']} 注"
                          + (" ✅" if item.get("ready") else ""))
-        elif test.test in ("M", "P", "S2"):
+        elif test.test in ("M", "S2"):
             parts.append(f"{test.experiment} {item.get('days')}/{item['checkpoint']['days']} 日、"
                          f"{item.get('flagged_legs')}/{item['checkpoint']['flagged_legs']} 腿"
                          + (" ✅" if item.get("ready") else ""))

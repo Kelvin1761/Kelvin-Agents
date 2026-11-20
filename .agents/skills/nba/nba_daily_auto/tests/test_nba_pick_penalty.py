@@ -61,5 +61,5 @@ def test_checkpoint_needs_both_legs_and_days_and_the_result_is_frozen(tmp_path):
     assert out["n_flagged"] == 400 and out["pass"] is True and out["ci95"][1] < 0
     assert abs(out["primary_delta_resid"] - (-0.8 - 0.3)) < 1e-9
     assert ev.evaluate(out_dir=tmp_path, legs=[])["P"] == out
-    line = tracker._numbers(next(t for t in tracker.FORWARD_TESTS if t.test == "P"), out)
-    assert "揀中 400 腿" in line and "差一 100.0%" in line
+    # 2026-11-20: P is closed without a verdict and no longer in the tracker; the frozen evaluator stays.
+    assert all(t.test != "P" for t in tracker.FORWARD_TESTS)
