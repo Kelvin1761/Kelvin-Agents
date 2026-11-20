@@ -577,3 +577,4 @@
 - [EXP-20261118-04](EXP-20261118-04-hkjc-form-merge-refit.md) — 近績＋上名／大敗＋輸頭馬合併 refit：F1 dev −0.00048 但 Holm 3 唔過；M1 剷段速輸頭馬 holdout 跨零 → 全部 REJECT，live 唔改
 - [EXP-20261118-05](EXP-20261118-05-hkjc-same-distance-rate-and-layoff.md) — 同程上名率 >2/3 殘差 +3.5pp（dev＋holdout）但入分 S1／S2 dev REJECT（Good 護欄）；1/5 冇被高估；長休冇額外訊號
 - [EXP-20261119-01](EXP-20261119-01-hkjc-same-distance-venue-and-age.md) — 同程上名全喺另一場地被高估（dev −2.7／holdout −4.6pp）→ V2 β −1.27 上線；馬齡 A2（6 歲後 −0.37／歲）上線；一仗馬收縮 K1／K2 REJECT
+- [EXP-20261120-01](EXP-20261120-01-hkjc-1114-shatin-review-going.md) — 11-14 沙田覆盤：R6 取消令 R7–R11 賽果漏抓（抽取 break，已修）；黏地唔利後追（6 季：前 34.3%／後 12.3%）、黏地往績市場已計入 → 唔開

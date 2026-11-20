@@ -147,6 +147,28 @@ def extract_race_data(racedate, race_no, venue):
         print(f"Error extracting Race {race_no}: {e}", flush=True)
         return None
 
+def extract_meeting(date, venue, fetch=None, max_races=12, pause=0.5):
+    """逐場抓到冇呢場為止。
+
+    `fetch` 回 None = 頁面冇呢場（全日完咗）→ 停；回咗場但 `results` 係空 = 呢場取消／冇賽果
+    → 跳過、繼續抓下一場。以前一見空就 break：2026-11-14 沙田 R6 取消，R7–R11 有跑但全部冇抓，
+    覆盤、賽果庫、forward 測試全部少咗五場（2026-11-20 發現）。"""
+    fetch = fetch or extract_race_data
+    all_races = {}
+    for i in range(1, max_races + 1):
+        print(f"Extracting Race {i}...", flush=True)
+        data = fetch(date, i, venue)
+        if data is None:
+            break
+        if data.get('results'):
+            all_races[str(i)] = data
+        else:
+            print(f"⚠️ Race {i} 冇賽果（取消？），跳過繼續抓下一場", flush=True)
+        if pause:
+            time.sleep(pause)
+    return all_races
+
+
 if __name__ == '__main__':
     # Handle both 2 and 3 argument calls for backward compatibility during batch
     if len(sys.argv) < 3:
@@ -157,15 +179,7 @@ if __name__ == '__main__':
     out = sys.argv[2]
     ven = sys.argv[3] if len(sys.argv) > 3 else "Unknown"
 
-    all_races = {}
-    for i in range(1, 13):
-        print(f"Extracting Race {i}...", flush=True)
-        data = extract_race_data(date, i, ven)
-        if data and data['results']:
-            all_races[str(i)] = data
-            time.sleep(0.5)
-        else:
-            break
+    all_races = extract_meeting(date, ven)
 
     if all_races:
         if os.path.dirname(out): os.makedirs(os.path.dirname(out), exist_ok=True)
