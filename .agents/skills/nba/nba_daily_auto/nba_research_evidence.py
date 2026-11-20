@@ -311,6 +311,26 @@ def _verification_complete(value: dict) -> bool:
     )
 
 
+def _verified_empty_day(summary: dict, verification: dict) -> bool:
+    """A day the reflector verified had no formal combo (e.g. the steady stop-loss pause).
+
+    `verified_no_combos` is the reflector's positive check over the frozen reports, not a
+    fallback; the verification file must still be a well-formed, fully settled empty run.
+    Since the 2026-11-14 pause every night failed the "at least one leg" rule and left no
+    settlement evidence.
+    """
+    legs, totals = verification.get("legs"), verification.get("summary")
+    return (
+        summary.get("verified_no_combos") is True
+        and summary.get("rows_recorded") == 0
+        and verification.get("_version") == "PROPS_VERIFICATION_V1"
+        and isinstance(totals, dict)
+        and all(totals.get(name) == 0 and type(totals.get(name)) is int
+                for name in ("total_legs", "hits", "misses", "voids", "unverified"))
+        and legs == []
+    )
+
+
 def settlement_artifacts(*, folder: Path, event_id: str) -> tuple[Path, ...]:
     """Select the exact complete NBA reflector chain; never mutate the archive."""
     try:
@@ -339,14 +359,15 @@ def settlement_artifacts(*, folder: Path, event_id: str) -> tuple[Path, ...]:
         or Path(str(summary.get("results_path") or "")).name != names[1]
         or Path(str(summary.get("verification_path") or "")).name != names[2]
         or type(summary.get("rows_recorded")) is not int
-        or summary["rows_recorded"] <= 0
+        or summary["rows_recorded"] < 0
         or results.get("_version") != "RESULTS_BRIEF_V1"
         or results.get("date") != us_date
         or type(results.get("total_games")) is not int
         or results["total_games"] <= 0
         or not isinstance(results.get("games"), list)
         or len(results["games"]) != results["total_games"]
-        or not _verification_complete(verification)
+        or not (_verification_complete(verification)
+                if summary["rows_recorded"] > 0 else _verified_empty_day(summary, verification))
     ):
         raise ValueError("incomplete NBA settlement result chain")
     return tuple(sorted(paths, key=lambda path: path.name))

@@ -458,3 +458,38 @@ def test_settlement_revalidates_captured_chain_after_source_change(tmp_path: Pat
         with pytest.raises(ValueError, match="incomplete NBA settlement result chain"):
             producer.freeze_settlement_artifacts(folder=folder, event_id=EVENT)
     assert not list((folder / "_research_settlements").iterdir())
+
+
+def _empty_day(folder: Path, *, verified: bool = True, legs: list | None = None) -> None:
+    results, verification, summary = _settlement_sources(folder)
+    verification.write_text(json.dumps({
+        "_version": "PROPS_VERIFICATION_V1",
+        "summary": {"total_legs": 0, "hits": 0, "misses": 0, "voids": 0, "unverified": 0},
+        "legs": [] if legs is None else legs,
+    }), encoding="utf-8")
+    value = json.loads(summary.read_text())
+    value.update(rows_recorded=0, verified_no_combos=verified)
+    summary.write_text(json.dumps(value), encoding="utf-8")
+
+
+def test_reflector_verified_no_combo_day_is_a_complete_settlement(tmp_path: Path) -> None:
+    # 2026-11-15..19: the steady stop-loss pause left no formal combo, and every night the
+    # chain was refused for having no legs, so no settlement evidence was written.
+    folder = tmp_path / f"{EVENT} NBA Analysis"
+    folder.mkdir()
+    _empty_day(folder)
+    frozen = freeze_settlement_artifacts(folder=folder, event_id=EVENT)
+    assert len(frozen) == 3
+    assert _result_chain(EVENT, {path.name: path.read_bytes() for path in frozen}) == (0, False)   # no labels
+
+
+@pytest.mark.parametrize("variant", ["not_verified", "stray_leg"])
+def test_an_empty_day_still_needs_the_reflector_to_have_verified_it(tmp_path: Path, variant: str) -> None:
+    folder = tmp_path / f"{EVENT} NBA Analysis"
+    folder.mkdir()
+    if variant == "not_verified":
+        _empty_day(folder, verified=False)             # zero legs from a failure, not from a paused day
+    else:
+        _empty_day(folder, legs=[{"outcome": "hit", "cleared": True, "actual": 21.0, "line": 20.5}])
+    with pytest.raises(ValueError, match="incomplete NBA settlement result chain"):
+        settlement_artifacts(folder=folder, event_id=EVENT)
