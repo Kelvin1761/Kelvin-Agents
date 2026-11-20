@@ -7,6 +7,15 @@ Pre-registered 2026-11-16 (EXP-20261116-14) before any pick was written:
          market put ~0.2 and the result matched the market (EXP-20261116-08),
          and ranking by raw edge lifts exactly those rows to the top.
 
+Pre-registered 2026-11-20 (EXP-20261120-51) before any pick was written:
+
+  no_game_hcp  the 精選 rule unchanged, except full-match game handicap
+         (player_game_handicap) is never a candidate. First-set game handicap
+         stays in. Why: the one family negative both before launch (349 value
+         bets, -15.8% [-31.6, +0.6], EXP-20261105-10) and in the forward test
+         (29 settled, -37.9% [-68.9, -6.6], EXP-20261120-50). The forward number
+         was seen before this arm was registered, so this arm is the test of it.
+
 A shadow arm is never sent, never shown on the dashboard and never accepts a
 live bet; its picks are written to ``featured_shadow_picks`` at the same
 moment the real 精選 runs (21:00 / 23:00 / 09:00), with the same freeze and
@@ -29,10 +38,13 @@ class ShadowArm:
     name: str
     max_odds_exclusive: float
     experiment: str
+    excluded_families: frozenset = frozenset()
 
 
 ARMS: dict[str, ShadowArm] = {
     "cap3": ShadowArm("cap3", 3.0, "EXP-20261116-14"),
+    "no_game_hcp": ShadowArm("no_game_hcp", float("inf"), "EXP-20261120-51",
+                             frozenset({"player_game_handicap"})),
 }
 
 SCHEMA = """
@@ -68,7 +80,10 @@ def ensure_schema(conn) -> None:
 
 
 def arm_candidates(arm: ShadowArm, candidates: list[featured.Candidate]) -> list[featured.Candidate]:
-    return [c for c in candidates if c.odds < arm.max_odds_exclusive]
+    from tennis_wc.pricing.families import family_for_market
+
+    return [c for c in candidates if c.odds < arm.max_odds_exclusive
+            and family_for_market(c.market_key, c.feed_market_name) not in arm.excluded_families]
 
 
 def record(conn, match_date: str, run_label: str, now: datetime | None = None,

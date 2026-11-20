@@ -5,6 +5,7 @@
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
 | [EXP-20261120-50](EXP-20261120-50-tennis-forward-review.md) | 2026-11-20 | Tennis | 上線兩星期覆核：精選、cap3 shadow、Sportsbet 對 Betfair | **唯讀覆核，冇改動**。精選 129 注 −11.9% [−28.6,+5.3]；讓局 −37.9% [−68.9,−6.6] 同上線前同方向；21:00 +21% vs 09:00 −33% 但 CLV 兩邊都係零（運氣）；賠率 ≥3 0/12（cap3 shadow 測緊）。Betfair 測試 3 晚 5 場 0 注：決定窗只得 21:00，Tour／Challenger 價第二朝先有；改任何輪亦只有 1/67 場 Sportsbet 高過 Betfair。prop_price_log 11-05 起停寫；ATP 排名 11-17 起被拒 |
+| [EXP-20261120-51](EXP-20261120-51-tennis-featured-no-game-hcp-shadow.md) | 2026-11-20 | Tennis | 精選剔走全場讓局會唔會好啲（上線前 349 注 −15.8%、前向 29 注 −37.9%，同方向） | **shadow arm 預先登記（Kelvin 決定）**。規則同精選一樣，只係 `player_game_handicap` 唔做候選；同時同價寫入 `featured_shadow_picks`；250／600 注判、夠數 Telegram。紙上，唔發、唔改真精選 |
 | [EXP-20261119-03](EXP-20261119-03-hkjc-vet-history-results.md) | 2026-11-20 | HKJC | 歷史傷患紀錄（HKJC 馬匹傷患頁，現役 999 匹）入分：嚴重傷患／任何醫療／傷後第一仗（[協議](EXP-20261119-03-hkjc-vet-history-protocol.md)） | **REJECT ×3**：β 正（存活偏差），覆蓋 94% 嘅 2026/27 殘差 ≈0；holdout／terminal Δlog-loss 全部 ≥0；建議 B1 維持 off |
 | [EXP-20261119-11](EXP-20261119-11-hkjc-draw-double-and-blocked-wording.md) | 2026-11-19 | HKJC | 檔位計兩次直接量度（walk-forward 檔位×跑法）＋塞車擴闊字眼純診斷 | **兩樣都唔使改**：係數比 維度 1.03／0.99、檔位×跑法 1.17／0.81（CI 包 1）；新增字眼「難以望空／受困」下仗 holdout −4.3pp，唔係藉口 |
 | [EXP-20261119-09](EXP-20261119-09-hkjc-night-hot-hand.md) | 2026-11-19 | HKJC | 當晚騎師／練馬師手風（舊季，唔掂 forward） | **REJECT（診斷）**：holdout 全部貼近 0（已贏 ≥1 +0.1、≥2 −0.8、冷手 −0.2）；對照組都 +0.4；唔調整 |

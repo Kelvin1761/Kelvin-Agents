@@ -8,8 +8,8 @@ import tennis_wc.select.featured as F
 import tennis_wc.select.featured_shadow as S
 
 
-def cand(prop_id, match_id, edge, odds=2.0):
-    return F.Candidate(prop_id=prop_id, match_id=match_id, market_key="first_set_winner_1",
+def cand(prop_id, match_id, edge, odds=2.0, market_key="first_set_winner_1"):
+    return F.Candidate(prop_id=prop_id, match_id=match_id, market_key=market_key,
                        selection="A", match_label=f"M{match_id}", start_time_utc="2026-11-07T01:00:00Z",
                        odds=odds, edge=edge, ev=0.05, model_prob=0.5)
 
@@ -72,5 +72,21 @@ def test_milestone_sends_once_per_arm(tmp_path, monkeypatch, conn):
     monkeypatch.setattr(T, "notify", lambda msg, audience: sent.append((msg, audience)) or True)
     assert T.shadow_forward_milestones(tmp_path)["cap3"] == "ELIGIBLE_FOR_RELEASE_REVIEW"
     assert T.shadow_forward_milestones(tmp_path)["cap3"] is None
-    assert len(sent) == 1 and sent[0][1] == "primary" and "cap3" in sent[0][0]
+    assert len(sent) == len(S.ARMS) and all(audience == "primary" for _, audience in sent)
+    assert any("cap3" in msg for msg, _ in sent)
     assert "cap3:250" in json.loads((tmp_path / T.FORWARD_STATE).read_text())
+
+
+def test_no_game_hcp_skips_full_match_game_handicap_only(conn):
+    pool = [cand(1, 1, 0.40, market_key="player_game_handicap_2.5"),
+            cand(2, 1, 0.10),                                                  # same match, next best
+            cand(3, 2, 0.30, market_key="player_first_set_game_handicap_1.5"),  # first-set handicap stays
+            cand(4, 3, 0.35, market_key="player_game_handicap_1.5")]           # nothing else in match 3
+    added = S.record(conn, "2026-11-07", "21:00", NOW, candidates=pool)
+    assert sorted(r["prop_id"] for r in added["no_game_hcp"]) == [2, 3]
+    # The other arm is unaffected: cap3 still takes the game handicap.
+    assert sorted(r["prop_id"] for r in added["cap3"]) == [1, 3, 4]
+
+
+def test_every_arm_names_its_experiment():
+    assert all(arm.experiment.startswith("EXP-") for arm in S.ARMS.values())
