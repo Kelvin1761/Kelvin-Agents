@@ -123,6 +123,54 @@ def _courts(c):
     return {key: str(r.get("surface") or "") for key, r in best.items()}
 
 
+def _shadow_arms(c):
+    """精選 shadow arms (paper only) beside the real 精選 over the same match dates.
+
+    Rules, labels and the verdict ruler come from tennis_wc itself
+    (select/featured_shadow.py, select/featured.py) so the page cannot drift
+    from what is being tested. [] when the table or the package is missing.
+    """
+    import sys
+
+    src = Path(__file__).resolve().parents[3] / "tennis-wong-choi" / "src"
+    if str(src) not in sys.path:
+        sys.path.append(str(src))
+    try:
+        from tennis_wc.select import featured, featured_shadow
+    except Exception:  # noqa: BLE001 - a missing package must not break the export
+        return []
+    if not c.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='featured_shadow_picks'").fetchone():
+        return []
+
+    def rows(sql, params):
+        out = []
+        for r in c.execute(sql, params).fetchall():
+            row = dict(r)
+            row["unit_profit"] = featured.unit_profit(row.get("result_status"), float(row["odds"]))
+            out.append(row)
+        return out
+
+    def summary(perf):
+        return {k: perf.get(k) for k in ("picks", "settled", "wins", "pending", "pnl", "roi", "ci_low", "ci_high")}
+
+    arms = []
+    for arm in featured_shadow.ARMS.values():
+        shadow = rows("SELECT s.match_date, s.odds, p.result_status FROM featured_shadow_picks s "
+                      "LEFT JOIN prop_tracker p ON p.id = s.prop_id WHERE s.arm = ?", (arm.name,))
+        dates = sorted({r["match_date"] for r in shadow})
+        real = rows("SELECT f.match_date, f.odds, p.result_status FROM featured_picks f "
+                    "LEFT JOIN prop_tracker p ON p.id = f.prop_id WHERE f.match_date IN ({})".format(
+                        ",".join("?" for _ in dates)), dates) if dates else []
+        perf = featured.performance(shadow)
+        arms.append({
+            "name": arm.name, "label": arm.label or arm.name, "experiment": arm.experiment,
+            "since": dates[0] if dates else None, "target": featured.FORWARD_FIRST_VERDICT,
+            "verdict": featured.forward_verdict(perf),
+            "shadow": summary(perf), "real_same_dates": summary(featured.performance(real)),
+        })
+    return arms
+
+
 def export_tennis_tracking(db_path):
     result = {
         "status": "unavailable",
@@ -282,6 +330,10 @@ def export_tennis_tracking(db_path):
             ids = [r["id"] for r in records]
             if len(ids) != len(set(ids)):
                 raise ValueError("duplicate_tennis_tracking_identity")
+            try:
+                result["shadow_arms"] = _shadow_arms(c)
+            except sqlite3.Error:
+                result["shadow_arms"] = []
             result.update(
                 status="valid" if any(v is not None for v in sources.values()) else "unavailable",
                 records=records,
