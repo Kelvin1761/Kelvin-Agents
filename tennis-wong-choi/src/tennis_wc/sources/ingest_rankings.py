@@ -291,9 +291,21 @@ def _rank_seed_elo(rank: int | None) -> float | None:
 CACHED_RANKING_ROW_LIMIT = 10000
 
 
+# A live source is rejected after DATA_MAX_STALENESS_HOURS_RANKINGS (7 days),
+# but the list already stored may be the newest one there is. 2026-11-20: the
+# official ATP PDF stayed on the 2026-11-09 list for 11+ days (ATP Finals week,
+# and ATP stops publishing for ~4 weeks over the off-season). With the cache
+# held to the same 7 days, every run from 11-17 reported rankings_atp as a hard
+# error although the model was reading the 11-09 list all along. The cache may
+# serve the newest stored list for up to four weeks, as a degradation warning
+# that names its date; past that it is an error again.
+CACHE_FALLBACK_MAX_DAYS = 28
+
+
 def _latest_cached_rankings(tour: str, date: str | None = None) -> list[dict]:
+    max_age = max(get_settings().data_max_staleness_hours_rankings, CACHE_FALLBACK_MAX_DAYS * 24)
     with get_connection() as conn:
-        rows = cached_rankings(conn, tour, date, max_age_hours=get_settings().data_max_staleness_hours_rankings,
+        rows = cached_rankings(conn, tour, date, max_age_hours=max_age,
                                today=datetime.now(timezone.utc).date())
         names = {r["id"]: dict(r) for r in conn.execute("SELECT id,name,tour FROM players")}
     if len(rows) > CACHED_RANKING_ROW_LIMIT:

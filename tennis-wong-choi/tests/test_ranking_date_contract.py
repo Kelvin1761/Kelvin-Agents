@@ -364,3 +364,55 @@ def test_current_rank_staleness_uses_effective_date_not_recent_fetch_clock(monke
                 "player_a": {"current_rank": {"value": 9, "provenance": {"source_timestamp": now.isoformat(),
                                             "source_provider": "feed", "ranking_date": effective}}}}
     assert "stale ranking data at player_a.current_rank" in dq.validate_data_freshness(snapshot)["warnings"]
+
+
+def _stored_official_list(module, day):
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.sources.entity_mapping import get_or_create_player
+    from tennis_wc.sources.raw_response_store import store_raw_response
+
+    raw_id = store_raw_response("official_rankings", "/rankings", {}, [], 200, "ranking", "ATP")
+    pid = get_or_create_player("official_rankings", "atp:1", "Alpha Player", "ATP", raw_id, current_rank=50)
+    with get_connection() as conn:
+        conn.execute("INSERT INTO rankings_history(player_id,ranking_date,tour,rank,source_provider,raw_response_id,"
+                     "created_at) VALUES (?,?,'ATP',12,'atp_official_numeric_pdf',?,'now')", (pid, day, raw_id))
+    return pid
+
+
+@pytest.mark.parametrize("stored,ok", [("2026-11-09", True), ("2026-10-20", False)])
+def test_a_frozen_official_list_is_served_from_cache_for_four_weeks(tmp_path, monkeypatch, stored, ok):
+    from conftest import configure_test_db
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.store.migrations import init_db
+    from tennis_wc.sources import ingest_rankings as module
+    from tennis_wc.sources.providers.official_ranking_provider import OfficialRankingFetchError
+    init_db()
+    pid = _stored_official_list(module, stored)
+
+    def stale(*a):
+        raise OfficialRankingFetchError("stale source ranking date 2026-11-09 at 2026-11-20")
+
+    monkeypatch.setattr(module, "get_tennis_provider", lambda: SimpleNamespace(
+        provider_name="official_rankings", fetch_rankings=stale, ranking_source_evidence=[]))
+
+    class Today(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime(2026, 11, 20, 1, 0, tzinfo=timezone.utc)
+
+    monkeypatch.setattr(module, "datetime", Today)
+    real = module.cached_rankings
+    # The fixture's receipt is not a real PDF capture; test the age limit only.
+    monkeypatch.setattr(module, "cached_rankings", lambda conn, tour, cutoff, *, max_age_hours, today: [
+        dict(r) for r in conn.execute("SELECT * FROM rankings_history WHERE tour=?", (tour,))
+        if (today - date.fromisoformat(r["ranking_date"])).days * 24 <= max_age_hours])
+    assert real is not None
+    if ok:
+        assert module.ingest_rankings("ATP", "2026-11-20") == 1
+        assert module.rankings_cache_fallback("ATP")["cached_latest_ranking_date"] == stored
+        with get_connection() as conn:
+            assert conn.execute("SELECT current_rank FROM players WHERE id=?", (pid,)).fetchone()[0] == 12
+    else:  # 31 days old: an error again, not a silent fallback
+        with pytest.raises(OfficialRankingFetchError):
+            module.ingest_rankings("ATP", "2026-11-20")
