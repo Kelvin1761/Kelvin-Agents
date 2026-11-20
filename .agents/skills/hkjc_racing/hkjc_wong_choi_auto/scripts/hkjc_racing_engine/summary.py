@@ -295,6 +295,8 @@ def battlefield(logic_data: dict, table: dict | None = None) -> dict | None:
 #   回放真強偏差日（同日其他場次某類 ≥ +10pp），慣性放頭只多 +1.8／≈0pp、守中 +1.0／+2.7、內檔 +2.7／+3.2（dev／holdout）
 #   → 跑法 ±2pp、檔位 ±3pp（被利一類 +滿、對面 −滿、其餘按舊比例縮）。
 #   即場：今日已跑場次每類上名率 − 當日平均，× 0.2（回放：頭半場偏差喺下半場只剩約兩成），上限 ±2pp（舊 ±3），每類 ≥ 8 匹先計。
+#   2026-11-20（EXP-20261120-03，Kelvin）：6 季實測同日前半→後半偏差 r≈0（沙田 −0.003、跑馬地 +0.031，CI 全跨零），
+#   即場改標「只作參考」：只喺 dashboard 人手揀先郁情境排名，正式排名／ROI 永遠唔用。
 SCENARIO_LOGIT_PER_RAW = 0.139
 SCENARIO_STYLE_FULL_PP, SCENARIO_DRAW_FULL_PP = 2, 3
 SCENARIO_STYLE_PP = {"放頭": {"放頭": 2, "守中": 0, "後上": -2}, "守中": {"放頭": -1, "守中": 2, "後上": -1},
