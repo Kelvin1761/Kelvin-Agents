@@ -235,3 +235,39 @@ def test_missing_odds_table_leaves_no_event_id(tmp_path):
     c.close()
     out = export_tennis_tracking(path)
     assert out["status"] == "valid" and out["records"][0]["sportsbet_event_id"] is None
+
+
+def test_shadow_arms_sit_beside_the_real_featured_over_the_same_dates(tmp_path):
+    path = tmp_path / "db"
+    c = database(path)
+    prop(c, 1)
+    prop(c, 2)
+    c.execute("UPDATE prop_tracker SET result_status='LOST' WHERE id=2")
+    c.execute(
+        "CREATE TABLE featured_picks(id INTEGER PRIMARY KEY,prop_id INTEGER,match_id INTEGER,"
+        "match_date TEXT,rank INTEGER,run_label TEXT,market_key TEXT,selection TEXT,match_label TEXT,"
+        "feed_market_name TEXT,feed_selection_name TEXT,start_time_utc TEXT,odds REAL,edge REAL,"
+        "ev REAL,model_prob REAL,featured_at TEXT)")
+    c.execute("INSERT INTO featured_picks VALUES(1,2,1,'2026-10-27',1,'21:00','player_game_handicap_1.5','A',"
+              "'A v B','m','A','2026-10-26T22:00:00Z',2.0,0.2,0.1,0.5,'2026-10-26T10:00:00Z')")
+    c.execute(
+        "CREATE TABLE featured_shadow_picks(id INTEGER PRIMARY KEY,arm TEXT,prop_id INTEGER,match_id INTEGER,"
+        "match_date TEXT,rank INTEGER,run_label TEXT,market_key TEXT,selection TEXT,match_label TEXT,"
+        "start_time_utc TEXT,odds REAL,edge REAL,ev REAL,model_prob REAL,featured_at TEXT)")
+    c.execute("INSERT INTO featured_shadow_picks VALUES(1,'no_game_hcp',1,1,'2026-10-27',1,'21:00',"
+              "'first_set_winner_1','A','A v B','2026-10-26T22:00:00Z',2.5,0.1,0.1,0.5,'2026-10-26T10:00:00Z')")
+    c.commit()
+    c.close()
+    arms = {a["name"]: a for a in export_tennis_tracking(path)["shadow_arms"]}
+    assert set(arms) >= {"cap3", "no_game_hcp"}
+    arm = arms["no_game_hcp"]
+    assert arm["label"] == "唔揀全場讓局" and arm["experiment"] == "EXP-20261120-51"
+    assert arm["shadow"]["settled"] == 1 and arm["shadow"]["roi"] == 1.5
+    assert arm["real_same_dates"]["settled"] == 1 and arm["real_same_dates"]["roi"] == -1.0
+    assert arms["cap3"]["shadow"]["settled"] == 0 and arms["cap3"]["since"] is None
+
+
+def test_shadow_arms_empty_without_the_table(tmp_path):
+    path = tmp_path / "db"
+    database(path).close()
+    assert export_tennis_tracking(path)["shadow_arms"] == []

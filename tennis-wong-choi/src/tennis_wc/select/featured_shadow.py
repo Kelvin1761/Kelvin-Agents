@@ -39,12 +39,19 @@ class ShadowArm:
     max_odds_exclusive: float
     experiment: str
     excluded_families: frozenset = frozenset()
+    label: str = ""  # one line for the dashboard; the rule itself is the fields above
+
+
+ARM_LABELS = {
+    "cap3": "唔揀賠率 3.0 或以上",
+    "no_game_hcp": "唔揀全場讓局",
+}
 
 
 ARMS: dict[str, ShadowArm] = {
-    "cap3": ShadowArm("cap3", 3.0, "EXP-20261116-14"),
+    "cap3": ShadowArm("cap3", 3.0, "EXP-20261116-14", label=ARM_LABELS["cap3"]),
     "no_game_hcp": ShadowArm("no_game_hcp", float("inf"), "EXP-20261120-51",
-                             frozenset({"player_game_handicap"})),
+                             frozenset({"player_game_handicap"}), label=ARM_LABELS["no_game_hcp"]),
 }
 
 SCHEMA = """
