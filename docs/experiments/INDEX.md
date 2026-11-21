@@ -593,3 +593,5 @@
 - [EXP-20261121-31](EXP-20261121-31-au-sportsbet-over-betfair-top2-protocol.md) — AU 頭兩選 Sportsbet 位賠 ≥1.10 倍 Betfair 早更價係咪訊號：紙上 forward 預先登記（盲測，高價組 1,000 注判一次）；「高過」本身係常態（74%），所以門檻定最高四分一
 - [EXP-20261121-32](EXP-20261121-32-au-ranking-metrics-top2.md) — AU 把尺加頭二選有中／頭二上名率／頭三上名率（Kelvin 2026-11-21）：A/A REJECT、噪音誤判 0/80、13 個舊候選冇一個翻案（3 個改判「有害」）；跑緊嘅 6 個 forward 凍結舊尺
 - [EXP-20261121-33](EXP-20261121-33-au-same-distance-record-protocol.md) — AU 生涯同程往績入分（首本路程，Kelvin Kembla R7）：D1 同程／D2 同場同程／D3 頭馬計兩次 walk-forward 新尺全部 REJECT（Holm 1.0；D3 頭三上名率 −0.31pp 有害）；路程分改讀生涯同程紀錄同標籤統一（純顯示，零排名影響）
+- [EXP-20261121-34](EXP-20261121-34-au-labels-from-hkjc.md) — AU 新標籤（由 HKJC 搬，Kelvin 2026-11-21）：先量模型名次之上剩餘上名率定語氣；上線短日再出（+3.1）、老馬（−5.4）、休後首／第二仗 0 上名（−6.1／−7.3）、休後好手（模型已高估 −3pp，事實語氣）、頂磅；同馬房／初次跑場地冇訊號唔出；藉口類標籤冇 AU 數據（寬恕認定欄已退役）
+- [EXP-20261121-36](EXP-20261121-36-au-lay-scan.md) — AU lay（做莊）探索（Kelvin 2026-11-21）：BSP 全部 lay −0.07% 打和；模型唔睇好嘅熱門 lay 反而蝕（−4%），市場啱；冇 edge，唔開 forward
