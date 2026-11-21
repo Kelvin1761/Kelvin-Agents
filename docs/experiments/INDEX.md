@@ -594,3 +594,4 @@
 - [EXP-20261121-32](EXP-20261121-32-au-ranking-metrics-top2.md) — AU 把尺加頭二選有中／頭二上名率／頭三上名率（Kelvin 2026-11-21）：A/A REJECT、噪音誤判 0/80、13 個舊候選冇一個翻案（3 個改判「有害」）；跑緊嘅 6 個 forward 凍結舊尺
 - [EXP-20261121-33](EXP-20261121-33-au-same-distance-record-protocol.md) — AU 生涯同程往績入分（首本路程，Kelvin Kembla R7）：D1 同程／D2 同場同程／D3 頭馬計兩次 walk-forward 新尺全部 REJECT（Holm 1.0；D3 頭三上名率 −0.31pp 有害）；路程分改讀生涯同程紀錄同標籤統一（純顯示，零排名影響）
 - [EXP-20261121-37](EXP-20261121-37-au-logloss-rescreen.md) — 新 log-loss 尺重新篩選 9 個 walk-forward arm（預先登記，Holm）：**老馬 8 歲以上 −3.5 分 PASS**（Δ −0.00053、Holm <0.001）、**休後第二仗 0 上名 −1.9 分 PASS**；同程往績單獨過 Holm 後唔過；有選擇偏差，唔上線，要 forward
+- [EXP-20261121-38](EXP-20261121-38-au-heavy-overlay.md) — AU 大爛地 overlay（同一批 leaf 今日 Heavy 先調權重，Kelvin 唔想兩套公式）：24 個 walk-forward arm 新尺全部 REJECT（Holm 最細 0.64；加重近績／穩定性有害）；問題係往績點讀唔係權重，下一步試近績按場地相似度加權

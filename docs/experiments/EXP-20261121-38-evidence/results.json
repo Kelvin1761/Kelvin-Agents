@@ -1,0 +1,866 @@
+{
+ "class_score": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": true,
+   "beats_null": false
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   3.365621834079158e-05,
+   -5.1100736572659835e-05,
+   0.00012828059344758853
+  ],
+  "beats_null_share": 0.36,
+  "gold_pp": [
+   -0.03313452617627568,
+   -0.18182149000926295
+  ],
+  "good_pp": [
+   -0.03313452617627568,
+   -0.1471267580177296
+  ],
+  "capture5_pp": 0.01104484205875856,
+  "top2_any_hit_pp": 0.03313452617627568,
+  "p": 0.779,
+  "beta_median": 1.5,
+  "heavy_gold_good": [
+   -1.0,
+   0.0,
+   201
+  ],
+  "holm_p": 1.0,
+  "final": "REJECT"
+ },
+ "confidence_score": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": true,
+   "beats_null": true
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   -0.00012835070548857712,
+   -0.0003002114168810065,
+   2.4303541583166484e-05
+  ],
+  "beats_null_share": 1.0,
+  "gold_pp": [
+   0.09940357852882703,
+   -0.0340313003658348
+  ],
+  "good_pp": [
+   0.03313452617627568,
+   -0.1313219206507662
+  ],
+  "capture5_pp": 0.022089684117517116,
+  "top2_any_hit_pp": 0.0,
+  "p": 0.0525,
+  "beta_median": 0.6272054482243962,
+  "heavy_gold_good": [
+   0.5,
+   -1.49,
+   201
+  ],
+  "holm_p": 1.0,
+  "final": "REJECT"
+ },
+ "consistency_score": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": true,
+   "beats_null": false
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   0.0005808980243030084,
+   9.946179366713443e-05,
+   0.0014506012231177813
+  ],
+  "beats_null_share": 0.31,
+  "gold_pp": [
+   0.03313452617627568,
+   -0.17164582649585225
+  ],
+  "good_pp": [
+   0.06626905235255136,
+   -0.06908522546200643
+  ],
+  "capture5_pp": 0.044179368235034246,
+  "top2_any_hit_pp": 0.06626905235255136,
+  "p": 1.0,
+  "beta_median": 0.47781148692091147,
+  "heavy_gold_good": [
+   0.0,
+   0.5,
+   201
+  ],
+  "holm_p": 1.0,
+  "final": "REJECT"
+ },
+ "distance_score": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": true,
+   "beats_null": false
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   8.760529876597905e-05,
+   -5.6615706389758765e-05,
+   0.00026518945975845937
+  ],
+  "beats_null_share": 0.17,
+  "gold_pp": [
+   0.09940357852882703,
+   -0.07150710355634642
+  ],
+  "good_pp": [
+   -0.03313452617627568,
+   -0.30550676706714747
+  ],
+  "capture5_pp": 0.06626905235255136,
+  "top2_any_hit_pp": 0.0,
+  "p": 0.8755,
+  "beta_median": 0.4322689835455952,
+  "heavy_gold_good": [
+   1.0,
+   -1.99,
+   201
+  ],
+  "holm_p": 1.0,
+  "final": "REJECT"
+ },
+ "form_quality_score": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": true,
+   "beats_null": false
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   2.6838201390868618e-05,
+   -0.00021000848784709716,
+   0.00027467890048149817
+  ],
+  "beats_null_share": 0.9,
+  "gold_pp": [
+   -0.03313452617627568,
+   -0.17947038346386973
+  ],
+  "good_pp": [
+   0.13253810470510272,
+   -0.035449051286284804
+  ],
+  "capture5_pp": 0.06626905235255136,
+  "top2_any_hit_pp": 0.09940357852882703,
+  "p": 0.5725,
+  "beta_median": -0.22595173408588837,
+  "heavy_gold_good": [
+   -1.49,
+   1.0,
+   201
+  ],
+  "holm_p": 1.0,
+  "final": "REJECT"
+ },
+ "form_score": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": true,
+   "beats_null": false
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   0.0003282592153446111,
+   0.00015934364789874672,
+   0.0005352543282537523
+  ],
+  "beats_null_share": 0.0,
+  "gold_pp": [
+   0.06626905235255136,
+   -0.06339648122066319
+  ],
+  "good_pp": [
+   0.03313452617627568,
+   -0.07206578707095046
+  ],
+  "capture5_pp": 0.022089684117517123,
+  "top2_any_hit_pp": 0.09940357852882703,
+  "p": 1.0,
+  "beta_median": 0.38506244107338383,
+  "heavy_gold_good": [
+   -1.49,
+   0.5,
+   201
+  ],
+  "holm_p": 1.0,
+  "final": "REJECT"
+ },
+ "formline_score": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": true,
+   "beats_null": false
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   -3.111856048654937e-05,
+   -0.00010508904148304317,
+   3.4344704498041943e-05
+  ],
+  "beats_null_share": 0.93,
+  "gold_pp": [
+   0.03313452617627568,
+   -0.10387991603365565
+  ],
+  "good_pp": [
+   0.03313452617627568,
+   0.0
+  ],
+  "capture5_pp": 0.03313452617627568,
+  "top2_any_hit_pp": 0.03313452617627568,
+  "p": 0.193,
+  "beta_median": 0.04912724142094596,
+  "heavy_gold_good": [
+   0.5,
+   0.0,
+   201
+  ],
+  "holm_p": 1.0,
+  "final": "REJECT"
+ },
+ "health_score": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": true,
+   "beats_null": true
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   -5.1897921185110276e-05,
+   -0.00010788915777876959,
+   3.6939453448756814e-07
+  ],
+  "beats_null_share": 1.0,
+  "gold_pp": [
+   -0.03313452617627568,
+   -0.1518378069400567
+  ],
+  "good_pp": [
+   0.06626905235255136,
+   0.0
+  ],
+  "capture5_pp": 0.022089684117517123,
+  "top2_any_hit_pp": -0.06626905235255136,
+  "p": 0.0265,
+  "beta_median": 1.5,
+  "heavy_gold_good": [
+   0.5,
+   0.5,
+   201
+  ],
+  "holm_p": 0.636,
+  "final": "REJECT"
+ },
+ "jockey_horse_fit_score": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": true,
+   "beats_null": false
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   4.045478226729882e-05,
+   -1.2828162748308648e-05,
+   0.00010925865622504776
+  ],
+  "beats_null_share": 0.06,
+  "gold_pp": [
+   0.09940357852882703,
+   0.0
+  ],
+  "good_pp": [
+   0.0,
+   -0.09554216219616374
+  ],
+  "capture5_pp": 0.03313452617627568,
+  "top2_any_hit_pp": 0.03313452617627568,
+  "p": 0.9265,
+  "beta_median": 0.27756799759465783,
+  "heavy_gold_good": [
+   1.0,
+   -1.0,
+   201
+  ],
+  "holm_p": 1.0,
+  "final": "REJECT"
+ },
+ "jockey_score": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": true,
+   "beats_null": false
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   9.236200888008362e-05,
+   -4.6952085197934415e-05,
+   0.00025411507903938584
+  ],
+  "beats_null_share": 0.4,
+  "gold_pp": [
+   0.03313452617627568,
+   -0.07037359603929691
+  ],
+  "good_pp": [
+   0.13253810470510272,
+   0.031553957060408096
+  ],
+  "capture5_pp": 0.022089684117517123,
+  "top2_any_hit_pp": 0.0,
+  "p": 0.904,
+  "beta_median": 0.20413714329654645,
+  "heavy_gold_good": [
+   -1.49,
+   1.49,
+   201
+  ],
+  "holm_p": 1.0,
+  "final": "REJECT"
+ },
+ "pace_figure_score": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": true,
+   "beats_null": false
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   4.6380768362382346e-05,
+   1.5076615591165438e-05,
+   8.205774911119361e-05
+  ],
+  "beats_null_share": 0.0,
+  "gold_pp": [
+   0.0,
+   0.0
+  ],
+  "good_pp": [
+   0.03313452617627568,
+   0.0
+  ],
+  "capture5_pp": 1.8393356935473104e-18,
+  "top2_any_hit_pp": 0.03313452617627568,
+  "p": 0.9975,
+  "beta_median": 0.018349567514671636,
+  "heavy_gold_good": [
+   -1.49,
+   0.5,
+   201
+  ],
+  "holm_p": 1.0,
+  "final": "REJECT"
+ },
+ "pace_map_score": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": true,
+   "beats_null": false
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   4.754667241951128e-05,
+   -2.9211997649890057e-05,
+   0.00014780536139675674
+  ],
+  "beats_null_share": 0.06,
+  "gold_pp": [
+   0.03313452617627568,
+   0.0
+  ],
+  "good_pp": [
+   -0.06626905235255136,
+   -0.17130625902460275
+  ],
+  "capture5_pp": 0.022089684117517123,
+  "top2_any_hit_pp": 0.0,
+  "p": 0.87,
+  "beta_median": 0.15249226526031673,
+  "heavy_gold_good": [
+   -0.5,
+   -1.49,
+   201
+  ],
+  "holm_p": 1.0,
+  "final": "REJECT"
+ },
+ "performance_quality_score": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": true,
+   "beats_null": false
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   9.720287564262385e-05,
+   -1.5749327025113762e-06,
+   0.00020764012217523985
+  ],
+  "beats_null_share": 0.43,
+  "gold_pp": [
+   0.0,
+   -0.09871993572844617
+  ],
+  "good_pp": [
+   0.06626905235255136,
+   0.0
+  ],
+  "capture5_pp": 0.04417936823503424,
+  "top2_any_hit_pp": 0.0,
+  "p": 0.974,
+  "beta_median": 0.12436228773070951,
+  "heavy_gold_good": [
+   1.99,
+   0.0,
+   201
+  ],
+  "holm_p": 1.0,
+  "final": "REJECT"
+ },
+ "preparation_score": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": true,
+   "beats_null": false
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   1.5295952294224842e-05,
+   -2.9764946679252498e-05,
+   7.928097283616461e-05
+  ],
+  "beats_null_share": 0.31,
+  "gold_pp": [
+   0.06626905235255136,
+   0.0
+  ],
+  "good_pp": [
+   -0.03313452617627568,
+   -0.10490615423901939
+  ],
+  "capture5_pp": 0.022089684117517123,
+  "top2_any_hit_pp": 0.0,
+  "p": 0.664,
+  "beta_median": 0.18272901091695637,
+  "heavy_gold_good": [
+   1.0,
+   -1.0,
+   201
+  ],
+  "holm_p": 1.0,
+  "final": "REJECT"
+ },
+ "rating_score": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": true,
+   "beats_null": false
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   6.108671834042864e-05,
+   5.502819174386754e-06,
+   0.0001523186418593918
+  ],
+  "beats_null_share": 0.01,
+  "gold_pp": [
+   0.0,
+   -0.10306535892161224
+  ],
+  "good_pp": [
+   0.0,
+   0.0
+  ],
+  "capture5_pp": -1.8393356935473104e-18,
+  "top2_any_hit_pp": 0.0,
+  "p": 0.989,
+  "beta_median": 0.1163436550278201,
+  "heavy_gold_good": [
+   0.0,
+   -0.5,
+   201
+  ],
+  "holm_p": 1.0,
+  "final": "REJECT"
+ },
+ "sectional_score": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": true,
+   "beats_null": false
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   7.575861519381302e-05,
+   -1.9626722130161588e-05,
+   0.00018792600228670657
+  ],
+  "beats_null_share": 0.45,
+  "gold_pp": [
+   0.03313452617627568,
+   -0.10571010892869391
+  ],
+  "good_pp": [
+   -0.06626905235255136,
+   -0.3019273324895205
+  ],
+  "capture5_pp": 0.03313452617627567,
+  "top2_any_hit_pp": -0.03313452617627568,
+  "p": 0.929,
+  "beta_median": 0.2993634898755822,
+  "heavy_gold_good": [
+   -0.5,
+   -1.49,
+   201
+  ],
+  "holm_p": 1.0,
+  "final": "REJECT"
+ },
+ "track_score": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": true,
+   "beats_null": false
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   6.14390293278735e-05,
+   -5.9080341003843215e-05,
+   0.00018715474505731926
+  ],
+  "beats_null_share": 0.15,
+  "gold_pp": [
+   -0.09940357852882703,
+   -0.31287179652078845
+  ],
+  "good_pp": [
+   0.06626905235255136,
+   0.0
+  ],
+  "capture5_pp": -0.011044842058758561,
+  "top2_any_hit_pp": 0.0,
+  "p": 0.838,
+  "beta_median": 0.2504686086749727,
+  "heavy_gold_good": [
+   -1.0,
+   0.5,
+   201
+  ],
+  "holm_p": 1.0,
+  "final": "REJECT"
+ },
+ "trainer_score": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": true,
+   "beats_null": false
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   4.893008113101213e-05,
+   -2.4790399715055754e-05,
+   0.00013443032025299114
+  ],
+  "beats_null_share": 0.27,
+  "gold_pp": [
+   0.09940357852882703,
+   0.0
+  ],
+  "good_pp": [
+   0.0,
+   -0.09871993572844617
+  ],
+  "capture5_pp": 0.03313452617627568,
+  "top2_any_hit_pp": 0.06626905235255136,
+  "p": 0.8985,
+  "beta_median": 0.12661011840812303,
+  "heavy_gold_good": [
+   1.49,
+   -0.5,
+   201
+  ],
+  "holm_p": 1.0,
+  "final": "REJECT"
+ },
+ "trial_score": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": true,
+   "beats_null": false
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   7.60262872845002e-06,
+   -4.4412103814632815e-05,
+   6.679179939444668e-05
+  ],
+  "beats_null_share": 0.56,
+  "gold_pp": [
+   0.06626905235255136,
+   -0.06239134564053328
+  ],
+  "good_pp": [
+   -0.03313452617627568,
+   -0.10490615423901939
+  ],
+  "capture5_pp": 0.03313452617627568,
+  "top2_any_hit_pp": -0.03313452617627568,
+  "p": 0.5855,
+  "beta_median": 0.15876584636025634,
+  "heavy_gold_good": [
+   1.0,
+   -0.5,
+   201
+  ],
+  "holm_p": 1.0,
+  "final": "REJECT"
+ },
+ "trial_speed_score": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": true,
+   "beats_null": false
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   6.76600551137458e-05,
+   5.9159820290253426e-08,
+   0.0001544763536131227
+  ],
+  "beats_null_share": 0.24,
+  "gold_pp": [
+   0.0,
+   -0.13360612157738025
+  ],
+  "good_pp": [
+   -0.03313452617627568,
+   -0.1044968526295878
+  ],
+  "capture5_pp": -0.011044842058758563,
+  "top2_any_hit_pp": 0.03313452617627568,
+  "p": 0.9755,
+  "beta_median": 0.2358360232300219,
+  "heavy_gold_good": [
+   -0.5,
+   -1.49,
+   201
+  ],
+  "holm_p": 1.0,
+  "final": "REJECT"
+ },
+ "weight_score": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": true,
+   "beats_null": false
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   7.427717559834132e-06,
+   -1.3984558970483267e-07,
+   2.071188530822473e-05
+  ],
+  "beats_null_share": 0.18,
+  "gold_pp": [
+   0.0,
+   -0.10306535892161224
+  ],
+  "good_pp": [
+   0.0,
+   0.0
+  ],
+  "capture5_pp": 0.0,
+  "top2_any_hit_pp": 0.03313452617627568,
+  "p": 0.8865,
+  "beta_median": -0.3185192581208179,
+  "heavy_gold_good": [
+   0.0,
+   0.0,
+   201
+  ],
+  "holm_p": 1.0,
+  "final": "REJECT"
+ },
+ "wet": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": true,
+   "beats_null": false
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   -4.251480053704845e-05,
+   -0.000178232852266943,
+   5.991771124009831e-05
+  ],
+  "beats_null_share": 0.94,
+  "gold_pp": [
+   0.03313452617627568,
+   -0.10533707865168539
+  ],
+  "good_pp": [
+   0.0,
+   -0.09314312228797891
+  ],
+  "capture5_pp": 0.055224210293792805,
+  "top2_any_hit_pp": 0.03313452617627568,
+  "p": 0.2465,
+  "beta_median": 0.9619599621868296,
+  "heavy_gold_good": [
+   0.5,
+   -0.5,
+   201
+  ],
+  "holm_p": 1.0,
+  "final": "REJECT"
+ },
+ "FRONT": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": true,
+   "beats_null": false
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   1.275880826441898e-05,
+   -1.7221645315797912e-05,
+   4.6028671383528634e-05
+  ],
+  "beats_null_share": 0.44,
+  "gold_pp": [
+   -0.03313452617627568,
+   -0.10490615423901939
+  ],
+  "good_pp": [
+   0.03313452617627568,
+   0.0
+  ],
+  "capture5_pp": 0.03313452617627568,
+  "top2_any_hit_pp": 0.0,
+  "p": 0.7705,
+  "beta_median": -1.5,
+  "heavy_gold_good": [
+   -0.5,
+   0.5,
+   201
+  ],
+  "holm_p": 1.0,
+  "final": "REJECT"
+ },
+ "BARRIER": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": true,
+   "beats_null": false
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   2.1944461275635227e-05,
+   -1.300108649572313e-05,
+   6.624922945823495e-05
+  ],
+  "beats_null_share": 0.11,
+  "gold_pp": [
+   0.03313452617627568,
+   0.0
+  ],
+  "good_pp": [
+   -0.03313452617627568,
+   -0.1044968526295878
+  ],
+  "capture5_pp": 0.0,
+  "top2_any_hit_pp": 0.0,
+  "p": 0.869,
+  "beta_median": 0.018503483439339448,
+  "heavy_gold_good": [
+   0.0,
+   -1.0,
+   201
+  ],
+  "holm_p": 1.0,
+  "final": "REJECT"
+ }
+}
