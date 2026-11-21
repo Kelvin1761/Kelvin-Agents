@@ -1,0 +1,102 @@
+{
+ "G50": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": false,
+   "beats_null": false
+  },
+  "races": 3377,
+  "days": 87,
+  "dlogloss": [
+   0.0007426296071454697,
+   0.00021262908151165128,
+   0.001238618966383316
+  ],
+  "beats_null_share": 0.905,
+  "gold_pp": [
+   -0.17767249037607344,
+   -0.866619419849959
+  ],
+  "good_pp": [
+   -0.11844832691738229,
+   -1.0017723357520458
+  ],
+  "capture5_pp": -0.049353469548909255,
+  "top2_any_hit_pp": -0.17767249037607344,
+  "p": 0.9975,
+  "dlogloss_by_going": {
+   "Good/other": 0.00038440751027715996,
+   "Soft": 0.0012810554430873079,
+   "Heavy": -1.5763378451211475e-05
+  },
+  "gold_good_by_going": {
+   "Good/other": [
+    0.63,
+    0.24,
+    2066
+   ],
+   "Soft": [
+    -1.05,
+    -0.61,
+    1813
+   ],
+   "Heavy": [
+    -1.85,
+    0.0,
+    216
+   ]
+  }
+ },
+ "G25": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": false,
+   "beats_null": false
+  },
+  "races": 3377,
+  "days": 87,
+  "dlogloss": [
+   0.0025837940986759736,
+   0.001709087536472843,
+   0.0034109371528015355
+  ],
+  "beats_null_share": 0.91,
+  "gold_pp": [
+   -0.6514657980456027,
+   -1.4615820152577028
+  ],
+  "good_pp": [
+   -0.6810778797749482,
+   -1.8424972183822785
+  ],
+  "capture5_pp": -0.4022307768236107,
+  "top2_any_hit_pp": -0.26650873556411014,
+  "p": 1.0,
+  "dlogloss_by_going": {
+   "Good/other": 0.0017839931635810558,
+   "Soft": 0.003596031094543293,
+   "Heavy": 0.0032313451497863166
+  },
+  "gold_good_by_going": {
+   "Good/other": [
+    -0.05,
+    -0.34,
+    2066
+   ],
+   "Soft": [
+    -1.43,
+    -1.1,
+    1813
+   ],
+   "Heavy": [
+    -0.93,
+    0.46,
+    216
+   ]
+  }
+ }
+}
