@@ -1026,6 +1026,8 @@ def enrich_logic_from_facts(
             horse["gear_change"] = _fg_gear
         elif racecard_profile.get("gear_change"):
             horse["gear_change"] = racecard_profile["gear_change"]
+        if racecard_profile.get("age") is not None:
+            horse["age"] = racecard_profile["age"]
         _merge_prefer_clean(horse, "jockey", racecard_profile.get("jockey"))
         _merge_prefer_clean(horse, "trainer", racecard_profile.get("trainer"))
         if racecard_profile.get("horse_rating") is not None:
@@ -2955,6 +2957,14 @@ def _load_racecard_profiles(facts_path: Path, race_number: int) -> dict[str, dic
             # 但佢本身係顯著訊號（除下 OFF FIRST TIME −3.86pp [−6.94,−0.75]），
             # 用戶睇分析嗰陣想知，所以照顯示。見 EXP-20260826-07。
             look = index + 2
+            # 馬齡（2026-11-21，EXP-20261121-34）：純顯示（老馬標籤），唔入任何 leaf。
+            scan = index + 1
+            while scan < len(lines) and not RACECARD_HORSE_RE.match(lines[scan].strip()):
+                am = re.search(r"Age:\s*(\d+)yo", lines[scan])
+                if am:
+                    profiles[_normalize_horse_name(horse_name)]["age"] = int(am.group(1))
+                    break
+                scan += 1
             while look < len(lines) and not RACECARD_HORSE_RE.match(lines[look].strip()):
                 gm = re.match(r"Gear:\s*(.+)$", lines[look].strip())
                 if gm:
