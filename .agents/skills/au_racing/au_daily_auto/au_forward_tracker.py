@@ -86,6 +86,11 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 "scheduler 夠數會自動判一次（高價組 ROI CI 下限 >0 同高過其餘）並凍結；睇 au-sb-betfair-forward-status.json，"
                 "PASS 先由你決定點用（唔會自動落注）",
                 status_file="au-sb-betfair-forward-status.json"),
+    ForwardTest("age_upnil", "老馬（8 歲以上 −3.46）同休後第二仗 0 上名（−1.93）扣分 shadow（只追蹤唔郁排名）",
+                "EXP-20261121-37", "status_file", 1000, "場",
+                "scheduler 夠數會用 log-loss 尺逐個 arm 判一次並凍結；睇 au-age-upnil-forward-status.json，"
+                "PASS 先由你決定係咪上線（要另一個改動）",
+                status_file="au-age-upnil-forward-status.json"),
 )
 
 _S2_DAYS = re.compile(r"forward days with snapshot \+ results:\s*(\d+)\s*/\s*(\d+)")
