@@ -12,7 +12,6 @@ HERE = Path(__file__).resolve().parents[1] / "au_betfair"
 sys.path.insert(0, str(HERE))
 
 import au_betfair_logger as lg  # noqa: E402
-import au_ladbrokes as lb  # noqa: E402
 import betfair_client as bf  # noqa: E402
 
 NOW = datetime(2026, 11, 7, 4, 0, tzinfo=timezone.utc)          # 悉尼 15:00
@@ -48,12 +47,9 @@ class LoggerTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self._root = lg.LOG_ROOT
         lg.LOG_ROOT = Path(self.tmp.name)
-        self._lbget = lg.LADBROKES_GET
-        lg.LADBROKES_GET = lambda params: {"next_to_go_ids": [], "race_summaries": {}}      # 測試唔准連網
 
     def tearDown(self) -> None:
         lg.LOG_ROOT = self._root
-        lg.LADBROKES_GET = self._lbget
         self.tmp.cleanup()
 
     def test_snapshot_skips_harness_and_writes_best_prices(self) -> None:
@@ -91,12 +87,9 @@ class SettleWeightTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self._root = lg.LOG_ROOT
         lg.LOG_ROOT = Path(self.tmp.name)
-        self._lbget = lg.LADBROKES_GET
-        lg.LADBROKES_GET = lambda params: {"next_to_go_ids": [], "race_summaries": {}}      # 測試唔准連網
 
     def tearDown(self) -> None:
         lg.LOG_ROOT = self._root
-        lg.LADBROKES_GET = self._lbget
         self.tmp.cleanup()
 
     def test_settle_batches_stay_under_weight_limit(self) -> None:
@@ -114,82 +107,6 @@ class SettleWeightTests(unittest.TestCase):
         self.assertEqual(lg.cmd_settle("2026-11-14", rpc), 102)
         self.assertLessEqual(max(sizes) * 7, 200)
         self.assertEqual(lg.cmd_settle("2026-11-14", rpc), 0)                 # 已結算唔再問
-
-
-START_S = int(datetime(2026, 11, 7, 5, 0, tzinfo=timezone.utc).timestamp())
-
-
-def lb_get(params):
-    if params.startswith("method=nextraces"):
-        summ = lambda rid, cat, country, start: {"race_id": rid, "category_id": cat, "venue_country": country,  # noqa: E731
-                                                 "meeting_name": "Randwick", "venue_state": "NSW", "race_number": 3,
-                                                 "advertised_start": {"seconds": start}}
-        return {"next_to_go_ids": ["R1", "R2", "R3", "R4"], "race_summaries": {
-            "R1": summ("R1", lb.THOROUGHBRED, "AUS", START_S),            # 60 分鐘後
-            "R2": summ("R2", "greyhound", "AUS", START_S),
-            "R3": summ("R3", lb.THOROUGHBRED, "MYS", START_S),
-            "R4": summ("R4", lb.THOROUGHBRED, "AUS", START_S + 3 * 3600)}}  # 太遠
-    if params == "method=racecard&id=R1":
-        return {"markets": {"m": {"name": "Final Field", "entrant_ids": ["E1", "E2"], "num_winners": 1}},
-                "entrants": {"E1": {"name": "A", "number": 1, "barrier": 4}, "E2": {"name": "B", "number": 2, "barrier": 1}},
-                "prices": {f"E1:{lb.FIXED_WIN}:": {"odds": {"numerator": 27, "denominator": 10}},
-                           f"E1:{lb.FIXED_PLACE}:": {"odds": {"numerator": 9, "denominator": 20}},
-                           "E1:other-product:": {"odds": {"numerator": 99, "denominator": 1}},
-                           f"E2:{lb.FIXED_WIN}:": {"odds": {}}},
-                "price_fluctuations": {"E1": [4.0, 3.8, 3.7]}}
-    raise AssertionError(params)
-
-
-class LadbrokesTests(unittest.TestCase):
-    def test_decimal(self) -> None:
-        self.assertEqual(lb.decimal({"numerator": 27, "denominator": 10}), 3.7)
-        self.assertIsNone(lb.decimal({"denominator": 1}))
-
-    def test_only_au_thoroughbred_within_window(self) -> None:
-        self.assertEqual([r["race_id"] for r in lb.upcoming(NOW, lb_get)], ["R1"])
-
-    def test_race_row_maps_fixed_win_and_place(self) -> None:
-        rows = lb.snapshot(datetime(2026, 11, 7, 4, 0, tzinfo=timezone.utc), get=lb_get, sleep=lambda s: None)
-        e1, e2 = rows[0]["entrants"]
-        self.assertEqual((e1["win"], e1["place"], e1["flucs"][-1]), (3.7, 1.45, 3.7))
-        self.assertIsNone(e2["win"])
-        self.assertEqual(rows[0]["win_missing"], 1)
-        self.assertEqual(lb.mapping_health(rows), {"races": 1, "races_priced": 0})        # 1/2 有價 < 80%
-
-    def test_sparse_until_last_20_minutes(self) -> None:
-        far = {"minutes_to_start": 50}
-        self.assertFalse(lb.due(far, datetime(2026, 11, 7, 4, 1, tzinfo=timezone.utc)))
-        self.assertTrue(lb.due(far, datetime(2026, 11, 7, 4, 5, tzinfo=timezone.utc)))
-        self.assertTrue(lb.due({"minutes_to_start": 12}, datetime(2026, 11, 7, 4, 1, tzinfo=timezone.utc)))
-
-
-class SnapshotIsolationTests(unittest.TestCase):
-    def setUp(self) -> None:
-        self.tmp = tempfile.TemporaryDirectory()
-        self._root, self._get = lg.LOG_ROOT, lg.LADBROKES_GET
-        lg.LOG_ROOT = Path(self.tmp.name)
-
-    def tearDown(self) -> None:
-        lg.LOG_ROOT, lg.LADBROKES_GET = self._root, self._get
-        self.tmp.cleanup()
-
-    def test_ladbrokes_failure_does_not_break_betfair(self) -> None:
-        def broken(params):
-            raise lb.LadbrokesError("down")
-        lg.LADBROKES_GET = broken
-        self.assertEqual(lg.cmd_snapshot(NOW, fake_rpc), 2)
-
-    def test_betfair_failure_still_records_ladbrokes_then_raises(self) -> None:
-        lg.LADBROKES_GET = lb_get
-        orig, lb.PAUSE_S = lb.PAUSE_S, 0
-        def bf_down(method, params):
-            raise lg.bf.BetfairError("down")
-        try:
-            with self.assertRaises(lg.bf.BetfairError):
-                lg.cmd_snapshot(NOW, bf_down)
-        finally:
-            lb.PAUSE_S = orig
-        self.assertEqual(len(lg.read(lg.LOG_ROOT / "2026-11-07" / "ladbrokes.jsonl")), 1)
 
 
 class ExternalDiskTests(unittest.TestCase):

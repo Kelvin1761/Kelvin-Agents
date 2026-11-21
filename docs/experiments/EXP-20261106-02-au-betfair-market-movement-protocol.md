@@ -105,3 +105,6 @@ ROI、賽日 bootstrap 95% CI。
 - 兩個來源互不影響（Ladbrokes 失敗只寫 stderr；Betfair 失敗照記 Ladbrokes 再報錯）。
 - **Ladbrokes「Tracker」（Backers／Staked 比例）冇做**：喺私人 GraphQL（`/gql/router`），自動安全檢查判定未經授權存取。
 - **唔喺預先登記判決範圍**：Q1／Q2 照舊只用 Betfair。Ladbrokes 價係另一個市場（莊家抽水約 15–20%），要分析就另開協議。
+- **2026-11-21 停用（同日）**：用戶：「if we cannot track the 大注s then no point of having ladbroke's odds」。Ladbrokes 來源已剷走
+  （還原 fb2b3a48 嘅 code），外置碟已記嘅 `ladbrokes.jsonl`（2026-11-21）保留唔刪。將來要 Tracker（Backers／Staked）就要用戶
+  另外授權存取嗰個私人 API，再重新加。
