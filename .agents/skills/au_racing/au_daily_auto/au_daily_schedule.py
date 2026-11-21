@@ -3004,7 +3004,7 @@ def market_drift(runlog: RunLog, folder: Path, key: str) -> list[dict]:
     ⚠️ 一定要喺**重建覆寫 Formguide 之前**叫。分析時嘅賠率只存喺 Formguide 度，
     一重建就被新頁面沖走，之後再比就永遠零差異。
     """
-    from claw_sportsbet_form import BASE, SportsbetFormFetcher, cached_page_odds
+    from claw_sportsbet_form import BASE, SportsbetFormFetcher, cached_page_odds, cached_page_race_number
 
     ids = load_mapping()
     meta = ids.get(key) or {}
@@ -3013,14 +3013,17 @@ def market_drift(runlog: RunLog, folder: Path, key: str) -> list[dict]:
     picks = top_picks_snapshot(folder, depth=2)
     fetch = SportsbetFormFetcher(delay=0.0, verbose=False)
     out: list[dict] = []
-    for i, rid in enumerate(meta["races"], start=1):
-        chosen = picks.get(i)
-        if not chosen:
-            continue
-        was = market_odds_from_formguide(folder, i)
+    for rid in meta["races"]:
         cache = fetch._cache_path(f"{BASE}/{meta['meetingId']}/{rid}/")
         if not cache.exists():
             continue
+        # ⚠️ 場次由頁面讀 —— raceId 喺對應表嘅位置唔等於場次（2026-11-21 Ascot／Cranbourne／
+        # Kembla Grange 清單亂序，R1 攞咗 R2 嘅賠率，落注單同市場移動警號全部錯）。
+        i = cached_page_race_number(cache)
+        chosen = picks.get(i) if i else None
+        if not chosen:
+            continue
+        was = market_odds_from_formguide(folder, i)
         try:
             now = cached_page_odds(cache)
         except Exception:  # noqa: BLE001
@@ -3060,7 +3063,7 @@ def record_odds_from_cache(runlog: RunLog, folder: Path, key: str,
     重建都影** —— Kelvin 想開始用賠率，所以每次覆核都要留一個時間點，唔可以只喺
     「啱好有退出馬」嘅日子才有。
     """
-    from claw_sportsbet_form import BASE, SportsbetFormFetcher, cached_page_odds
+    from claw_sportsbet_form import BASE, SportsbetFormFetcher, cached_page_odds, cached_page_race_number
 
     meta = (load_mapping().get(key) or {})
     if not meta.get("races"):
@@ -3073,9 +3076,14 @@ def record_odds_from_cache(runlog: RunLog, folder: Path, key: str,
         hist = {}
     stamp_label = f"{datetime.now().isoformat(timespec='seconds')}|{label}"
     added = 0
-    for i, rid in enumerate(meta["races"], start=1):
+    for rid in meta["races"]:
         cache = fetch._cache_path(f"{BASE}/{meta['meetingId']}/{rid}/")
         if not cache.exists():
+            continue
+        # ⚠️ 場次由頁面讀，唔好用 raceId 嘅位置（見 market_drift）。讀唔到場次就唔影 ——
+        # 寧願少一個時間點，都唔好將一場嘅賠率寫落另一場。
+        i = cached_page_race_number(cache)
+        if not i:
             continue
         try:
             live = cached_page_odds(cache)
@@ -3088,6 +3096,12 @@ def record_odds_from_cache(runlog: RunLog, folder: Path, key: str,
             if w:
                 prices[str(num)] = [str(w), str(pl) if pl else "-"]
         if prices:
+            from odds_quality import field_numbers, outside_field  # noqa: PLC0415
+            wrong = outside_field(prices, field_numbers(folder, i))
+            if wrong:
+                # 唔寫：入錯場嘅價會直接去到落注單（2026-11-21 Cranbourne）。
+                runlog.warn(f"{folder.name} R{i}：早更賠率{wrong}，疑似入錯場，冇寫入")
+                continue
             hist.setdefault(str(i), {})[stamp_label] = prices
             added += 1
     if added:

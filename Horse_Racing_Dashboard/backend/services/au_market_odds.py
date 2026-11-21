@@ -6,6 +6,11 @@ import math
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
+import sys
+
+# 入錯場守衛同落注單／排程用同一份（一樣嘢只准有一個標準）。
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / ".agents/skills/au_racing/au_daily_auto"))
+from odds_quality import outside_field  # noqa: E402
 
 
 def _price(raw):
@@ -100,6 +105,7 @@ def enrich_au_market_odds(meeting, races_by_analyst, *, now=None):
             snapshots = history.get(str(race.race_number))
             if not isinstance(snapshots, dict):
                 continue
+            field = {int(h.horse_number) for h in race.horses if str(h.horse_number).isdigit()} or None
             valid = []
             for key, prices in snapshots.items():
                 raw, sep, tag = str(key).partition("|")
@@ -112,7 +118,7 @@ def enrich_au_market_odds(meeting, races_by_analyst, *, now=None):
                 captured = captured.replace(tzinfo=zone) if captured.tzinfo is None else captured.astimezone(zone)
                 if captured > clock or captured.date().isoformat() > meeting.date:
                     continue
-                if isinstance(prices, dict):
+                if isinstance(prices, dict) and not outside_field(prices, field):
                     valid.append((captured, prices))
             if not valid:
                 continue
