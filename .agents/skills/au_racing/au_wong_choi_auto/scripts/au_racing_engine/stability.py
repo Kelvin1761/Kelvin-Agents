@@ -39,7 +39,35 @@ TRIP_CHANGE_M = 400.0
 TRIP_CHANGE_PEN = -5.0
 
 
-def digest(runs):
+# 研究開關（EXP-20261121-39，預設關＝live 零變化）：近績權重 × 往績場地同今日場地相似度。
+#   WC_AU_GOING_SIM=λ（例如 0.5）：同一家族 1.0；相鄰（好↔軟、軟↔重、草↔人造）λ；好↔重 λ²。
+import os as _os
+
+
+def _going_family(going):
+    g = str(going or "").lower()
+    if "synthetic" in g or "人造" in g:
+        return "syn"
+    if "heavy" in g or "重" in g:
+        return "heavy"
+    if "soft" in g or "軟" in g:
+        return "soft"
+    if "good" in g or "firm" in g or "好" in g:
+        return "good"
+    return ""
+
+
+def going_similarity(run_going, today_going, lam):
+    a, b = _going_family(run_going), _going_family(today_going)
+    if not a or not b or a == b:
+        return 1.0
+    order = {"good": 0, "soft": 1, "heavy": 2}
+    if a in order and b in order:
+        return lam ** abs(order[a] - order[b])
+    return lam
+
+
+def digest(runs, today_going=None):
     """表現質素分揀好嘅往績（最新先）→ {raw, run_count, runs}；完整往績少過 2 場 → {}。"""
     values = []
     for run in runs:
@@ -53,7 +81,10 @@ def digest(runs):
         values.append((run, (z_place + z_prize) / 2, z_place, z_prize, z_prize_raw))
     if len(values) < MIN_RUNS:
         return {}
-    weights = RECENCY_WEIGHTS[: len(values)]
+    weights = list(RECENCY_WEIGHTS[: len(values)])
+    lam = _os.environ.get("WC_AU_GOING_SIM")
+    if lam and today_going:
+        weights = [w * going_similarity(v[0].get("going"), today_going, float(lam)) for v, w in zip(values, weights)]
     raw = sum(v[1] * w for v, w in zip(values, weights)) / sum(weights)
     return {"raw": round(raw, 6), "run_count": len(values),
             "runs": [{"date": r.get("date"), "finish_pos": r.get("finish_pos"),

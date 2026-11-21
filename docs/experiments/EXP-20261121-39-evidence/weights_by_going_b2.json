@@ -1,0 +1,155 @@
+{
+ "B2S": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": false,
+   "beats_null": true
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   0.0006676300246181937,
+   -7.1312617294594165e-06,
+   0.0013852632231755458
+  ],
+  "beats_null_share": 1.0,
+  "gold_pp": [
+   -0.33134526176275675,
+   -0.8607251425692156
+  ],
+  "good_pp": [
+   -0.36447978793903246,
+   -1.125031162757157
+  ],
+  "capture5_pp": 0.052462999779103195,
+  "top2_any_hit_pp": -0.5301524188204109,
+  "soft_gold_good": [
+   0.0,
+   -0.06,
+   1690
+  ],
+  "heavy_gold_good": [
+   0.0,
+   0.0,
+   201
+  ],
+  "final_multipliers": {
+   "Soft": {
+    "stability": 0.75,
+    "pace_perf": 1.593,
+    "jockey_trainer": 1.178,
+    "class_weight": 0.893,
+    "track": 1.355,
+    "preparation": 2.495,
+    "rest": 0.688
+   }
+  }
+ },
+ "B2H": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": true,
+   "beats_null": false
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   0.00020653387069425607,
+   -2.247853777037242e-05,
+   0.0005183331396105941
+  ],
+  "beats_null_share": 0.37,
+  "gold_pp": [
+   -0.09940357852882703,
+   -0.27531149707157365
+  ],
+  "good_pp": [
+   -0.03313452617627568,
+   -0.24383825601794598
+  ],
+  "capture5_pp": 0.011044842058758561,
+  "top2_any_hit_pp": 0.09940357852882703,
+  "soft_gold_good": [
+   0.0,
+   0.0,
+   1690
+  ],
+  "heavy_gold_good": [
+   -1.99,
+   -1.0,
+   201
+  ],
+  "final_multipliers": {
+   "Heavy": {
+    "stability": 0.529,
+    "pace_perf": 1.114,
+    "jockey_trainer": 1.267,
+    "class_weight": 0.969,
+    "track": 3.317,
+    "preparation": 2.443,
+    "rest": 1.096
+   }
+  }
+ },
+ "B2SH": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": false,
+   "beats_null": true
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   0.0008791454390062335,
+   0.00013228183250912597,
+   0.0016436168008698926
+  ],
+  "beats_null_share": 1.0,
+  "gold_pp": [
+   -0.4307488402915839,
+   -0.9907477047862906
+  ],
+  "good_pp": [
+   -0.3976143141153081,
+   -1.214972358852363
+  ],
+  "capture5_pp": 0.06350784183786175,
+  "top2_any_hit_pp": -0.4307488402915839,
+  "soft_gold_good": [
+   0.0,
+   -0.06,
+   1690
+  ],
+  "heavy_gold_good": [
+   -1.99,
+   -1.0,
+   201
+  ],
+  "final_multipliers": {
+   "Soft": {
+    "stability": 0.75,
+    "pace_perf": 1.593,
+    "jockey_trainer": 1.178,
+    "class_weight": 0.893,
+    "track": 1.355,
+    "preparation": 2.495,
+    "rest": 0.688
+   },
+   "Heavy": {
+    "stability": 0.529,
+    "pace_perf": 1.114,
+    "jockey_trainer": 1.267,
+    "class_weight": 0.969,
+    "track": 3.317,
+    "preparation": 2.443,
+    "rest": 1.096
+   }
+  }
+ }
+}
