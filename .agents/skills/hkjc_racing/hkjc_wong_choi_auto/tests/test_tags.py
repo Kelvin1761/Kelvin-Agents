@@ -357,3 +357,13 @@ def test_downtier_needs_weak_last_jockey_and_old_trackwork_has_no_chip(monkeypat
                     "trackwork": {"summary": {"race_jockey_involved": True}}}}
     out = tags._race_people_tags(horses, {"date": "2026-11-18"})
     assert not [t for t in out.get("1", []) if t["key"] in ("downtier_win_purton", "race_jockey_work", "purton_takeover_full_prep")]
+
+
+def test_trainer_work_tag_is_an_unscored_note():
+    """練馬師親自快操（Kelvin 2026-11-21）：量過冇訊號，放「留意」、未入分；舊晨操檔冇欄位就唔出。"""
+    horse = {"trainer": "韋達", "trackwork": {"summary": {"trainer_gallops_21d": 2, "trainer_trials_21d": 0}}}
+    out = tags._trainer_work_tag(horse)
+    assert [(t["label"], t["tone"], t["scored"]) for t in out] == [("練馬師韋達親自快操 2 課", "note", False)]
+    assert "冇訊號" in out[0]["why"]
+    assert tags._trainer_work_tag({"trainer": "韋達", "trackwork": {"summary": {"trainer_self_count": 3}}}) == []
+    assert tags._trainer_work_tag({"trainer": "韋達"}) == []
