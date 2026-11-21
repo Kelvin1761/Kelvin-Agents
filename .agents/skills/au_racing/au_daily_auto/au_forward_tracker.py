@@ -81,6 +81,11 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 "scheduler 夠數會自動判一次（v3 fixed_rule：live vs live＋0.10×Lpos）並凍結；睇 au-lpos-forward-status.json，"
                 "win=true 先由你決定係咪上線（要另一個改動）",
                 status_file="au-lpos-forward-status.json"),
+    ForwardTest("sb_over_betfair", "頭兩選 Sportsbet 位賠明顯高過 Betfair（≥1.10 倍）紙上位注（盲測，只計數量）",
+                "EXP-20261121-31", "status_file", 1000, "注",
+                "scheduler 夠數會自動判一次（高價組 ROI CI 下限 >0 同高過其餘）並凍結；睇 au-sb-betfair-forward-status.json，"
+                "PASS 先由你決定點用（唔會自動落注）",
+                status_file="au-sb-betfair-forward-status.json"),
 )
 
 _S2_DAYS = re.compile(r"forward days with snapshot \+ results:\s*(\d+)\s*/\s*(\d+)")
