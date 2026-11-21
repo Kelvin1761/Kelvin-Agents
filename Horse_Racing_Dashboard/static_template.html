@@ -8579,6 +8579,13 @@ function renderMarketDivergenceBadge(d) {
     + `<span style="opacity:.75">· 純顯示，唔入評分</span></div>`;
 }
 
+// AU 可信度提示（Kelvin 2026-11-21：大爛地標「預測可信度較低」；後端 au_confidence_notice，純顯示）
+function renderConfidenceNotice(n) {
+  if (!n || !n.label) return '';
+  return `<div class="confidence-notice" title="${esc(n.detail || '')}" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 12px;padding:8px 12px;border-radius:10px;background:var(--color-warning-bg, rgba(234,179,8,.14));color:var(--color-text);font-size:.85rem;max-width:900px">`
+    + `<strong>⚠️ ${esc(n.label)}</strong><span style="opacity:.8">${esc(n.detail || '')}</span></div>`;
+}
+
 function renderSingleAnalystView(analysis, analystName) {
   if (!analysis) return '';
   const picks = analysis.top_picks || [];
@@ -8603,6 +8610,7 @@ function renderSingleAnalystView(analysis, analystName) {
 
   // AU 首選早盤分歧（純顯示信心提示；引擎 market_reference.divergence_lines，唔入評分）
   html += renderMarketDivergenceBadge(analysis.market_divergence);
+  html += renderConfidenceNotice(analysis.confidence_notice);
   // HKJC 全場重點（engine summary.race_summary）：首選有幾清楚，附歷史上名率
   // 全場重點只喺戰場全景卡入面出一次（Kelvin 2026-11-17：下面嗰個盒同棒形圖剷走）
 

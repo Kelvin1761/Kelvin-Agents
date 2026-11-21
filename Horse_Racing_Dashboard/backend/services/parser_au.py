@@ -11,6 +11,7 @@ from .au_dimension_registry import read_registry_metadata
 from .au_full_time_metadata import read_time_metadata
 from .au_overlay_metadata import read_overlay_metadata
 from .au_tag_metadata import read_tag_metadata
+from .au_confidence_notice import confidence_notice
 
 
 def _parse_data_readout(block: str) -> Optional[list]:
@@ -1419,5 +1420,6 @@ def parse_au_analysis(filepath: str) -> Optional[RaceAnalysis]:
         monte_carlo_simulation=monte_carlo if monte_carlo else None,
         battlefield_overview=battlefield,
         market_divergence=_parse_au_market_divergence(text),
+        confidence_notice=confidence_notice(header_info.get('going')),
         analysis_type='auto' if path.name.endswith("_Auto_Analysis.md") else 'classic',
     )

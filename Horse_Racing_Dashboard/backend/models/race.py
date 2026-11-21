@@ -256,6 +256,7 @@ class RaceAnalysis(BaseModel):
     battlefield_overview: Optional[str] = None  # 第一部分
     race_summary: Optional[dict] = None  # HKJC 全場重點（engine summary.race_summary）：lines／gap_1_2／tightness
     market_divergence: Optional[dict] = None  # AU 首選早盤分歧（純顯示）：level/icon/top_pick/market_rank/priced
+    confidence_notice: Optional[dict] = None  # AU 可信度提示（純顯示）：大爛地「預測可信度較低」
     verdict_text: Optional[str] = None  # 第三部分
     blind_spots: Optional[str] = None  # 第四部分
     analysis_type: Optional[str] = None  # classic / auto

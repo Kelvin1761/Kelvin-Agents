@@ -61,3 +61,8 @@ B2 最後倍數（大爛地）：近績穩定性 ×0.53、速度 ×1.11、騎練
 4. 冇上線。研究開關 `WC_AU_GOING_SIM`（失敗實驗 model code）只留喺分支 `claude-au-going-sim-20261121`，唔入 main；
    A 組 patch 要配合嗰個分支先跑得。
 5. 實際建議（未做，等 Kelvin）：排名層唔郁；顯示／落注層喺大爛地日標「預測可信度較低」，或者大爛地唔落注；H2 forward 照跑做量度。
+
+## Kelvin 決定（2026-11-21）：大爛地標「預測可信度較低」
+
+排名同落注唔郁；dashboard 場次頭加提示（`Horse_Racing_Dashboard/backend/services/au_confidence_notice.py`，
+大爛地定義用引擎 `stability.is_heavy_going`，同 H2 forward 一份）。
