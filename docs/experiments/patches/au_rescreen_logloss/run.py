@@ -3,7 +3,7 @@
 import collections, glob, importlib.util, json, math, re, statistics, sys
 from pathlib import Path
 import numpy as np
-WT = Path("/Users/imac/wt-claude-au-labels-20261121")
+WT = Path(__file__).resolve().parents[3]  # repo root（需要 EXP-34 measure.py 同 au_logloss_ruler.py）
 sys.path.insert(0, str(WT / ".agents/skills/au_racing/au_wong_choi_auto/scripts"))
 import au_logloss_ruler as L  # noqa: E402
 spec = importlib.util.spec_from_file_location("measure", WT / "docs/experiments/patches/au_labels/measure.py")
