@@ -93,3 +93,15 @@ ROI、賽日 bootstrap 95% CI。
   AU 賽馬底率按州份：VIC 8%、NSW 10%（其他州未查）。由今日起目錄每個市場記 `mbr`；Q2 一律用該市場嘅 `mbr`，
   11-16 之前冇記嘅市場按場地州份補，州份未知就用 10%（保守）。佣金按每個市場淨贏計。
   呢個改動喺睇任何結果之前做，唔係為咗救結果；其餘判決規則、四條規則、時點、Holm 全部不變。
+
+## 補充（2026-11-21，用戶：「將 Ladbrokes 加入記錄器，同 Betfair 一齊每分鐘記」）
+
+同一個快照 job 加記 **Ladbrokes 定額 WIN／PLACE**（`au_betfair/au_ladbrokes.py`，公開 REST，唔使登入，User-Agent 標明身份），
+寫入同一個外置碟日資料夾 `ladbrokes.jsonl`：每匹馬定額 WIN、PLACE、Ladbrokes 自己嘅價格變動序列（冇時間戳）。
+密度：開跑前 20 分鐘內每分鐘；20–75 分鐘每 5 分鐘。只收 `venue_country == AUS` 嘅純種馬。
+
+- **產品 ID**（冇官方文件）：用網頁顯示價逐匹核對兩場 —— WIN `15832bcb…`（7/7、16/16）、PLACE `7cf3eea6…`（兩場全中）。
+  失效偵測：狀態檔 `ladbrokes_today`；當日 Betfair WIN ≥ 20 場而 Ladbrokes 冇一場 ≥ 80% 馬有價 → 推 Telegram。
+- 兩個來源互不影響（Ladbrokes 失敗只寫 stderr；Betfair 失敗照記 Ladbrokes 再報錯）。
+- **Ladbrokes「Tracker」（Backers／Staked 比例）冇做**：喺私人 GraphQL（`/gql/router`），自動安全檢查判定未經授權存取。
+- **唔喺預先登記判決範圍**：Q1／Q2 照舊只用 Betfair。Ladbrokes 價係另一個市場（莊家抽水約 15–20%），要分析就另開協議。

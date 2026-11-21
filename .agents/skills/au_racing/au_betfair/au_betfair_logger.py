@@ -23,7 +23,10 @@ from zoneinfo import ZoneInfo
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
+import au_ladbrokes as lb  # noqa: E402
 import betfair_client as bf  # noqa: E402
+
+LADBROKES_GET = lb._get          # 測試換走佢，唔准連網
 
 SYDNEY = ZoneInfo("Australia/Sydney")
 # 用戶 2026-11-06：數據放外置碟（Mac 內置碟位唔多）。⚠️ 唔用 symlink（AGENTS.md：拔碟 = 靜靜讀空）；
@@ -123,9 +126,28 @@ def book_rows(markets: list[dict], now_ms: int, rpc=bf.rpc) -> list[dict]:
 
 
 def cmd_snapshot(now: datetime | None = None, rpc=bf.rpc) -> int:
+    """Betfair（結束碼跟佢）＋ Ladbrokes（失敗只寫 stderr）。兩邊互不影響；外置碟冇掛載兩邊都停。"""
     now = now or datetime.now(timezone.utc)
     if now.astimezone(SYDNEY).hour in QUIET_HOURS:
         return 0
+    betfair_error = None
+    try:
+        n = _betfair_snapshot(now, rpc)
+    except bf.BetfairError as exc:
+        betfair_error, n = exc, 0
+    try:
+        rows = lb.snapshot(now, get=LADBROKES_GET)
+        if rows:
+            append(day_dir(now) / "ladbrokes.jsonl", rows)
+        print(f"ladbrokes races {len(rows)}")
+    except lb.LadbrokesError as exc:
+        print(f"Ladbrokes 跳過：{exc}", file=sys.stderr)
+    if betfair_error is not None:
+        raise betfair_error
+    return n
+
+
+def _betfair_snapshot(now: datetime, rpc) -> int:
     markets = catalogue(now, rpc)
     if not markets:
         return 0
@@ -196,11 +218,25 @@ def collect_counts(root: Path = LOG_ROOT) -> dict:
     return {"races": races, "days": days, "place_markets": place}
 
 
+def ladbrokes_health(folder: Path) -> dict:
+    """當日 Ladbrokes 覆蓋率，同 Betfair WIN 市場數對比（產品 ID 失效 = 有 Betfair 冇 Ladbrokes 價）。"""
+    health = lb.mapping_health(read(folder / "ladbrokes.jsonl"))
+    health["betfair_win_markets"] = sum(market_type(m) == "WIN" for m in read(folder / "catalogue.jsonl"))
+    health["broken"] = health["betfair_win_markets"] >= 20 and health["races_priced"] == 0
+    return health
+
+
 def cmd_status(output: Path) -> dict:
-    counts = collect_counts(ensure_log_root())
+    root = ensure_log_root()
+    today = root / datetime.now(SYDNEY).strftime("%Y-%m-%d")
+    lb_today = ladbrokes_health(today)
+    if lb_today["broken"]:
+        notify_ladbrokes_broken(lb_today)
+    counts = collect_counts(root)
     status = {"experiment": "EXP-20261106-02", "kind": "betfair_market_log", "target_races": TARGET_RACES,
               "races_collected": counts["races"], "race_days": counts["days"],
               "place_markets_collected": counts["place_markets"],
+              "ladbrokes_today": lb_today,
               "outcomes_visible": False, "state": "collecting",
               "generated_at": datetime.now(timezone.utc).isoformat()}
     output.write_text(json.dumps(status, ensure_ascii=False, indent=1), encoding="utf-8")
@@ -226,6 +262,18 @@ def notify_settle_failed(reason: str) -> None:
         au_notify.push(f"⚠️ Betfair 市場走勢記錄：今晚結算失敗（{reason}）。賽果同 BSP 未寫入，"
                        f"前向測試（EXP-20261106-02）場數唔會增加；{SETTLE_LOOKBACK_DAYS} 日內修好會自動補返。",
                        title="🏇 AU Betfair 記錄", audience="primary")
+    except Exception as exc:  # noqa: BLE001
+        print(f"Telegram 推送失敗：{type(exc).__name__}", file=sys.stderr)
+
+
+def notify_ladbrokes_broken(health: dict) -> None:
+    """今日有 Betfair 市場但 Ladbrokes 冇一場有定額價 → 多數係產品 ID 改咗；推 Telegram（primary）。"""
+    try:
+        sys.path.insert(0, str(HERE.parent / "au_daily_auto"))
+        import au_notify
+        au_notify.push(f"⚠️ Ladbrokes 賠率今日冇記到（Betfair WIN {health['betfair_win_markets']} 場，Ladbrokes 有價 "
+                       f"{health['races_priced']}/{health['races']} 場）。多數係 Ladbrokes 改咗產品 ID，要重新核對 au_ladbrokes.py。",
+                       title="🏇 AU 市場記錄", audience="primary")
     except Exception as exc:  # noqa: BLE001
         print(f"Telegram 推送失敗：{type(exc).__name__}", file=sys.stderr)
 
