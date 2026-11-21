@@ -13,6 +13,10 @@
 唔用任何繞過偵測手法；03:00 前或者 09:00 後唔開工（避開 22:00 evening job 同 10:00–16:00 refresh）。
 
     python3 au_mobile_sectionals.py fetch [--days-back 8] [--max-pages 180] [--status STATUS.json]
+    python3 au_mobile_sectionals.py fetch --backfill [--max-pages 500] [--status STATUS.json]   # EXP-20261120-87
+
+回填（EXP-20261120-87）：08-05 → 11-05，只抓我哋有 `Race_N_Logic.json` 嘅場次；同一套規矩，排喺每日 forward
+抓取之後、同一個 job；09:00 一到即停。每日另存 `_events.json`（AllRacing 場次表）做完整度證據。
     python3 au_mobile_sectionals.py parse PAGE.html
 """
 from __future__ import annotations
@@ -34,7 +38,9 @@ PAGE = "https://www.sportsbetform.com.au/mobile/{event_id}/1/"
 FORWARD_START = "2026-11-17"      # EXP-20261116-20：之前嘅場次用咗嚟定權重，唔入 forward
 DELAY_SECONDS = 25.0
 MIN_BYTES = 20000
-WINDOW = (3, 9)                   # 只喺 [03:00, 09:00) 開工
+WINDOW = (3, 9)                   # 只喺 [03:00, 09:00) 開工；中途過咗 09:00 即停
+BACKFILL_FROM, BACKFILL_TO = "2026-08-05", "2026-11-05"   # EXP-20261120-87（11-06 起 EXP-19／22 用過，唔回填）
+BACKFILL_MAX_PAGES = 500
 MARKER = 'data-component="mobile-sectional-times"'
 
 
@@ -128,6 +134,40 @@ def load_day(day: str, root: Path | None = None) -> list[dict]:
     return out
 
 
+# ---------------------------------------------------------------- backfill scope
+def venue_key(name: str) -> str:
+    return re.sub(r"[^a-z]", "", (name or "").lower())
+
+
+def backfill_days(start: str = BACKFILL_FROM, end: str = BACKFILL_TO) -> list[str]:
+    d, last, out = date.fromisoformat(start), date.fromisoformat(end), []
+    while d <= last:
+        out.append(d.isoformat())
+        d += timedelta(days=1)
+    return out
+
+
+def analysed_races(day: str, root: Path | None = None) -> set:
+    """嗰日我哋有分析嘅場次 {(場地 key, 場號)}（主資料根同 Archive）。"""
+    base = root or data_root()
+    out = set()
+    for folder in list(base.glob(f"{day}*")) + list((base / "Archive").glob(f"{day}*")):
+        if not folder.is_dir():
+            continue
+        venue = re.sub(r"\s+Race\s+\d+-\d+$", "", re.sub(r"^\d{4}-\d{2}-\d{2}[ _]+", "", folder.name))
+        for logic in folder.glob("Race_*_Logic.json"):
+            m = re.match(r"Race_(\d+)_Logic\.json$", logic.name)
+            if m:
+                out.add((venue_key(venue), int(m.group(1))))
+    return out
+
+
+def matches_analysed(ev: dict, wanted: set) -> bool:
+    """場地名兩邊寫法唔同（「Sandown Hillside」／「Sandown」）：key 互為前綴當同一個場地。"""
+    key, race = venue_key(ev.get("venue")), int(ev.get("race") or 0)
+    return any(r == race and (key.startswith(k) or k.startswith(key)) for k, r in wanted if k)
+
+
 # ---------------------------------------------------------------- fetch
 def au_events(payload: dict) -> list[dict]:
     """AllRacing → AU 純種馬每場 {event_id, venue, race}。"""
@@ -151,8 +191,10 @@ def in_window(now: datetime) -> bool:
 
 
 def fetch(*, days_back: int, max_pages: int, today: date, session, sleep=time.sleep, now=datetime.now,
-          root: Path | None = None, force_window: bool = False, log=print) -> dict:
-    """抓前一日至前 days_back 日（≥ FORWARD_START）未有嘅場次。任何非 200／逾時／內容唔啱即停。"""
+          root: Path | None = None, force_window: bool = False, log=print, days: list[str] | None = None,
+          only_analysed: bool = False) -> dict:
+    """抓前一日至前 days_back 日（≥ FORWARD_START）未有嘅場次；`days` 畀咗就照呢個清單（回填用）。
+    任何非 200／逾時／內容唔啱即停；過咗 09:00 即停。`only_analysed` = 只抓我哋有 Logic 嘅場次。"""
     status = {"started_at": now().isoformat(timespec="seconds"), "fetched": 0, "skipped_existing": 0,
               "days": {}, "state": "ok", "stop_reason": ""}
     if not force_window and not in_window(now()):
@@ -167,10 +209,24 @@ def fetch(*, days_back: int, max_pages: int, today: date, session, sleep=time.sl
             sleep(DELAY_SECONDS)
         requests_made += 1
 
-    for back in range(1, days_back + 1):
-        day = (today - timedelta(days=back)).isoformat()
-        if day < FORWARD_START:
+    if days is None:
+        days = [(today - timedelta(days=back)).isoformat() for back in range(1, days_back + 1)]
+        days = [d for d in days if d >= FORWARD_START]
+    for day in days:
+        folder = base / day
+        wanted = analysed_races(day, root) if only_analysed else None
+        if only_analysed and not wanted:
             continue
+        listed = folder / "_events.json"
+        if only_analysed and listed.exists():
+            events = json.loads(listed.read_text(encoding="utf-8"))
+            todo = [ev for ev in events if not (folder / f"{ev['event_id']}.json.gz").exists()]
+            if not todo:
+                status["skipped_existing"] += len(events)
+                continue
+        if not force_window and not in_window(now()):
+            status.update(state="window_closed", stop_reason=f"{WINDOW[1]:02d}:00 時間窗已過")
+            return status
         polite()
         try:
             resp = session.get(API.format(day=day), timeout=30)
@@ -185,8 +241,10 @@ def fetch(*, days_back: int, max_pages: int, today: date, session, sleep=time.sl
         except ValueError:
             status.update(state="stopped", stop_reason=f"AllRacing {day}: 唔係 JSON")
             return status
-        folder = base / day
         folder.mkdir(parents=True, exist_ok=True)
+        if only_analysed:
+            events = [ev for ev in events if matches_analysed(ev, wanted)]
+            listed.write_text(json.dumps(events, ensure_ascii=False), encoding="utf-8")
         got = 0
         for ev in events:
             target = folder / f"{ev['event_id']}.json.gz"
@@ -195,6 +253,10 @@ def fetch(*, days_back: int, max_pages: int, today: date, session, sleep=time.sl
                 continue
             if status["fetched"] >= max_pages:
                 status.update(state="page_cap", stop_reason=f"每次最多 {max_pages} 版")
+                status["days"][day] = got
+                return status
+            if not force_window and not in_window(now()):
+                status.update(state="window_closed", stop_reason=f"{WINDOW[1]:02d}:00 時間窗已過")
                 status["days"][day] = got
                 return status
             polite()
@@ -226,7 +288,8 @@ def main(argv=None) -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     f = sub.add_parser("fetch")
     f.add_argument("--days-back", type=int, default=8)
-    f.add_argument("--max-pages", type=int, default=180)
+    f.add_argument("--max-pages", type=int, default=None)
+    f.add_argument("--backfill", action="store_true", help=f"EXP-20261120-87：回填 {BACKFILL_FROM} → {BACKFILL_TO}")
     f.add_argument("--status", default="")
     f.add_argument("--force-window", action="store_true", help="只供人手測試；排程唔好用")
     p = sub.add_parser("parse")
@@ -237,14 +300,16 @@ def main(argv=None) -> int:
         return 0
     from curl_cffi import requests  # 同 claw_sportsbet_form 一樣嘅 client
 
-    status = fetch(days_back=args.days_back, max_pages=args.max_pages, today=date.today(),
-                   session=requests.Session(impersonate="chrome120"), force_window=args.force_window)
+    max_pages = args.max_pages or (BACKFILL_MAX_PAGES if args.backfill else 180)
+    status = fetch(days_back=args.days_back, max_pages=max_pages, today=date.today(),
+                   session=requests.Session(impersonate="chrome120"), force_window=args.force_window,
+                   days=backfill_days() if args.backfill else None, only_analysed=args.backfill)
     status["finished_at"] = datetime.now().isoformat(timespec="seconds")
     if args.status:
         Path(args.status).parent.mkdir(parents=True, exist_ok=True)
         Path(args.status).write_text(json.dumps(status, ensure_ascii=False, indent=1), encoding="utf-8")
     print(json.dumps(status, ensure_ascii=False))
-    return 0 if status["state"] in ("ok", "page_cap", "outside_window") else 1
+    return 0 if status["state"] in ("ok", "page_cap", "outside_window", "window_closed") else 1
 
 
 if __name__ == "__main__":

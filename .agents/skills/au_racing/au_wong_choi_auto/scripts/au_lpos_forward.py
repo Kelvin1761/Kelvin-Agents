@@ -175,8 +175,10 @@ def collect(root: Path, start: str = START_DATE, mobile_root: Path | None = None
             for r, c in zip(rows, cand):
                 r["cand"] = c
             dist = (logic.get("race_analysis") or {}).get("distance")
+            post = sum(1 for r in mobile.get("runners") or [] for run in r.get("runs") or []
+                       if run.get("date") and run["date"] >= day)   # 描述用（EXP-20261120-87 會剔走 > 0 嘅場）
             races.append({"date": day, "meeting": meeting_dir.name, "race": race_no, "rows": rows,
-                          "distance": dist})
+                          "distance": dist, "mobile_post_race_rows": post})
     races.sort(key=lambda r: (r["date"], r["meeting"], r["race"]))
     return races, skipped
 

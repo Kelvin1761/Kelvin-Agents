@@ -150,3 +150,72 @@ def test_formguide_runs_reads_race_l600_and_position_skipping_trials():
     fg = fwd.formguide_runs(text)
     (name, runs), = fg.items()
     assert runs == {"2026-11-01": {"race_l600": 35.5, "pos800": 3, "starters": 9}}
+
+
+# ---------------------------------------------------------------- EXP-20261120-87 回填
+def _meeting(root, day, venue, races):
+    d = root / f"{day} {venue} Race 1-{max(races)}"
+    d.mkdir(parents=True)
+    for r in races:
+        (d / f"Race_{r}_Logic.json").write_text("{}")
+
+
+def test_backfill_only_fetches_analysed_races_and_lists_events(tmp_path):
+    _meeting(tmp_path, "2026-08-10", "Moe", [2])
+    s = _Session([_Resp(200, payload=ALLR), _Resp(200, GOOD)])
+    st = ams.fetch(days_back=0, max_pages=50, today=date(2026, 11, 20), session=s, sleep=lambda _x: None,
+                   now=EARLY, root=tmp_path, log=lambda *_: None, days=["2026-08-09", "2026-08-10"],
+                   only_analysed=True)
+    assert st["state"] == "ok" and st["fetched"] == 1
+    assert s.urls[0].endswith("/2026-08-10") and s.urls[1].endswith("/mobile/12/1/")   # 08-09 冇分析 → 唔問
+    listed = json.loads((tmp_path / "AU_Mobile_Sectionals" / "2026-08-10" / "_events.json").read_text())
+    assert [e["event_id"] for e in listed] == [12]
+    s2 = _Session([])                                   # 已列齊又抓齊 → 連 AllRacing 都唔再問
+    st2 = ams.fetch(days_back=0, max_pages=50, today=date(2026, 11, 20), session=s2, sleep=lambda _x: None,
+                    now=EARLY, root=tmp_path, days=["2026-08-10"], only_analysed=True)
+    assert s2.urls == [] and st2["skipped_existing"] == 1
+
+
+def test_fetch_stops_when_window_closes_mid_run(tmp_path):
+    times = iter([datetime(2026, 11, 20, 8, 59), datetime(2026, 11, 20, 8, 59), datetime(2026, 11, 20, 9, 0)])
+    s = _Session([_Resp(200, payload=ALLR), _Resp(200, GOOD)])
+    st = ams.fetch(days_back=1, max_pages=50, today=date(2026, 11, 20), session=s, sleep=lambda _x: None,
+                   now=lambda: next(times, datetime(2026, 11, 20, 9, 1)), root=tmp_path, log=lambda *_: None)
+    assert st["state"] == "window_closed" and st["fetched"] <= 1
+
+
+def test_venue_prefix_match():
+    wanted = {("sandown", 3), ("pakenhamsynthetic", 1)}
+    assert ams.matches_analysed({"venue": "Sandown Hillside", "race": 3}, wanted)
+    assert ams.matches_analysed({"venue": "Pakenham Synthetic", "race": 1}, wanted)
+    assert not ams.matches_analysed({"venue": "Sandown Hillside", "race": 4}, wanted)
+    assert not ams.matches_analysed({"venue": "Moe", "race": 3}, wanted)
+
+
+def test_backfill_range_excludes_weight_fitting_window():
+    days = ams.backfill_days()
+    assert days[0] == "2026-08-05" and days[-1] == "2026-11-05" and len(days) == 93
+
+
+def test_backfill_status_does_not_look_at_results_until_complete(tmp_path, monkeypatch):
+    import au_lpos_backfill as B
+    _meeting(tmp_path, "2026-08-10", "Moe", [1, 2])
+    called = []
+    monkeypatch.setattr(B.fwd, "evaluate", lambda races: called.append(1) or {"verdict": "X"})
+    monkeypatch.setattr(B, "collect", lambda root: ([], {}))
+    monkeypatch.setattr(B.ams, "backfill_days", lambda: ["2026-08-10"])
+    out = tmp_path / "status.json"
+    B.main(["--data-root", str(tmp_path), "--output", str(out)])
+    st = json.loads(out.read_text())
+    assert st["state"] == "collecting" and "evaluation" not in st and called == []
+    assert st["target_races"] == 2 and st["races_collected"] == 0
+    day = tmp_path / "AU_Mobile_Sectionals" / "2026-08-10"
+    day.mkdir(parents=True)
+    (day / "_events.json").write_text(json.dumps([{"event_id": 1}, {"event_id": 2}]))
+    for e in (1, 2):
+        (day / f"{e}.json.gz").write_bytes(gzip.compress(b"{}"))
+    B.main(["--data-root", str(tmp_path), "--output", str(out)])
+    st = json.loads(out.read_text())
+    assert st["state"] == "evaluated" and st["evaluation"] == {"verdict": "X"} and called == [1]
+    B.main(["--data-root", str(tmp_path), "--output", str(out)])        # 凍結：唔會再判
+    assert called == [1]

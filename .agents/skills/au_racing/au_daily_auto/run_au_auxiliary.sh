@@ -44,9 +44,14 @@ case "$TASK" in
   bot)         exec /usr/bin/python3 "$SCRIPT_DIR/au_telegram_bot.py" ;;
   # EXP-20261116-20：sportsbetform 手機逐駒分段，每日 04:30 抓前一至八日（隔 25 秒、非 200 即停、唔重試）。
   # 腳本自己只喺 03:00–09:00 開工，避開 22:00 evening job 同 10:00–16:00 refresh。
+  # EXP-20261120-87：forward 抓完之後，同一個 job 用剩低嘅時間窗回填 08-05 → 11-05（09:00 即停、每晚最多 500 版）。
+  # forward 抓取被擋（非 0）就唔回填。回填完齊先由 au_lpos_backfill.py 判一次並凍結。
   mobile-sectionals)
-    exec /usr/bin/python3 "$SCRIPT_DIR/../au_wong_choi_auto/scripts/au_mobile_sectionals.py" fetch \
-      --status "$SCRIPT_DIR/work/au-mobile-sectionals-fetch.json" ;;
+    MS="$SCRIPT_DIR/../au_wong_choi_auto/scripts"
+    /usr/bin/python3 "$MS/au_mobile_sectionals.py" fetch --status "$SCRIPT_DIR/work/au-mobile-sectionals-fetch.json"
+    /usr/bin/python3 "$MS/au_mobile_sectionals.py" fetch --backfill \
+      --status "$SCRIPT_DIR/work/au-mobile-sectionals-backfill-fetch.json" || true
+    exec /usr/bin/python3 "$MS/au_lpos_backfill.py" --notify --output "$SCRIPT_DIR/work/au-lpos-backfill-status.json" ;;
   *)
     print -r -- "用法：$0 healthcheck|bot|betfair-snapshot|betfair-settle|mobile-sectionals" >&2
     exit 2
