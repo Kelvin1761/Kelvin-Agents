@@ -196,7 +196,7 @@ def coverage(races) -> dict:
 
 
 def evaluate(races):
-    from au_eval import _counts, _stage4_metric_rows
+    from au_eval import RANKING_METRICS_PRE_20261121, _counts, _stage4_metric_rows
     from model_evaluation_decision import evaluate_full_record
 
     base = lambda race: race["base"]  # noqa: E731
@@ -204,7 +204,7 @@ def evaluate(races):
     verdict = evaluate_full_record(
         domain="au", mode="fixed_rule", dates=[r["date"] for r in races],
         baseline_rows=_stage4_metric_rows(races, base), candidate_rows=_stage4_metric_rows(races, cand),
-        leakage_audit_passed=True, ranking_metrics=("top3_capture_at5", "ndcg_at5", "top5_pairwise_auc"))
+        leakage_audit_passed=True, ranking_metrics=RANKING_METRICS_PRE_20261121)
     detail = verdict["detail"]
     pick = lambda group: {k: {f: e[f] for f in ("delta", "ci_low", "ci_high", "p_value")}  # noqa: E731
                           for k, e in detail[group].items()}

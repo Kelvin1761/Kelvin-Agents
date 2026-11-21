@@ -66,6 +66,8 @@ RANKING_KEYS = frozenset(
         "ndcg_at5",
         "top5_pairwise_auc",
         "top2_any_hit",
+        "top2_place_rate",
+        "top3_place_rate",
     }
 )
 
@@ -78,6 +80,8 @@ METRIC_DIRECTIONS = {
     "ndcg_at5": True,
     "top5_pairwise_auc": True,
     "top2_any_hit": True,
+    "top2_place_rate": True,
+    "top3_place_rate": True,
 }
 
 

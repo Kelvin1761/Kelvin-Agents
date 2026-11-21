@@ -1,0 +1,56 @@
+NEW ('REJECT', 'ranking_evidence_too_weak') -> ('REJECT', 'ranking_evidence_too_weak')
+{
+ "races": 3736,
+ "aa": {
+  "old": [
+   "REJECT",
+   "ranking_evidence_too_weak"
+  ],
+  "new": [
+   "REJECT",
+   "ranking_evidence_too_weak"
+  ]
+ },
+ "NEW": {
+  "old": [
+   "REJECT",
+   "ranking_evidence_too_weak"
+  ],
+  "new": [
+   "REJECT",
+   "ranking_evidence_too_weak"
+  ],
+  "new_ranking": {
+   "top3_capture_at5": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "ndcg_at5": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "top5_pairwise_auc": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "top2_any_hit": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "top2_place_rate": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "top3_place_rate": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  }
+ }
+}

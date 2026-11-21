@@ -157,7 +157,7 @@ def collect(root, start=START_DATE):
 
 
 def evaluate(live_races, base_races):
-    from au_eval import _counts, _stage4_metric_rows
+    from au_eval import RANKING_METRICS_PRE_20261121, _counts, _stage4_metric_rows
     from model_evaluation_decision import evaluate_full_record
 
     score = lambda race: race["ability"]  # noqa: E731
@@ -166,7 +166,7 @@ def evaluate(live_races, base_races):
         baseline_rows=_stage4_metric_rows(base_races, score),
         candidate_rows=_stage4_metric_rows(live_races, score),
         leakage_audit_passed=True,
-        ranking_metrics=("top3_capture_at5", "ndcg_at5", "top5_pairwise_auc"))
+        ranking_metrics=RANKING_METRICS_PRE_20261121)
     primary = verdict["detail"]["primary"]
     keep = all(primary[k]["delta"] >= 0 for k in ("gold", "good_positional"))
     return {"keep": keep, "verdict": verdict["verdict"], "reason": verdict["reason"],

@@ -393,6 +393,20 @@ def baseline_report(races, holdout=HOLDOUT, scorer=None):
     }
 
 
+# AU Stage 4 ranking metric —— **唯一一份**（Kelvin 2026-11-21：「同 HKJC 一樣，頭 1、2 排序好咗、0 中改善、
+# 頭 5／頭 3 位置好咗都應該考慮」，見 docs/model-evaluation-contract.md「AU ranking metric 登記」）。
+#   top2_any_hit     頭二選最少一隻上名（0 中 → 1 中）
+#   top2_place_rate  頭二選上名數 ÷ 2（頭 1、2 揀得好啲）
+#   top3_place_rate  頭三選上名數 ÷ 3（頭 3 位置）
+#   top3_capture_at5 實際前三有幾多喺頭五選（頭 5 位置）
+#   ndcg_at5、top5_pairwise_auc 照舊
+RANKING_METRICS = ("top3_capture_at5", "ndcg_at5", "top5_pairwise_auc",
+                   "top2_any_hit", "top2_place_rate", "top3_place_rate")
+# 2026-11-21 之前預先登記嘅 forward 測試（檔位、初出、H2、L600 近期、Lpos、海外代理）凍結用舊尺 ——
+# 中途換尺 = 改咗佢哋登記咗嘅判決規則。新候選一律用 `RANKING_METRICS`。
+RANKING_METRICS_PRE_20261121 = ("top3_capture_at5", "ndcg_at5", "top5_pairwise_auc")
+
+
 def _stage4_metric_rows(races, scorer):
     pairs = _pairs(races, scorer, True)
     rows = []
@@ -420,6 +434,9 @@ def _stage4_metric_rows(races, scorer):
                 "competitive_recall_at5": metrics["competitive_recall_at5"],
                 "ndcg_at5": metrics["ndcg_at5"],
                 "top5_pairwise_auc": pair[0] / pair[1] if pair[1] else None,
+                "top2_any_hit": metrics["top2_any_hit"],
+                "top2_place_rate": metrics["top2_hits"] / 2 if len(metrics["picks"]) >= 2 else None,
+                "top3_place_rate": metrics["hits"] / 3 if len(metrics["picks"]) >= 3 else None,
             }
         )
     return rows
@@ -460,11 +477,7 @@ def compare(races, base_scorer=None, cand_scorer=None, *, label="候選",
         candidate_rows=_stage4_metric_rows(races, cand_scorer),
         leakage_audit_passed=leakage_audit_passed,
         holdout_fraction=holdout,
-        ranking_metrics=(
-            "top3_capture_at5",
-            "ndcg_at5",
-            "top5_pairwise_auc",
-        ),
+        ranking_metrics=RANKING_METRICS,
     )
     if stage4_mode == "v2":
         decision = evaluate_candidate(stage4_input)
@@ -480,7 +493,7 @@ def compare(races, base_scorer=None, cand_scorer=None, *, label="候選",
             baseline_rows=_stage4_metric_rows(races, base_scorer),
             candidate_rows=_stage4_metric_rows(races, cand_scorer),
             leakage_audit_passed=leakage_audit_passed,
-            ranking_metrics=("top3_capture_at5", "ndcg_at5", "top5_pairwise_auc"),
+            ranking_metrics=RANKING_METRICS,
         )
     ship = decision["verdict"] in {"PRIMARY_WIN", "RANKING_WIN"}
     why = str(decision["reason"])

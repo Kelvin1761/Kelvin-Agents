@@ -1,0 +1,357 @@
+FINAL ('REJECT', 'ranking_evidence_too_weak') -> ('REJECT', 'ranking_metric_harm')
+FLFIX ('REJECT', 'ranking_evidence_too_weak') -> ('REJECT', 'ranking_evidence_too_weak')
+P1 ('REJECT', 'primary_regression') -> ('REJECT', 'primary_regression')
+T1 ('REJECT', 'primary_regression') -> ('REJECT', 'primary_regression')
+T2 ('REJECT', 'primary_regression') -> ('REJECT', 'primary_regression')
+T3 ('REJECT', 'primary_regression') -> ('REJECT', 'primary_regression')
+WA ('REJECT', 'ranking_evidence_too_weak') -> ('REJECT', 'ranking_metric_harm')
+WB ('REJECT', 'ranking_evidence_too_weak') -> ('REJECT', 'ranking_metric_harm')
+{
+ "races": 3736,
+ "aa": {
+  "old": [
+   "REJECT",
+   "ranking_evidence_too_weak"
+  ],
+  "new": [
+   "REJECT",
+   "ranking_evidence_too_weak"
+  ]
+ },
+ "FINAL": {
+  "old": [
+   "REJECT",
+   "ranking_evidence_too_weak"
+  ],
+  "new": [
+   "REJECT",
+   "ranking_metric_harm"
+  ],
+  "new_ranking": {
+   "top3_capture_at5": [
+    0.045,
+    -0.066,
+    0.164
+   ],
+   "ndcg_at5": [
+    0.019,
+    -0.1,
+    0.132
+   ],
+   "top5_pairwise_auc": [
+    -0.002,
+    -0.08,
+    0.081
+   ],
+   "top2_any_hit": [
+    0.027,
+    -0.295,
+    0.338
+   ],
+   "top2_place_rate": [
+    0.04,
+    -0.221,
+    0.291
+   ],
+   "top3_place_rate": [
+    -0.214,
+    -0.384,
+    -0.053
+   ]
+  }
+ },
+ "FLFIX": {
+  "old": [
+   "REJECT",
+   "ranking_evidence_too_weak"
+  ],
+  "new": [
+   "REJECT",
+   "ranking_evidence_too_weak"
+  ],
+  "new_ranking": {
+   "top3_capture_at5": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "ndcg_at5": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "top5_pairwise_auc": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "top2_any_hit": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "top2_place_rate": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "top3_place_rate": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  }
+ },
+ "P1": {
+  "old": [
+   "REJECT",
+   "primary_regression"
+  ],
+  "new": [
+   "REJECT",
+   "primary_regression"
+  ],
+  "new_ranking": {
+   "top3_capture_at5": [
+    -0.196,
+    -0.347,
+    -0.045
+   ],
+   "ndcg_at5": [
+    -0.242,
+    -0.354,
+    -0.133
+   ],
+   "top5_pairwise_auc": [
+    -0.156,
+    -0.245,
+    -0.065
+   ],
+   "top2_any_hit": [
+    -0.241,
+    -0.525,
+    0.0
+   ],
+   "top2_place_rate": [
+    -0.12,
+    -0.348,
+    0.096
+   ],
+   "top3_place_rate": [
+    -0.152,
+    -0.33,
+    0.019
+   ]
+  }
+ },
+ "T1": {
+  "old": [
+   "REJECT",
+   "primary_regression"
+  ],
+  "new": [
+   "REJECT",
+   "primary_regression"
+  ],
+  "new_ranking": {
+   "top3_capture_at5": [
+    0.016,
+    -0.158,
+    0.187
+   ],
+   "ndcg_at5": [
+    -0.098,
+    -0.228,
+    0.031
+   ],
+   "top5_pairwise_auc": [
+    -0.076,
+    -0.189,
+    0.035
+   ],
+   "top2_any_hit": [
+    -0.428,
+    -0.733,
+    -0.112
+   ],
+   "top2_place_rate": [
+    -0.201,
+    -0.427,
+    0.027
+   ],
+   "top3_place_rate": [
+    -0.178,
+    -0.335,
+    -0.018
+   ]
+  }
+ },
+ "T2": {
+  "old": [
+   "REJECT",
+   "primary_regression"
+  ],
+  "new": [
+   "REJECT",
+   "primary_regression"
+  ],
+  "new_ranking": {
+   "top3_capture_at5": [
+    0.069,
+    -0.084,
+    0.213
+   ],
+   "ndcg_at5": [
+    -0.048,
+    -0.167,
+    0.069
+   ],
+   "top5_pairwise_auc": [
+    0.001,
+    -0.101,
+    0.096
+   ],
+   "top2_any_hit": [
+    -0.241,
+    -0.535,
+    0.082
+   ],
+   "top2_place_rate": [
+    -0.094,
+    -0.306,
+    0.12
+   ],
+   "top3_place_rate": [
+    -0.161,
+    -0.311,
+    -0.018
+   ]
+  }
+ },
+ "T3": {
+  "old": [
+   "REJECT",
+   "primary_regression"
+  ],
+  "new": [
+   "REJECT",
+   "primary_regression"
+  ],
+  "new_ranking": {
+   "top3_capture_at5": [
+    0.016,
+    -0.204,
+    0.224
+   ],
+   "ndcg_at5": [
+    -0.045,
+    -0.24,
+    0.164
+   ],
+   "top5_pairwise_auc": [
+    -0.087,
+    -0.219,
+    0.038
+   ],
+   "top2_any_hit": [
+    -0.535,
+    -1.132,
+    0.026
+   ],
+   "top2_place_rate": [
+    -0.361,
+    -0.778,
+    0.052
+   ],
+   "top3_place_rate": [
+    -0.33,
+    -0.602,
+    -0.074
+   ]
+  }
+ },
+ "WA": {
+  "old": [
+   "REJECT",
+   "ranking_evidence_too_weak"
+  ],
+  "new": [
+   "REJECT",
+   "ranking_metric_harm"
+  ],
+  "new_ranking": {
+   "top3_capture_at5": [
+    0.08,
+    -0.045,
+    0.223
+   ],
+   "ndcg_at5": [
+    0.022,
+    -0.101,
+    0.14
+   ],
+   "top5_pairwise_auc": [
+    0.018,
+    -0.069,
+    0.113
+   ],
+   "top2_any_hit": [
+    -0.08,
+    -0.424,
+    0.247
+   ],
+   "top2_place_rate": [
+    -0.027,
+    -0.287,
+    0.229
+   ],
+   "top3_place_rate": [
+    -0.17,
+    -0.343,
+    -0.008
+   ]
+  }
+ },
+ "WB": {
+  "old": [
+   "REJECT",
+   "ranking_evidence_too_weak"
+  ],
+  "new": [
+   "REJECT",
+   "ranking_metric_harm"
+  ],
+  "new_ranking": {
+   "top3_capture_at5": [
+    0.054,
+    -0.069,
+    0.189
+   ],
+   "ndcg_at5": [
+    0.017,
+    -0.106,
+    0.138
+   ],
+   "top5_pairwise_auc": [
+    0.016,
+    -0.071,
+    0.112
+   ],
+   "top2_any_hit": [
+    -0.027,
+    -0.369,
+    0.305
+   ],
+   "top2_place_rate": [
+    0.0,
+    -0.265,
+    0.257
+   ],
+   "top3_place_rate": [
+    -0.187,
+    -0.353,
+    -0.034
+   ]
+  }
+ }
+}

@@ -45,7 +45,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 sys.path.insert(0, str(SCRIPT_DIR.parents[2] / "shared_racing"))
 
-from au_eval import _counts, _stage4_metric_rows  # noqa: E402
+from au_eval import RANKING_METRICS, _counts, _stage4_metric_rows  # noqa: E402
 from au_matrix_refit import dirichlet  # noqa: E402
 from au_racing_engine.matrix_mapper import map_features_to_matrix_scores  # noqa: E402
 from au_racing_engine.scoring import MATRIX_WEIGHTS, compose_matrix_score  # noqa: E402
@@ -53,7 +53,6 @@ from model_evaluation_decision import (  # noqa: E402
     _full_record_metric, evaluate_full_record)
 
 DIMS = tuple(MATRIX_WEIGHTS)
-RANKING_METRICS = ("top3_capture_at5", "ndcg_at5", "top5_pairwise_auc")
 
 # 預先登記嘅程序。改任何一項 = 另一個程序（hash 會變），唔可以同舊 arm 比。
 PROCEDURE = {

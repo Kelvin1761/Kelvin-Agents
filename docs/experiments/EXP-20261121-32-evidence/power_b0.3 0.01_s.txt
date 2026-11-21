@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "/Users/imac/wt-claude-au-ruler-20261121/docs/experiments/patches/au_ruler_top2/rejudge.py", line 78, in <module>
+    {"pairs": lambda: pairs(sys.argv[2], sys.argv[3:]), "null": lambda: null(*sys.argv[2:5]), "power": lambda: power(*sys.argv[2:6])}[sys.argv[1]]()
+  File "/Users/imac/wt-claude-au-ruler-20261121/docs/experiments/patches/au_ruler_top2/rejudge.py", line 78, in <lambda>
+    {"pairs": lambda: pairs(sys.argv[2], sys.argv[3:]), "null": lambda: null(*sys.argv[2:5]), "power": lambda: power(*sys.argv[2:6])}[sys.argv[1]]()
+TypeError: power() missing 1 required positional argument: 'seeds'

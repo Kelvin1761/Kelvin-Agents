@@ -1,0 +1,99 @@
+V1 ('REJECT', 'primary_regression') -> ('REJECT', 'primary_regression')
+V2 ('REJECT', 'primary_regression') -> ('REJECT', 'primary_regression')
+{
+ "races": 3736,
+ "aa": {
+  "old": [
+   "REJECT",
+   "ranking_evidence_too_weak"
+  ],
+  "new": [
+   "REJECT",
+   "ranking_evidence_too_weak"
+  ]
+ },
+ "V1": {
+  "old": [
+   "REJECT",
+   "primary_regression"
+  ],
+  "new": [
+   "REJECT",
+   "primary_regression"
+  ],
+  "new_ranking": {
+   "top3_capture_at5": [
+    0.161,
+    0.009,
+    0.335
+   ],
+   "ndcg_at5": [
+    0.01,
+    -0.16,
+    0.18
+   ],
+   "top5_pairwise_auc": [
+    0.06,
+    -0.063,
+    0.192
+   ],
+   "top2_any_hit": [
+    -0.134,
+    -0.569,
+    0.293
+   ],
+   "top2_place_rate": [
+    -0.027,
+    -0.327,
+    0.27
+   ],
+   "top3_place_rate": [
+    -0.143,
+    -0.351,
+    0.066
+   ]
+  }
+ },
+ "V2": {
+  "old": [
+   "REJECT",
+   "primary_regression"
+  ],
+  "new": [
+   "REJECT",
+   "primary_regression"
+  ],
+  "new_ranking": {
+   "top3_capture_at5": [
+    0.08,
+    -0.049,
+    0.222
+   ],
+   "ndcg_at5": [
+    0.03,
+    -0.094,
+    0.155
+   ],
+   "top5_pairwise_auc": [
+    0.034,
+    -0.058,
+    0.126
+   ],
+   "top2_any_hit": [
+    -0.054,
+    -0.45,
+    0.35
+   ],
+   "top2_place_rate": [
+    -0.013,
+    -0.309,
+    0.262
+   ],
+   "top3_place_rate": [
+    -0.089,
+    -0.265,
+    0.09
+   ]
+  }
+ }
+}

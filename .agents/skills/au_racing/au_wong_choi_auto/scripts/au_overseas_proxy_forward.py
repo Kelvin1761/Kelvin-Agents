@@ -135,7 +135,7 @@ def interim(live_races, base_races):
 
 def evaluate(base_races, live_races):
     """candidate = 上線版（有代理），baseline = 冇代理。"""
-    from au_eval import _counts, _stage4_metric_rows
+    from au_eval import RANKING_METRICS_PRE_20261121, _counts, _stage4_metric_rows
     from model_evaluation_decision import evaluate_full_record
 
     score = lambda race: race["ability"]  # noqa: E731
@@ -144,7 +144,7 @@ def evaluate(base_races, live_races):
         baseline_rows=_stage4_metric_rows(base_races, score),
         candidate_rows=_stage4_metric_rows(live_races, score),
         leakage_audit_passed=True,
-        ranking_metrics=("top3_capture_at5", "ndcg_at5", "top5_pairwise_auc"))
+        ranking_metrics=RANKING_METRICS_PRE_20261121)
     detail = verdict["detail"]
     pick = lambda group: {k: {f: e[f] for f in ("delta", "ci_low", "ci_high", "p_value")}  # noqa: E731
                           for k, e in detail[group].items()}

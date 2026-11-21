@@ -74,7 +74,24 @@ CI [−0.0085, +0.0078] —— 嗰個 terminal「改善」係 50 場嘅噪音。
 - 性質（2026-11-12 量）：baseline 449 場 71.5%；EXP-20261112 系列候選郁 0–17 場、CI 半闊約 1–2pp。
 - 驗證把尺：A/A REJECT；EXP-20261112-02／-04／-05／-08／-09／-12 九個 arm 重判，判決同原本一樣（冇一個因為加咗佢而變）。
 - 加多一個 ranking metric 會令 RANKING_WIN 稍為易過（多重比較）；**之前判咗嘅候選唔追溯改判**。
-- AU 冇加（AU harness 自己嘅 ranking metric 列表唔郁）。
+- AU 冇加（AU harness 自己嘅 ranking metric 列表唔郁）。→ **2026-11-21 改：AU 都加咗，見下面。**
+
+### Ranking metric 登記（AU，2026-11-21 Kelvin 加，EXP-20261121-32）
+
+唯一一份：`au_eval.RANKING_METRICS`（AU 所有判決器 import 佢，唔准自己抄一串）：
+top3 capture@5、NDCG@5、top5 pairwise AUC，加 **`top2_any_hit`（頭二選最少一隻上名）**、
+**`top2_place_rate`（頭二選上名數 ÷ 2）**、**`top3_place_rate`（頭三選上名數 ÷ 3）**。
+
+- 點解加：Kelvin 2026-11-21「Gold、Good 以外，好似 HKJC 咁，頭 1、2 排序好咗、0 中改善、頭 5／頭 3 位置好咗都應該考慮」。
+  頭 5 位置 = capture@5（已有）；頭 3 = `top3_place_rate`；頭 1、2 = `top2_place_rate`；0 中 = `top2_any_hit`。
+- 判決次序唔變：Gold、Good 有一項點估計 < 0 照樣 `primary_regression`；新指標只喺 Gold／Good 冇跌先有份判，
+  任何一個 CI 上界 < 0 = `ranking_metric_harm`。
+- 驗證把尺（3,736 場，08-05 起）：A/A REJECT ✅；純噪音候選（σ 0.5／2.0 各 40 個）誤判 WIN 0/80（舊尺 0/80）；
+  人工真改善敏感度同舊尺相若（例：排第 3–5 嘅上名馬 0.5% 加 1 分，14/30 vs 13/30）；
+  舊 fixed_rule 候選 13 個重判：冇一個變 WIN；3 個（EXP-20261113-21 FINAL／WA／WB）由 `ranking_evidence_too_weak`
+  改判 `ranking_metric_harm`（頭三上名率 −0.17 至 −0.21pp，CI 唔跨零）—— 結論一樣係 REJECT。
+- **2026-11-21 之前已預先登記嘅 forward 測試凍結用舊尺**（`au_eval.RANKING_METRICS_PRE_20261121`：檔位、初出、H2、
+  L600 近期、Lpos、海外代理）—— 中途換尺 = 改咗佢哋登記咗嘅判決規則。之前判咗嘅候選唔追溯改判。
 
 ### 其他規則
 
