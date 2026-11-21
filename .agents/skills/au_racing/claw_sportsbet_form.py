@@ -465,6 +465,24 @@ RE_GEAR = re.compile(
 )
 
 
+# 頁面 <title>「Flemington Race 7」→ 場地同場次。全 repo 由頁面讀場次一律用呢個（見 parse_race 註釋）。
+PAGE_TITLE_RACE = re.compile(r"<title>\s*([A-Z][A-Za-z' \-]+?)\s+Race\s+(\d+)\s*</title>")
+
+
+def page_race_number(html):
+    """賽事頁 → 場次（int）；讀唔到 → None。**唔好**用 raceId 喺對應表嘅位置推場次。"""
+    m = PAGE_TITLE_RACE.search(html or "")
+    return int(m.group(2)) if m else None
+
+
+def cached_page_race_number(cache_file):
+    """已 cache 嘅賽事頁 → 場次；冇檔或者讀唔到 → None。"""
+    try:
+        return page_race_number(Path(cache_file).read_text(encoding="utf-8", errors="replace"))
+    except OSError:
+        return None
+
+
 def parse_race(html):
     """由賽事頁 HTML 抽出 meta + 逐匹馬 + 逐場往績。"""
     txt = to_text(html)
@@ -500,7 +518,7 @@ def parse_race(html):
     # 之前呢度個 regex 要求 `Race 7 - 14:30` 嘅開跑時間，但賽後頁面得
     # `Flemington Race 7`，所以成個 meta（venue / race_number）長期係 None，
     # 靜靜跌返落 enumerate 次序。開跑時間變成可有可無。
-    m = re.search(r"<title>\s*([A-Z][A-Za-z' \-]+?)\s+Race\s+(\d+)\s*</title>", html) \
+    m = PAGE_TITLE_RACE.search(html) \
         or re.search(r"^\s*([A-Z][A-Za-z' \-]+?)\s+Race\s+(\d+)\s*$", txt, re.M)
     if m:
         meta.update(venue=m.group(1).strip(), race_number=int(m.group(2)))

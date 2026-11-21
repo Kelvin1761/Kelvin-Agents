@@ -29,7 +29,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parents[3]))
 
-from odds_quality import dashboard_odds_issues, has_snapshot, snapshot_day  # noqa: E402
+from odds_quality import dashboard_odds_issues, has_snapshot, misfiled_snapshots, snapshot_day  # noqa: E402
 
 LIVE_URL = "https://wongchoi-dashboard.pages.dev/dashboard-data.json"
 RUNNER = HERE / "run_au_daily_schedule.sh"
@@ -220,6 +220,11 @@ def local_quality_issues(day: str, *, root: Path | None = None,
                 else:
                     unavailable_official_going.append(race)
 
+        # 賠率快照入錯場（odds_quality 統一判斷）。硬證據 = 已被落注單跳過；軟證據 = 要人核對。
+        if isinstance(odds, dict):
+            for race_key, snap_key, why in misfiled_snapshots(folder, odds):
+                if snap_key.startswith(day):
+                    issues.append(f"{folder.name} R{race_key}：賠率快照 {snap_key.split('|')[-1]} 疑似入錯場（{why}）")
         if missing_artifacts:
             issues.append(f"{folder.name}：輸出唔齊（{', '.join(missing_artifacts[:8])}"
                           + ("…" if len(missing_artifacts) > 8 else "") + "）")

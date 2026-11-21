@@ -63,3 +63,18 @@ def test_betfair_display_prices_matched_by_name_and_never_touch_sportsbet(tmp_pa
     assert (a.market_win_odds, a.market_place_odds) == (5.0, 2.0)          # Sportsbet 照舊
     (tmp_path / "betfair_odds_history.json").write_text("{}")
     assert G._source_fingerprint(meeting) != before                         # 新 Betfair 價會令 cache 失效
+
+
+def test_misfiled_snapshot_is_skipped_and_previous_price_shown(tmp_path):
+    """2026-11-21 Kembla Grange R5：早更快照其實係另一場嘅價（raceId 次序 ≠ 場號）。
+    馬號大多唔喺出賽名單 = 入錯場 → dashboard 唔揀，退返上一個合格快照（同落注單同一個守衛）。"""
+    meeting = SimpleNamespace(region=Region.AU, date="2026-11-21", folder_paths={"Kelvin": str(tmp_path)})
+    horses = [SimpleNamespace(horse_number=n, market_win_odds=None, market_place_odds=None) for n in (1, 2, 8)]
+    race = SimpleNamespace(race_number=5, horses=horses)
+    (tmp_path / "odds_history.json").write_text(json.dumps({"5": {
+        "2026-11-20T22:00:00|analysis": {"1": ["4", "1.8"], "2": ["6", "2.2"], "8": ["1.6", "1.06"]},
+        "2026-11-21T09:00:00|morning-refresh": {"8": ["11", "3.4"], "10": ["3", "1.5"],
+                                                "11": ["5", "2"], "12": ["7", "2.5"]}}}))
+    enrich_au_market_odds(meeting, {"Kelvin": [race]}, now=datetime(2026, 11, 21, 12, tzinfo=ZoneInfo("Australia/Sydney")))
+    assert (horses[2].market_win_odds, horses[2].market_place_odds) == (1.6, 1.06)
+    assert horses[2].market_odds_captured_at.startswith("2026-11-20T22:00:00")

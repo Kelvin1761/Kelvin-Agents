@@ -22,6 +22,8 @@ import re
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
 MIN_ODDS = 2.0      # 位賠低過呢個唔落
 SPREAD_ODDS = 3.0   # 兩隻都落嘅前提：至少一隻位賠高過呢個
 STAKE = 1.0
@@ -79,7 +81,14 @@ def odds_at(folder: Path, race_no: int, which: str = "first") -> tuple[str, dict
     snaps = hist.get(str(race_no)) or {}
     if not snaps:
         return "", {}
-    when = sorted(snaps)[0 if which == "first" else -1]
+    # ⚠️ 跳過馬號唔喺出賽名單嘅快照（入錯場嘅硬證據，odds_quality.outside_field）。
+    # 2026-11-21：raceId 亂序令早更快照入錯場，張單印咗另一場嘅價、ROI 用錯價結算。
+    from odds_quality import field_numbers, outside_field  # noqa: PLC0415
+    field = field_numbers(folder, race_no)
+    keys = [k for k in sorted(snaps) if not outside_field(snaps[k], field)]
+    if not keys:
+        return "", {}
+    when = keys[0 if which == "first" else -1]
     return when, {int(k): v for k, v in snaps[when].items()}
 
 
