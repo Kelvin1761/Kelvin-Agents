@@ -367,6 +367,17 @@ def scan_meeting(platform: str, meeting_dir: Path) -> dict:
                         f"starter_pdf={readiness.get('starter_pdf_ready', False)}"
                     ),
                 })
+            # 賽績刷新失敗但舊檔對得上排位表 → 已當齊（2026-11-22），照講出嚟。
+            kept_fg = readiness.get("formguides_kept_verified") or []
+            if kept_fg:
+                issues.append({
+                    "severity": "warning",
+                    "code": "FORMGUIDE_KEPT_VERIFIED",
+                    "message": (
+                        "賽績用舊有效檔（今次刷新失敗，已逐匹對過排位表）："
+                        + "、".join(f"R{r}" for r in kept_fg)
+                    ),
+                })
             # starter PDF 2026-11-03 起唔再入發佈閘（見 batch_extract），但出事
             # 一定要喺 Data_Health 睇得到：海外往績改用 fsc 後備、官方傷患記錄缺。
             if readiness.get("starter_pdf_soft_fail"):

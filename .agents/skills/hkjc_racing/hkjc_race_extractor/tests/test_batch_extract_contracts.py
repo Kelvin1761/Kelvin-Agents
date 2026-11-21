@@ -163,7 +163,8 @@ def _gate_source():
 def test_ready_no_longer_depends_on_the_pdf():
     src = _gate_source()
     ready = src[src.index("    ready = total_rc"):].splitlines()[0]
-    assert ready.strip() == "ready = total_rc == len(races) and total_fg == len(races)"
+    # 2026-11-22（Kelvin）：賽績 fresh，或者舊檔逐匹對得上 fresh 排位表（`usable_fg`）。
+    assert ready.strip() == "ready = total_rc == len(races) and usable_fg == len(races)"
     assert "pdf_gate =" not in src
 
 
@@ -172,6 +173,10 @@ def test_racecards_and_formguides_still_require_fresh():
     src = _gate_source()
     assert "total_rc = sum(1 for r in all_results if r['racecard_ok'])" in src
     assert "total_fg = sum(1 for r in all_results if r['formguide_ok'])" in src
+    # 舊賽績檔要排位表今次 fresh 先有資格頂上，而且要過逐匹對照。
+    assert "and result.get('racecard_ok')" in src
+    assert "_kept_formguide_matches_racecard(" in src
+    assert "usable_fg = sum(1 for r in all_results if r.get('formguide_usable'))" in src
 
 
 def test_an_unknown_gate_mode_falls_back_to_strict():

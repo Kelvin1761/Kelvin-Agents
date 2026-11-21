@@ -768,7 +768,9 @@ def readiness_digest(meeting_dir: Path) -> str:
     # runner rows。09-04 同一形狀（8/10）。所以下面要分開兩種狀態講：
     #   ♻️ 刷新失敗但有舊有效檔 —— 分析照跑得，等下次重試就得
     #   ❌ 完全冇有效檔       —— 真係要人睇
-    # 發佈閘本身冇放寬（仍然要全部 fresh 才 ready），只係唔再兩種都印同一句。
+    # 2026-11-22 起發佈閘接受「舊賽績檔逐匹對得上今次 fresh 排位表」（見
+    # batch_extract `_kept_formguide_matches_racecard`），所以去到呢度嘅 ♻️ 係
+    # 排位表都未 fresh、或者舊檔對唔上嗰啲 —— 照樣要等重試。
     stale, gone = [], []
     for race in data.get("races") or []:
         num = race.get("race")

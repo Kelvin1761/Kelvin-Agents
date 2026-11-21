@@ -109,9 +109,11 @@ def _keep_valid_candidate(path, content, label, race_no, returncode):
       ``kept``     this run failed, but the file already on disk is still valid
       ``missing``  there is no valid data for this race at all
 
-    `fresh_ok` (the publish gate) stays as strict as before: only ``fresh``
-    counts, because a formguide can change up to race day and analysing a
-    stale one silently is worse than waiting.  The three-way `state` exists so
+    `fresh_ok` only ever means "this refresh succeeded".  Since 2026-11-22 the
+    publish gate also accepts a ``kept`` formguide, but only after
+    `_kept_formguide_matches_racecard` checks it runner-by-runner against this
+    run's fresh racecard (the only parts of a formguide that change on race day
+    are today's draw / jockey / weight, and the racecard has those).  The three-way `state` exists so
     the **alert** can stop conflating ``kept`` with ``missing`` — 2026-09-05
     the 09-06 ShaTin notice read "未齊：R1賽績、R2賽績、R3賽績" when all three
     files were on disk and complete (14.5 / 12.7 / 12.5 formline rows per
@@ -138,6 +140,86 @@ def _keep_valid_candidate(path, content, label, race_no, returncode):
         except OSError:
             pass
     return False, error, state
+
+
+# 舊賽績檔要同今次 fresh 排位表逐匹對得上嘅欄位。賽績檔每匹馬頭幾行就係今仗嘅
+# 馬號／馬名／檔位／騎師／負磅，所以換騎、改磅、抽籤後檔位變都會令佢對唔上。
+_FORMGUIDE_MATCH_FIELDS = ('馬名', '檔位', '騎師', '負磅')
+
+
+def _runner_blocks(text):
+    """`{馬號: {欄位: 值}}`，按 `馬號:` 切開；只讀 `_FORMGUIDE_MATCH_FIELDS`。"""
+    runners, current = {}, None
+    for line in text.splitlines():
+        m = re.match(r'^馬號:\s*(\d+)\b', line)
+        if m:
+            current = runners.setdefault(int(m.group(1)), {})
+            continue
+        if current is None:
+            continue
+        key, sep, value = line.partition(':')
+        key = key.strip()
+        if sep and key in _FORMGUIDE_MATCH_FIELDS and key not in current:
+            value = value.strip()
+            if key == '騎師':
+                # 排位表寫「周俊樂 (-2)」（見習減磅），賽績檔寫「周俊樂」。
+                claim = re.search(r'\s*\((-?\d+)\)\s*$', value)
+                if claim:
+                    current['_claim'] = abs(int(claim.group(1)))
+                    value = value[:claim.start()]
+            current[key] = value
+    return runners
+
+
+def _scratched_numbers(racecard_text):
+    """排位表入面 `馬名: X (退出)` 嘅馬號 —— 賽績檔可能有、可能已經剷走。"""
+    return {int(m.group(1)) for m in re.finditer(
+        r'^馬號:\s*(\d+)\s*\n馬名:[^\n]*\(退出\)', racecard_text, re.M)}
+
+
+def _kept_formguide_matches_racecard(rc_path, fg_path, date_raw):
+    """舊賽績檔可唔可以頂替今次失敗嘅刷新：``(ok, reason)``。
+
+    2026-11-22 沙田：00:08 已經成功發佈，之後每 ~7 分鐘一個 run 重抽 11 場賽績，
+    每次總有一場 HKJC 隨機回 `no runner rows`（00:52 R5 得、01:13 R5 唔得），
+    舊閘要 11 場同一次全部 fresh，結果連續 6 次 exit 75，而碟上嘅 R5 賽績檔
+    14/14 匹齊、同 fresh 排位表逐匹一樣。賽績係往績，賽日唔會變；會變嘅只係
+    賽績檔入面今仗嗰幾欄（檔位／騎師／負磅），而嗰幾欄 fresh 排位表有。所以：
+    排位表今次 fresh，而舊賽績檔係同一個賽日、（剔走排位表標「退出」嘅馬之後）
+    馬號集合一樣、每匹 `_FORMGUIDE_MATCH_FIELDS` 全部同排位表一樣，先當齊。
+    騎師比較前剷走見習減磅「(-2)」；負磅接受讓磅或者扣咗減磅嘅實際負磅。任何一樣對唔上就照舊等。
+
+    2026-11-22 全日 11 場真檔驗證：11/11 對得上（退出馬 R9 3 號、見習減磅都要
+    先處理，唔處理會 9/11 誤判對唔上）。
+    """
+    try:
+        with open(rc_path, 'r', encoding='utf-8') as handle:
+            rc_text = handle.read()
+        with open(fg_path, 'r', encoding='utf-8') as handle:
+            fg_text = handle.read()
+    except OSError as exc:
+        return False, f"讀唔到檔：{exc}"
+    y, mth, d = date_raw.split('/')
+    if f"{d}/{mth}/{y}" not in fg_text.split('#### 全場馬匹分析')[0]:
+        return False, "賽績檔賽事日期唔係今個賽日"
+    scratched = _scratched_numbers(rc_text)
+    rc = {n: v for n, v in _runner_blocks(rc_text).items() if n not in scratched}
+    fg = {n: v for n, v in _runner_blocks(fg_text).items() if n not in scratched}
+    if not rc:
+        return False, "排位表冇馬匹"
+    if set(rc) != set(fg):
+        return False, f"馬號唔同：排位表 {sorted(rc)} vs 賽績 {sorted(fg)}"
+    for num in sorted(rc):
+        for key in _FORMGUIDE_MATCH_FIELDS:
+            want, got = rc[num].get(key), fg[num].get(key)
+            if key == '負磅' and want and want.isdigit() and rc[num].get('_claim'):
+                # 排位表係讓磅（133），賽績檔係扣咗見習減磅嘅實際負磅（131）；兩個都接受。
+                if got in (want, str(int(want) - rc[num]['_claim'])):
+                    continue
+            if want is None or want != got:
+                return False, (f"{num}號 {key} 唔同：排位表 {rc[num].get(key)!r}"
+                               f" vs 賽績 {fg[num].get(key)!r}")
+    return True, ""
 
 
 
@@ -380,6 +462,25 @@ def main():
             for err in result['errors']:
                 print(f"      ⚠️ {err}")
 
+    # 刷新失敗但舊賽績檔仲喺度：對返今次 fresh 排位表，對得上就當齊（見
+    # `_kept_formguide_matches_racecard`）。`formguide_ok` 照舊只代表「今次刷新成功」。
+    for result in all_results:
+        result['formguide_usable'] = bool(result.get('formguide_ok'))
+        if (not result.get('formguide_ok') and result.get('racecard_ok')
+                and result.get('formguide_state') == 'kept'):
+            r = result['race']
+            ok, why = _kept_formguide_matches_racecard(
+                os.path.join(output_dir, f"{date_prefix} Race {r} 排位表.md"),
+                os.path.join(output_dir, f"{date_prefix} Race {r} 賽績.md"),
+                date_raw,
+            )
+            result['formguide_usable'] = ok
+            if ok:
+                print(f"   ♻️ Race {r}: 賽績刷新失敗，舊檔同今次排位表逐匹對得上 —— 當齊")
+            else:
+                result['errors'].append(f"Formguide R{r}: 舊檔對唔上排位表（{why}）")
+                print(f"   ❌ Race {r}: 舊賽績檔對唔上排位表 —— {why}")
+
     # Summary
     all_results.sort(key=lambda x: x['race'])
     total_rc = sum(1 for r in all_results if r['racecard_ok'])
@@ -409,7 +510,8 @@ def main():
         print(f"   ⚠️ 晨操 Trackwork: {tw_ok_count}/{len(races)} races (fallback)")
     print(f"   📁 All files saved to: {output_dir}")
 
-    # 發佈閘：排位表同賽績要今次刷新成功（fresh）。
+    # 發佈閘：排位表要今次刷新成功（fresh）；賽績 fresh，或者舊檔逐匹對得上
+    # 今次 fresh 排位表（2026-11-22 起）。
     #
     # starter PDF 2026-11-03 起由硬條件降做**警告**。佢喺評分入面嘅唯一用途係
     # 自購馬嘅海外往績，而每匹自購馬另有一份靜態嘅 fsc「來港前賽績記錄」PDF，
@@ -421,14 +523,19 @@ def main():
     # 同 Data_Health 出警告（`starter_pdf_soft_fail`）。
     #
     # `WC_HKJC_GATE` 照樣讀同記錄（scheduler 會傳 `field_change`）。以前佢只係鬆
-    # PDF 嗰一格；PDF 唔再入閘之後，兩個模式嘅 `ready` 條式一樣 —— 排位表同
-    # 賽績照樣要 fresh，退出馬照樣會被攞走。
+    # PDF 嗰一格；PDF 唔再入閘之後，兩個模式嘅 `ready` 條式一樣 —— 排位表照樣
+    # 要 fresh，退出馬照樣會被攞走。
     gate_mode = os.environ.get("WC_HKJC_GATE", "strict").strip().lower()
     if gate_mode not in ("strict", "field_change"):
         print(f"   ⚠️ 唔認得嘅 WC_HKJC_GATE={gate_mode!r}，當 strict 處理")
         gate_mode = "strict"
     pdf_valid = pdf_state in ("fresh", "kept")
-    ready = total_rc == len(races) and total_fg == len(races)
+    # 排位表一定要今次 fresh（退出馬、換騎靠佢）；賽績 fresh，或者舊檔經
+    # `_kept_formguide_matches_racecard` 對得上（Kelvin 2026-11-22）。
+    usable_fg = sum(1 for r in all_results if r.get('formguide_usable'))
+    kept_verified = [r['race'] for r in all_results
+                     if r.get('formguide_usable') and not r.get('formguide_ok')]
+    ready = total_rc == len(races) and usable_fg == len(races)
     starter_pdf_soft_fail = not pdf_ok
     if starter_pdf_soft_fail:
         how = "用碟上舊有效檔" if pdf_valid else "海外往績改用 fsc 後備"
@@ -453,6 +560,9 @@ def main():
         "formguides_ready": total_fg,
         "racecards_valid": valid_rc,
         "formguides_valid": valid_fg,
+        # 已經計入 `ready`：fresh + 舊檔對得上排位表。
+        "formguides_usable": usable_fg,
+        "formguides_kept_verified": kept_verified,
         "trackwork_ready": tw_ok_count,
         "races": all_results,
         "self_recovery": "automatic_retry" if not ready else "not_needed",
