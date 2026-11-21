@@ -37,6 +37,30 @@ _FIT_TAGS = {
 }
 
 
+# EXP-20261121-34：新標籤（由 HKJC 搬，Kelvin 2026-11-21「好鍾意啲標籤」）喺**模型名次之上**嘅剩餘上名率。
+# 3,736 場（2026-08-05 起）、賽日 bootstrap 95% CI；同（模型名次 × 場大細）平均入三甲率比。
+# 語氣跟量度：CI 全正 = good、全負 = bad、跨零 = note（事實）。全部**未入分**。
+# 「休後好手」反直覺：模型已經高估咗佢哋（−3pp），所以唔畀綠色。
+MEASURED = {
+    "quick_backup": (+3.1, 1784),
+    "old_horse": (-5.4, 2485),
+    "first_up_nil": (-6.1, 354),
+    "second_up_nil": (-7.3, 221),
+    "first_up_good": (-3.1, 825),
+    "second_up_good": (-3.8, 668),
+    "top_weight": (-0.3, 4322),
+}
+QUICK_BACKUP_DAYS = 7
+OLD_HORSE_AGE = 8
+UP_MIN_STARTS = 3
+UP_GOOD_RATE = 0.5
+
+
+def _hist(key):
+    ex, n = MEASURED[key]
+    return f"歷史 {n:,} 匹：同模型排名相同嘅馬比，上名率 {ex:+.1f} 個百分點；未入分。"
+
+
 def _tag(key, label, tone, *, why="", scored=False, impact=None):
     return {"key": key, "label": label, "tone": tone, "why": why, "scored": scored,
             "impact": None if impact is None else round(float(impact), 2)}
@@ -152,6 +176,40 @@ def _draw_tag(eng, draw_feature):
                  scored=True, impact=d)]
 
 
+def _cycle_tags(eng):
+    """休後首仗／第二仗往績、相隔短日再出（EXP-20261121-34）。"""
+    out = []
+    cycle = eng._preparation_cycle() or {}
+    stage = cycle.get("stage")
+    gap = cycle.get("days_since_last_run")
+    if isinstance(gap, (int, float)) and 0 < gap <= QUICK_BACKUP_DAYS:
+        out.append(_tag("quick_backup", f"相隔 {int(gap)} 日再出", "good", why=_hist("quick_backup")))
+    stats = eng._stage_stats()
+    for st, key, word in (("first_up", "first_up", "休後首仗"), ("second_up", "second_up", "休後第二仗")):
+        r = stats.get(key) or {}
+        if stage != st or int(r.get("starts") or 0) < UP_MIN_STARTS:
+            continue
+        rec = f"{r['starts']}戰{r.get('wins', 0)}勝{r.get('places', 0)}上名"
+        if r.get("places", 0) / r["starts"] >= UP_GOOD_RATE:
+            out.append(_tag(f"{key}_good", f"{word}好手（{rec}）", "note",
+                            why=f"{word}往績 {rec}。⚠️ 模型已經高估呢類馬 —— " + _hist(f"{key}_good")))
+        elif not r.get("places"):
+            out.append(_tag(f"{key}_nil", f"{word}未上過名（{r['starts']}戰）", "bad", why=_hist(f"{key}_nil")))
+    return out
+
+
+def _field_tags(eng):
+    """馬齡、頂磅（EXP-20261121-34）。同馬房多匹、初次跑呢個場地：量過冇訊號而且太常見（35%／56% 嘅馬），唔出。"""
+    out = []
+    age = eng.horse_data.get("age")
+    if isinstance(age, int) and age >= OLD_HORSE_AGE:
+        out.append(_tag("old_horse", f"{age} 歲老馬", "bad", why=_hist("old_horse")))
+    if "top_weight" in set(getattr(eng, "risk_flags", []) or []):
+        w = eng.horse_data.get("weight")
+        out.append(_tag("top_weight", "讓賽頂磅" + (f"（{float(w):g}kg）" if w else ""), "note", why=_hist("top_weight")))
+    return out
+
+
 def _prep_tags(eng):
     out = []
     spell = eng._spell_days()
@@ -203,7 +261,7 @@ def build(eng, matrix_scores, *, wet_feature=0.0, draw_feature=0.0):
     """→ {"good": [...], "bad": [...], "note": [...]}；出錯 → {"_error": ...}。永遠唔郁分數。"""
     try:
         special = (_distance_tags(eng) + _track_tags(eng, wet_feature) + _people_tags(eng)
-                   + _draw_tag(eng, draw_feature) + _prep_tags(eng))
+                   + _draw_tag(eng, draw_feature) + _prep_tags(eng) + _cycle_tags(eng) + _field_tags(eng))
         covered = set()
         if any(t["key"] in ("venue_specialist", "venue_poor") for t in special):
             covered.add("track")          # 場地維度由「場地專家／同場未上名」講晒
