@@ -590,3 +590,4 @@
 - [EXP-20261113-43](EXP-20261113-43-au-front-by-straight-length-results.md) — AU 前置馬加分按直路長度（V1）／逐場地收縮（V2），補齊幾何後 walk-forward：**兩個 REJECT**（V1 Gold −0.21、V2 Gold −0.08）；直路斜率隨數據變弱、逐場地 β 同直路無關 —— 「直路 × 前置」第四次唔過閘
 - [EXP-20261120-87](EXP-20261120-87-au-lpos-historical-backfill-protocol.md) — AU Lpos 歷史回填測試預先登記：08-05 → 11-05 手機段速每晚 03:00–09:00 回填（約 8 晚），規格同 forward EXP-20261116-20 一樣；完齊自動判一次並凍結
 - [EXP-20261121-30](EXP-20261121-30-au-wet-overlay-by-wetness-results.md) — AU 濕地 overlay 按濕度調幅度（walk-forward）：**REJECT**（Gold −0.19、2/6 塊）；大爛地倍數一直 ≈1（現行幅度已啱），軟地倍數跌到 0.3–0.45；大爛地弱點係往績 leaf 唔轉移，H2 forward 跟緊
+- [EXP-20261121-31](EXP-20261121-31-au-sportsbet-over-betfair-top2-protocol.md) — AU 頭兩選 Sportsbet 位賠 ≥1.10 倍 Betfair 早更價係咪訊號：紙上 forward 預先登記（盲測，高價組 1,000 注判一次）；「高過」本身係常態（74%），所以門檻定最高四分一

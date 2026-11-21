@@ -1676,6 +1676,21 @@ def step_heavy_h2_forward(runlog: RunLog) -> bool:
     return True
 
 
+def step_sb_betfair_forward(runlog: RunLog) -> bool:
+    """EXP-20261121-31 紙上 forward：頭兩選 Sportsbet 位賠明顯高過 Betfair（≥1.10 倍）係咪訊號。
+    每晚凍結新一批頭兩選（賽日第一個早更價）同結算；未夠數只報數量（盲測）；高價組夠 1,000 注判一次並凍結，
+    夠數由 forward tracker 推 Telegram。只係研究，唔會落注、唔郁排名。"""
+    rc, out = run_cmd([sys.executable, str(HERE / "au_sb_betfair_forward.py"), "--work-dir", str(WORK_DIR)],
+                      timeout=900)
+    if rc != 0:
+        detail = error_excerpt(out, rc)
+        runlog.warn(f"Sportsbet 對 Betfair forward 更新失敗（唔影響 live）：{detail}")
+        runlog.step("sb-betfair-forward", "failed", detail=detail)
+        return False
+    runlog.step("sb-betfair-forward", "ok", detail=(out or "").strip().splitlines()[-1:])
+    return True
+
+
 def step_debut_neutral_forward(runlog: RunLog) -> bool:
     """EXP-20261105-09 forward 監察：初出馬冇證據穩定性分 52.4 → 60（實驗性上線）上線版 vs 舊值。
     只計有初出路徑馬嘅場次；未夠數每晚寫累計描述（interim）；夠 700 場判一次並凍結，夠數由 forward tracker 推
@@ -4516,6 +4531,7 @@ def run_evening(runlog: RunLog, args, review_day: date) -> int:
         step_heavy_h2_forward(runlog)
         step_debut_neutral_forward(runlog)
         step_lpos_forward(runlog)
+        step_sb_betfair_forward(runlog)
         step_forward_tracker(runlog)
     publisher = None
     progressive = (not args.skip_deploy and not args.skip_analysis
