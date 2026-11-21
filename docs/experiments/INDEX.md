@@ -592,3 +592,4 @@
 - [EXP-20261121-30](EXP-20261121-30-au-wet-overlay-by-wetness-results.md) — AU 濕地 overlay 按濕度調幅度（walk-forward）：**REJECT**（Gold −0.19、2/6 塊）；大爛地倍數一直 ≈1（現行幅度已啱），軟地倍數跌到 0.3–0.45；大爛地弱點係往績 leaf 唔轉移，H2 forward 跟緊
 - [EXP-20261121-31](EXP-20261121-31-au-sportsbet-over-betfair-top2-protocol.md) — AU 頭兩選 Sportsbet 位賠 ≥1.10 倍 Betfair 早更價係咪訊號：紙上 forward 預先登記（盲測，高價組 1,000 注判一次）；「高過」本身係常態（74%），所以門檻定最高四分一
 - [EXP-20261121-32](EXP-20261121-32-au-ranking-metrics-top2.md) — AU 把尺加頭二選有中／頭二上名率／頭三上名率（Kelvin 2026-11-21）：A/A REJECT、噪音誤判 0/80、13 個舊候選冇一個翻案（3 個改判「有害」）；跑緊嘅 6 個 forward 凍結舊尺
+- [EXP-20261121-33](EXP-20261121-33-au-same-distance-record-protocol.md) — AU 生涯同程往績入分（首本路程，Kelvin Kembla R7）：D1 同程／D2 同場同程／D3 頭馬計兩次 walk-forward 新尺全部 REJECT（Holm 1.0；D3 頭三上名率 −0.31pp 有害）；路程分改讀生涯同程紀錄同標籤統一（純顯示，零排名影響）

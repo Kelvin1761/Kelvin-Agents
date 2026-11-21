@@ -78,7 +78,7 @@ def _distance_tags(eng):
     out = []
     dist = eng._distance_m()
     line = eng.data.get("track_stats_line")
-    same_dist = _track.record(_record_text(line, "同程"))
+    same_dist = _track.same_distance(line)
     if dist and _good_record(same_dist):
         out.append(_tag("specialist", f"首本路程（{dist}米 {_rec_text(same_dist)}）", "good",
                         why=f"同程 {dist}米 {_rec_text(same_dist)}；AU 路程分唔入排名，未入分。"))

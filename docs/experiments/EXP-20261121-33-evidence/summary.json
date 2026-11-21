@@ -1,0 +1,166 @@
+{
+ "D1": {
+  "verdict": "REJECT",
+  "reason": "ranking_evidence_too_weak",
+  "median_beta": 11.112,
+  "final_beta": 9.464,
+  "primary": {
+   "gold": [
+    0.027,
+    -0.468,
+    0.475,
+    0.978
+   ],
+   "good_positional": [
+    0.187,
+    -0.421,
+    0.781,
+    0.56
+   ]
+  },
+  "ranking": {
+   "top3_capture_at5": [
+    -0.051,
+    -0.282,
+    0.182
+   ],
+   "ndcg_at5": [
+    -0.095,
+    -0.299,
+    0.12
+   ],
+   "top5_pairwise_auc": [
+    -0.043,
+    -0.202,
+    0.121
+   ],
+   "top2_any_hit": [
+    0.054,
+    -0.488,
+    0.585
+   ],
+   "top2_place_rate": [
+    0.12,
+    -0.288,
+    0.55
+   ],
+   "top3_place_rate": [
+    -0.152,
+    -0.407,
+    0.101
+   ]
+  }
+ },
+ "D2": {
+  "verdict": "REJECT",
+  "reason": "primary_regression",
+  "median_beta": 15.09,
+  "final_beta": 14.801,
+  "primary": {
+   "gold": [
+    -0.054,
+    -0.472,
+    0.342,
+    0.796
+   ],
+   "good_positional": [
+    0.08,
+    -0.471,
+    0.582,
+    0.804
+   ]
+  },
+  "ranking": {
+   "top3_capture_at5": [
+    0.089,
+    -0.104,
+    0.274
+   ],
+   "ndcg_at5": [
+    0.029,
+    -0.125,
+    0.171
+   ],
+   "top5_pairwise_auc": [
+    0.037,
+    -0.107,
+    0.18
+   ],
+   "top2_any_hit": [
+    -0.134,
+    -0.604,
+    0.318
+   ],
+   "top2_place_rate": [
+    -0.027,
+    -0.4,
+    0.3
+   ],
+   "top3_place_rate": [
+    -0.152,
+    -0.366,
+    0.059
+   ]
+  }
+ },
+ "D3": {
+  "verdict": "REJECT",
+  "reason": "ranking_metric_harm",
+  "median_beta": 5.83,
+  "final_beta": 5.133,
+  "primary": {
+   "gold": [
+    0.054,
+    -0.317,
+    0.394,
+    0.878
+   ],
+   "good_positional": [
+    0.187,
+    -0.249,
+    0.649,
+    0.468
+   ]
+  },
+  "ranking": {
+   "top3_capture_at5": [
+    0.054,
+    -0.158,
+    0.266
+   ],
+   "ndcg_at5": [
+    -0.005,
+    -0.173,
+    0.168
+   ],
+   "top5_pairwise_auc": [
+    -0.028,
+    -0.168,
+    0.118
+   ],
+   "top2_any_hit": [
+    -0.027,
+    -0.481,
+    0.424
+   ],
+   "top2_place_rate": [
+    0.08,
+    -0.248,
+    0.39
+   ],
+   "top3_place_rate": [
+    -0.312,
+    -0.583,
+    -0.051
+   ]
+  }
+ },
+ "holm": {
+  "D3:good_positional": 1.0,
+  "D1:good_positional": 1.0,
+  "D2:gold": 1.0,
+  "D2:good_positional": 1.0,
+  "D3:gold": 1.0,
+  "D1:gold": 1.0
+ }
+}

@@ -72,6 +72,29 @@ def record(text):
     return {**parse_record_line(""), "starts": int(m.group(1)) if m else 0, "complete": False}
 
 
+def same_distance(track_stats_line):
+    """生涯同程紀錄（`同程: 出賽:勝-二-三`）—— 首本路程標籤同路程分（參考分）**唯一**來源（Kelvin 2026-11-21：
+    以前路程分讀往績表見到嗰幾仗，同標籤嘅生涯紀錄打交）。"""
+    m = re.search(r"同程:\s*([^|]+)", str(track_stats_line or ""))
+    return record(m.group(1) if m else "")
+
+
+# 路程分（參考分，唔入排名）：收縮上名率 (上名 + 4×0.30)/(出賽 + 4)，60 ± 40×(率 − 0.30)。
+# EXP-20261121-33：同一個特徵 walk-forward 入分 REJECT（D1 Gold +0.03、Good +0.19，CI 跨零），所以只做顯示。
+DISTANCE_PRIOR, DISTANCE_K, DISTANCE_SCALE = 0.30, 4.0, 40.0
+
+
+def distance_rate_score(rec):
+    """→ (路程分, 說明)；冇完整紀錄 → (60, …)。"""
+    if not rec.get("complete"):
+        return 60.0, "未有完整生涯同程紀錄"
+    if not rec["starts"]:
+        return 55.0, "生涯未跑過今場路程"
+    rate = (rec["places"] + DISTANCE_K * DISTANCE_PRIOR) / (rec["starts"] + DISTANCE_K)
+    score = 60.0 + DISTANCE_SCALE * (rate - DISTANCE_PRIOR)
+    return score, f"生涯同程 {rec['starts']}戰{rec['wins']}勝{rec['places']}上名"
+
+
 def records(track_stats_line, going_stats_line):
     """→ {同場, 好地, 軟地, 重地: record}。"""
     going = str(going_stats_line or "")

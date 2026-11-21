@@ -1029,7 +1029,7 @@ class RacingEngine(NarrativeMixin):
         if name == "pace_figure_score":
             return "observed" if source == "pf_l600_delta_field_relative" else "missing"
         if name == "distance_score":
-            return "derived" if self._official_entries() else "fallback"
+            return "derived" if _track.same_distance(self.data.get("track_stats_line")).get("complete") else "fallback"
         if name == "formline_score":
             return "derived" if self._formline_rows() else "fallback"
         if name == "confidence_score":
@@ -2732,55 +2732,10 @@ class RacingEngine(NarrativeMixin):
         return score, f"{note_text}，負磅分 {score:.1f}。", "weight+wet_track+class_move"
 
     def _distance_score(self):
-        line = str(self.data.get("engine_line") or "")
-        target_line = str(self.data.get("target_distance_line") or "")
-        trends = self._sectional_trends()
-        official_entries = self._official_entries()
-        target_distance = self._distance_m()
-        score = 60
-        notes = []
-        if "⭐最佳 ← 今場 ✅" in target_line or "最佳 ← 今場 ✅" in line:
-            score = 78
-            notes.append("今場已屬已證明射程")
-        elif "今場 ✅" in line:
-            score = 72
-            notes.append("引擎線對今次路程屬正面")
-        elif "← 今場 ❌" in target_line:
-            score = 54
-            notes.append("距離分佈顯示今場未必係最舒服射程")
-        elif "未跑過且無相近近績" in line:
-            score = 50
-            notes.append("今次屬未證明路程")
-        elif "未跑過" in line:
-            score = 55
-            notes.append("今場仍屬半投射路程")
-        same_distance_places = 0
-        near_distance_places = 0
-        for entry in official_entries[:6]:
-            entry_distance = self._entry_distance_m(entry)
-            if not entry_distance or not target_distance:
-                continue
-            placing = parse_placing(entry.get("placing"))
-            if placing is None or placing > 3:
-                continue
-            if entry_distance == target_distance:
-                same_distance_places += 1
-            elif abs(entry_distance - target_distance) <= 100:
-                near_distance_places += 1
-        if same_distance_places:
-            score += min(4, same_distance_places * 2)
-            notes.append("正式賽同程已有上名承接")
-        elif near_distance_places:
-            score += min(2, near_distance_places)
-            notes.append("相近路程已有基本對位樣本")
-        if "上升" in trends.get("l400_trend", "") and score >= 60:
-            score += 2
-            notes.append("L400 趨勢向上，增程投射唔算亂估")
-        elif "微跌" in trends.get("l400_trend", "") and target_distance and target_distance >= 1600:
-            score -= 1
-            notes.append("末段趨勢略放，長途尾段續航仍要防")
-        note_text = "；".join(notes) if notes else "路程資料未見鮮明優劣"
-        return score, f"{note_text}，路程分 {clip_score(score):.1f}。", "engine_line+target_distance_line+sectional_trend+record_table"
+        """路程分（參考分，**唔入排名**）—— 生涯同程紀錄，同首本路程標籤同一份（`track_going.same_distance`）。"""
+        rec = _track.same_distance(self.data.get("track_stats_line"))
+        score, note = _track.distance_rate_score(rec)
+        return score, f"{note}，路程分 {clip_score(score):.1f}。", "career_same_distance_record"
 
     def _track_score(self):
         """場地分：見 `track_going`。呢度只砌說明。"""
