@@ -29,6 +29,32 @@ dev 2020/21–2023/24｜holdout 2024/25–2025/26｜terminal 2026/27（2019/20 �
 ### 其他照舊
 leakage audit、§6 功效前置、§7 正確性修正、多重比較、Kelvin 決定上線嘅改動要登記 forward 退回監察。
 
+## AU log-loss 尺（2026-11-21，Kelvin 決定）
+
+> 適用：**2026-11-21 之後新嘅 AU 候選**。判決器：`au_wong_choi_auto/scripts/au_logloss_ruler.py`。
+> 跑緊嘅 forward（登記喺 11-21 之前，同 EXP-20261121-31／-32 以前登記嗰批）照用登記時嘅尺；之前判咗嘅唔追溯改判。
+> v3（下面，Gold／Good＋ranking metric）照計照報，做第二意見。
+
+### 點解換
+同 HKJC v4 同一個原因：Gold／Good 只睇頭幾個選擇，細而真嘅改善大約一半機會判死。EXP-20261121-35 同一批測試：
+人工真改善 v3 2–14/30、log-loss 20/20；純噪音誤判 log-loss 0/40；13 個舊候選冇一個翻案。
+
+### 點解唔係歷史回放
+AU 賽前輸入重砌唔到（往績頁封頂 10 仗兼賽後抓、騎練率單一快照、官方評分只回溯一星期）。用 2026-08-05 起乾淨
+point-in-time 語料；每日 +60–80 場，語料自己變長。
+
+### 判法
+1. **主指標**：入頭三 log-loss（逐匹）。p = σ(a + α·(raw − 場均))；(a, α) baseline 同候選**各自** walk-forward fit
+   （每 7 個賽日重 fit，只用之前賽日；頭 20 個賽日只訓練唔計分）。Δlog-loss 95% CI 上界 < 0（賽日 bootstrap 2,000）。
+2. **護欄**：Gold、Good 各自 95% CI 下界 > −1.0pp。
+3. **null**：好過 95% 場內洗牌 null（候選對 baseline 嘅 raw Δ 喺場內隨機排列）。
+4. 另報 Gold、Good、capture@5、頭二選有中、同 v3 判決（唔係閘）。
+
+### 其他
+- fit 類候選照舊要交 walk-forward 預測（v3 規矩）；leakage audit、§6 功效前置、§7 正確性修正、Holm 照舊。
+- **PASS ≠ 改善好多**：0.25% 馬加 0.3 分都過到（EXP-20261121-35）。上線仍然要睇幅度、護欄同 Kelvin 決定，並登記 forward 退回監察。
+- log-loss 好咗但 Gold／Good 踩護欄（例：EXP-20261111 F1，Δ −0.00107、Good 下界 −1.00）= REJECT；要上就係 Kelvin 揀。
+
 ## Stage 4 判決順序（v3，2026-10-10）—— 全紀錄判決
 
 > v2（下面）保留做歷史；**2026-10-10 之後嘅新候選一律用 v3**。之前用 v2 判咗嘅記錄
