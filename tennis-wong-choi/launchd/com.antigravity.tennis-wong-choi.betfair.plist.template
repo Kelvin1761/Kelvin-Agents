@@ -2,6 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+  <!-- 打機時段（Kelvin 2026-11-21）：Background = M1 只用效能核，性能核留俾前景 app；結果一樣，只係慢啲 -->
+  <key>ProcessType</key><string>Background</string>
+  <key>LowPriorityIO</key><true/>
+  <key>LowPriorityBackgroundIO</key><true/>
+  <key>Nice</key><integer>10</integer>
   <!--
     Every 15 minutes (:00 :15 :30 :45): Betfair tennis MATCH_ODDS capture
     (read-only) and the frozen Sportsbet-vs-Betfair paper decisions

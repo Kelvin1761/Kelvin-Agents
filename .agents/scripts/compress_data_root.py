@@ -86,6 +86,28 @@ def compress_file(path: Path, before: os.stat_result, staging: Path) -> tuple[st
         tmp.unlink(missing_ok=True)
 
 
+def ditto_compresses(staging: Path) -> bool:
+    """呢部機嘅 `ditto --hfsCompression` 仲會唔會真係壓縮？
+
+    2026-11-21 實測 macOS 27.2.1：ditto 照樣 exit 0，但新檔冇 UF_COMPRESSED、
+    大細一樣。冇呢個探測，每晚 job 會逐個檔 copy 一次再丟走（最多 30 分鐘、寫幾 GB），
+    然後報「全部 incompressible」—— 睇落好似正常，其實咩都冇做。
+    """
+    src = staging / f"{os.getpid()}-probe.json"
+    dst = staging / f"{os.getpid()}-probe.part"
+    try:
+        src.write_bytes(b'{"probe": "compressible"}\n' * 4096)
+        if subprocess.run(["ditto", "--hfsCompression", str(src), str(dst)],
+                          capture_output=True).returncode != 0:
+            return False
+        return bool(dst.lstat().st_flags & UF_COMPRESSED)
+    except OSError:
+        return False
+    finally:
+        src.unlink(missing_ok=True)
+        dst.unlink(missing_ok=True)
+
+
 def run(root: Path, *, min_age_days: float, time_budget: float, dry_run: bool) -> dict:
     root = root.expanduser().resolve()
     summary = {"root": str(root), "dry_run": dry_run, "compressed": 0, "incompressible": 0,
@@ -98,6 +120,10 @@ def run(root: Path, *, min_age_days: float, time_budget: float, dry_run: bool) -
     staging = root / STAGING_NAME
     if not dry_run:
         staging.mkdir(exist_ok=True)
+        if not ditto_compresses(staging):
+            shutil.rmtree(staging, ignore_errors=True)
+            summary["skipped"] = "ditto --hfsCompression no longer compresses on this macOS"
+            return summary
     try:
         for path, st in candidates(root, cutoff):
             if time.monotonic() > deadline:

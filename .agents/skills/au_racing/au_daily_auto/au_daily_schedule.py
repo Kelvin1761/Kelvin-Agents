@@ -1541,7 +1541,11 @@ def step_ingest_results(runlog: RunLog, *, from_date: str) -> bool:
     command = [sys.executable, str(RESULTS_INGEST), "--apply"]
     rc, out = run_cmd(
         [sys.executable, str(SB_RESULTS_CSV), "--out", str(sb_csv),
-         "--from-date", from_date, "--mapping", str(MEETING_IDS)], timeout=1800)
+         "--from-date", from_date, "--mapping", str(MEETING_IDS),
+         # 逐場次 memo：cache 同解析 code 冇變就唔再 parse（輸出逐 byte 一樣）。
+         # 冇呢個，每晚重 parse ~5,100 場，~15 分鐘 CPU 換嚟「new rows: 0」。
+         "--memo", str(WORK_DIR / "results-ingest-sportsbet.memo.json")],
+        timeout=1800)
     full_field_ok = rc == 0 and sb_csv.exists() and sb_csv.stat().st_size > 0
     if full_field_ok:
         command += ["--sb-csv", str(sb_csv)]

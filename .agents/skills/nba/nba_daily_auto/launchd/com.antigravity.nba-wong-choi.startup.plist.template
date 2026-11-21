@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
+  <!-- 打機時段（Kelvin 2026-11-21）：Background = M1 只用效能核，性能核留俾前景 app；結果一樣，只係慢啲 -->
+  <key>LowPriorityIO</key><true/>
+  <key>LowPriorityBackgroundIO</key><true/>
+  <key>Nice</key><integer>10</integer>
   <key>Label</key><string>com.antigravity.nba-wong-choi.startup</string>
   <key>ProgramArguments</key><array><string>__RUNNER__</string><string>startup</string></array>
   <key>RunAtLoad</key><true/>

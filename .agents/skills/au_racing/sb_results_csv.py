@@ -20,6 +20,8 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
+import os
 import re
 import sys
 from datetime import date
@@ -66,7 +68,82 @@ def build_parser() -> argparse.ArgumentParser:
     )
     ap.add_argument("--mapping", type=Path,
                     help="自訂 meeting-ID mapping；預設用現役 AU data mapping")
+    ap.add_argument("--memo", type=Path,
+                    help="逐場次結果 memo（JSON）。cache 檔同解析 code 都冇變嘅場次直接重用，"
+                         "唔再 parse HTML；輸出 CSV 逐 byte 一樣")
     return ap
+
+
+# ── 逐場次 memo ─────────────────────────────────────────────────────────────
+# 點解：晚更 `ingest-results` 每次都由 2026-07-01 起重新 parse ~5,100 場 cache，
+# 2026-11-21 實測每次 ~15 分鐘 CPU，而結果係「new rows to add: 0」，夜更重試
+# 一晚仲可以行三次。cache 頁一經寫低極少再變，所以逐場次記住結果就得。
+#
+# 失效條件（任何一樣變咗就重新 parse 嗰個場次）：
+#   * 解析 code：本檔 + `claw_sportsbet_form.py` 嘅內容、bs4 版本、Python 版本
+#     （`parse_race`／`parse_runner_blocks`／`run_date` 只依賴呢幾樣，2026-11-21
+#     用 AST 追過）；
+#   * 場次 meta（meetingId、日期、slug、races 列表）；
+#   * 每個 race cache 檔存唔存在、mtime_ns、大細。
+# memo 讀唔到／壞咗 = 當冇 memo，全部重新 parse —— 永遠唔會因為 memo 輸出唔同嘢。
+MEMO_VERSION = 1
+
+
+def code_fingerprint() -> str:
+    import hashlib
+    here = Path(__file__).resolve().parent
+    h = hashlib.sha256(f"v{MEMO_VERSION}|{sys.version_info[:2]}".encode())
+    for name in ("sb_results_csv.py", "claw_sportsbet_form.py"):
+        h.update(name.encode())
+        h.update((here / name).read_bytes())
+    try:
+        import bs4
+        h.update(f"bs4={bs4.__version__}".encode())
+    except ImportError:
+        h.update(b"bs4=missing")
+    return h.hexdigest()
+
+
+def meeting_signature(meta, fetcher) -> str:
+    from claw_sportsbet_form import BASE
+    files = []
+    for rid in meta["races"]:
+        cp = fetcher._cache_path(f"{BASE}/{meta['meetingId']}/{rid}/")
+        try:
+            st = cp.stat()
+            files.append([str(rid), st.st_mtime_ns, st.st_size])
+        except OSError:
+            files.append([str(rid), None, None])
+    return json.dumps([meta.get("meetingId"), meta.get("date"), meta.get("slug"),
+                       files], ensure_ascii=False, separators=(",", ":"))
+
+
+def load_memo(path: Path | None, fingerprint: str) -> dict:
+    if not path:
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    if not isinstance(data, dict) or data.get("fingerprint") != fingerprint:
+        return {}
+    meetings = data.get("meetings")
+    return meetings if isinstance(meetings, dict) else {}
+
+
+def save_memo(path: Path | None, fingerprint: str, meetings: dict) -> None:
+    if not path:
+        return
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_name(path.name + ".tmp")
+        tmp.write_text(json.dumps({"fingerprint": fingerprint, "meetings": meetings},
+                                  ensure_ascii=False, separators=(",", ":")),
+                       encoding="utf-8")
+        os.replace(tmp, path)
+    except OSError as exc:
+        # memo 只係加速；寫唔到唔可以令 ingest 失敗。
+        print(f"⚠️ memo 寫唔到（下次照全部重新 parse）：{exc}", file=sys.stderr)
 
 
 def meeting_items(ids: dict, from_date: str | None = None):
@@ -78,7 +155,11 @@ def meeting_items(ids: dict, from_date: str | None = None):
     return items
 
 
-def rows_for_meeting(meta, fetcher):
+def _warn_stderr(message: str) -> None:
+    print(message, file=sys.stderr)
+
+
+def rows_for_meeting(meta, fetcher, warn=_warn_stderr):
     """→ 每個跑手一行。淨讀 cache；未抽過嘅場次直接跳。"""
     from claw_sportsbet_form import (BASE, parse_race, parse_runner_blocks,
                                      run_date)
@@ -104,8 +185,8 @@ def rows_for_meeting(meta, fetcher):
                 if run_date(run) != meta["date"] or str(h.get("race")) != str(rno):
                     continue
                 if not same_venue(h.get("track"), track):
-                    print(f"⚠️ result venue mismatch: {meta['date']} {track} R{rno} "
-                          f"{blk['name']} -> {h.get('track')!r}; row skipped", file=sys.stderr)
+                    warn(f"⚠️ result venue mismatch: {meta['date']} {track} R{rno} "
+                         f"{blk['name']} -> {h.get('track')!r}; row skipped")
                     continue
                 try:
                     pos = int(run["pos"])
@@ -133,12 +214,36 @@ def main():
 
     f = SportsbetFormFetcher(delay=0.0, verbose=False)
     ids = load_meeting_ids(args.mapping) if args.mapping else load_meeting_ids()
+    fingerprint = code_fingerprint() if args.memo else ""
+    memo = load_memo(args.memo, fingerprint)
+    new_memo: dict = {}
+    reused = parsed = 0
     rows, meetings = [], 0
     for name, meta in meeting_items(ids, args.from_date):
-        got = rows_for_meeting(meta, f)
+        sig = meeting_signature(meta, f) if args.memo else ""
+        hit = memo.get(name)
+        if args.memo and isinstance(hit, dict) and hit.get("sig") == sig:
+            got, warnings = hit.get("rows") or [], hit.get("warnings") or []
+            for message in warnings:
+                _warn_stderr(message)
+            reused += 1
+        else:
+            warnings = []
+
+            def collect(message, _sink=warnings):
+                _sink.append(message)
+                _warn_stderr(message)
+
+            got = rows_for_meeting(meta, f, warn=collect)
+            parsed += 1
+        if args.memo:
+            new_memo[name] = {"sig": sig, "rows": got, "warnings": warnings}
         if got:
             meetings += 1
             rows += got
+    if args.memo:
+        save_memo(args.memo, fingerprint, new_memo)
+        print(f"memo：重用 {reused} 個場次、重新 parse {parsed} 個")
     if not rows:
         print("❌ cache 冇任何賽果 —— 先跑抽取")
         return 1

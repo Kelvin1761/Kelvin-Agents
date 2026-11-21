@@ -35,7 +35,16 @@ class CompressDataRootTest(unittest.TestCase):
             os.utime(path, (OLD, OLD))
         return path
 
+    def _os_can_compress(self) -> bool:
+        staging = Path(self.tmp.name) / "probe"
+        staging.mkdir(exist_ok=True)
+        return cdr.ditto_compresses(staging)
+
     def test_old_file_is_compressed_with_same_bytes_and_mtime(self) -> None:
+        if not self._os_can_compress():
+            # 2026-11-21：macOS 27.2.1 嘅 ditto 唔再壓縮。下面
+            # test_os_without_compression_reports_skipped_and_copies_nothing 鎖住「咁樣要報 skipped」。
+            self.skipTest("ditto --hfsCompression does not compress on this macOS")
         path = self._file("AU/2026-10-01 X/_prediction_snapshots/s1/Race_1_Logic.json")
         mtime = path.stat().st_mtime_ns
         summary = cdr.run(self.root, min_age_days=3, time_budget=60, dry_run=False)
@@ -62,6 +71,18 @@ class CompressDataRootTest(unittest.TestCase):
         summary = cdr.run(self.root, min_age_days=3, time_budget=60, dry_run=True)
         self.assertEqual(summary["compressed"], 1)
         self.assertFalse(path.lstat().st_flags & cdr.UF_COMPRESSED)
+
+    def test_os_without_compression_reports_skipped_and_copies_nothing(self) -> None:
+        from unittest.mock import patch
+        path = self._file("AU/2026-10-01 X/Race_1_Logic.json")
+        with patch.object(cdr, "ditto_compresses", return_value=False), \
+                patch.object(cdr, "compress_file") as copy:
+            summary = cdr.run(self.root, min_age_days=3, time_budget=60, dry_run=False)
+        copy.assert_not_called()
+        self.assertIn("no longer compresses", summary["skipped"])
+        self.assertEqual(summary["incompressible"], 0)
+        self.assertEqual(path.read_bytes(), PAYLOAD)
+        self.assertFalse((self.root / cdr.STAGING_NAME).exists())
 
     def test_file_rewritten_during_copy_is_not_replaced(self) -> None:
         path = self._file("HK/Race_2_Logic.json")
