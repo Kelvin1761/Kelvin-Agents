@@ -22,7 +22,9 @@ DATABASE_PATH="$TENNIS_RUNTIME_ROOT/tennis_wc.db"
 TENNIS_ENV_FILE="${TENNIS_ENV_FILE:-$TENNIS_RUNTIME_ROOT/.env}"
 TENNIS_PYTHON_BIN="${TENNIS_PYTHON_BIN:-$TENNIS_RUNTIME_ROOT/.venv/bin/python}"
 TENNIS_LOG_DIR="${TENNIS_LOG_DIR:-$TENNIS_RUNTIME_ROOT/data/logs}"
-TENNIS_ANALYSIS_OUTPUT_ROOT="${TENNIS_ANALYSIS_OUTPUT_ROOT:-/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity}"
+# 2026-11-21：Google Drive 退役，報告留喺本機資料根。
+TENNIS_ANALYSIS_OUTPUT_ROOT="${TENNIS_ANALYSIS_OUTPUT_ROOT:-$HOME/WongChoiData/Wong Choi Tennis Analysis}"
+mkdir -p "$TENNIS_ANALYSIS_OUTPUT_ROOT"
 LABELS=(
   "com.antigravity.tennis-wong-choi.card"
   "com.antigravity.tennis-wong-choi.daily"
@@ -115,7 +117,7 @@ echo "Installing Tennis Wong Choi scheduled passes from $PROJECT_DIR"
 echo "Live database/runtime remains at $TENNIS_RUNTIME_ROOT"
 echo "Provider config remains at $TENNIS_ENV_FILE"
 echo "Runtime interpreter remains at $TENNIS_PYTHON_BIN"
-echo "Analysis mirror remains at $TENNIS_ANALYSIS_OUTPUT_ROOT"
+echo "Analysis reports go to $TENNIS_ANALYSIS_OUTPUT_ROOT"
 for label in "${LABELS[@]}"; do
   install_one "$label"
 done

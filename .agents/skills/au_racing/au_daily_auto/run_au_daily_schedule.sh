@@ -22,8 +22,9 @@ CONTROL_PLANE="$PROJECT_ROOT/.agents/skills/shared_wong_choi/control_plane.py"
 NETWORK_READINESS="$PROJECT_ROOT/.agents/skills/shared_wong_choi/network_readiness.py"
 
 : "${WONGCHOI_AU_DATA_ROOT:=$HOME/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing}"
-: "${WONGCHOI_AU_MIRROR_ROOT:=/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/AU_Racing}"
-export WONGCHOI_AU_DATA_ROOT WONGCHOI_AU_MIRROR_ROOT
+# Google Drive 鏡像 2026-11-21 退役（Kelvin：冇人睇 Drive）。只有明確設定先鏡像。
+export WONGCHOI_AU_DATA_ROOT
+if [ -n "${WONGCHOI_AU_MIRROR_ROOT:-}" ]; then export WONGCHOI_AU_MIRROR_ROOT; fi
 
 # 本機 root 唔見咗就即刻死，唔好靜靜跌返 Drive 然後喺 preflight 出一個誤導訊息。
 if [ ! -d "$WONGCHOI_AU_DATA_ROOT" ]; then

@@ -327,7 +327,7 @@ print -r -- "runtime cutover stage: Tennis installer"
 WC_TENNIS_RUNTIME_ROOT="$TENNIS_RUNTIME_ROOT" \
   TENNIS_PYTHON_BIN="$TENNIS_PYTHON_BIN" \
   TENNIS_LOG_DIR="$TENNIS_RUNTIME_ROOT/data/logs" \
-  TENNIS_ANALYSIS_OUTPUT_ROOT="${TENNIS_ANALYSIS_OUTPUT_ROOT:-/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity}" \
+  TENNIS_ANALYSIS_OUTPUT_ROOT="${TENNIS_ANALYSIS_OUTPUT_ROOT:-$HOME/WongChoiData/Wong Choi Tennis Analysis}" \
   /bin/zsh "$PROJECT_ROOT/tennis-wong-choi/scripts/install_macos_launchd.sh"
 print -r -- "runtime cutover stage: Central installer"
 WC_INSTALL_RESEARCH_REVIEW=1 \

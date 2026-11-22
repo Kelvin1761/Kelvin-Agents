@@ -145,7 +145,11 @@ def main() -> int:
     for key in (args.platform or sorted(PLATFORMS)):
         label, marker, primary_default = PLATFORMS[key]
         mirror_root = _mirror_root(marker)
-        if mirror_root is None or not mirror_root.is_dir():
+        if mirror_root is None:
+            # 2026-11-21 起 Google Drive 鏡像退役：冇 marker = 冇設定鏡像，唔係故障。
+            print(f"OK\t{label}\t冇設定鏡像（{marker} 唔存在）—— 唔使檢查")
+            continue
+        if not mirror_root.is_dir():
             print(f"SKIP\t{label}\t搵唔到鏡像根（{marker}）")
             worst_status = max(worst_status, 2)
             continue
