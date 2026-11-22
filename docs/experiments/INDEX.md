@@ -616,3 +616,4 @@
 - [EXP-20261122-26](EXP-20261122-26-hkjc-distance-up-prep-return.md) — 休後縮程熱身再返首本唔扣大幅增程（W1，v5）：dev 顯著變差 REJECT；呢批馬扣咗分仲係高估
 - [EXP-20261122-27](EXP-20261122-27-hkjc-distance-up-mechanism-and-layoff.md) — 大幅增程改為打折段速優勢（M1／M2）dev REJECT；同題已試 12 版停手；休後復出（休幾耐／第幾仗）兩窗唔一致，冇訊號
 - [EXP-20261122-28](EXP-20261122-28-hkjc-v5-residual-scan.md) — v5 全面殘差掃描：冇一項兩窗都顯著；dev 狀態／段速／近績高嘅馬高估，holdout 淡咗；場地班次馬匹數偏差計 N 後消失
+- [EXP-20261122-33](EXP-20261122-33-hkjc-ruler-guard-v51.md) — 回放尺護欄 v5.1：Gold／Good CI 護欄冇靈敏度（剷走狀態維度 Good 仲升；同幅度雜訊捉 14/30）→ 改場內 AUC CI 下界 > −0.0015 ＋ Gold／Good 點估計 > −1pp；唔追溯

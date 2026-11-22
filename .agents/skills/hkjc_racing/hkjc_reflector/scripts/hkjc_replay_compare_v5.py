@@ -4,6 +4,7 @@
 v4：p = σ(a + α·(raw − 場均))。一場 N 匹只有 3 個位，所以 6 匹場每匹基準 50%、14 匹場 21%；
 v4 唔知 N，細場系統性估低、大場估高 → log-loss 同殘差診斷都帶住場次大細雜訊（EXP-20261122-22／23 發現）。
 v5：p = σ(a + α·(raw − 場均) + γ·logit(3/N))，(a, α, γ) 由訓練段 fit（γ 理論值 ≈1）。
+v5.1（EXP-20261122-33）：護欄 2 改為「場內 AUC Δ CI 下界 > −0.0015，而且 Gold、Good 點估計 > −1.0pp」。
 
 主指標：入頭三 log-loss（逐匹）。(a, α, γ) 由訓練段 fit：
   dev 窗 → 逐季 walk-forward（測 2021/22–2023/24，各用之前季，最早 2020/21）；holdout／terminal 窗 → 用全 dev fit。
@@ -30,6 +31,7 @@ except ImportError:
     sys.path.insert(0, "/Users/imac/Antigravity-repo/.agents/skills/shared_racing")
     from eval_metrics import race_metrics  # noqa: E402
 
+AUC_GUARD = -0.0015   # v5.1：場內 AUC Δ 95% CI 下界要高過呢個（EXP-20261122-33）
 WIN = {"dev": ("2020-09-01", "2024-07-31"), "holdout": ("2024-09-01", "2026-07-31"), "terminal": ("2026-08-01", "2099-12-31")}
 
 
@@ -152,7 +154,12 @@ def main():
     null = np.array(null)
     lo_m = np.percentile(bs_m, 2.5, axis=0) * 100
     pass1 = np.percentile(bs_l, 97.5) < 0
-    pass2 = lo_m[0] > -1.0 and lo_m[1] > -1.0
+    # v5.1 護欄（EXP-20261122-33，2026-11-22）：排名護欄改用場內 AUC（Gold／Good CI 太闊：剷走成個狀態維度都差啲捉唔到）；
+    # Gold／Good 只做明顯傷害護欄（點估計 > −1.0pp）。舊 v5 護欄照印，方便對照。
+    auc_lo = np.percentile(bs_a, 2.5)
+    pts = M.mean(0) * 100
+    pass2 = auc_lo > AUC_GUARD and pts[0] > -1.0 and pts[1] > -1.0
+    old_pass2 = lo_m[0] > -1.0 and lo_m[1] > -1.0
     pass3 = (null > d_ll).mean() >= 0.95
     print(f"窗 {window}：{len(rows)} 場、{len(days)} 日｜v5 校準（baseline）{par(rows[0]['k'])[0]}" if rows else "冇場")
     print(f"baseline 絕對 log-loss（每匹）{sum(ll(B[r['k']], par(r['k'])[0])[0] for r in rows) / nn.sum():.5f}")
@@ -161,7 +168,8 @@ def main():
     for i, lab in enumerate(("Gold", "Good", "capture@5", "頭二選有中")):
         print(f"{lab} {M[:, i].mean() * 100:+.2f} [{lo_m[i]:+.2f},{np.percentile(bs_m[:, i], 97.5) * 100:+.2f}]")
     verdict = "PASS" if (pass1 and pass2 and pass3) else "REJECT"
-    print(f"v5 判決：{verdict}（log-loss CI 上界<0 {'✅' if pass1 else '❌'}｜Gold／Good 下界>−1pp {'✅' if pass2 else '❌'}｜好過 95% null {'✅' if pass3 else '❌'}）")
+    print(f"v5.1 判決：{verdict}（log-loss CI 上界<0 {'✅' if pass1 else '❌'}｜AUC 下界>{AUC_GUARD} 而且 Gold／Good 點估計>−1pp {'✅' if pass2 else '❌'}｜好過 95% null {'✅' if pass3 else '❌'}）")
+    print(f"（舊 v5 護欄 Gold／Good CI 下界>−1pp：{'✅' if old_pass2 else '❌'} —— 只供對照）")
 
 
 if __name__ == "__main__":
