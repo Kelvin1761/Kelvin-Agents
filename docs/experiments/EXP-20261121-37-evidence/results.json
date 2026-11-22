@@ -1,0 +1,299 @@
+{
+ "D1": {
+  "verdict": "PASS",
+  "reason": "logloss_supported_gain",
+  "checks": {
+   "logloss_ci_upper_below_0": true,
+   "gold_good_guardrail": true,
+   "beats_null": true
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   -0.0003818441462821258,
+   -0.0007262471254481975,
+   -1.3479790302467924e-05
+  ],
+  "beats_null_share": 1.0,
+  "gold_pp": [
+   0.03313452617627568,
+   -0.5155013906700199
+  ],
+  "good_pp": [
+   0.23194168323392977,
+   -0.4883733332137586
+  ],
+  "capture5_pp": -0.06350784183786173,
+  "top2_any_hit_pp": 0.06626905235255136,
+  "p": 0.0215,
+  "beta_median": 11.112307583271186,
+  "beta_final": 9.464255634228458,
+  "n_flagged": 25275,
+  "holm_p": 0.129,
+  "final": "REJECT"
+ },
+ "D2": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": true,
+   "beats_null": true
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   -0.0002220978230751206,
+   -0.0005530440397792759,
+   0.00012779554355321906
+  ],
+  "beats_null_share": 1.0,
+  "gold_pp": [
+   -0.06626905235255136,
+   -0.5559957752673497
+  ],
+  "good_pp": [
+   0.09940357852882703,
+   -0.5422815806125317
+  ],
+  "capture5_pp": 0.11044842058758562,
+  "top2_any_hit_pp": -0.16567263088137837,
+  "p": 0.1035,
+  "beta_median": 15.090336205557044,
+  "beta_final": 14.801430270397947,
+  "n_flagged": 11882,
+  "holm_p": 0.3105,
+  "final": "REJECT"
+ },
+ "D3": {
+  "verdict": "PASS",
+  "reason": "logloss_supported_gain",
+  "checks": {
+   "logloss_ci_upper_below_0": true,
+   "gold_good_guardrail": true,
+   "beats_null": true
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   -0.00036590783661608116,
+   -0.0006049909612475044,
+   -0.0001003403252525793
+  ],
+  "beats_null_share": 1.0,
+  "gold_pp": [
+   0.06626905235255136,
+   -0.372507903988174
+  ],
+  "good_pp": [
+   0.23194168323392977,
+   -0.35262175977942994
+  ],
+  "capture5_pp": 0.06626905235255137,
+  "top2_any_hit_pp": -0.03313452617627568,
+  "p": 0.0085,
+  "beta_median": 5.830276514801953,
+  "beta_final": 5.1331035119791,
+  "n_flagged": 25002,
+  "holm_p": 0.059500000000000004,
+  "final": "REJECT"
+ },
+ "OLD": {
+  "verdict": "PASS",
+  "reason": "logloss_supported_gain",
+  "checks": {
+   "logloss_ci_upper_below_0": true,
+   "gold_good_guardrail": true,
+   "beats_null": true
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   -0.000533083775211092,
+   -0.0007762949619476985,
+   -0.00029497471945660257
+  ],
+  "beats_null_share": 1.0,
+  "gold_pp": [
+   -0.03313452617627568,
+   -0.3449761109872526
+  ],
+  "good_pp": [
+   0.13253810470510272,
+   -0.1023602711894784
+  ],
+  "capture5_pp": 0.13253810470510272,
+  "top2_any_hit_pp": 0.2982107355864811,
+  "p": 0.0,
+  "beta_median": -3.462617709226844,
+  "beta_final": -4.063224212201733,
+  "n_flagged": 2485,
+  "holm_p": 0.0,
+  "final": "PASS"
+ },
+ "FUNIL": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": true,
+   "beats_null": true
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   -4.266335268825426e-05,
+   -0.0002349742513168382,
+   0.00018093388101856502
+  ],
+  "beats_null_share": 0.99,
+  "gold_pp": [
+   0.03313452617627568,
+   -0.19845905651980417
+  ],
+  "good_pp": [
+   -0.19880715705765406,
+   -0.5152956997786635
+  ],
+  "capture5_pp": -0.04417936823503424,
+  "top2_any_hit_pp": 0.06626905235255136,
+  "p": 0.341,
+  "beta_median": -6.343755439704939,
+  "beta_final": -5.460478263500007,
+  "n_flagged": 354,
+  "holm_p": 0.38,
+  "final": "REJECT"
+ },
+ "SUNIL": {
+  "verdict": "PASS",
+  "reason": "logloss_supported_gain",
+  "checks": {
+   "logloss_ci_upper_below_0": true,
+   "gold_good_guardrail": true,
+   "beats_null": true
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   -0.00010539584469262095,
+   -0.00017249738442098883,
+   -2.8764812286330308e-05
+  ],
+  "beats_null_share": 0.99,
+  "gold_pp": [
+   0.06626905235255136,
+   0.0
+  ],
+  "good_pp": [
+   0.03313452617627568,
+   0.0
+  ],
+  "capture5_pp": 0.022089684117517123,
+  "top2_any_hit_pp": 0.0,
+  "p": 0.0035,
+  "beta_median": -1.9326947654031224,
+  "beta_final": -7.239833375751577,
+  "n_flagged": 221,
+  "holm_p": 0.028,
+  "final": "PASS"
+ },
+ "QB": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": true,
+   "beats_null": true
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   -0.00017877023312582623,
+   -0.0003963962779965016,
+   2.511961698048726e-05
+  ],
+  "beats_null_share": 1.0,
+  "gold_pp": [
+   -0.16567263088137837,
+   -0.5060369222071529
+  ],
+  "good_pp": [
+   0.19880715705765406,
+   -0.03541803412985852
+  ],
+  "capture5_pp": 0.1435829467638613,
+  "top2_any_hit_pp": 0.03313452617627568,
+  "p": 0.049,
+  "beta_median": 2.5507223945108803,
+  "beta_final": 3.3020691087103544,
+  "n_flagged": 1784,
+  "holm_p": 0.196,
+  "final": "REJECT"
+ },
+ "UPGOOD": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": true,
+   "beats_null": true
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   -0.00011192117749352467,
+   -0.0003887796314944422,
+   0.0001545772877251967
+  ],
+  "beats_null_share": 1.0,
+  "gold_pp": [
+   -0.2982107355864811,
+   -0.5100986020916312
+  ],
+  "good_pp": [
+   -0.19880715705765406,
+   -0.44418428018536354
+  ],
+  "capture5_pp": -0.08007510492599956,
+  "top2_any_hit_pp": 0.13253810470510272,
+  "p": 0.19,
+  "beta_median": -3.6299813006636854,
+  "beta_final": -3.362132238358791,
+  "n_flagged": 1493,
+  "holm_p": 0.38,
+  "final": "REJECT"
+ },
+ "UPNIL": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": true,
+   "beats_null": true
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   -0.00018657869737985272,
+   -0.0003712662128617888,
+   1.203791397537322e-05
+  ],
+  "beats_null_share": 1.0,
+  "gold_pp": [
+   0.03313452617627568,
+   -0.18324091488527494
+  ],
+  "good_pp": [
+   -0.13253810470510272,
+   -0.4048788299348778
+  ],
+  "capture5_pp": 7.357342774189241e-18,
+  "top2_any_hit_pp": 0.06626905235255136,
+  "p": 0.034,
+  "beta_median": -5.218608634259416,
+  "beta_final": -6.146681635717746,
+  "n_flagged": 575,
+  "holm_p": 0.17,
+  "final": "REJECT"
+ }
+}

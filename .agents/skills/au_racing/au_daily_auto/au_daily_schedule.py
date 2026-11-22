@@ -111,6 +111,7 @@ OVERSEAS_PROXY_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_overse
 HEAVY_H2_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_heavy_h2_forward.py"
 DEBUT_NEUTRAL_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_debut_neutral_forward.py"
 LPOS_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_lpos_forward.py"
+AGE_UPNIL_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_age_upnil_forward.py"
 GENERATE_STATIC = DASHBOARD_DIR / "generate_static.py"
 DEPLOY_SH = DASHBOARD_DIR / "deploy.sh"
 
@@ -1712,6 +1713,28 @@ def step_debut_neutral_forward(runlog: RunLog) -> bool:
     runlog.step("debut-neutral-forward", status.get("state", "unknown"), races=status.get("races_collected", 0),
                 target=status.get("target_races"), keep=(status.get("evaluation") or {}).get("keep"),
                 horses_moved=interim.get("horses_ability_moved"))
+    return True
+
+
+def step_age_upnil_forward(runlog: RunLog) -> bool:
+    """EXP-20261121-37 forward shadow：老馬（8 歲以上 −3.46）同休後第二仗 0 上名（−1.93），幅度凍結。
+    2026-11-22 起新賽事先扣；夠 1,000 場用 log-loss 尺逐個 arm 判一次並凍結（Holm 2），夠數由 forward tracker 推 Telegram。
+    未夠數只報數量（盲測）。失敗唔阻 live 分析，永遠唔會自動改模型。"""
+    status_path = WORK_DIR / "au-age-upnil-forward-status.json"
+    rc, out = run_cmd([sys.executable, str(AGE_UPNIL_FORWARD), "--data-root", str(AU_RACING),
+                       "--output", str(status_path)], timeout=1800)
+    if rc != 0 or not status_path.exists():
+        detail = error_excerpt(out, rc)
+        runlog.warn(f"老馬／休後第二仗 forward 更新失敗（唔影響 live 排名）：{detail}")
+        runlog.step("age-upnil-forward", "failed", detail=detail)
+        return False
+    try:
+        status = json.loads(status_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        runlog.step("age-upnil-forward", "failed", detail=str(exc))
+        return False
+    runlog.step("age-upnil-forward", status.get("state", "unknown"), races=status.get("races_collected", 0),
+                target=status.get("target_races"))
     return True
 
 
@@ -4531,6 +4554,7 @@ def run_evening(runlog: RunLog, args, review_day: date) -> int:
         step_heavy_h2_forward(runlog)
         step_debut_neutral_forward(runlog)
         step_lpos_forward(runlog)
+        step_age_upnil_forward(runlog)
         step_sb_betfair_forward(runlog)
         step_forward_tracker(runlog)
     publisher = None
