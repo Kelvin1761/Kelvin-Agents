@@ -622,3 +622,4 @@
 - [EXP-20261122-31](EXP-20261122-31-hkjc-samedist-vs-own-average.md) — 同程上名率比自己平均低 >0.25 殘差 −4.0／−4.1；R1 dev 過、holdout CI 跨零 REJECT；R2 REJECT；同程上名率高唔罕見（11%）
 - [EXP-20261122-32](EXP-20261122-32-hkjc-samedist-class-and-wins.md) — 同程贏過冇額外價值；同程高班上名 +1.4／+1.6 但 K1／K2 REJECT；細訊號功效算術（1.4pp × 9% ≈ 0.00005 vs 尺 ±0.0003）
 - [EXP-20261122-34](EXP-20261122-34-hkjc-joint-signals-j3.md) — 聯合訊號 J3（J1 13 項＋同程 4 項）v5.1 holdout −0.00152、AUC +0.0032、Gold +0.64、Good +0.99（舊護欄都過）→ Kelvin 決定暫時唔上（頭二冇改善）
+- [EXP-20261123-03](EXP-20261123-03-hkjc-top2-ruler.md) — 頭二尺 v5.2：爭勝馬（兩模型頭四聯集）頭二 PL 損失；舊頭二計法連剷一半騎練都量唔到，新尺捉到剷維度同雜訊；舊 PASS 全部照過；J3 頭二 z −2.6
