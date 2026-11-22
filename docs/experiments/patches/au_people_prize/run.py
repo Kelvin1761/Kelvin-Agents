@@ -20,12 +20,16 @@ def norm(s):
     return re.sub(r"[^a-z0-9]", "", str(s or "").lower())
 
 
+MODE = "avg"
+
+
 def eps(table):
     t = (table or {}).get("Last 12 Months") or {}
     n = sum((v or {}).get("starts") or 0 for v in t.values())
     if not n:
         return None
-    return math.log10(sum(((t.get(b) or {}).get("starts") or 0) * m for b, m in MID.items()) / n + 1)
+    total = sum(((t.get(b) or {}).get("starts") or 0) * m for b, m in MID.items())
+    return math.log10((total if MODE == "total" else total / n) + 1)
 
 
 def load_snaps(path, cache):
@@ -88,6 +92,8 @@ def with_ab(races, abil):
 
 
 def main():
+    global MODE
+    MODE = sys.argv[6] if len(sys.argv) > 6 else "avg"
     base = L.eligible(json.loads(Path(sys.argv[1]).read_text())["races"])
     people = {}
     for r in csv.DictReader(open(sys.argv[2], encoding="utf-8-sig")):
@@ -129,8 +135,10 @@ def main():
                 for t, x, pp in zip(who_t[i], base[i]["rows"], p):
                     if t:
                         resid[t] += int(x["pos"] <= 3) - pp; cnt[t] += 1
+    pre = "T" if MODE == "total" else "P"
     arms = {"P1": (ability, walk(P1base, feats, base, by)), "P2": (ability, walk(ability, feats, base, by)),
             "P3": (tres, walk(tres, feats, base, by))}
+    arms = {pre + k[1:]: v for k, v in arms.items()}
     out = {}
     for name, (b_ab, c_ab) in arms.items():
         B, C = with_ab(base, b_ab), with_ab(base, c_ab)
