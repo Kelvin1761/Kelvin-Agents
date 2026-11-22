@@ -65,3 +65,29 @@ def test_race_jockey_work_counts_gallops_trials_and_strips_claim():
     assert w == {"any": 2, "gallops": 1, "trials": 1}
     assert xt.race_jockey_work(rows, "潘頓") == {"any": 0, "gallops": 0, "trials": 0}
     assert xt.race_jockey_work(rows, "") == {"any": 0, "gallops": 0, "trials": 0}
+
+
+def test_trainer_work_counts_only_the_trainer_himself():
+    """練馬師親自快操／試閘（Kelvin 2026-11-21）：只計騎手角色「練馬師」；副練馬師、助手、出賽行唔計。"""
+    rows = [
+        {**_row("2026-11-01", "gallop", "29.0 25.3 (54.3) (練馬師)"), "rider": "練馬師", "rider_role": "練馬師"},
+        {**_row("2026-11-03", "gallop", "30.1 26.2 (56.3) (副練馬師)"), "rider": "副練馬師", "rider_role": "副練馬師"},
+        {**_row("2026-11-05", "trotting", "快踱一圈 (練馬師)"), "rider": "練馬師", "rider_role": "練馬師"},
+        {**_row("2026-11-07", "gallop", "快操 (助手)"), "rider": "助手", "rider_role": "助手"},
+        {**_row("2026-11-08", "other", "1200M (練馬師) (3/12)", type_raw="出賽"), "rider": "練馬師", "rider_role": "練馬師"},
+    ]
+    assert xt.trainer_work(rows) == {"gallops": 1, "trials": 0}
+    assert xt.trainer_work([]) == {"gallops": 0, "trials": 0}
+    assert xt.classify_rider_role("練馬師", "29.0 25.3 (54.3) (練馬師)", "韋達") == "練馬師"
+
+
+def test_page_trainer_reads_the_name_cell_not_the_details_link():
+    """冇排位表時嘅後備馬匹列表：練馬師喺「馬名 練馬師 近績」格，唔係最後一格「詳情」（Kelvin 2026-11-21）。"""
+    cells = ["1", "滿利時 游達榮 1/5", "06/11: 第9組 1200 從化", "20/11: 沙田 全天候 33.9 (助手)", "", "詳情"]
+    assert xt.page_trainer(cells, "滿利時") == "游達榮"
+    assert xt.page_trainer(["2", "哥得寶 賀賢 3/4", "", "詳情"], "哥得寶") == "賀賢"
+    assert xt.page_trainer(["3", "新馬", "", "詳情"], "新馬") == ""
+    assert xt.page_trainer(["4", "別匹 韋達 1/2", "詳情"], "唔對") == ""
+    html = ('<table><tr><td>1</td><td><a href="/zh-hk/local/information/horse?horseid=HK_2024_K205">大輝煌</a> 羅富全 9/11</td>'
+            '<td></td><td></td><td><a href="#">詳情</a></td></tr></table>')
+    assert [(h["horse_name"], h["trainer"]) for h in xt.parse_horse_list(html)] == [("大輝煌", "羅富全")]

@@ -408,6 +408,36 @@ def jockey_work(horse: dict) -> dict:
     return {"gallops": n("race_jockey_gallops_21d"), "trials": n("race_jockey_trials_21d")}
 
 
+def trainer_work(horse: dict) -> dict:
+    """練馬師近 21 日親自快操／試閘課數 —— 讀抽取層 `extract_trackwork.trainer_work` 寫入晨操摘要嘅結果（唯一定義）。
+    舊晨操檔冇呢兩欄 = 0（唔扮有）。"""
+    tw = horse.get("trackwork") if isinstance(horse.get("trackwork"), dict) else {}
+    sm = tw.get("summary") if isinstance(tw.get("summary"), dict) else {}
+    def n(key):
+        try:
+            return max(0, int(sm.get(key) or 0))
+        except (TypeError, ValueError):
+            return 0
+    return {"gallops": n("trainer_gallops_21d"), "trials": n("trainer_trials_21d")}
+
+
+def _trainer_work_tag(horse: dict) -> list[dict]:
+    """練馬師近 21 日親自快操／試閘（Kelvin 2026-11-21；未入分）。
+
+    量度（EXP-20261121-41，重抓 1,232 匹馬晨操頁，2026-05 → 11-18 共 4,175 次出賽）：練馬師親自操只有 51 次（1.2%），
+    差唔多全部係韋達同廖康銘嘅馬。按賠率調整後上名率 +2.7pp [−8.3, +14.9]、按模型排名 +2.1pp [−10.3, +15.3]；
+    「上仗至今」窗口 −1.4pp。CI 闊、冇訊號 → 放「留意」，唔放加分位。"""
+    work = trainer_work(horse)
+    if not (work["gallops"] or work["trials"]):
+        return []
+    trainer = str(horse.get("trainer") or "").strip() or "練馬師"
+    parts = ([f"快操 {work['gallops']} 課"] if work["gallops"] else []) + ([f"試閘 {work['trials']} 次"] if work["trials"] else [])
+    return [_tag("trainer_work", f"練馬師{trainer}親自{'＋'.join(parts)}", "note",
+                 why=f"近 21 日晨操紀錄：練馬師{trainer}親自策騎{'、'.join(parts)}（唔計比賽）。"
+                     "量過 51 次（主要係韋達、廖康銘嘅馬）：按賠率調整後上名率 +2.7pp，但 95% CI −8.3 至 +14.9，"
+                     "即係冇訊號；未入分。")]
+
+
 def _race_people_tags(horses: dict, meta: dict) -> dict:
     """同場騎師揀馬／同馬房正選次選／下游騎師入位後轉潘頓／今仗騎師親自快操試閘（EXP-20261117-06、Kelvin 2026-11-19；全部未入分）。"""
     from .live_priors import get_jt_ratings
@@ -818,7 +848,7 @@ def horse_tags(no: str, horse: dict, auto: dict, *, runs: list[dict], meta: dict
     venue = _same_distance_venue_tags(auto)
     if venue:   # 同一件事（同程）只出一個 chip：場地 chip 已講晒 distance_fit
         special = [t for t in special if t["key"] != "specialist"]
-    special += venue + _horse_age_tag(auto) + _excuse_streak_tag(auto) + _thin_evidence_tag(auto)
+    special += venue + _horse_age_tag(auto) + _excuse_streak_tag(auto) + _thin_evidence_tag(auto) + _trainer_work_tag(horse)
     special += extra or []
     if "+" in str(priority or ""):
         special.append(_tag("trainer_ace", "練馬師王牌", "note",
