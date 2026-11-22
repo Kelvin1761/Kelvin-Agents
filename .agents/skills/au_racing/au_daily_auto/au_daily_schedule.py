@@ -112,6 +112,7 @@ HEAVY_H2_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_heavy_h2_for
 DEBUT_NEUTRAL_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_debut_neutral_forward.py"
 LPOS_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_lpos_forward.py"
 AGE_UPNIL_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_age_upnil_forward.py"
+TRAINER_RESIDUAL_TABLE = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_trainer_residual_table.py"
 GENERATE_STATIC = DASHBOARD_DIR / "generate_static.py"
 DEPLOY_SH = DASHBOARD_DIR / "deploy.sh"
 
@@ -1735,6 +1736,16 @@ def step_age_upnil_forward(runlog: RunLog) -> bool:
         return False
     runlog.step("age-upnil-forward", status.get("state", "unknown"), races=status.get("races_collected", 0),
                 target=status.get("target_races"))
+def step_trainer_residual_table(runlog: RunLog) -> bool:
+    """練馬師剩餘表現表（EXP-20261122-02，實驗性上線 2026-11-22）：賽果摺入之後、分析下一日之前重建。
+    失敗就沿用舊表（引擎照讀；表只會少咗最近一日），唔阻 live 分析。"""
+    rc, out = run_cmd([sys.executable, str(TRAINER_RESIDUAL_TABLE), "--data-root", str(AU_RACING)], timeout=1800)
+    if rc != 0:
+        detail = error_excerpt(out, rc)
+        runlog.warn(f"練馬師剩餘表現表重建失敗（沿用舊表）：{detail}")
+        runlog.step("trainer-residual-table", "failed", detail=detail)
+        return False
+    runlog.step("trainer-residual-table", "ok", detail=(out or "").strip().splitlines()[-1:])
     return True
 
 
@@ -4545,6 +4556,8 @@ def run_evening(runlog: RunLog, args, review_day: date) -> int:
             # the full-field corpus is incomplete.  Mark the run retryable so
             # launchd, /diag and the independent healthcheck all see it.
             temporary = True
+    # 練馬師剩餘表現 overlay 要最新賽果（EXP-20261122-02）；分析下一日之前一定要重建。
+    step_trainer_residual_table(runlog)
     if not getattr(args, "skip_speed_shadow", False):
         step_speed_shadow(runlog)
         step_speed_recency_shadow(runlog)

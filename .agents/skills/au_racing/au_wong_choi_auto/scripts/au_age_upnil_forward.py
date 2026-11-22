@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
-"""Forward shadow：老馬（8 歲以上）同休後第二仗 0 上名扣分（EXP-20261121-37，Kelvin 2026-11-21「go ahead」）。
+"""Forward：老馬、練馬師剩餘表現（2026-11-22 實驗性上線 → 退回監察）＋休後第二仗 0 上名（shadow）。
+
+Kelvin 2026-11-22：「上左先，跟住 forward 再測試要唔要拎走」—— 老馬（EXP-20261121-37）同練馬師剩餘表現
+（EXP-20261122-02）已經入綜合分（`people_overlays`）。呢度判「上線版 vs 冇呢個 overlay」：
+  * OLD、TRES（rollback）：baseline = 上線版 − 儲存嘅 overlay；candidate = 上線版。
+    上線版明顯差（Δlog-loss CI 下界 > 0）或者 Gold／Good 護欄唔過 → `rollback_recommended`（要 Kelvin 決定）。
+  * SUNIL（shadow）：candidate = 上線版 − 1.93（標籤 `second_up_nil`）。
+以下係原本 shadow 版說明：
 
 EXP-20261121-37 喺新 log-loss 尺下 PASS（Holm），但特徵係睇咗同一份語料先揀 —— 所以要 forward 先信。
 
@@ -29,9 +36,11 @@ sys.path.insert(0, str(SCRIPT_DIR.parents[2] / "shared_racing" / "scripts"))
 
 EXPERIMENT_ID = "EXP-20261121-37"
 CALIBRATION_SINCE = "2026-08-05"
-START_DATE = "2026-11-22"
+START_DATE = "2026-11-23"   # 上線後第一個新分析賽日（11-22 嗰批用舊 code 評分）
 TARGET_RACES = 1000
-ARMS = {"OLD": ("old_horse", -3.46), "SUNIL": ("second_up_nil", -1.93)}
+ARMS = {"OLD": ("old_horse", -3.46), "SUNIL": ("second_up_nil", -1.93)}   # 舊 shadow 定義（保留做紀錄）
+ROLLBACK = {"OLD": "old_horse", "TRES": "trainer_residual"}       # 上線 overlay：row 欄位
+SHADOW = {"SUNIL": ("second_up_nil", -1.93)}
 
 
 def tag_keys(auto: dict) -> set:
@@ -55,6 +64,8 @@ def race_rows(logic, result_rows):
         row = {"n": int(number) if str(number).isdigit() else 999, "pos": int(result["pos"]),
                "wet": auto.get("wet_form_feature") or 0.0, "proven_class": auto.get("proven_class_feature") or 0.0,
                "full_time": auto.get("full_time_speed_feature") or 0.0, "draw": float(auto.get("draw_feature") or 0.0),
+               "old_horse": float(auto.get("old_horse_feature") or 0.0),
+               "trainer_residual": float(auto.get("trainer_residual_feature") or 0.0),
                "features": dict(features), "keys": sorted(k for k in tag_keys(auto) if k)}
         row["ability"] = exact_score(row, MATRIX_WEIGHTS)
         rows.append(row)
@@ -103,14 +114,24 @@ def candidate(races, key, beta):
     return out
 
 
+def without(races, field):
+    """baseline：forward 期內減走上線 overlay（之前場次本身冇呢個 overlay）。"""
+    return [r if r["date"] < START_DATE else
+            dict(r, rows=[dict(x, ability=x["ability"] - float(x.get(field) or 0.0)) for x in r["rows"]]) for r in races]
+
+
 def evaluate(races):
     from au_logloss_ruler import eligible, evaluate as ll_evaluate
-    base = eligible(races)
+    keep = ("verdict", "reason", "checks", "dlogloss", "beats_null_share", "gold_pp", "good_pp", "capture5_pp", "top2_any_hit_pp")
     out = {}
-    for name, (key, beta) in ARMS.items():
-        v = ll_evaluate(base, eligible(candidate(races, key, beta)), nnull=200)
-        out[name] = {k: v[k] for k in ("verdict", "reason", "checks", "dlogloss", "beats_null_share", "gold_pp", "good_pp",
-                                         "capture5_pp", "top2_any_hit_pp")}
+    live = eligible(races)
+    for name, field in ROLLBACK.items():
+        v = ll_evaluate(eligible(without(races, field)), live, nnull=200)
+        worse = v["dlogloss"][1] > 0 or not v["checks"]["gold_good_guardrail"]
+        out[name] = {**{k: v[k] for k in keep}, "mode": "rollback", "rollback_recommended": bool(worse)}
+    for name, (key, beta) in SHADOW.items():
+        v = ll_evaluate(live, eligible(candidate(races, key, beta)), nnull=200)
+        out[name] = {**{k: v[k] for k in keep}, "mode": "shadow"}
     return out
 
 
@@ -128,10 +149,14 @@ def main():
         return
     races = collect(Path(args.data_root) if args.data_root else ARCHIVE_ROOT)
     forward = [r for r in races if r["date"] >= START_DATE]
-    flagged = {name: sum(1 for r in forward for x in r["rows"] if key in x["keys"]) for name, (key, _b) in ARMS.items()}
+    flagged = {"OLD": sum(1 for r in forward for x in r["rows"] if x.get("old_horse")),
+               "TRES": sum(1 for r in forward for x in r["rows"] if abs(x.get("trainer_residual") or 0) >= 0.005),
+               "SUNIL": sum(1 for r in forward for x in r["rows"] if "second_up_nil" in x["keys"])}
     status = {"experiment": EXPERIMENT_ID, "start_date": START_DATE, "target_races": TARGET_RACES,
               "races_collected": len(forward), "race_days": len({r["date"] for r in forward}),
-              "arms": {k: {"tag": t, "beta": b} for k, (t, b) in ARMS.items()},
+              "arms": {"OLD": {"mode": "rollback", "field": "old_horse_feature", "live": -3.46},
+                       "TRES": {"mode": "rollback", "field": "trainer_residual_feature", "beta": 40.0},
+                       "SUNIL": {"mode": "shadow", "tag": "second_up_nil", "beta": -1.93}},
               "interim": {"horses_flagged": flagged, "note": "盲測：未夠數只報數量"},
               "outcomes_visible": len(forward) >= TARGET_RACES,
               "state": "evaluated" if len(forward) >= TARGET_RACES else "collecting",

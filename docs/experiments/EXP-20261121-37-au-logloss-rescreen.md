@@ -43,3 +43,9 @@
 `au_wong_choi_auto/scripts/au_age_upnil_forward.py`，排程 `step_age_upnil_forward`（evening），追蹤表 `age_upnil`：
 OLD −3.46、SUNIL −1.93 凍結；特徵讀引擎標籤 `old_horse`／`second_up_nil`（同 dashboard 一份定義）；2026-11-22 起新賽事先扣；
 夠 1,000 場用 `au_logloss_ruler` 逐個 arm 判一次（Holm 2）並凍結；未夠數只報數量。
+
+## Kelvin 決定（2026-11-22）：老馬實驗性上線 → 退回監察
+
+「上左先，跟住 forward 再測試要唔要拎走 … 老馬 should do this too if it is a pass」。老馬 −3.46 入綜合分
+（`au_racing_engine/people_overlays.py`，回退 `WC_AU_OLD_HORSE_LIVE=0`），連同練馬師剩餘表現（EXP-20261122-02）。
+`au_age_upnil_forward.py` 改做：OLD／TRES 上線版 vs 冇 overlay（rollback 監察，2026-11-23 起），SUNIL 照舊 shadow。

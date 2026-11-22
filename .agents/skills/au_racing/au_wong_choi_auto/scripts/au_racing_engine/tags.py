@@ -198,16 +198,33 @@ def _cycle_tags(eng):
     return out
 
 
-def _field_tags(eng):
+def _field_tags(eng, old_horse_feature=0.0):
     """馬齡、頂磅（EXP-20261121-34）。同馬房多匹、初次跑呢個場地：量過冇訊號而且太常見（35%／56% 嘅馬），唔出。"""
     out = []
     age = eng.horse_data.get("age")
     if isinstance(age, int) and age >= OLD_HORSE_AGE:
-        out.append(_tag("old_horse", f"{age} 歲老馬", "bad", why=_hist("old_horse")))
+        if old_horse_feature:
+            out.append(_tag("old_horse", f"{age} 歲老馬", "bad", scored=True, impact=old_horse_feature,
+                            why=f"綜合分 {old_horse_feature:+.2f}（實驗性上線 2026-11-22，EXP-20261121-37；forward 監察緊）。"
+                                + _hist("old_horse").replace("未入分。", "")))
+        else:
+            out.append(_tag("old_horse", f"{age} 歲老馬", "bad", why=_hist("old_horse")))
     if "top_weight" in set(getattr(eng, "risk_flags", []) or []):
         w = eng.horse_data.get("weight")
         out.append(_tag("top_weight", "讓賽頂磅" + (f"（{float(w):g}kg）" if w else ""), "note", why=_hist("top_weight")))
     return out
+
+
+def _trainer_residual_tag(eng, value):
+    """練馬師剩餘表現（實驗性上線 2026-11-22，EXP-20261122-02）。"""
+    v = float(value or 0.0)
+    if abs(v) < OVERLAY_FLOOR:
+        return []
+    trainer = eng._clean_identity(eng.horse_data.get("trainer"))
+    word = "跑贏" if v > 0 else "跑輸"
+    return [_tag("trainer_residual", f"練馬師近期{word}模型預期", "good" if v > 0 else "bad", scored=True, impact=v,
+                 why=f"{trainer or '練馬師'}之前出賽實際上名比模型按馬匹實力預計{'多' if v > 0 else '少'}（已扣坐騎質素同對手）；"
+                     f"綜合分 {v:+.2f}。實驗性上線 2026-11-22，forward 監察緊。")]
 
 
 def _prep_tags(eng):
@@ -257,11 +274,13 @@ def _driver_tags(eng, matrix_scores, covered):
     return out
 
 
-def build(eng, matrix_scores, *, wet_feature=0.0, draw_feature=0.0):
+def build(eng, matrix_scores, *, wet_feature=0.0, draw_feature=0.0, old_horse_feature=0.0,
+          trainer_residual_feature=0.0):
     """→ {"good": [...], "bad": [...], "note": [...]}；出錯 → {"_error": ...}。永遠唔郁分數。"""
     try:
         special = (_distance_tags(eng) + _track_tags(eng, wet_feature) + _people_tags(eng)
-                   + _draw_tag(eng, draw_feature) + _prep_tags(eng) + _cycle_tags(eng) + _field_tags(eng))
+                   + _draw_tag(eng, draw_feature) + _prep_tags(eng) + _cycle_tags(eng) + _field_tags(eng, old_horse_feature)
+                   + _trainer_residual_tag(eng, trainer_residual_feature))
         covered = set()
         if any(t["key"] in ("venue_specialist", "venue_poor") for t in special):
             covered.add("track")          # 場地維度由「場地專家／同場未上名」講晒

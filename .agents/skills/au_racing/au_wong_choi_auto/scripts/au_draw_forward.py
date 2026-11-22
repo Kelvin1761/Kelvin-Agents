@@ -52,8 +52,10 @@ def race_rows(logic, result_rows):
                "full_time": auto.get("full_time_speed_feature") or 0.0}
         if "draw_feature" not in auto:
             shipped = False
-        live_row = {**row, "draw": float(auto.get("draw_feature") or 0.0)}
-        base_row = {**row, "draw": 0.0}
+        live_row = {**row, "draw": float(auto.get("draw_feature") or 0.0),
+                    "old_horse": float(auto.get("old_horse_feature") or 0.0),
+                    "trainer_residual": float(auto.get("trainer_residual_feature") or 0.0)}
+        base_row = {**live_row, "draw": 0.0}   # 只差檔位（老馬／練馬師 overlay 兩邊一樣）
         live_row["ability"] = exact_score(live_row, MATRIX_WEIGHTS)
         base_row["ability"] = exact_score(base_row, MATRIX_WEIGHTS)
         live.append(live_row)

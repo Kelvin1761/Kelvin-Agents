@@ -127,7 +127,9 @@ def race_rows(logic: dict, result_rows: list, mobile: dict, fg: dict, race_day: 
         row = {"features": features, "wet": auto.get("wet_form_feature") or 0.0,
                "proven_class": auto.get("proven_class_feature") or 0.0,
                "full_time": auto.get("full_time_speed_feature") or 0.0,
-               "draw": float(auto.get("draw_feature") or 0.0)}
+               "draw": float(auto.get("draw_feature") or 0.0),
+               "old_horse": float(auto.get("old_horse_feature") or 0.0),
+               "trainer_residual": float(auto.get("trainer_residual_feature") or 0.0)}
         mob_runs = by_name.get(name)
         rows.append({"n": int(number) if str(number).isdigit() else 999, "pos": int(result["pos"]),
                      "base": exact_score(row, MATRIX_WEIGHTS),

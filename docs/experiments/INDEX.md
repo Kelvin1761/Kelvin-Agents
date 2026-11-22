@@ -599,3 +599,6 @@
 - [EXP-20261121-36](EXP-20261121-36-au-lay-scan.md) — AU lay（做莊）探索（Kelvin 2026-11-21）：BSP 全部 lay −0.07% 打和；模型唔睇好嘅熱門 lay 反而蝕（−4%），市場啱；冇 edge，唔開 forward
 - [EXP-20261121-37](EXP-20261121-37-au-logloss-rescreen.md) — 新 log-loss 尺重新篩選 9 個 walk-forward arm（預先登記，Holm）：**老馬 8 歲以上 −3.5 分 PASS**（Δ −0.00053、Holm <0.001）、**休後第二仗 0 上名 −1.9 分 PASS**；同程往績單獨過 Holm 後唔過；有選擇偏差，唔上線，要 forward
 - [EXP-20261121-38](EXP-20261121-38-au-heavy-overlay.md) — AU 大爛地 overlay（同一批 leaf 今日 Heavy 先調權重，Kelvin 唔想兩套公式）：24 個 walk-forward arm 新尺全部 REJECT（Holm 最細 0.64；加重近績／穩定性有害）；問題係往績點讀唔係權重，下一步試近績按場地相似度加權
+- [EXP-20261122-01](EXP-20261122-01-au-stewards-nsw.md) — AU NSW 競賽主任 PDF（WIDE／VET／TROUBLE）：場地代碼砌齊但批量抓觸發防機械人驗證（448 份得 1 份），唔繞過；Kelvin：得 NSW 唔夠，擱置
+- [EXP-20261122-02](EXP-20261122-02-au-people-residual.md) — AU 騎練「剩餘表現」（扣坐騎質素，walk-forward，唔用市場）：**練馬師 PASS**（Δ −0.00057、Holm 0.01、Gold +0.27／Good +0.40）；騎師方向正但 CI 跨零 REJECT；未上線，等 forward 決定
+- [EXP-20261122-03](EXP-20261122-03-au-people-prize.md) — AU 騎練「每仗平均獎金」（Kelvin 問代替勝率）：取代 REJECT（Gold −0.89）；加落現行／剩餘表現 log-loss 明顯好（平均 Δ −0.0021；**總獎金 Δ −0.0032**，Holm <0.001）但 Good 踩護欄 → 六個 arm 全 REJECT（T3 Gold +0.23 只差 Good 護欄）

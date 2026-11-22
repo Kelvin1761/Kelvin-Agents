@@ -93,7 +93,9 @@ def race_rows(logic, result_rows):
                "sp": result.get("sp"), "wet": auto.get("wet_form_feature") or 0.0,
                "proven_class": auto.get("proven_class_feature") or 0.0,
                "full_time": auto.get("full_time_speed_feature") or 0.0,
-               "draw": float(auto.get("draw_feature") or 0.0), "debut": is_debut}
+               "draw": float(auto.get("draw_feature") or 0.0), "debut": is_debut,
+               "old_horse": float(auto.get("old_horse_feature") or 0.0),
+               "trainer_residual": float(auto.get("trainer_residual_feature") or 0.0)}
         live_row = {**row, "features": dict(features)}
         base_row = {**row, "features": base_features}
         live_row["ability"] = exact_score(live_row, MATRIX_WEIGHTS)
