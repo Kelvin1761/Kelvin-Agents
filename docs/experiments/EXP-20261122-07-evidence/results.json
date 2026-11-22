@@ -1,0 +1,118 @@
+{
+ "S1": {
+  "verdict": "REJECT",
+  "reason": "gold_good_guardrail",
+  "checks": {
+   "logloss_ci_upper_below_0": true,
+   "gold_good_guardrail": false,
+   "beats_null": true
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   -0.0014633281928705592,
+   -0.0022110972059633262,
+   -0.0007456275899351902
+  ],
+  "beats_null_share": 1.0,
+  "gold_pp": [
+   -1.0934393638170974,
+   -1.964264381394428
+  ],
+  "good_pp": [
+   -0.46388336646785955,
+   -1.4658299965437418
+  ],
+  "capture5_pp": 0.35343494588027397,
+  "top2_any_hit_pp": 0.16567263088137837,
+  "p": 0.0,
+  "holm_p": 0.0
+ },
+ "S2": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": false,
+   "beats_null": true
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   -0.0005809840962211504,
+   -0.0015404640886478621,
+   0.0002863434982124083
+  ],
+  "beats_null_share": 1.0,
+  "gold_pp": [
+   -1.159708416169649,
+   -2.0536947647423
+  ],
+  "good_pp": [
+   -0.7952286282306162,
+   -1.9012673343915647
+  ],
+  "capture5_pp": 0.3838082615418599,
+  "top2_any_hit_pp": 0.5632869449966865,
+  "p": 0.1015,
+  "holm_p": 0.3045
+ },
+ "S3": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": false,
+   "beats_null": true
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   -5.566295264958187e-05,
+   -0.0008993786321825152,
+   0.0007566316893770051
+  ],
+  "beats_null_share": 1.0,
+  "gold_pp": [
+   -1.126573889993373,
+   -2.16568963633027
+  ],
+  "good_pp": [
+   -0.7289595758780649,
+   -1.8315423514538558
+  ],
+  "capture5_pp": 0.11873205213165453,
+  "top2_any_hit_pp": 0.09940357852882703,
+  "p": 0.4435,
+  "holm_p": 0.4435
+ },
+ "S4": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": false,
+   "beats_null": true
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   -0.0005550572010405387,
+   -0.0015704203833454852,
+   0.0005247028092561926
+  ],
+  "beats_null_share": 1.0,
+  "gold_pp": [
+   -1.126573889993373,
+   -2.035297402416248
+  ],
+  "good_pp": [
+   -0.7952286282306162,
+   -1.843215402783097
+  ],
+  "capture5_pp": 0.46388336646785955,
+  "top2_any_hit_pp": 0.26507620941020543,
+  "p": 0.149,
+  "holm_p": 0.3045
+ }
+}
