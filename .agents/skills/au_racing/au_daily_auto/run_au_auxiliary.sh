@@ -20,8 +20,9 @@ export WC_PRIMARY_REPO_ROOT WC_AU_PRODUCTION_ROOT WC_HKJC_PRODUCTION_ROOT
 export WC_TENNIS_PRODUCTION_ROOT WC_NBA_PRODUCTION_ROOT
 
 : "${WONGCHOI_AU_DATA_ROOT:=$HOME/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing}"
-: "${WONGCHOI_AU_MIRROR_ROOT:=/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/AU_Racing}"
-export WONGCHOI_AU_DATA_ROOT WONGCHOI_AU_MIRROR_ROOT
+# Google Drive 鏡像 2026-11-21 退役（Kelvin：冇人睇 Drive）。只有明確設定先鏡像。
+export WONGCHOI_AU_DATA_ROOT
+if [ -n "${WONGCHOI_AU_MIRROR_ROOT:-}" ]; then export WONGCHOI_AU_MIRROR_ROOT; fi
 
 NOTIFY_ENV="$HOME/.wongchoi_notify.env"
 [ -f "$NOTIFY_ENV" ] && source "$NOTIFY_ENV"

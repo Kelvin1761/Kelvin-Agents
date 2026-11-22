@@ -177,3 +177,22 @@ def test_empty_or_unreadable_scan_cannot_report_ok(tree, monkeypatch, capsys, de
     output = capsys.readouterr().out
     assert 'ERROR\tAU' in output
     assert 'OK\t' not in output
+
+
+def test_no_mirror_marker_means_mirror_retired_not_broken(tree, monkeypatch, capsys):
+    """2026-11-21 Kelvin 退役 Google Drive 鏡像：冇 marker = 冇設定，唔可以令 健康.sh 紅。"""
+    _, primary = tree
+    monkeypatch.setattr(mc, 'PLATFORMS', {'au': ('AU', 'marker', str(primary))})
+    monkeypatch.setattr(mc, '_mirror_root', lambda marker: None)
+    monkeypatch.setattr(sys, 'argv', ['mirror_consistency.py', '--check'])
+    assert mc.main() == 0
+    assert 'OK\tAU\t冇設定鏡像' in capsys.readouterr().out
+
+
+def test_a_configured_but_missing_mirror_still_fails(tree, monkeypatch, capsys):
+    mirror, primary = tree
+    monkeypatch.setattr(mc, 'PLATFORMS', {'au': ('AU', 'marker', str(primary))})
+    monkeypatch.setattr(mc, '_mirror_root', lambda marker: mirror / 'gone')
+    monkeypatch.setattr(sys, 'argv', ['mirror_consistency.py', '--check'])
+    assert mc.main() == 2
+    assert 'SKIP\tAU' in capsys.readouterr().out
