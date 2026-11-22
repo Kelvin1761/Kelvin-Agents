@@ -56,17 +56,28 @@ leakage audit、§6 功效前置、§7 正確性修正、多重比較、Kelvin �
 AU 賽前輸入重砌唔到（往績頁封頂 10 仗兼賽後抓、騎練率單一快照、官方評分只回溯一星期）。用 2026-08-05 起乾淨
 point-in-time 語料；每日 +60–80 場，語料自己變長。
 
-### 判法
-1. **主指標**：入頭三 log-loss（逐匹）。p = σ(a + α·(raw − 場均))；(a, α) baseline 同候選**各自** walk-forward fit
-   （每 7 個賽日重 fit，只用之前賽日；頭 20 個賽日只訓練唔計分）。Δlog-loss 95% CI 上界 < 0（賽日 bootstrap 2,000）。
-2. **護欄**：Gold、Good 各自 95% CI 下界 > −1.0pp。
+### 判法（v2，2026-11-23，EXP-20261123-01；`evaluate()` 預設）
+1. **主指標**：入頭三 log-loss（逐匹）。p = σ(a + α·(raw − 場均) + γ·logit(3/N))（N = 場內匹數；標籤係入頭三，
+   所以係 3/N，唔係派位數）；(a, α, γ) baseline 同候選**各自** walk-forward fit（每 7 個賽日重 fit，只用之前賽日；
+   頭 20 個賽日只訓練唔計分）。Δlog-loss 95% CI 上界 < 0（賽日 bootstrap 2,000）。
+2. **護欄**：場內 AUC Δ 95% CI 下界 > −0.0015，**而且** Gold、Good 點估計 > −1.0pp。
 3. **null**：好過 95% 場內洗牌 null（候選對 baseline 嘅 raw Δ 喺場內隨機排列）。
-4. 另報 Gold、Good、capture@5、頭二選有中、同 v3 判決（唔係閘）。
+4. 另報 Gold、Good（連 CI 下界）、場內 AUC、capture@5、頭二選有中、同 v3 判決（唔係閘）。
+
+**點解換（v1 → v2）**：同 HKJC EXP-20261122-33／-24 同一個問題，用 AU 數據重新量（門檻唔係照抄）：
+- 舊 Gold／Good CI 護欄對「同幅度、冇資訊」嘅改動只捉到 8/30（F1 幅度洗牌）；場內 AUC 下界 ≤ −0.0015 捉到 29/30，
+  真 F1（AUC 下界 −0.0011）唔會誤殺。剷走維度 18 個設定：舊護欄捉 7 個、AUC 捉 11 個。
+- 校準唔計馬匹數：baseline 絕對 log-loss 0.5693 → 0.5533（AU 馬匹數 5–20，變化大過 HKJC）；舊判決 Δ 幾乎唔變。
+
+**v1（2026-11-21）**：校準冇 γ；護欄 = Gold、Good 各自 95% CI 下界 > −1.0pp。`evaluate(..., version="v1")` 重現；
+v1 判咗嘅唔追溯改判；11-23 之前登記嘅 forward（PR1 shadow、馬齡／up-nil）照用 v1。
+`calibrations()`／`_nll()` 預設仲係 v1，因為 live 嘅練馬師剩餘表現表（`au_trainer_residual_table.py`）用緊 (a, α)。
 
 ### 其他
 - fit 類候選照舊要交 walk-forward 預測（v3 規矩）；leakage audit、§6 功效前置、§7 正確性修正、Holm 照舊。
 - **PASS ≠ 改善好多**：0.25% 馬加 0.3 分都過到（EXP-20261121-35）。上線仍然要睇幅度、護欄同 Kelvin 決定，並登記 forward 退回監察。
-- log-loss 好咗但 Gold／Good 踩護欄（例：EXP-20261111 F1，Δ −0.00107、Good 下界 −1.00）= REJECT；要上就係 Kelvin 揀。
+- （v1 時代）log-loss 好咗但 Gold／Good 踩護欄（例：EXP-20261111 F1，Δ −0.00107、Good 下界 −1.00）= REJECT。
+  v2 下 F1 喺舊 dump 會 PASS —— 舊判決唔追溯；要翻案就喺現行 live 上重建、當新候選重新跑（Kelvin 2026-11-23 要求全部重跑）。
 - **Kelvin 取捨（2026-11-22）**：「如果明顯改善 Good 同埋 1 hit 都可以諗」—— Gold 跌可以考慮接受，**前提係 Good 同頭二選有中
   兩個嘅 95% CI 下界都 > 0**。呢個唔係自動 PASS 路線：符合嘅候選要交 Kelvin 決定，而且要用新賽事 forward 確認
   （睇完結果先換判法 = 事後選擇）。第一個用呢條嘅係 EXP-20261122-05 PR1 shadow。
