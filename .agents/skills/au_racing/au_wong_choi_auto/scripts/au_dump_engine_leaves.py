@@ -133,7 +133,7 @@ def main():
             ctx["field_summary"] = _build_field_summary(horses)
             ctx["field_horse_names"] = [h.get("horse_name") for h in horses.values()
                                         if isinstance(h, dict) and h.get("horse_name")]
-            # 同 au_auto_orchestrator 一致：練馬師剩餘表現／騎練獎金 overlay 要全場名單（EXP-20261123-03 發現漏咗 →
+            # 同 au_auto_orchestrator 一致：練馬師剩餘表現／騎練獎金 overlay 要全場名單（EXP-20261123-06 發現漏咗 →
             # dump 入面 trainer_residual 永遠 0，baseline 唔係 live）。
             ctx["field_trainers"] = [h.get("trainer") for h in horses.values() if isinstance(h, dict) and h.get("trainer")]
             ctx["field_jockeys"] = [h.get("jockey") for h in horses.values() if isinstance(h, dict) and h.get("jockey")]

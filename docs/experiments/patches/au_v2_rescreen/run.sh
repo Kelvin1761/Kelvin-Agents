@@ -1,5 +1,5 @@
 #!/bin/zsh
-# EXP-20261123-03：舊候選喺現行 live（fcedd248）重建，v2 尺判。dump 全部寫外置碟。
+# EXP-20261123-06：舊候選喺現行 live（fcedd248）重建，v2 尺判。dump 全部寫外置碟。
 set -u
 cd "$(dirname "$0")/../../../.."
 D="/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/au-v2-rescreen-20261123"

@@ -6,7 +6,7 @@ index dd0e5733..49f4f5e1 100644
      return clip_score(60.0 + 0.6 * (clip_score(form) - 60.0) + 0.4 * (clip_score(quality) - 60.0))
  
  
-+# EXP-20261123-03 重建研究開關（預設 = 現行；EXP-20261111-31 F1 原樣）：WC_AU_FQ_SCALE=floor → 除數 = max(場內 SD, SD_POOL)。
++# EXP-20261123-06 重建研究開關（預設 = 現行；EXP-20261111-31 F1 原樣）：WC_AU_FQ_SCALE=floor → 除數 = max(場內 SD, SD_POOL)。
 +SD_POOL = 0.3065
 +
 +
@@ -29,7 +29,7 @@ index 2bd67b65..0e752f9f 100644
  
  
 +def _dry_parts_spg(r):
-+    """EXP-20261123-03 重建研究開關（預設關）：WC_AU_TRACK_SPECIALISM_ARM=SPG → 好地日照舊乾地規則讀好地往績（EXP-20261103-01 SPG 原樣）。"""
++    """EXP-20261123-06 重建研究開關（預設關）：WC_AU_TRACK_SPECIALISM_ARM=SPG → 好地日照舊乾地規則讀好地往績（EXP-20261103-01 SPG 原樣）。"""
 +    import os
 +    if os.environ.get("WC_AU_TRACK_SPECIALISM_ARM", "") != "SPG" or not r["complete"]:
 +        return []

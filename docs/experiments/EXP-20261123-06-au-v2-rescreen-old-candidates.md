@@ -1,4 +1,4 @@
-# EXP-20261123-03 AU 舊候選用 v2 尺重跑 —— **F1（近績 SD 下限）喺現行 live 上 PASS；SPG PASS 但細到冇實際意義**
+# EXP-20261123-06（原誤編 EXP-20261123-03，同 HKJC 頭二尺撞號，2026-11-23 改）AU 舊候選用 v2 尺重跑 —— **F1（近績 SD 下限）喺現行 live 上 PASS；SPG PASS 但細到冇實際意義**
 
 - 日期：2026-11-23　平台：AU　類型：重篩＋重建（冇改 live；上唔上線係 Kelvin 決定）
 - 起因：Kelvin 2026-11-23「所有舊判決當新候選重新跑，目標係更好嘅模型」；把尺 v2 已獨立上線（`fcedd248`，EXP-20261123-01）。
@@ -7,7 +7,7 @@
 
 ## 第一步：篩（舊 dump，v2，null 0）
 
-外置碟 24 對 base／arm 目錄、81 個 arm（`EXP-20261123-03-evidence/screen.txt`）。v2 下 log-loss CI 上界 < 0 而且 AUC 護欄過：
+外置碟 24 對 base／arm 目錄、81 個 arm（`EXP-20261123-06-evidence/screen.txt`）。v2 下 log-loss CI 上界 < 0 而且 AUC 護欄過：
 
 | arm | 狀態 | 處理 |
 |---|---|---|

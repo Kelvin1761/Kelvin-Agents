@@ -1,4 +1,4 @@
-"""EXP-20261123-03 判決：v2 尺（null 200），Holm（arm 數），連 wiring 檢查（幾多匹馬分數郁咗）。"""
+"""EXP-20261123-06 判決：v2 尺（null 200），Holm（arm 數），連 wiring 檢查（幾多匹馬分數郁咗）。"""
 import json
 import sys
 from pathlib import Path

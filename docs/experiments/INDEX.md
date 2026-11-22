@@ -626,4 +626,4 @@
 - [EXP-20261123-03](EXP-20261123-03-hkjc-top2-ruler.md) — 頭二尺 v5.2：爭勝馬（兩模型頭四聯集）頭二 PL 損失；舊頭二計法連剷一半騎練都量唔到，新尺捉到剷維度同雜訊；舊 PASS 全部照過；J3 頭二 z −2.6
 - [EXP-20261123-04](EXP-20261123-04-hkjc-j3-top2-variants.md) — J3 頭二向四改法（換目標、半力度、保護頭二）dev 頭二入頭三全部 < 0 → REJECT；J3h 保住 11-22 頭二但未過；Kelvin 暫停 J3
 - [EXP-20261123-05](EXP-20261123-05-hkjc-rating-drop-switch-return.md) — 評分跌 ≥10＋近仗轉程／配備＋今仗返首本組合：+0.2／−0.9pp 冇訊號（模型已經反映）
-- [EXP-20261123-03](EXP-20261123-03-au-v2-rescreen-old-candidates.md) — AU 舊候選用 v2 尺重跑：81 個舊 arm 篩出 F1（近績 SD 下限）同 SPG；喺現行 live 重建 F1 PASS（Δ −0.00171、AUC CI 全正、Gold／Good／頭二選正），SPG PASS 但細到唔建議；dump 工具補 field_trainers（之前 baseline 冇練馬師剩餘表現）；上唔上線待 Kelvin
+- [EXP-20261123-06](EXP-20261123-06-au-v2-rescreen-old-candidates.md) — AU 舊候選用 v2 尺重跑：81 個舊 arm 篩出 F1（近績 SD 下限）同 SPG；喺現行 live 重建 F1 PASS（Δ −0.00171、AUC CI 全正、Gold／Good／頭二選正），SPG PASS 但細到唔建議；dump 工具補 field_trainers（之前 baseline 冇練馬師剩餘表現）；上唔上線待 Kelvin
