@@ -613,3 +613,6 @@
 - [EXP-20261122-23](EXP-20261122-23-hkjc-distance-up-centred-fit.md) — 大幅增程 β 改場內置中估法：C0／C1／C3 dev 全 REJECT；新領域喺同場比較冇額外訊號，估法唔係原因
 - [EXP-20261122-24](EXP-20261122-24-hkjc-replay-ruler-v5-field-size.md) — 回放尺 v5：校準加馬匹數；baseline log-loss dev 0.5070→0.5015；7 個舊判決全部唔變；取代 v4 做新判決器
 - [EXP-20261122-25](EXP-20261122-25-hkjc-distance-up-proven-replace.md) — 證明過路程就唔扣大幅增程（取代式，v5）：P1／P2 dev REJECT；證明過嘅馬增程照樣跑差，扣分應得
+- [EXP-20261122-26](EXP-20261122-26-hkjc-distance-up-prep-return.md) — 休後縮程熱身再返首本唔扣大幅增程（W1，v5）：dev 顯著變差 REJECT；呢批馬扣咗分仲係高估
+- [EXP-20261122-27](EXP-20261122-27-hkjc-distance-up-mechanism-and-layoff.md) — 大幅增程改為打折段速優勢（M1／M2）dev REJECT；同題已試 12 版停手；休後復出（休幾耐／第幾仗）兩窗唔一致，冇訊號
+- [EXP-20261122-28](EXP-20261122-28-hkjc-v5-residual-scan.md) — v5 全面殘差掃描：冇一項兩窗都顯著；dev 狀態／段速／近績高嘅馬高估，holdout 淡咗；場地班次馬匹數偏差計 N 後消失
