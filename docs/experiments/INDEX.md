@@ -617,3 +617,8 @@
 - [EXP-20261122-27](EXP-20261122-27-hkjc-distance-up-mechanism-and-layoff.md) — 大幅增程改為打折段速優勢（M1／M2）dev REJECT；同題已試 12 版停手；休後復出（休幾耐／第幾仗）兩窗唔一致，冇訊號
 - [EXP-20261122-28](EXP-20261122-28-hkjc-v5-residual-scan.md) — v5 全面殘差掃描：冇一項兩窗都顯著；dev 狀態／段速／近績高嘅馬高估，holdout 淡咗；場地班次馬匹數偏差計 N 後消失
 - [EXP-20261122-33](EXP-20261122-33-hkjc-ruler-guard-v51.md) — 回放尺護欄 v5.1：Gold／Good CI 護欄冇靈敏度（剷走狀態維度 Good 仲升；同幅度雜訊捉 14/30）→ 改場內 AUC CI 下界 > −0.0015 ＋ Gold／Good 點估計 > −1pp；唔追溯
+- [EXP-20261122-29](EXP-20261122-29-hkjc-l400-standardised-replay.md) — L400 按場地路程標準化（6,047 場引擎重跑）：L1 −0.00010 CI 跨零、L2 剷走 L400 差咗 → REJECT；L400 有 FT 冇嘅資訊
+- [EXP-20261123-02](EXP-20261123-02-hkjc-sectional-joint.md) — 段速／場地一齊入（L400 標準化＋泥地相對草地＋泥地前段＋直路往績，喺 J3 之上）：SJ／SJ0 dev REJECT；覆蓋太窄
+- [EXP-20261122-31](EXP-20261122-31-hkjc-samedist-vs-own-average.md) — 同程上名率比自己平均低 >0.25 殘差 −4.0／−4.1；R1 dev 過、holdout CI 跨零 REJECT；R2 REJECT；同程上名率高唔罕見（11%）
+- [EXP-20261122-32](EXP-20261122-32-hkjc-samedist-class-and-wins.md) — 同程贏過冇額外價值；同程高班上名 +1.4／+1.6 但 K1／K2 REJECT；細訊號功效算術（1.4pp × 9% ≈ 0.00005 vs 尺 ±0.0003）
+- [EXP-20261122-34](EXP-20261122-34-hkjc-joint-signals-j3.md) — 聯合訊號 J3（J1 13 項＋同程 4 項）v5.1 holdout −0.00152、AUC +0.0032、Gold +0.64、Good +0.99（舊護欄都過）→ Kelvin 決定暫時唔上（頭二冇改善）
