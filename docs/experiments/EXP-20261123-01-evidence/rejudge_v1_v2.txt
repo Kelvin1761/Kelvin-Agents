@@ -1,0 +1,19 @@
+F1｜v1 REJECT/gold_good_guardrail Δ -0.00107 [-0.00161,-0.00053] Gold +0.10(-0.35) Good -0.37(-1.00) AUC +0.039[-0.110] null 1.0
+  ｜v2 PASS/logloss_supported_gain Δ -0.00122 [-0.00177,-0.00067] Gold +0.10(-0.35) Good -0.37(-1.00) AUC +0.039[-0.110] null 1.0
+F2｜v1 REJECT/gold_good_guardrail Δ -0.00082 [-0.00159,-0.00004] Gold +0.13(-0.38) Good -0.34(-1.06) AUC -0.013[-0.169] null 1.0
+  ｜v2 REJECT/auc_guardrail Δ -0.00106 [-0.00184,-0.00027] Gold +0.13(-0.38) Good -0.34(-1.06) AUC -0.013[-0.169] null 1.0
+G50｜v1 REJECT/logloss_ci_upper_below_0 Δ +0.00074 [+0.00021,+0.00124] Gold -0.18(-0.87) Good -0.12(-1.00) AUC -0.198[-0.356] null 0.9
+   ｜v2 REJECT/logloss_ci_upper_below_0 Δ +0.00078 [+0.00023,+0.00129] Gold -0.18(-0.87) Good -0.12(-1.00) AUC -0.198[-0.356] null 0.89
+G25｜v1 REJECT/logloss_ci_upper_below_0 Δ +0.00258 [+0.00171,+0.00341] Gold -0.65(-1.46) Good -0.68(-1.84) AUC -0.590[-0.811] null 0.91
+   ｜v2 REJECT/logloss_ci_upper_below_0 Δ +0.00269 [+0.00178,+0.00354] Gold -0.65(-1.46) Good -0.68(-1.84) AUC -0.590[-0.811] null 0.89
+31-S｜v1 REJECT/logloss_ci_upper_below_0 Δ +0.00016 [-0.00039,+0.00078] Gold -0.47(-1.40) Good -0.28(-1.37) AUC -0.042[-0.255] null 1.0
+    ｜v2 REJECT/logloss_ci_upper_below_0 Δ +0.00015 [-0.00042,+0.00079] Gold -0.47(-1.40) Good -0.28(-1.37) AUC -0.042[-0.255] null 1.0
+31-S0｜v1 REJECT/logloss_ci_upper_below_0 Δ +0.00014 [-0.00030,+0.00063] Gold -0.63(-1.47) Good -0.04(-0.85) AUC -0.041[-0.210] null 0.98
+     ｜v2 REJECT/logloss_ci_upper_below_0 Δ +0.00013 [-0.00032,+0.00063] Gold -0.63(-1.47) Good -0.04(-0.85) AUC -0.041[-0.210] null 0.98
+33-SH｜v1 REJECT/logloss_ci_upper_below_0 Δ +0.00057 [-0.00006,+0.00125] Gold -0.47(-1.33) Good -0.24(-1.34) AUC -0.182[-0.368] null 0.97
+     ｜v2 REJECT/logloss_ci_upper_below_0 Δ +0.00057 [-0.00007,+0.00128] Gold -0.47(-1.33) Good -0.24(-1.34) AUC -0.182[-0.368] null 0.98
+37-GW｜v1 REJECT/logloss_ci_upper_below_0 Δ +0.00007 [-0.00054,+0.00070] Gold +0.12(-0.74) Good -0.36(-1.22) AUC -0.079[-0.269] null 0.99
+     ｜v2 REJECT/logloss_ci_upper_below_0 Δ +0.00006 [-0.00057,+0.00070] Gold +0.12(-0.74) Good -0.36(-1.22) AUC -0.079[-0.269] null 0.99
+37-GWX｜v1 REJECT/logloss_ci_upper_below_0 Δ -0.00010 [-0.00078,+0.00061] Gold -0.04(-1.05) Good -0.24(-1.16) AUC -0.136[-0.375] null 1.0
+      ｜v2 REJECT/logloss_ci_upper_below_0 Δ -0.00013 [-0.00083,+0.00060] Gold -0.04(-1.05) Good -0.24(-1.16) AUC -0.136[-0.375] null 1.0
+（P／P1／P2 prior-odds arm 未跑完就停咗：null 100 太慢；呢三個 v1 已經係 log-loss／護欄 REJECT，唔影響把尺決定）

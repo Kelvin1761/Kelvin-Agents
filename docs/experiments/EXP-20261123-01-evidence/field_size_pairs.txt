@@ -1,0 +1,10 @@
+F1 v1 REJECT gold_good_guardrail Δ -0.00107 [-0.00161,-0.00053] null 1.0｜n3 REJECT gold_good_guardrail Δ -0.00122 [-0.00177,-0.00067] null 1.0｜np REJECT gold_good_guardrail Δ -0.00120 [-0.00176,-0.00066] null 1.0
+F2 v1 REJECT gold_good_guardrail Δ -0.00082 [-0.00159,-0.00004] null 1.0｜n3 REJECT gold_good_guardrail Δ -0.00106 [-0.00184,-0.00027] null 1.0｜np REJECT gold_good_guardrail Δ -0.00105 [-0.00182,-0.00026] null 1.0
+G50 v1 REJECT logloss_ci_upper_below_0 Δ +0.00074 [+0.00021,+0.00124] null 0.9｜n3 REJECT logloss_ci_upper_below_0 Δ +0.00078 [+0.00023,+0.00129] null 0.89｜np REJECT logloss_ci_upper_below_0 Δ +0.00076 [+0.00022,+0.00127] null 0.9
+G25 v1 REJECT logloss_ci_upper_below_0 Δ +0.00258 [+0.00171,+0.00341] null 0.91｜n3 REJECT logloss_ci_upper_below_0 Δ +0.00269 [+0.00178,+0.00354] null 0.89｜np REJECT logloss_ci_upper_below_0 Δ +0.00264 [+0.00174,+0.00349] null 0.89
+31-S v1 REJECT logloss_ci_upper_below_0 Δ +0.00016 [-0.00039,+0.00078] null 1.0｜n3 REJECT logloss_ci_upper_below_0 Δ +0.00015 [-0.00042,+0.00079] null 1.0｜np REJECT logloss_ci_upper_below_0 Δ +0.00015 [-0.00041,+0.00078] null 1.0
+31-S0 v1 REJECT logloss_ci_upper_below_0 Δ +0.00014 [-0.00030,+0.00063] null 0.98｜n3 REJECT logloss_ci_upper_below_0 Δ +0.00013 [-0.00032,+0.00063] null 0.98｜np REJECT logloss_ci_upper_below_0 Δ +0.00013 [-0.00031,+0.00062] null 0.98
+33-SH v1 REJECT logloss_ci_upper_below_0 Δ +0.00057 [-0.00006,+0.00125] null 0.97｜n3 REJECT logloss_ci_upper_below_0 Δ +0.00057 [-0.00007,+0.00128] null 0.98｜np REJECT logloss_ci_upper_below_0 Δ +0.00057 [-0.00007,+0.00126] null 0.98
+37-GW v1 REJECT logloss_ci_upper_below_0 Δ +0.00007 [-0.00054,+0.00070] null 0.99｜n3 REJECT logloss_ci_upper_below_0 Δ +0.00006 [-0.00057,+0.00070] null 0.99｜np REJECT logloss_ci_upper_below_0 Δ +0.00005 [-0.00056,+0.00069] null 0.99
+37-GWX v1 REJECT logloss_ci_upper_below_0 Δ -0.00010 [-0.00078,+0.00061] null 1.0｜n3 REJECT logloss_ci_upper_below_0 Δ -0.00013 [-0.00083,+0.00060] null 1.0｜np REJECT logloss_ci_upper_below_0 Δ -0.00013 [-0.00081,+0.00059] null 1.0
+（P／P1／P2 prior-odds arm 未跑完就停咗：null 100 太慢；呢三個 v1 已經係 log-loss／護欄 REJECT，唔影響把尺決定）
