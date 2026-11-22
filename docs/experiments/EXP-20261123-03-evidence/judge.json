@@ -1,0 +1,72 @@
+{
+ "F1": {
+  "verdict": "PASS",
+  "reason": "logloss_supported_gain",
+  "version": "v2",
+  "checks": {
+   "logloss_ci_upper_below_0": true,
+   "auc_guardrail": true,
+   "beats_null": true
+  },
+  "races": 3528,
+  "days": 89,
+  "dlogloss": [
+   -0.001707930217292071,
+   -0.002245468936591686,
+   -0.0011987056790238862
+  ],
+  "beats_null_share": 1.0,
+  "gold_pp": [
+   0.17006802721088435,
+   -0.22266380763913263
+  ],
+  "good_pp": [
+   0.25510204081632654,
+   -0.22121780659679183
+  ],
+  "auc_delta": [
+   0.0012774370271535806,
+   0.00012197023727952509,
+   0.0024593976105518884
+  ],
+  "capture5_pp": 0.23620559334845043,
+  "top2_any_hit_pp": 0.2834467120181406,
+  "wiring_horses_moved": 20835,
+  "holm_p": 0.0
+ },
+ "SPG": {
+  "verdict": "PASS",
+  "reason": "logloss_supported_gain",
+  "version": "v2",
+  "checks": {
+   "logloss_ci_upper_below_0": true,
+   "auc_guardrail": true,
+   "beats_null": true
+  },
+  "races": 3528,
+  "days": 89,
+  "dlogloss": [
+   -6.412749873515348e-05,
+   -0.00011798596449484746,
+   -1.0692696699808315e-05
+  ],
+  "beats_null_share": 0.995,
+  "gold_pp": [
+   -0.02834467120181406,
+   -0.21453247413032434
+  ],
+  "good_pp": [
+   0.11337868480725624,
+   -0.09042343191137654
+  ],
+  "auc_delta": [
+   -0.00010788740947471116,
+   -0.0005323791073754924,
+   0.0003095739854356961
+  ],
+  "capture5_pp": -0.028344671201814043,
+  "top2_any_hit_pp": -0.08503401360544217,
+  "wiring_horses_moved": 23904,
+  "holm_p": 0.0050000000000000044
+ }
+}
