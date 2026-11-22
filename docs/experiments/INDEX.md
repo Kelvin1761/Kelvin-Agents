@@ -606,3 +606,4 @@
 - [EXP-20261122-05](EXP-20261122-05-au-performance-rating.md) — AU 自砌表現評分（輸距＋負磅＋22×log 獎金，Kelvin「反映馬匹實力」）：對舊 baseline PR1／PR2／PR3 PASS（PR2 Δ −0.00103、Holm <0.001），取代近績質素分有害；但疊喺 11-22 live（練馬師剩餘表現＋R2）之上全部 REJECT（Gold 跌踩護欄）→ 唔上，下一步係重新設計實力維度
 - [EXP-20261122-06](EXP-20261122-06-au-prior-odds-logloss.md) — AU 上仗賠率用新 log-loss 尺重判：三個 arm 冇改善（Δ ≈ 0）、Gold −0.9 → REJECT，同 EXP-20261116-01 一致
 - [EXP-20261122-07](EXP-20261122-07-au-ability-redesign.md) — AU 實力重新設計（近績穩定性 leaf 混入表現評分，改 leaf 唔疊 overlay，Kelvin「試下佢」）：四個 arm 疊喺 live 之上全部 REJECT（Gold 全跌 > 1pp）；表現評分路暫停，等 forward
+- [EXP-20261122-08](EXP-20261122-08-au-l600-standard-logloss-rejudge.md) — AU L600 標準（EXP-31／33／37 七個 arm）用新 log-loss 尺重判：全部 REJECT（Δ ≈ 0、頭二選有中跌 0.5–1.2pp）→「準咗反而差」係真，唔使同其他改動一齊重新設計
