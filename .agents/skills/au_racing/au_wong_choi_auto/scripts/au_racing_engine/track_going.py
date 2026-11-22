@@ -135,12 +135,26 @@ def _wet_parts(r, bucket):
     return []
 
 
+def _dry_parts_spg(r):
+    """EXP-20261123-03 重建研究開關（預設關）：WC_AU_TRACK_SPECIALISM_ARM=SPG → 好地日照舊乾地規則讀好地往績（EXP-20261103-01 SPG 原樣）。"""
+    import os
+    if os.environ.get("WC_AU_TRACK_SPECIALISM_ARM", "") != "SPG" or not r["complete"]:
+        return []
+    if r["places"]:
+        return [(min(10.0, 0.8 * r["places"]), f"好地有上名（{r['places']}／{r['starts']}）")]
+    if r["starts"] >= 2:
+        return [(-3.46, f"好地 {r['starts']} 戰未有前列")]
+    if r["starts"]:
+        return [(-3.0, "好地 1 戰未有成績")]
+    return []
+
+
 def track_score(recs, going):
     """recs = `records(...)` → (分數, 同場 parts, 地況 parts)；parts = [(加減, 說明)]。"""
     same = _same_part(recs["同場"])
     same_parts = [same] if same else []
     bucket = going_bucket(going)
-    going_parts = _wet_parts(recs[bucket], bucket) if bucket != "好地" else []
+    going_parts = _wet_parts(recs[bucket], bucket) if bucket != "好地" else _dry_parts_spg(recs["好地"])
     score = NEUTRAL
     for delta, _ in same_parts + going_parts:
         score += delta
