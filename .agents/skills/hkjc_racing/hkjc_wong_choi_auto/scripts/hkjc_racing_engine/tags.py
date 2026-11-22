@@ -734,7 +734,9 @@ def _style_vs_band(det: dict) -> float:
     return cells.get(f"{g}|{st}|{band}", 0.0) - mean
 
 
-def _draw_tags(horse: dict, auto: dict) -> list[dict]:
+def _draw_tags(horse: dict, auto: dict, field_dim_mean: float = 0.0) -> list[dict]:
+    """field_dim_mean：全場檔位分影響（原始尺）平均。排名只睇同場比較，所以檔位分要對全場平均先講優／劣勢——
+    以前對固定中心 63 計，令「檔位中性」嘅中檔馬都出「劣勢」（Kelvin 2026-11-22）。逐檔修正、跑法×檔位本身已場內置中。"""
     det = auto.get("draw_style_detail") or {}
     try:
         d = int(horse.get("barrier") or horse.get("draw") or det.get("draw") or 0)
@@ -743,7 +745,7 @@ def _draw_tags(horse: dict, auto: dict) -> list[dict]:
     if d <= 0:
         return []
     band = _band(d)
-    dim = _impact(auto, "race_shape") or 0.0
+    dim = (_impact(auto, "race_shape") or 0.0) - field_dim_mean
     style_part, curve_part = float(det.get("style_part") or 0.0), float(det.get("curve_part") or 0.0)
     diff = _style_vs_band(det) if det else 0.0
     style_named = abs(diff) >= STYLE_NAME_MIN and (diff > 0) == (style_part > 0) and abs(style_part) >= DRIVER_FLOOR
@@ -761,7 +763,7 @@ def _draw_tags(horse: dict, auto: dict) -> list[dict]:
         good = total > 0
         named_here = style_named and not misfit and (style_part > 0) == good
         label = f"{_BAND_WORD[band]}{style if named_here else ''}{'優勢' if good else '劣勢'}（{d}檔）"
-        why = (f"{dim_why + '。' if dim_why else ''}組成（原始分）：檔位分 {dim:+.1f}、{place} {d} 檔歷史修正 {curve_part:+.1f}"
+        why = (f"{dim_why + '。' if dim_why else ''}組成（原始分，對全場平均）：檔位分 {dim:+.1f}、{place} {d} 檔歷史修正 {curve_part:+.1f}"
                + ("" if misfit else f"、跑法×檔位 {style_part:+.1f}") + f"。{basis}"
                + ("呢段檔位對呢個跑法特別有利／不利，所以寫埋跑法名。" if named_here else ""))
         out.append(_tag("draw", label, "good" if good else "bad", why=why, scored=True, impact=round(total, 2)))
@@ -882,9 +884,12 @@ def race_tags(logic_data: dict, meeting_dir: Path | None = None) -> dict:
         for source in (_purton_tags(horses, runs_by_no), _fastest_finisher(horses), _race_people_tags(horses, meta)):
             for no, items in source.items():
                 extra.setdefault(no, []).extend(items)
+        dims = [_impact(h["python_auto"], "race_shape") for h in horses.values()]
+        dims = [x for x in dims if x is not None]
+        field_dim_mean = sum(dims) / len(dims) if len(dims) >= 2 else 0.0   # 得一匹（測試）= 冇對手可比
         for no, h in horses.items():
             extra.setdefault(no, []).extend(_debut_trainer_tag(h, meta) + _foreign_tag(h) + _form_pattern_tags(h, meta)
-                                            + _draw_tags(h, h["python_auto"]) + _incident_tag(h["python_auto"])
+                                            + _draw_tags(h, h["python_auto"], field_dim_mean) + _incident_tag(h["python_auto"])
                                             + _trainer_pattern_tags(h, meta, gear.get(no, [])))
             tp = {t["key"].split(":", 1)[1] for t in extra[no] if t["key"].startswith("trainer_pattern:")}
             extra[no].extend(_gear_tags(gear.get(no, []), tp) + _backup_tag(h["python_auto"]) + _next_entry_tag(h))

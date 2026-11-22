@@ -611,3 +611,5 @@
 - [EXP-20261122-08](EXP-20261122-08-au-l600-standard-logloss-rejudge.md) — AU L600 標準（EXP-31／33／37 七個 arm）用新 log-loss 尺重判：全部 REJECT（Δ ≈ 0、頭二選有中跌 0.5–1.2pp）→「準咗反而差」係真，唔使同其他改動一齊重新設計
 - [EXP-20261122-22](EXP-20261122-22-hkjc-distance-up-definition.md) — 大幅增程重新定義（新領域 ≥200／降門檻 200）dev 三個 REJECT；殘差大部分係場間（長途成場新），入分場內置中捉唔到；維持 D1
 - [EXP-20261122-23](EXP-20261122-23-hkjc-distance-up-centred-fit.md) — 大幅增程 β 改場內置中估法：C0／C1／C3 dev 全 REJECT；新領域喺同場比較冇額外訊號，估法唔係原因
+- [EXP-20261122-24](EXP-20261122-24-hkjc-replay-ruler-v5-field-size.md) — 回放尺 v5：校準加馬匹數；baseline log-loss dev 0.5070→0.5015；7 個舊判決全部唔變；取代 v4 做新判決器
+- [EXP-20261122-25](EXP-20261122-25-hkjc-distance-up-proven-replace.md) — 證明過路程就唔扣大幅增程（取代式，v5）：P1／P2 dev REJECT；證明過嘅馬增程照樣跑差，扣分應得

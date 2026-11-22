@@ -95,6 +95,17 @@ class DrawTagTest(unittest.TestCase):
         det = {"group": "STS", "style": "M", "draw": 6, "style_part": 0.2, "curve_part": -0.3}
         self.assertEqual(_draw_tags({"barrier": "6"}, self._auto(0.1, det)), [])
 
+    def test_dim_is_relative_to_field_mean(self):
+        from hkjc_racing_engine.tags import _draw_tags
+        # Kelvin 2026-11-22：天將龍駒 7 檔檔位分 −0.4（對固定中心 63），全場平均 −0.5 → 對手比其實冇劣勢
+        det = {"group": "STL", "style": "M", "draw": 7, "style_part": 0.0, "curve_part": -0.2}
+        self.assertEqual([x["label"] for x in _draw_tags({"barrier": "7"}, self._auto(-0.4, det))], ["中檔劣勢（7檔）"])  # 舊：對中心 63
+        t = _draw_tags({"barrier": "7"}, self._auto(-0.4, det), field_dim_mean=-0.5)
+        self.assertEqual(t, [])
+        t = _draw_tags({"barrier": "7"}, self._auto(-1.4, det), field_dim_mean=-0.5)
+        self.assertEqual([x["label"] for x in t], ["中檔劣勢（7檔）"])
+        self.assertAlmostEqual(t[0]["impact"], -1.1, places=2)
+
 
 if __name__ == "__main__":
     unittest.main()
