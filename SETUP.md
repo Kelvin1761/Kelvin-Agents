@@ -127,7 +127,7 @@ clone 完之後，跑 `./bootstrap.sh`（或 Windows 嘅 `bootstrap.ps1`）就�
 
 ### 2.1 設定資料位置（DATA_ROOT）
 
-啲大型資料夾（`Wong Choi Horse Race Analysis`、`Wong Choi NBA Analysis`、`Wong Choi Tennis Analysis`、`NBA_ML_Dataset` 等）唔入 git，通常留喺 Google Drive。`wongchoi_paths.py` 會用以下次序搵佢哋：
+啲大型資料夾（`Wong Choi Horse Race Analysis`、`Wong Choi NBA Analysis`、`Wong Choi Tennis Analysis`、`NBA_ML_Dataset` 等）唔入 git，放喺本機 `~/WongChoiData`（2026-11-21 起唔再用 Google Drive）。`wongchoi_paths.py` 會用以下次序搵佢哋：
 
 1. 環境變數 `WONGCHOI_DATA_ROOT`
 2. repo root 嘅 `.wongchoi_data_root` 檔（一行路徑，唔入 git）
@@ -136,8 +136,8 @@ clone 完之後，跑 `./bootstrap.sh`（或 Windows 嘅 `bootstrap.ps1`）就�
 設定方法（揀一個）：
 
 ```bash
-# macOS 例子：指向 Google Drive 嘅 Antigravity 資料夾
-echo "/Users/<you>/Library/CloudStorage/GoogleDrive-<acct>/我的雲端硬碟/Antigravity Shared/Antigravity" > .wongchoi_data_root
+# macOS：本機資料根（唔好指去 Google Drive —— 見 AGENTS.md「Google Drive 已退役」）
+echo "$HOME/WongChoiData" > .wongchoi_data_root
 ```
 
 ```powershell
@@ -166,17 +166,12 @@ HKJC 對應設定係 `WONGCHOI_HK_DATA_ROOT` / `.wongchoi_hk_data_root`，fallba
 ```bash
 # macOS（本機硬碟＝source of truth）
 echo "$HOME/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing" > .wongchoi_au_data_root
-# 鏡像返 Drive（同一套次序：WONGCHOI_AU_MIRROR_ROOT 或者呢個檔）
-echo "$(cat .wongchoi_data_root)/Wong Choi Horse Race Analysis/AU_Racing" > .wongchoi_au_mirror_root
-
-# HKJC 新季 forward automation（本機 primary + Drive mirror）
 echo "$HOME/WongChoiData/Wong Choi Horse Race Analysis/HK_Racing" > .wongchoi_hk_data_root
-echo "$(cat .wongchoi_data_root)/Wong Choi Horse Race Analysis/HK_Racing" > .wongchoi_hk_mirror_root
 ```
 
-`WONGCHOI_AU_MIRROR_ROOT` / `WONGCHOI_HK_MIRROR_ROOT` 係另一半：引擎讀寫
-本機，跑完之後把動過嘅場次夾鏡像返 Drive，令 Kelvin 同 Windows 機仍然喺
-原本位置睇到分析。
+`WONGCHOI_AU_MIRROR_ROOT` / `WONGCHOI_HK_MIRROR_ROOT`（或者 `.wongchoi_*_mirror_root`）
+可以將動過嘅場次鏡像去第二個位置，但 **2026-11-21 起唔設定** —— Google Drive 鏡像已退役，
+冇 marker 就唔鏡像，`健康.sh` 當正常。下面係當年用 Drive 時量到嘅權限，留低做背景。
 
 **launchd 對 CloudStorage 嘅權限係一半一半**（2026-08-05 連續探測三次，結果一致）：
 

@@ -123,6 +123,17 @@ Mac 內置碟淨 ~15GB。2026-10-12 一個 AU 消融實驗喺 `/private/tmp` 抄
   `meeting / "Prediction_Snapshots"` 會睇到空資料夾 —— `test_offload_prediction_snapshots.py`
   會攔。要攞返一個場次：`--restore <場次名>`（同名就加 `--platform`）。
 
+### Google Drive 已退役（Kelvin 2026-11-21）
+
+Wong Choi 唔再讀寫 Google Drive：`.wongchoi_data_root` 指 `~/WongChoiData`，冇
+`.wongchoi_au_mirror_root`／`.wongchoi_hk_mirror_root`，Tennis 報告寫
+`~/WongChoiData/Wong Choi Tennis Analysis`，`~/.wongchoi_cold_mirror_root` 已停用。
+`mirror_consistency.py` 當「冇 marker」係正常。**唔好重新加 Drive 路徑做資料根、鏡像或者冷備份**
+—— launchd 讀 CloudStorage 會 `PermissionError` 或者無聲卡死（Drive app 冇開就一讀就 hang）。
+只存喺 Drive 嘅舊資料已抄去
+`/Volumes/Kelvin Hardisk 1/WongChoi-Archive/gdrive-export-20261121/`。
+注意：而家冇屋企以外嘅備份副本；要加就揀一個 launchd 讀寫得到嘅目的地。
+
 ### commit 同 push
 
 用 `./保存.sh --path <今次scope> "commit message"`。佢會交畀 Central release
@@ -439,9 +450,8 @@ HKJC unattended scheduler：
 賽後 unified reflector、每週 Telegram review 同 candidate PR approval gate。
 候選只會建立 non-draft PR，唔會自動 merge。
 
-macOS launchd 用 `.wongchoi_hk_data_root` 指向 local primary，再用
-`.wongchoi_hk_mirror_root` best-effort mirror 去 Google Drive，避免背景程序被
-CloudStorage TCC 阻擋。
+macOS launchd 用 `.wongchoi_hk_data_root` 指向 local primary（`~/WongChoiData`）。
+Google Drive 鏡像已於 2026-11-21 退役（Kelvin：冇人睇 Drive），見下面「Google Drive 已退役」。
 
 macOS 安裝入口：
 
