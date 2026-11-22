@@ -91,3 +91,11 @@ candidate；改收 `race_shape_v2_legacy_hv` rollback comparator。
 - 跑馬地 V3（B）已經 experimental live（EXP-20260929-01），而 `weight_refit_t02`（A）用 live 形勢分，
   所以喺跑馬地 A 就等於 A+B。原本「A+B 有冇 interaction 額外邊際」嘅問題已經冇意義；A 照用 120 場門檻跟進。
 - forward 追蹤表（`hkjc_forward_tracker.py`）已經剔走呢項。
+
+## A（weight_refit_t02）Stage-4 locked review —— 2026-11-23：REJECT
+- 夠數通知：123／120 active races（2026-10-07 → 2026-11-22，14 個賽日）；ledger = scheduler state `HKJC_Weight_RaceShape_V3_Prospective.json`。
+- 結果（t02 − live，pp；按賽日 bootstrap 2,000）：Gold −1.52 [−4.38,+1.57]、**Good −3.79 [−9.68,+0.78]**、capture@5 −0.25 [−1.62,+1.26]、
+  recall@5 −0.67、NDCG@5 −1.18 [−2.48,+0.15]、首選贏 −1.52 [−3.68,0.00]；頭四有變 56 場。分場地：跑馬地 Good −5.5、沙田草地 −3.8、泥地 0。
+- 判：Stage-4 v2 要 Gold、Good 唔負而且 ranking 至少兩項改善 → **冇一項改善 → REJECT**，維持 live。
+- 讀法：t02 係「狀態 +2pp、形勢 −2pp」；EXP-20261122-28／-33 量到狀態權重偏大（剷一半狀態 AUC 仲升），方向相反，結果一致。
+- 注意：期間 live 權重喺 2026-11-14 換咗 S 版，t02 shadow 係喺當時 live 之上做相對調整。
