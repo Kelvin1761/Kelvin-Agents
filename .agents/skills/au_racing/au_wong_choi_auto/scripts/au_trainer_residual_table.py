@@ -61,7 +61,8 @@ def collect(root):
                 if auto.get("ability_score") is None or result is None:
                     continue
                 ability = (float(auto["ability_score"]) - float(auto.get("old_horse_feature") or 0.0)
-                           - float(auto.get("trainer_residual_feature") or 0.0))
+                           - float(auto.get("trainer_residual_feature") or 0.0)
+                           - float(auto.get("people_prize_feature") or 0.0))
                 rows.append({"ability": ability, "pos": int(result["pos"]), "trainer": norm(horse.get("trainer"))})
             if rows:
                 races.append({"meeting": meeting_dir.name, "date": date, "race": race_no, "rows": rows})

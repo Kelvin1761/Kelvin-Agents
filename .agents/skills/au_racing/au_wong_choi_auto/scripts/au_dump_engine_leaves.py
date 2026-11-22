@@ -165,6 +165,7 @@ def main():
                     "draw": float(res.get("draw_feature") or 0.0),
                     "old_horse": float(res.get("old_horse_feature") or 0.0),
                     "trainer_residual": float(res.get("trainer_residual_feature") or 0.0),
+                    "people_prize": float(res.get("people_prize_feature") or 0.0),
                     "ability": float(res.get("ability_score") or 0.0),
                     # 分層用（唔入分）：初出／休後實驗要喺同一份 dump 切 cohort。
                     "career_starts": hd.get("career_race_starts"),

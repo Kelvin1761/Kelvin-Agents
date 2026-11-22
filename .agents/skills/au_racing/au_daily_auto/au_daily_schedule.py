@@ -113,6 +113,7 @@ DEBUT_NEUTRAL_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_debut_n
 LPOS_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_lpos_forward.py"
 AGE_UPNIL_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_age_upnil_forward.py"
 TRAINER_RESIDUAL_TABLE = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_trainer_residual_table.py"
+PEOPLE_PRIZE_TABLE = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_people_prize_table.py"
 GENERATE_STATIC = DASHBOARD_DIR / "generate_static.py"
 DEPLOY_SH = DASHBOARD_DIR / "deploy.sh"
 
@@ -1746,6 +1747,13 @@ def step_trainer_residual_table(runlog: RunLog) -> bool:
         runlog.step("trainer-residual-table", "failed", detail=detail)
         return False
     runlog.step("trainer-residual-table", "ok", detail=(out or "").strip().splitlines()[-1:])
+    # 騎練總獎金表（EXP-20261122-03，同一個時間點；失敗沿用舊表）
+    rc, out = run_cmd([sys.executable, str(PEOPLE_PRIZE_TABLE), "--data-root", str(AU_RACING)], timeout=900)
+    if rc != 0:
+        runlog.warn(f"騎練總獎金表重建失敗（沿用舊表）：{error_excerpt(out, rc)}")
+        runlog.step("people-prize-table", "failed")
+        return False
+    runlog.step("people-prize-table", "ok", detail=(out or "").strip().splitlines()[-1:])
     return True
 
 

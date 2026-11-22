@@ -54,3 +54,28 @@ def test_engine_adds_both_overlays(tmp_path, monkeypatch):
     assert abs(out["ability_score"] - round(base + out["old_horse_feature"] + out["trainer_residual_feature"], 4)) < 1e-3
     keys = {t["key"]: t for tone in ("good", "bad", "note") for t in out["tags"].get(tone, [])}
     assert keys["old_horse"]["scored"] is True and keys["trainer_residual"]["scored"] is True
+
+
+PRIZE = {"jockey|kerrinmcevoy": [["2026-11-01", 7.0], ["2026-11-22", 9.0]], "jockey|rachelking": [["2026-11-01", 7.6]],
+         "trainer|jackbruce": [["2026-11-01", 6.6]], "trainer|davidpfieffer": [["2026-11-01", 6.3]]}
+
+
+def test_prize_constants_and_log_total():
+    assert (P.PRIZE_BETA_JOCKEY, P.PRIZE_BETA_TRAINER) == (5.51, 4.43)
+    t = {"Last 12 Months": {"$0 - $5,000": {"starts": 8}, "$5,001 - $10,000": {"starts": 2}}}
+    assert abs(P.log_total_prize({"Last 12 Months": {}}) or 0) == 0 and P.log_total_prize({"Last 12 Months": {}}) is None
+    import math
+    assert abs(P.log_total_prize(t) - math.log10(8 * 2500 + 2 * 7500 + 1)) < 1e-9
+
+
+def test_prize_as_of_and_field_centred(monkeypatch):
+    assert P.prize_raw("jockey", "Kerrin McEvoy", "2026-11-22", PRIZE) == 7.0          # 同日快照唔用
+    assert P.prize_raw("jockey", "Kerrin McEvoy (a2)", "2026-11-23", PRIZE) == 9.0     # 括號減磅唔影響配對
+    fj, ft = ["Kerrin McEvoy", "Rachel King"], ["Jack Bruce", "David Pfieffer"]
+    a = P.prize_feature("Kerrin McEvoy", "Jack Bruce", fj, ft, "2026-11-21", PRIZE)
+    b = P.prize_feature("Rachel King", "David Pfieffer", fj, ft, "2026-11-21", PRIZE)
+    assert abs(a + b) < 1e-9
+    assert abs(a - round(5.51 * (7.0 - 7.3) + 4.43 * (6.6 - 6.45), 4)) < 1e-9
+    assert P.prize_feature("Nobody", "Nobody", fj, ft, "2026-11-21", PRIZE) == 0.0
+    monkeypatch.setenv("WC_AU_PEOPLE_PRIZE_LIVE", "0")
+    assert P.prize_feature("Kerrin McEvoy", "Jack Bruce", fj, ft, "2026-11-21", PRIZE) == 0.0

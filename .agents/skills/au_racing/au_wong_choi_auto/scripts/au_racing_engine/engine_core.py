@@ -847,8 +847,11 @@ class RacingEngine(NarrativeMixin):
         meeting_date = str(self._meeting_intelligence().get("date") or self.race_context.get("date") or "")
         trainer_residual_feature = _people.trainer_feature(
             self._clean_identity(self.horse_data.get("trainer")), self.race_context.get("field_trainers"), meeting_date)
+        people_prize_feature = _people.prize_feature(
+            self._clean_identity(self.horse_data.get("jockey")), self._clean_identity(self.horse_data.get("trainer")),
+            self.race_context.get("field_jockeys"), self.race_context.get("field_trainers"), meeting_date)
         ability_score = round(base_ability + full_time_feature + draw_feature
-                              + old_horse_feature + trainer_residual_feature, 4)
+                              + old_horse_feature + trainer_residual_feature + people_prize_feature, 4)
         grade = compute_grade(ability_score)
 
         data_coverage = self._data_coverage()
@@ -869,6 +872,7 @@ class RacingEngine(NarrativeMixin):
             draw_feature=draw_feature,
             old_horse_feature=old_horse_feature,
             trainer_residual_feature=trainer_residual_feature,
+            people_prize_feature=people_prize_feature,
         )
 
         return {
@@ -886,6 +890,7 @@ class RacingEngine(NarrativeMixin):
             "draw_feature": draw_feature,
             "old_horse_feature": old_horse_feature,
             "trainer_residual_feature": trainer_residual_feature,
+            "people_prize_feature": people_prize_feature,
             # EXP-20261009-04 回退影子：class_score 入 class_weight 對綜合分嘅貢獻。
             # 舊公式分數 = 綜合分 − 呢個數（矩陣冇 clip 嗰陣逐位一樣）。
             "class_score_live_delta": round(
@@ -914,7 +919,8 @@ class RacingEngine(NarrativeMixin):
             "jt_fit_detail": self.jt_fit_detail,
             # 純顯示標籤（同 HKJC tags.py 同一格式），評分完先砌，唔郁分數；出錯 → {"_error": …}
             "tags": _tags.build(self, matrix_scores, wet_feature=wet_form_feat, draw_feature=draw_feature,
-                                old_horse_feature=old_horse_feature, trainer_residual_feature=trainer_residual_feature),
+                                old_horse_feature=old_horse_feature, trainer_residual_feature=trainer_residual_feature,
+                                people_prize_feature=people_prize_feature),
             "preparation_detail": getattr(self, "preparation_detail", None),
             "trial_speed_detail": getattr(self, "trial_speed_detail", None),
             "stability_detail": {

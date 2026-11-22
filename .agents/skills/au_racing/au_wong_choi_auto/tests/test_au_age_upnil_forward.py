@@ -9,7 +9,7 @@ import au_age_upnil_forward as F  # noqa: E402
 def test_arms_frozen():
     assert F.ARMS == {"OLD": ("old_horse", -3.46), "SUNIL": ("second_up_nil", -1.93)}
     assert F.START_DATE == "2026-11-23" and F.TARGET_RACES == 1000
-    assert F.ROLLBACK == {"OLD": "old_horse", "TRES": "trainer_residual"}
+    assert F.ROLLBACK == {"OLD": "old_horse", "TRES": "trainer_residual", "PRIZE": "people_prize"}
     assert F.SHADOW == {"SUNIL": ("second_up_nil", -1.93)}
 
 

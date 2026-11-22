@@ -75,6 +75,7 @@ OVERLAYS = (
     # 實驗性上線（Kelvin 2026-11-22，forward 退回監察；`people_overlays`）
     ("old_horse", "old_horse_feature", "老馬調整", "stability"),
     ("trainer_residual", "trainer_residual_feature", "練馬師剩餘表現", "jockey_trainer"),
+    ("people_prize", "people_prize_feature", "騎練總獎金", "jockey_trainer"),
 )
 
 
@@ -344,6 +345,7 @@ def render_race_csv(logic_data: dict) -> str:
         "draw_feature",
         "old_horse_feature",
         "trainer_residual_feature",
+        "people_prize_feature",
         "grade",
         "model_pick_status",
         "watchlist_level",
@@ -372,6 +374,7 @@ def render_race_csv(logic_data: dict) -> str:
             "draw_feature": auto.get("draw_feature", 0),
             "old_horse_feature": auto.get("old_horse_feature", 0),
             "trainer_residual_feature": auto.get("trainer_residual_feature", 0),
+            "people_prize_feature": auto.get("people_prize_feature", 0),
             "grade": auto.get("grade", ""),
             "model_pick_status": auto.get("model_pick_status", ""),
             "watchlist_level": auto.get("watchlist_level", ""),
@@ -1160,7 +1163,7 @@ def _render_verdict(verdict, horses, race=None, divergence=()):
         "## [第四部分] 分析盲區(緊隨第三部分)",
         "",
         f"- ranking 以 `ability_score`（綜合戰力分）排序；`base_7d_score` 係兼容舊檔名，只作{_ranking_dimension_label()}基礎分解釋。",
-        "- 單一評分：`綜合戰力分` = `ability_score` = `final_rank_score` = `pure_7d_score + wet_form_feature + full_time_speed_feature + draw_feature + old_horse_feature + trainer_residual_feature`（大場次檔位 ≥8 匹先有；老馬、練馬師剩餘表現係 2026-11-22 實驗性上線）；額外項目缺證據時都係中性 0。",
+        "- 單一評分：`綜合戰力分` = `ability_score` = `final_rank_score` = `pure_7d_score + wet_form_feature + full_time_speed_feature + draw_feature + old_horse_feature + trainer_residual_feature + people_prize_feature`（大場次檔位 ≥8 匹先有；老馬、練馬師剩餘表現、騎練總獎金係 2026-11-22 實驗性上線）；額外項目缺證據時都係中性 0。",
         "- Rank 4-6 danger watchlist 只係提醒候選，不會交換 Top3 或 Top4 排名。",
         "- 初出馬若正式賽績空白，會較依賴試閘、馬房、走位結構與路程投影，信心不會無上限放大。",
         "- 如 Facts / Logic 更新，應重新執行 AU Auto orchestrator。",

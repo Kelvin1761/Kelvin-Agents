@@ -39,7 +39,7 @@ CALIBRATION_SINCE = "2026-08-05"
 START_DATE = "2026-11-23"   # 上線後第一個新分析賽日（11-22 嗰批用舊 code 評分）
 TARGET_RACES = 1000
 ARMS = {"OLD": ("old_horse", -3.46), "SUNIL": ("second_up_nil", -1.93)}   # 舊 shadow 定義（保留做紀錄）
-ROLLBACK = {"OLD": "old_horse", "TRES": "trainer_residual"}       # 上線 overlay：row 欄位
+ROLLBACK = {"OLD": "old_horse", "TRES": "trainer_residual", "PRIZE": "people_prize"}       # 上線 overlay：row 欄位
 SHADOW = {"SUNIL": ("second_up_nil", -1.93)}
 
 
@@ -66,6 +66,7 @@ def race_rows(logic, result_rows):
                "full_time": auto.get("full_time_speed_feature") or 0.0, "draw": float(auto.get("draw_feature") or 0.0),
                "old_horse": float(auto.get("old_horse_feature") or 0.0),
                "trainer_residual": float(auto.get("trainer_residual_feature") or 0.0),
+               "people_prize": float(auto.get("people_prize_feature") or 0.0),
                "features": dict(features), "keys": sorted(k for k in tag_keys(auto) if k)}
         row["ability"] = exact_score(row, MATRIX_WEIGHTS)
         rows.append(row)
@@ -151,11 +152,13 @@ def main():
     forward = [r for r in races if r["date"] >= START_DATE]
     flagged = {"OLD": sum(1 for r in forward for x in r["rows"] if x.get("old_horse")),
                "TRES": sum(1 for r in forward for x in r["rows"] if abs(x.get("trainer_residual") or 0) >= 0.005),
+               "PRIZE": sum(1 for r in forward for x in r["rows"] if abs(x.get("people_prize") or 0) >= 0.005),
                "SUNIL": sum(1 for r in forward for x in r["rows"] if "second_up_nil" in x["keys"])}
     status = {"experiment": EXPERIMENT_ID, "start_date": START_DATE, "target_races": TARGET_RACES,
               "races_collected": len(forward), "race_days": len({r["date"] for r in forward}),
               "arms": {"OLD": {"mode": "rollback", "field": "old_horse_feature", "live": -3.46},
                        "TRES": {"mode": "rollback", "field": "trainer_residual_feature", "beta": 40.0},
+                       "PRIZE": {"mode": "rollback", "field": "people_prize_feature", "beta_jockey": 5.51, "beta_trainer": 4.43},
                        "SUNIL": {"mode": "shadow", "tag": "second_up_nil", "beta": -1.93}},
               "interim": {"horses_flagged": flagged, "note": "盲測：未夠數只報數量"},
               "outcomes_visible": len(forward) >= TARGET_RACES,

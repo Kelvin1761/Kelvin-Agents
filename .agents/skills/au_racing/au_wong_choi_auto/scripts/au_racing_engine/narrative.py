@@ -494,7 +494,7 @@ class NarrativeMixin:
                                            feature_notes=None, wet_form_feature=0.0,
                                            class_proof_feature=0.0, full_time_speed_feature=0.0,
                                            draw_feature=0.0, old_horse_feature=0.0,
-                                           trainer_residual_feature=0.0):
+                                           trainer_residual_feature=0.0, people_prize_feature=0.0):
         """Generate the six-dimension ranking walkthrough.
 
         ``base_7d_score`` is retained as a legacy archive field name.  The live
@@ -528,7 +528,8 @@ class NarrativeMixin:
                           "pace_perf": ("逐駒全程速度", full_time_speed_feature),
                           "race_shape": ("大場次檔位", draw_feature),
                           "stability": ("老馬調整", old_horse_feature),
-                          "jockey_trainer": ("練馬師剩餘表現", trainer_residual_feature)}
+                          "jockey_trainer": ("練馬師剩餘表現＋騎練總獎金",
+                                             float(trainer_residual_feature or 0) + float(people_prize_feature or 0))}
         contrib = {row["key"]: row["contribution"] for row in rows}
         grouped = []
         for key, (olabel, value) in overlay_values.items():
@@ -552,6 +553,7 @@ class NarrativeMixin:
             f"大場次檔位 {float(draw_feature):+.2f}；"
             + (f"老馬調整 {float(old_horse_feature):+.2f}；" if abs(float(old_horse_feature or 0)) >= 0.005 else "")
             + (f"練馬師剩餘表現 {float(trainer_residual_feature):+.2f}；" if abs(float(trainer_residual_feature or 0)) >= 0.005 else "")
+            + (f"騎練總獎金 {float(people_prize_feature):+.2f}；" if abs(float(people_prize_feature or 0)) >= 0.005 else "")
             + f"綜合戰力分 = {ability_score:.2f} 分 → Grade = [{grade}]**"
         )
         # 有計但唔直接入六維公式嘅分數 — 一併展示，唔收埋
