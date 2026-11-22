@@ -1,0 +1,122 @@
+{
+ "PR1": {
+  "verdict": "PASS",
+  "reason": "logloss_supported_gain",
+  "checks": {
+   "logloss_ci_upper_below_0": true,
+   "gold_good_guardrail": true,
+   "beats_null": true
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   -0.0002949562669804311,
+   -0.0005568518391688252,
+   -1.1170161968751641e-05
+  ],
+  "beats_null_share": 1.0,
+  "gold_pp": [
+   0.46388336646785955,
+   -0.03259357236575577
+  ],
+  "good_pp": [
+   0.36447978793903246,
+   -0.16745553643144004
+  ],
+  "capture5_pp": 0.09940357852882709,
+  "top2_any_hit_pp": -0.3976143141153081,
+  "p": 0.0205,
+  "beta_median": 0.17353613024009998,
+  "holm_p": 0.041
+ },
+ "PR2": {
+  "verdict": "PASS",
+  "reason": "logloss_supported_gain",
+  "checks": {
+   "logloss_ci_upper_below_0": true,
+   "gold_good_guardrail": true,
+   "beats_null": true
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   -0.001025504328630078,
+   -0.0014549649334580804,
+   -0.0005956798373604334
+  ],
+  "beats_null_share": 1.0,
+  "gold_pp": [
+   -0.16567263088137837,
+   -0.675708348580689
+  ],
+  "good_pp": [
+   0.23194168323392977,
+   -0.5832808519165259
+  ],
+  "capture5_pp": 0.22365805168986083,
+  "top2_any_hit_pp": -0.2982107355864811,
+  "p": 0.0,
+  "beta_median": 0.34070814693731655,
+  "holm_p": 0.0
+ },
+ "PR3": {
+  "verdict": "PASS",
+  "reason": "logloss_supported_gain",
+  "checks": {
+   "logloss_ci_upper_below_0": true,
+   "gold_good_guardrail": true,
+   "beats_null": true
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   -0.0005907137214173784,
+   -0.0010047673356936178,
+   -0.00019935239325689325
+  ],
+  "beats_null_share": 1.0,
+  "gold_pp": [
+   -0.16567263088137837,
+   -0.8136523938180077
+  ],
+  "good_pp": [
+   0.5632869449966865,
+   -0.0643135609424462
+  ],
+  "capture5_pp": 0.47492820852661816,
+  "top2_any_hit_pp": -0.16567263088137837,
+  "p": 0.001,
+  "beta_median": 0.23394572275688805,
+  "holm_p": 0.003
+ },
+ "PR4": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": false,
+   "beats_null": true
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   0.00461627485469834,
+   0.002943419686817091,
+   0.006200393094005512
+  ],
+  "beats_null_share": 1.0,
+  "gold_pp": [
+   -1.0603048376408217,
+   -2.4240793687654314
+  ],
+  "good_pp": [
+   -3.1477799867461895,
+   -4.658133798784822
+  ],
+  "capture5_pp": -0.5191075767616523,
+  "top2_any_hit_pp": -1.2259774685222002,
+  "p": 1.0,
+  "beta_median": 0.5470778173062714,
+  "holm_p": 1.0
+ }
+}

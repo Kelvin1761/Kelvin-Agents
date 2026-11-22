@@ -1,0 +1,27 @@
+{
+ "verdict": "REJECT",
+ "reason": "logloss_ci_upper_below_0",
+ "checks": {
+  "logloss_ci_upper_below_0": false,
+  "gold_good_guardrail": false,
+  "beats_null": true
+ },
+ "races": 3018,
+ "days": 79,
+ "dlogloss": [
+  1.6559521826294146e-05,
+  -0.0013769853298250426,
+  0.0014602532610427652
+ ],
+ "beats_null_share": 1.0,
+ "gold_pp": [
+  -0.9609012591119946,
+  -1.880303268773522
+ ],
+ "good_pp": [
+  0.4307488402915839,
+  -0.6560527364155518
+ ],
+ "capture5_pp": 5.885874219351393e-17,
+ "top2_any_hit_pp": 0.13253810470510272
+}

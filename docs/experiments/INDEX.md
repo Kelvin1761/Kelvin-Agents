@@ -603,3 +603,5 @@
 - [EXP-20261122-02](EXP-20261122-02-au-people-residual.md) — AU 騎練「剩餘表現」（扣坐騎質素，walk-forward，唔用市場）：**練馬師 PASS**（Δ −0.00057、Holm 0.01、Gold +0.27／Good +0.40）；騎師方向正但 CI 跨零 REJECT；未上線，等 forward 決定
 - [EXP-20261122-03](EXP-20261122-03-au-people-prize.md) — AU 騎練「每仗平均獎金」（Kelvin 問代替勝率）：取代 REJECT（Gold −0.89）；加落現行／剩餘表現 log-loss 明顯好（平均 Δ −0.0021；**總獎金 Δ −0.0032**，Holm <0.001）但 Good 踩護欄 → 六個 arm 全 REJECT（T3 Gold +0.23 只差 Good 護欄）
 - [EXP-20261122-04](EXP-20261122-04-au-people-redesign.md) — AU 騎練分重新設計（Kelvin：總獎金做 base）：**R2 一半勝率一半總獎金 PASS**（Δ −0.00178、Holm <0.001、Gold +0.20／Good +0.60）；全換 REJECT；同 T3 正面對決 R2 Gold 顯著較好、T3 機率較準 → Kelvin 揀 R2 實驗性上線，T3 預設關
+- [EXP-20261122-05](EXP-20261122-05-au-performance-rating.md) — AU 自砌表現評分（輸距＋負磅＋22×log 獎金，Kelvin「反映馬匹實力」）：對舊 baseline PR1／PR2／PR3 PASS（PR2 Δ −0.00103、Holm <0.001），取代近績質素分有害；但疊喺 11-22 live（練馬師剩餘表現＋R2）之上全部 REJECT（Gold 跌踩護欄）→ 唔上，下一步係重新設計實力維度
+- [EXP-20261122-06](EXP-20261122-06-au-prior-odds-logloss.md) — AU 上仗賠率用新 log-loss 尺重判：三個 arm 冇改善（Δ ≈ 0）、Gold −0.9 → REJECT，同 EXP-20261116-01 一致
