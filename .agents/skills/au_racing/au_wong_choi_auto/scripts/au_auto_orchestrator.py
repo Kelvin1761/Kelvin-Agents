@@ -154,6 +154,10 @@ def score_logic_data(
         h.get("trainer") for h in logic_data.get("horses", {}).values()
         if isinstance(h, dict) and h.get("trainer")
     ]
+    race_context["field_jockeys"] = [   # 騎練總獎金 overlay（EXP-20261122-03）
+        h.get("jockey") for h in logic_data.get("horses", {}).values()
+        if isinstance(h, dict) and h.get("jockey")
+    ]
     for horse_num, horse in logic_data.get("horses", {}).items():
         # Inject the saddlecloth number (it is the dict key, not a field) so the
         # engine can match the horse to its speed-map pace role / settling pattern.

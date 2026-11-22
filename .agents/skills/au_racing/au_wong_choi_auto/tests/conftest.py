@@ -5,3 +5,4 @@ import pytest
 @pytest.fixture(autouse=True)
 def _no_live_trainer_residual_table(tmp_path, monkeypatch):
     monkeypatch.setenv("WC_AU_TRAINER_RESIDUAL_TABLE", str(tmp_path / "no-trainer-residual.json"))
+    monkeypatch.setenv("WC_AU_PEOPLE_PRIZE_TABLE", str(tmp_path / "no-people-prize.json"))

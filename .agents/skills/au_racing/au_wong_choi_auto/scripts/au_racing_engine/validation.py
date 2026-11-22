@@ -88,10 +88,11 @@ def _validate_auto_namespace(horse_num: str, auto: dict) -> list[str]:
         time_feat = float(auto.get("full_time_speed_feature", 0) or 0) + float(auto.get("draw_feature", 0) or 0)
         # 實驗性上線 2026-11-22（people_overlays）：老馬、練馬師剩餘表現
         time_feat += float(auto.get("old_horse_feature", 0) or 0) + float(auto.get("trainer_residual_feature", 0) or 0)
+        time_feat += float(auto.get("people_prize_feature", 0) or 0)
         if abs(float(ability) - (expected + wet_feat + class_feat + time_feat)) > 0.06:
             errors.append(
                 f"SCORE-004 horse {horse_num} ability != clean matrix + wet_form "
-                f"+ proven_class + full_time_speed + draw + old_horse + trainer_residual: {float(ability):.2f} != "
+                f"+ proven_class + full_time_speed + draw + old_horse + trainer_residual + people_prize: {float(ability):.2f} != "
                 f"{expected + wet_feat + class_feat + time_feat:.2f}"
             )
         if auto.get("grade") != compute_grade(float(ability)):

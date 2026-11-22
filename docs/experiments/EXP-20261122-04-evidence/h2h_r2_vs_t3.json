@@ -1,0 +1,83 @@
+{
+ "T3 vs 剩餘表現": {
+  "verdict": "REJECT",
+  "reason": "gold_good_guardrail",
+  "checks": {
+   "logloss_ci_upper_below_0": true,
+   "gold_good_guardrail": false,
+   "beats_null": true
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   -0.0028340733075824884,
+   -0.0039295752372298645,
+   -0.001776918375122646
+  ],
+  "beats_null_share": 1.0,
+  "gold_pp": [
+   0.23194168323392977,
+   -0.7901576779035439
+  ],
+  "good_pp": [
+   -0.23194168323392977,
+   -1.2915313817953804
+  ],
+  "capture5_pp": 0.6626905235255135,
+  "top2_any_hit_pp": 0.8946322067594433
+ },
+ "R2 vs 剩餘表現": {
+  "verdict": "PASS",
+  "reason": "logloss_supported_gain",
+  "checks": {
+   "logloss_ci_upper_below_0": true,
+   "gold_good_guardrail": true,
+   "beats_null": true
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   -0.0016637932293617373,
+   -0.002234106892726194,
+   -0.001146769358445146
+  ],
+  "beats_null_share": 1.0,
+  "gold_pp": [
+   0.828363154406892,
+   0.14157174618397864
+  ],
+  "good_pp": [
+   -0.06626905235255136,
+   -0.9202508812488485
+  ],
+  "capture5_pp": 0.4528385244091009,
+  "top2_any_hit_pp": 0.5301524188204109
+ },
+ "R2 vs T3（正面對決）": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": true,
+   "beats_null": true
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   0.0011702800782207516,
+   0.00029093643803375873,
+   0.0020720505864603627
+  ],
+  "beats_null_share": 1.0,
+  "gold_pp": [
+   0.5964214711729622,
+   -0.5145123468169188
+  ],
+  "good_pp": [
+   0.16567263088137837,
+   -0.9978480353795095
+  ],
+  "capture5_pp": -0.2098519991164126,
+  "top2_any_hit_pp": -0.36447978793903246
+ }
+}

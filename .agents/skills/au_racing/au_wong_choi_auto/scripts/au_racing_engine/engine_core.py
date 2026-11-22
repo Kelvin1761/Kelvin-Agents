@@ -823,6 +823,10 @@ class RacingEngine(NarrativeMixin):
         matrix_scores = map_features_to_matrix_scores(feature_scores)
         matrix = map_features_to_matrix(feature_scores)
         pure_7d_score = round(compose_matrix_score(matrix_scores), 4)
+        # R2 對綜合分嘅影響（forward 退回監察、練馬師剩餘表現表用；唔再加一次）
+        originals = getattr(self, "people_prize_leaf_original", {}) or {}
+        people_prize_leaf_delta = round(pure_7d_score - compose_matrix_score(map_features_to_matrix_scores(
+            {**feature_scores, **{k: round(v, 6) for k, v in originals.items()}})), 4) if originals else 0.0
         base_7d_score = pure_7d_score
         # Report-only post-7D modifiers (dynamic weights, soft-shape, diversity, barrier,
         # soft-wetproof, place-tightening, micro-rank, wet-condition) were retired
@@ -847,8 +851,11 @@ class RacingEngine(NarrativeMixin):
         meeting_date = str(self._meeting_intelligence().get("date") or self.race_context.get("date") or "")
         trainer_residual_feature = _people.trainer_feature(
             self._clean_identity(self.horse_data.get("trainer")), self.race_context.get("field_trainers"), meeting_date)
+        people_prize_feature = _people.prize_feature(
+            self._clean_identity(self.horse_data.get("jockey")), self._clean_identity(self.horse_data.get("trainer")),
+            self.race_context.get("field_jockeys"), self.race_context.get("field_trainers"), meeting_date)
         ability_score = round(base_ability + full_time_feature + draw_feature
-                              + old_horse_feature + trainer_residual_feature, 4)
+                              + old_horse_feature + trainer_residual_feature + people_prize_feature, 4)
         grade = compute_grade(ability_score)
 
         data_coverage = self._data_coverage()
@@ -869,6 +876,7 @@ class RacingEngine(NarrativeMixin):
             draw_feature=draw_feature,
             old_horse_feature=old_horse_feature,
             trainer_residual_feature=trainer_residual_feature,
+            people_prize_feature=people_prize_feature,
         )
 
         return {
@@ -886,6 +894,8 @@ class RacingEngine(NarrativeMixin):
             "draw_feature": draw_feature,
             "old_horse_feature": old_horse_feature,
             "trainer_residual_feature": trainer_residual_feature,
+            "people_prize_feature": people_prize_feature,
+            "people_prize_leaf_delta": people_prize_leaf_delta,
             # EXP-20261009-04 回退影子：class_score 入 class_weight 對綜合分嘅貢獻。
             # 舊公式分數 = 綜合分 − 呢個數（矩陣冇 clip 嗰陣逐位一樣）。
             "class_score_live_delta": round(
@@ -914,7 +924,8 @@ class RacingEngine(NarrativeMixin):
             "jt_fit_detail": self.jt_fit_detail,
             # 純顯示標籤（同 HKJC tags.py 同一格式），評分完先砌，唔郁分數；出錯 → {"_error": …}
             "tags": _tags.build(self, matrix_scores, wet_feature=wet_form_feat, draw_feature=draw_feature,
-                                old_horse_feature=old_horse_feature, trainer_residual_feature=trainer_residual_feature),
+                                old_horse_feature=old_horse_feature, trainer_residual_feature=trainer_residual_feature,
+                                people_prize_feature=people_prize_feature + people_prize_leaf_delta),
             "preparation_detail": getattr(self, "preparation_detail", None),
             "trial_speed_detail": getattr(self, "trial_speed_detail", None),
             "stability_detail": {
@@ -979,6 +990,19 @@ class RacingEngine(NarrativeMixin):
             feature_notes[name] = note
             self.provenance[name] = source
             self.evidence_state[name] = self._feature_evidence_state(name, source)
+        # R2（EXP-20261122-04，實驗性上線 2026-11-22）：騎師分／練馬師分一半勝率、一半過去 12 個月總獎金。
+        self.people_prize_leaf_original = {}
+        meeting_date = str(self._meeting_intelligence().get("date") or self.race_context.get("date") or "")
+        for name, kind, who in (("jockey_score", "jockey", "jockey"), ("trainer_score", "trainer", "trainer")):
+            if name not in feature_scores:
+                continue
+            new, prize_score = _people.prize_leaf_blend(
+                kind, self._clean_identity(self.horse_data.get(who)), feature_scores[name], meeting_date)
+            if prize_score is not None:
+                self.people_prize_leaf_original[name] = feature_scores[name]
+                feature_scores[name] = clip_score(new)
+                feature_notes[name] = (feature_notes.get(name, "") + f"；過去 12 個月總獎金分 {prize_score:.1f}，"
+                                       f"同勝率分各半 → {feature_scores[name]:.1f}（實驗性上線 2026-11-22）")
         return feature_scores, feature_notes
 
     # Ability-feeding features (per matrix_mapper). formline is weight-0 so it is

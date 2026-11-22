@@ -602,3 +602,4 @@
 - [EXP-20261122-01](EXP-20261122-01-au-stewards-nsw.md) — AU NSW 競賽主任 PDF（WIDE／VET／TROUBLE）：場地代碼砌齊但批量抓觸發防機械人驗證（448 份得 1 份），唔繞過；Kelvin：得 NSW 唔夠，擱置
 - [EXP-20261122-02](EXP-20261122-02-au-people-residual.md) — AU 騎練「剩餘表現」（扣坐騎質素，walk-forward，唔用市場）：**練馬師 PASS**（Δ −0.00057、Holm 0.01、Gold +0.27／Good +0.40）；騎師方向正但 CI 跨零 REJECT；未上線，等 forward 決定
 - [EXP-20261122-03](EXP-20261122-03-au-people-prize.md) — AU 騎練「每仗平均獎金」（Kelvin 問代替勝率）：取代 REJECT（Gold −0.89）；加落現行／剩餘表現 log-loss 明顯好（平均 Δ −0.0021；**總獎金 Δ −0.0032**，Holm <0.001）但 Good 踩護欄 → 六個 arm 全 REJECT（T3 Gold +0.23 只差 Good 護欄）
+- [EXP-20261122-04](EXP-20261122-04-au-people-redesign.md) — AU 騎練分重新設計（Kelvin：總獎金做 base）：**R2 一半勝率一半總獎金 PASS**（Δ −0.00178、Holm <0.001、Gold +0.20／Good +0.60）；全換 REJECT；同 T3 正面對決 R2 Gold 顯著較好、T3 機率較準 → Kelvin 揀 R2 實驗性上線，T3 預設關

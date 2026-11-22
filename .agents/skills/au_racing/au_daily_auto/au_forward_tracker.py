@@ -86,10 +86,10 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 "scheduler 夠數會自動判一次（高價組 ROI CI 下限 >0 同高過其餘）並凍結；睇 au-sb-betfair-forward-status.json，"
                 "PASS 先由你決定點用（唔會自動落注）",
                 status_file="au-sb-betfair-forward-status.json"),
-    ForwardTest("age_upnil", "老馬（−3.46）＋練馬師剩餘表現（β 40）實驗性上線退回監察；休後第二仗 0 上名（−1.93）shadow",
+    ForwardTest("age_upnil", "老馬（−3.46）＋練馬師剩餘表現（β 40）＋騎練總獎金實驗性上線退回監察；休後第二仗 0 上名（−1.93）shadow",
                 "EXP-20261121-37", "status_file", 1000, "場",
                 "scheduler 夠數會用 log-loss 尺判一次並凍結；睇 au-age-upnil-forward-status.json："
-                "OLD／TRES rollback_recommended=true 就建議 WC_AU_OLD_HORSE_LIVE=0／WC_AU_TRAINER_RESIDUAL_LIVE=0；SUNIL PASS 先由你決定上唔上",
+                "OLD／TRES／PRIZE rollback_recommended=true 就建議 WC_AU_OLD_HORSE_LIVE=0／WC_AU_TRAINER_RESIDUAL_LIVE=0／WC_AU_PEOPLE_PRIZE_LIVE=0；SUNIL PASS 先由你決定上唔上",
                 status_file="au-age-upnil-forward-status.json"),
 )
 

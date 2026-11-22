@@ -187,33 +187,33 @@ R1 Benter combiner 量到模型對最早賽前市場冇增量資訊）。
 
 ## 呢份文件由邊度嚟
 
-- 生成時間：`2026-11-22 13:32 AEDT`
-- Git commit：`0e5976c1`
+- 生成時間：`2026-11-22 14:58 AEDT`
+- Git commit：`3b0948bb`
 - Scoring contract：`au/raw-matrix-preparation-v2`
 - `__init__.py` 指紋：`7546bcfb74f5`
 - `class_rating.py` 指紋：`d9d48a2ab037`
 - `data_prep.py` 指紋：`dd75a696e238`
 - `dimensions.py` 指紋：`c59954ceb2e0`
 - `draw.py` 指紋：`fdd62d01acdd`
-- `engine_core.py` 指紋：`c9c3cce095cd`
+- `engine_core.py` 指紋：`d699f00fbeed`
 - `full_time_speed.py` 指紋：`cde292260587`
 - `io_utils.py` 指紋：`e797e808d6f6`
 - `jockey_trainer.py` 指紋：`49652509d61f`
 - `market_reference.py` 指紋：`bd5c8762f09e`
 - `matrix_mapper.py` 指紋：`270277b4a3a1`
-- `narrative.py` 指紋：`5665f24cba1c`
+- `narrative.py` 指紋：`487c8510e5d0`
 - `overseas.py` 指紋：`b0211a36381d`
-- `people_overlays.py` 指紋：`d03ca6da9216`
+- `people_overlays.py` 指紋：`45b5997c0f7d`
 - `pit.py` 指紋：`2f1c747dd2ff`
 - `preparation_cycle.py` 指紋：`221b8c3a3d90`
-- `renderer.py` 指紋：`c35ef9a3a554`
+- `renderer.py` 指紋：`714ab6d874e1`
 - `scoring.py` 指紋：`3ce03484f01a`
 - `source_alignment.py` 指紋：`a8fb592ab72e`
 - `speed.py` 指紋：`c928d5f4c771`
 - `stability.py` 指紋：`11b1846453fe`
-- `tags.py` 指紋：`9ad1ca429cba`
+- `tags.py` 指紋：`ef6e78ec56e3`
 - `track_going.py` 指紋：`49ce0a42b8e5`
-- `validation.py` 指紋：`90ddb1b53f47`
+- `validation.py` 指紋：`08a8aae8a9b3`
 - 實測樣本：**500 場、5007 匹馬**，由 `2026-11-13 Sunshine Coast Race 1-8` 到 `2026-11-22 Taree Race 1-7`（跳過 0 個舊格式檔案）
 
 重新生成：

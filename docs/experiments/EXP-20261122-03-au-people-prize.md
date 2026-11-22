@@ -44,3 +44,15 @@
   總獎金同時反映「質」同「量」（大馬房、頭位騎師嘅馬跑贏模型預期）。
 - 唔准為過護欄而睇完結果先調細 β（事後調參）。建議：T3 開 forward shadow（凍結 β、唔郁排名、新賽日先計），夠數用新尺判 —— 要 Kelvin 決定。
 - 可能嘅後續（未做）：只用獎金做機率層（例如顯示嘅上名機率），唔郁排名。
+
+
+## Kelvin 決定（2026-11-22）：T3 直接上線 + forward 退回監察
+
+「我覺得可以好似老馬咁直接上線，再用 forward 監察」；睇咗 Kembla 實測（九成馬 −7.1 至 +6.1 分、頭二選上名 13→12、
+R7 Earn To Burn 跌出頭二）之後：「做完呢個之後…」。
+- `people_overlays.prize_feature`：5.51 ×（騎師 log 總獎金 − 場均）＋ 4.43 ×（練馬師 − 場均）；`WC_AU_PEOPLE_PRIZE_LIVE=0` 回退。
+- 表 `au_people_prize_table.py`（每晚同練馬師表一齊建，`<資料根>/AU_People_Prize.json`），只用賽日之前快照。
+- forward `au_age_upnil_forward.py` 加 PRIZE rollback arm（上線版 vs 冇呢個 overlay）。標籤「騎練總獎金高過／低過同場」（|調整| ≥ 1.5）。
+
+**更新（2026-11-22 稍後）：T3 冇上線** —— 發佈喺完整檢查階段停咗；Kelvin 揀 EXP-20261122-04 R2（騎練分一半勝率、一半總獎金）取代，
+T3 code 保留但預設關（`WC_AU_PEOPLE_PRIZE_LIVE` 預設 0）。

@@ -215,6 +215,20 @@ def _field_tags(eng, old_horse_feature=0.0):
     return out
 
 
+PRIZE_TAG_FLOOR = 1.5   # 騎練總獎金 overlay 場內 SD 約 2–3 分；細過 1.5 唔出標籤
+
+
+def _people_prize_tag(eng, value):
+    """騎練總獎金（實驗性上線 2026-11-22，EXP-20261122-03）。"""
+    v = float(value or 0.0)
+    if abs(v) < PRIZE_TAG_FLOOR:
+        return []
+    return [_tag("people_prize", "騎練總獎金高過同場" if v > 0 else "騎練總獎金低過同場", "good" if v > 0 else "bad",
+                 scored=True, impact=v,
+                 why=f"騎師分、練馬師分而家一半睇勝率、一半睇過去 12 個月總獎金（頭位騎練、大馬房較高）；"
+                     f"對綜合分 {v:+.2f}。實驗性上線 2026-11-22（EXP-20261122-04 R2：Gold +0.83 顯著、Good 冇跌），forward 監察緊。")]
+
+
 def _trainer_residual_tag(eng, value):
     """練馬師剩餘表現（實驗性上線 2026-11-22，EXP-20261122-02）。"""
     v = float(value or 0.0)
@@ -275,12 +289,12 @@ def _driver_tags(eng, matrix_scores, covered):
 
 
 def build(eng, matrix_scores, *, wet_feature=0.0, draw_feature=0.0, old_horse_feature=0.0,
-          trainer_residual_feature=0.0):
+          trainer_residual_feature=0.0, people_prize_feature=0.0):
     """→ {"good": [...], "bad": [...], "note": [...]}；出錯 → {"_error": ...}。永遠唔郁分數。"""
     try:
         special = (_distance_tags(eng) + _track_tags(eng, wet_feature) + _people_tags(eng)
                    + _draw_tag(eng, draw_feature) + _prep_tags(eng) + _cycle_tags(eng) + _field_tags(eng, old_horse_feature)
-                   + _trainer_residual_tag(eng, trainer_residual_feature))
+                   + _trainer_residual_tag(eng, trainer_residual_feature) + _people_prize_tag(eng, people_prize_feature))
         covered = set()
         if any(t["key"] in ("venue_specialist", "venue_poor") for t in special):
             covered.add("track")          # 場地維度由「場地專家／同場未上名」講晒
