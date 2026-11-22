@@ -80,7 +80,7 @@ def evaluate(races):
     names = ("gold", "good", "capture5", "top2_any_hit")
     point = {n: round(float(M[:, i].mean() * 100), 3) for i, n in enumerate(names)}
     ci = {n: [round(float(lo[i]), 3), round(float(hi[i]), 3)] for i, n in enumerate(names)}
-    ll = ll_evaluate(live, cand, nnull=100)
+    ll = ll_evaluate(live, cand, nnull=100, version="v1")  # 11-22 登記，照用 v1 尺
     passed = ci["good"][0] > 0 and ci["top2_any_hit"][0] > 0
     return {"verdict": "PASS" if passed else "REJECT", "rule": "Good 同頭二選有中 95% CI 下界都 > 0",
             "races": len(rows), "point_pp": point, "ci95_pp": ci,

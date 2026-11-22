@@ -128,11 +128,11 @@ def evaluate(races):
     out = {}
     live = eligible(races)
     for name, field in ROLLBACK.items():
-        v = ll_evaluate(eligible(without(races, field)), live, nnull=200)
+        v = ll_evaluate(eligible(without(races, field)), live, nnull=200, version="v1")  # 登記時嘅尺
         worse = v["dlogloss"][1] > 0 or not v["checks"]["gold_good_guardrail"]
         out[name] = {**{k: v[k] for k in keep}, "mode": "rollback", "rollback_recommended": bool(worse)}
     for name, (key, beta) in SHADOW.items():
-        v = ll_evaluate(live, eligible(candidate(races, key, beta)), nnull=200)
+        v = ll_evaluate(live, eligible(candidate(races, key, beta)), nnull=200, version="v1")
         out[name] = {**{k: v[k] for k in keep}, "mode": "shadow"}
     return out
 
