@@ -1,0 +1,62 @@
+{
+ "JRES": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": true,
+   "beats_null": true
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   -0.00016992279009218696,
+   -0.0004461701939954457,
+   0.0001246526094202023
+  ],
+  "beats_null_share": 1.0,
+  "gold_pp": [
+   0.33134526176275675,
+   -0.21023678484073627
+  ],
+  "good_pp": [
+   0.13253810470510272,
+   -0.4034039614345791
+  ],
+  "capture5_pp": 0.06626905235255134,
+  "top2_any_hit_pp": -0.33134526176275675,
+  "p": 0.1325,
+  "match_rate": 0.9995253915519696,
+  "holm_p": 0.1325
+ },
+ "TRES": {
+  "verdict": "PASS",
+  "reason": "logloss_supported_gain",
+  "checks": {
+   "logloss_ci_upper_below_0": true,
+   "gold_good_guardrail": true,
+   "beats_null": true
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   -0.0005710562196993503,
+   -0.0010113949934177579,
+   -0.0001295610120407184
+  ],
+  "beats_null_share": 1.0,
+  "gold_pp": [
+   0.26507620941020543,
+   -0.39584635469638185
+  ],
+  "good_pp": [
+   0.3976143141153081,
+   -0.42002775412853116
+  ],
+  "capture5_pp": -0.07731389441130992,
+  "top2_any_hit_pp": -0.6626905235255135,
+  "p": 0.005,
+  "match_rate": 1.0,
+  "holm_p": 0.01
+ }
+}

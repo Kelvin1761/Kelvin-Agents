@@ -597,3 +597,5 @@
 - [EXP-20261121-39](EXP-20261121-39-au-going-aware-form-protocol.md) — AU 場地感知（Kelvin 唔想兩套公式）：近績按場地相似度加權（λ 0.5／0.25）同軟地／大爛地各自維度倍數 walk-forward，新尺五個 arm 全部 REJECT（相似度加權明顯變差：往績新 > 場地夾）；大爛地係本身難預測，唔係用錯資訊
 - [EXP-20261121-34](EXP-20261121-34-au-labels-from-hkjc.md) — AU 新標籤（由 HKJC 搬，Kelvin 2026-11-21）：先量模型名次之上剩餘上名率定語氣；上線短日再出（+3.1）、老馬（−5.4）、休後首／第二仗 0 上名（−6.1／−7.3）、休後好手（模型已高估 −3pp，事實語氣）、頂磅；同馬房／初次跑場地冇訊號唔出；藉口類標籤冇 AU 數據（寬恕認定欄已退役）
 - [EXP-20261121-36](EXP-20261121-36-au-lay-scan.md) — AU lay（做莊）探索（Kelvin 2026-11-21）：BSP 全部 lay −0.07% 打和；模型唔睇好嘅熱門 lay 反而蝕（−4%），市場啱；冇 edge，唔開 forward
+- [EXP-20261122-01](EXP-20261122-01-au-stewards-nsw.md) — AU NSW 競賽主任 PDF（WIDE／VET／TROUBLE）：場地代碼砌齊但批量抓觸發防機械人驗證（448 份得 1 份），唔繞過；Kelvin：得 NSW 唔夠，擱置
+- [EXP-20261122-02](EXP-20261122-02-au-people-residual.md) — AU 騎練「剩餘表現」（扣坐騎質素，walk-forward，唔用市場）：**練馬師 PASS**（Δ −0.00057、Holm 0.01、Gold +0.27／Good +0.40）；騎師方向正但 CI 跨零 REJECT；未上線，等 forward 決定
