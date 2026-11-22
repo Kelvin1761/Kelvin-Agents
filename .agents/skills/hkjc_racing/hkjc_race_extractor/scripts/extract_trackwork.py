@@ -221,6 +221,23 @@ def parse_meeting_date(value: str) -> dt.date | None:
     return parse_date(value)
 
 
+def page_trainer(cells: list[str], horse_name: str) -> str:
+    """晨操頁一行嘅練馬師：佢喺「馬名 練馬師 近績」嗰格（例「滿利時 游達榮 1/5」）。
+
+    以前攞最後一格，但最後一格係「詳情」連結 —— 2026-05→07 冇排位表時抽嘅晨操檔，
+    1,900 幾匹馬嘅練馬師都變咗「詳情」（Kelvin 2026-11-21 要求修）。搵唔到就留空，唔好估。
+    """
+    name = clean_text(horse_name)
+    for cell in cells[:3]:
+        text = clean_text(cell)
+        if name and text.startswith(name):
+            rest = text[len(name):].split()
+            if rest and re.fullmatch(r"[\u4e00-\u9fffA-Za-z·．.\-' ]{2,}", rest[0]) and rest[0] not in ("詳情", "(退出)"):
+                return rest[0]
+            return ""
+    return ""
+
+
 def parse_horse_list(page_html: str) -> list[dict[str, Any]]:
     parser = TableParser()
     parser.feed(page_html)
@@ -251,12 +268,11 @@ def parse_horse_list(page_html: str) -> list[dict[str, Any]]:
         name = horse_links[0].get("text") or ""
         if not name:
             name = next((c for c in cells if re.search(r"[\u4e00-\u9fffA-Za-z]", c)), "")
-        trainer = cells[-1] if len(cells) >= 4 else ""
         horses.append({
             "horse_no": horse_no,
             "horseid": horseid,
             "horse_name": name,
-            "trainer": trainer,
+            "trainer": page_trainer(cells, name),
             "source_cells": cells,
         })
     return sorted(horses, key=lambda h: h["horse_no"])
@@ -530,6 +546,22 @@ def race_jockey_work(entries: list[dict[str, Any]], race_jockey: str) -> dict[st
     return out
 
 
+def trainer_work(entries: list[dict[str, Any]]) -> dict[str, int]:
+    """練馬師親自快操／試閘課數，近 21 日（唯一定義，Kelvin 2026-11-21）：騎手角色係「練馬師」（`classify_rider_role`）。
+
+    窗口同騎師親操、晨操摘要一樣用近 21 日。「上仗至今」亦量過（EXP-20261121-41），兩個窗口都冇訊號，
+    揀 21 日係為咗同其他晨操數字一致。副練馬師、助手唔計 —— 要係練馬師本人；出賽行唔計。"""
+    out = {"gallops": 0, "trials": 0}
+    for e in entries:
+        if is_race_row(e) or e.get("rider_role") != "練馬師":
+            continue
+        if e.get("type") == "gallop":
+            out["gallops"] += 1
+        elif e.get("type") == "trial":
+            out["trials"] += 1
+    return out
+
+
 def is_race_row(entry: dict[str, Any]) -> bool:
     """晨操表入面嘅「出賽」行係比賽，唔係操練。"""
     return str(entry.get("type_raw") or "") == "出賽"
@@ -675,6 +707,9 @@ def summarize_trackwork(horse: dict[str, Any], entries: list[dict[str, Any]],
         # 賽日騎師親自快操／試閘課數（Kelvin 2026-11-19；純顯示，唔入分）
         "race_jockey_gallops_21d": race_jockey_work(entries, horse.get("jockey", ""))["gallops"],
         "race_jockey_trials_21d": race_jockey_work(entries, horse.get("jockey", ""))["trials"],
+        # 練馬師親自快操／試閘課數（Kelvin 2026-11-21；純顯示，唔入分）
+        "trainer_gallops_21d": trainer_work(entries)["gallops"],
+        "trainer_trials_21d": trainer_work(entries)["trials"],
         "named_rider_count": len({e.get("rider") for e in entries if e.get("rider")}),
         "rider_role_counts": {
             role: sum(1 for e in entries if e.get("rider_role") == role)
@@ -702,6 +737,7 @@ def extract_one_horse(horse: dict[str, Any], meeting_date: dt.date | None,
     detail_html = fetch_url(trackworkresult_url(horse["horseid"]))
     entries = parse_trackwork_rows(detail_html, horse, meeting_date, window_days)
     digest = make_digest(horse, entries, window_days, horse.get("jockey", ""))
+    summary = summarize_trackwork(horse, entries, digest)
     return {
         "horse_no": horse["horse_no"],
         "horseid": horse["horseid"],
@@ -712,7 +748,7 @@ def extract_one_horse(horse: dict[str, Any], meeting_date: dt.date | None,
         "mode": digest.get("career_category", "status_continuity"),
         "confidence": "中" if entries else "低",
         "entries": entries,
-        "summary": summarize_trackwork(horse, entries, digest),
+        "summary": summary,
         "stability_digest": digest,
         "flags": [
             {"code": code, "level": "positive", "reason": code}
