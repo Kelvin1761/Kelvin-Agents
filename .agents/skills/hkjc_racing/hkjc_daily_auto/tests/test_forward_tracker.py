@@ -36,15 +36,15 @@ def _test(key):
 def test_shadow_profile_ready_collecting_and_stalled(tmp_path):
     ledger = tracker._ledger_summary(_ledger(tmp_path / "l.json", {
         "race_shape_legacy_unbounded": {"active_races": 81, "races": 90},
-        "weight_refit_t02": {"active_races": 59, "races": 60},
-        "trainer_recency_st_early90": {"active_races": 0, "races": 0},
-        "race_shape_st_draw70": {"active_races": 0, "races": 30},
-    }, [{"profile": "weight_refit_t02"}] * 25))
+        "race_shape_st_draw70": {"active_races": 59, "races": 60},
+        "trainer_recency_st_early90": {"active_races": 0, "races": 30},
+    }, [{"profile": "race_shape_st_draw70"}] * 25))
     get = lambda key: tracker.progress(_test(key), root=tmp_path, ledger=ledger, state={})
     assert get("race_shape_legacy_unbounded")["status"] == "ready"
-    assert get("weight_refit_t02")["status"] == "collecting"
-    assert get("trainer_recency_st_early90")["status"] == "stalled"  # 一場記錄都冇
-    assert get("race_shape_st_draw70")["status"] == "stalled"        # 有記錄但 0 active
+    assert get("race_shape_st_draw70")["status"] == "collecting"
+    assert get("trainer_recency_st_early90")["status"] == "stalled"  # 有記錄但 0 active
+    # t02 2026-11-23 Stage 4 review 判咗（REJECT）→ 只顯示結論
+    assert get("weight_refit_t02")["status"] == "decided"
     # 人手判咗嘅 rollback 對照只顯示結論，唔再提醒
     assert get("race_shape_v2_legacy_hv")["status"] == "decided"
     assert get("pre_race_draw_context_v1_generic")["status"] == "decided"

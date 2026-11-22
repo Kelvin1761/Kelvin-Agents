@@ -253,7 +253,8 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                        "（模型排名分層差；CI 上界 < 0 先開預先登記嘅 −0.5 分排名 arm，行 model-regression-gate）；"
                        "上唔上線由 Kelvin 決定"),
     ForwardTest("weight_refit_t02", "權重 refit t02", "EXP-20260928-10", "shadow_profile", 120,
-                profile="weight_refit_t02"),
+                profile="weight_refit_t02",
+                decided="2026-11-23 Stage 4 review（123 場、14 賽日）：Gold −1.52、Good −3.79、NDCG −1.18、capture −0.25 → REJECT，維持 live"),
     # race_shape_v3_hv 已經 experimental live（EXP-20260929-01），由 race_shape_v2_legacy_hv 做 rollback 對照。
     # race_shape_v3_hv_t02（A+B）2026-10-27 撤走：跑馬地 V3 已經 live，weight_refit_t02 喺跑馬地
     # 就等於 A+B，冇額外問題要答。佢亦唔喺 DEFAULT_SHADOW_PROFILES，由來冇記錄。

@@ -624,3 +624,5 @@
 - [EXP-20261122-34](EXP-20261122-34-hkjc-joint-signals-j3.md) — 聯合訊號 J3（J1 13 項＋同程 4 項）v5.1 holdout −0.00152、AUC +0.0032、Gold +0.64、Good +0.99（舊護欄都過）→ Kelvin 決定暫時唔上（頭二冇改善）
 - [EXP-20261123-01](EXP-20261123-01-au-ruler-guard-review.md) — AU log-loss 尺 v2：護欄改場內 AUC 下界 > −0.0015＋Gold／Good 點估計 > −1pp（舊護欄對同幅度雜訊只捉 8/30，AUC 29/30）；校準加 logit(3/N)，baseline 0.5693→0.5533；舊判決唔變（F1 喺舊 dump 會 PASS，唔追溯）
 - [EXP-20261123-03](EXP-20261123-03-hkjc-top2-ruler.md) — 頭二尺 v5.2：爭勝馬（兩模型頭四聯集）頭二 PL 損失；舊頭二計法連剷一半騎練都量唔到，新尺捉到剷維度同雜訊；舊 PASS 全部照過；J3 頭二 z −2.6
+- [EXP-20261123-04](EXP-20261123-04-hkjc-j3-top2-variants.md) — J3 頭二向四改法（換目標、半力度、保護頭二）dev 頭二入頭三全部 < 0 → REJECT；J3h 保住 11-22 頭二但未過；Kelvin 暫停 J3
+- [EXP-20261123-05](EXP-20261123-05-hkjc-rating-drop-switch-return.md) — 評分跌 ≥10＋近仗轉程／配備＋今仗返首本組合：+0.2／−0.9pp 冇訊號（模型已經反映）
