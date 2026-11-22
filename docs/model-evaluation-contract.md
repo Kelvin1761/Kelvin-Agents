@@ -54,6 +54,9 @@ point-in-time 語料；每日 +60–80 場，語料自己變長。
 - fit 類候選照舊要交 walk-forward 預測（v3 規矩）；leakage audit、§6 功效前置、§7 正確性修正、Holm 照舊。
 - **PASS ≠ 改善好多**：0.25% 馬加 0.3 分都過到（EXP-20261121-35）。上線仍然要睇幅度、護欄同 Kelvin 決定，並登記 forward 退回監察。
 - log-loss 好咗但 Gold／Good 踩護欄（例：EXP-20261111 F1，Δ −0.00107、Good 下界 −1.00）= REJECT；要上就係 Kelvin 揀。
+- **Kelvin 取捨（2026-11-22）**：「如果明顯改善 Good 同埋 1 hit 都可以諗」—— Gold 跌可以考慮接受，**前提係 Good 同頭二選有中
+  兩個嘅 95% CI 下界都 > 0**。呢個唔係自動 PASS 路線：符合嘅候選要交 Kelvin 決定，而且要用新賽事 forward 確認
+  （睇完結果先換判法 = 事後選擇）。第一個用呢條嘅係 EXP-20261122-05 PR1 shadow。
 
 ## Stage 4 判決順序（v3，2026-10-10）—— 全紀錄判決
 

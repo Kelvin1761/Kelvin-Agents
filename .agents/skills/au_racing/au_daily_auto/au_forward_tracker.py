@@ -91,6 +91,11 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 "scheduler 夠數會用 log-loss 尺判一次並凍結；睇 au-age-upnil-forward-status.json："
                 "OLD／TRES／PRIZE rollback_recommended=true 就建議 WC_AU_OLD_HORSE_LIVE=0／WC_AU_TRAINER_RESIDUAL_LIVE=0／WC_AU_PEOPLE_PRIZE_LIVE=0；SUNIL PASS 先由你決定上唔上",
                 status_file="au-age-upnil-forward-status.json"),
+    ForwardTest("pr1_shadow", "表現評分 PR1（輸距＋負磅）疊 live shadow（唔郁排名）",
+                "EXP-20261122-05", "status_file", 1000, "場",
+                "scheduler 夠數會判一次並凍結：Good 同頭二選有中 CI 下界都 > 0 = PASS（Kelvin：咁先考慮犧牲 Gold）；"
+                "睇 au-pr1-shadow-forward-status.json，上唔上線由你決定",
+                status_file="au-pr1-shadow-forward-status.json"),
 )
 
 _S2_DAYS = re.compile(r"forward days with snapshot \+ results:\s*(\d+)\s*/\s*(\d+)")

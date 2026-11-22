@@ -112,6 +112,7 @@ HEAVY_H2_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_heavy_h2_for
 DEBUT_NEUTRAL_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_debut_neutral_forward.py"
 LPOS_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_lpos_forward.py"
 AGE_UPNIL_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_age_upnil_forward.py"
+PR1_SHADOW_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_pr1_shadow_forward.py"
 TRAINER_RESIDUAL_TABLE = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_trainer_residual_table.py"
 PEOPLE_PRIZE_TABLE = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_people_prize_table.py"
 GENERATE_STATIC = DASHBOARD_DIR / "generate_static.py"
@@ -1715,6 +1716,27 @@ def step_debut_neutral_forward(runlog: RunLog) -> bool:
     runlog.step("debut-neutral-forward", status.get("state", "unknown"), races=status.get("races_collected", 0),
                 target=status.get("target_races"), keep=(status.get("evaluation") or {}).get("keep"),
                 horses_moved=interim.get("horses_ability_moved"))
+    return True
+
+
+def step_pr1_shadow_forward(runlog: RunLog) -> bool:
+    """EXP-20261122-05 PR1（輸距＋負磅表現評分）shadow：live + 0.148 ×（PR1 − 場均），唔郁排名。
+    11-23 起夠 1,000 場判一次（Good 同頭二選有中 CI 下界都 > 0 = PASS）並凍結；未夠數只報數量。"""
+    status_path = WORK_DIR / "au-pr1-shadow-forward-status.json"
+    rc, out = run_cmd([sys.executable, str(PR1_SHADOW_FORWARD), "--data-root", str(AU_RACING),
+                       "--output", str(status_path)], timeout=1800)
+    if rc != 0 or not status_path.exists():
+        detail = error_excerpt(out, rc)
+        runlog.warn(f"PR1 shadow forward 更新失敗（唔影響 live）：{detail}")
+        runlog.step("pr1-shadow-forward", "failed", detail=detail)
+        return False
+    try:
+        status = json.loads(status_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        runlog.step("pr1-shadow-forward", "failed", detail=str(exc))
+        return False
+    runlog.step("pr1-shadow-forward", status.get("state", "unknown"), races=status.get("races_collected", 0),
+                target=status.get("target_races"))
     return True
 
 
@@ -4576,6 +4598,7 @@ def run_evening(runlog: RunLog, args, review_day: date) -> int:
         step_debut_neutral_forward(runlog)
         step_lpos_forward(runlog)
         step_age_upnil_forward(runlog)
+        step_pr1_shadow_forward(runlog)
         step_sb_betfair_forward(runlog)
         step_forward_tracker(runlog)
     publisher = None

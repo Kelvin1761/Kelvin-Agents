@@ -49,3 +49,10 @@
 - 但今日上線嘅 R2（總獎金）同練馬師剩餘表現已經食咗大部分「實力」資訊；剩低嘅令機率準少少，但打亂頭幾選（Gold 跌）。
   同 T3、EXP-20261111 F1 一樣嘅形狀：疊多一層 overlay 改善中後段機率、損害頭幾選。
 - 唔上線。下一步（未做）：唔再疊 overlay，而係將「實力」重新設計成一個維度（表現評分 + 總獎金 + 近績質素分一齊 walk-forward 分權），再同 live 正面對決。
+
+## Kelvin 決定（2026-11-22）：PR1 開 forward shadow
+
+「如果明顯改善 Good 同埋 1 hit 都可以諗」—— PR1 疊 live：Good +0.53（下界 −0.03）、頭二選有中 +0.13、Gold −0.70，未達標。
+`au_pr1_shadow_forward.py`（排程 `step_pr1_shadow_forward`，追蹤表 `pr1_shadow`）：live + 0.148 ×（PR1 − 場均），β 凍結
+（疊 live walk-forward 中位），**唔郁排名**；11-23 起夠 1,000 場判一次：Good 同頭二選有中 95% CI 下界都 > 0 = PASS，交 Kelvin 決定。
+PR1 計法抽做 `au_perf_rating.py`（同研究 `features.py` 400 匹抽查 0 差異）。
