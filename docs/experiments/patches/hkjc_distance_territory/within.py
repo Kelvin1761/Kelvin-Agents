@@ -1,5 +1,5 @@
 """EXP-20261122-22：殘差拆場間／場內（重用 build_terr.py 嘅特徵）。用法：python3 within.py <base.jsonl>"""
-import sys, json, numpy as np
+import sys, numpy as np
 sys.argv = [sys.argv[0], sys.argv[1], "/dev/null"]
 src = open("build_terr.py").read().split("def strip_d1")[0]
 ns = {"__name__": "build_terr"}
