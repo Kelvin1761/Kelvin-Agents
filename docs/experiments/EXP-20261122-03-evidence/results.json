@@ -1,0 +1,89 @@
+{
+ "P1": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "gold_good_guardrail": false,
+   "beats_null": true
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   -0.0007054212355751529,
+   -0.0023596163770781453,
+   0.0008948739690478346
+  ],
+  "beats_null_share": 1.0,
+  "gold_pp": [
+   -0.8946322067594433,
+   -1.8123078378223054
+  ],
+  "good_pp": [
+   -0.33134526176275675,
+   -1.6273509140821214
+  ],
+  "capture5_pp": 0.4500773138944113,
+  "top2_any_hit_pp": -0.09940357852882703,
+  "p": 0.1955,
+  "holm_p": 0.1955
+ },
+ "P2": {
+  "verdict": "REJECT",
+  "reason": "gold_good_guardrail",
+  "checks": {
+   "logloss_ci_upper_below_0": true,
+   "gold_good_guardrail": false,
+   "beats_null": true
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   -0.002132463999325353,
+   -0.0033367014536191267,
+   -0.0008500546988291801
+  ],
+  "beats_null_share": 1.0,
+  "gold_pp": [
+   -0.36447978793903246,
+   -1.3505151698004665
+  ],
+  "good_pp": [
+   -0.4307488402915839,
+   -1.6260365043889484
+  ],
+  "capture5_pp": 0.5826154185995142,
+  "top2_any_hit_pp": 0.6626905235255135,
+  "p": 0.0005,
+  "holm_p": 0.0015
+ },
+ "P3": {
+  "verdict": "REJECT",
+  "reason": "gold_good_guardrail",
+  "checks": {
+   "logloss_ci_upper_below_0": true,
+   "gold_good_guardrail": false,
+   "beats_null": true
+  },
+  "races": 3018,
+  "days": 79,
+  "dlogloss": [
+   -0.001812174025186884,
+   -0.002981639065986328,
+   -0.0005858389817754969
+  ],
+  "beats_null_share": 1.0,
+  "gold_pp": [
+   -0.33134526176275675,
+   -1.1601767528462437
+  ],
+  "good_pp": [
+   -0.26507620941020543,
+   -1.3575599562534177
+  ],
+  "capture5_pp": 0.7703777335984094,
+  "top2_any_hit_pp": 0.46388336646785955,
+  "p": 0.002,
+  "holm_p": 0.004
+ }
+}

@@ -599,3 +599,4 @@
 - [EXP-20261121-36](EXP-20261121-36-au-lay-scan.md) — AU lay（做莊）探索（Kelvin 2026-11-21）：BSP 全部 lay −0.07% 打和；模型唔睇好嘅熱門 lay 反而蝕（−4%），市場啱；冇 edge，唔開 forward
 - [EXP-20261122-01](EXP-20261122-01-au-stewards-nsw.md) — AU NSW 競賽主任 PDF（WIDE／VET／TROUBLE）：場地代碼砌齊但批量抓觸發防機械人驗證（448 份得 1 份），唔繞過；Kelvin：得 NSW 唔夠，擱置
 - [EXP-20261122-02](EXP-20261122-02-au-people-residual.md) — AU 騎練「剩餘表現」（扣坐騎質素，walk-forward，唔用市場）：**練馬師 PASS**（Δ −0.00057、Holm 0.01、Gold +0.27／Good +0.40）；騎師方向正但 CI 跨零 REJECT；未上線，等 forward 決定
+- [EXP-20261122-03](EXP-20261122-03-au-people-prize.md) — AU 騎練「每仗平均獎金」（Kelvin 問代替勝率）：取代 REJECT（Gold −0.89）；加落現行／剩餘表現 log-loss 明顯好（Δ −0.0021、Holm 0.0015）但頭二選變差踩護欄 → REJECT
