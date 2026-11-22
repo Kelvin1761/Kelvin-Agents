@@ -21,6 +21,7 @@ from . import stability as _stab
 from . import tags as _tags
 from . import overseas as _overseas
 from . import track_going as _track
+from . import people_overlays as _people
 from . import jockey_trainer as _jt
 from .dimensions import DIMENSION_SPECS, LEAF_SPECS, RATING_SCORE_SHARE
 from .narrative import NarrativeMixin, RE_OPP_FOLLOWUP  # noqa: F401  報告文字（EXP-20261104-02）
@@ -841,7 +842,13 @@ class RacingEngine(NarrativeMixin):
             raise ValueError("non-finite AU full-time contribution")
         draw_feature = round(_draw.horse_adjustment(
             self.horse_data.get("barrier"), self._field_summary().get("barriers"), self._straight_course()), 4)
-        ability_score = round(base_ability + full_time_feature + draw_feature, 4)
+        # 實驗性上線（Kelvin 2026-11-22，forward 退回監察）：老馬 −3.46、練馬師剩餘表現（`people_overlays`）。
+        old_horse_feature = round(_people.old_horse_feature(self.horse_data.get("age")), 4)
+        meeting_date = str(self._meeting_intelligence().get("date") or self.race_context.get("date") or "")
+        trainer_residual_feature = _people.trainer_feature(
+            self._clean_identity(self.horse_data.get("trainer")), self.race_context.get("field_trainers"), meeting_date)
+        ability_score = round(base_ability + full_time_feature + draw_feature
+                              + old_horse_feature + trainer_residual_feature, 4)
         grade = compute_grade(ability_score)
 
         data_coverage = self._data_coverage()
@@ -860,6 +867,8 @@ class RacingEngine(NarrativeMixin):
             class_proof_feature=class_proof_feat,
             full_time_speed_feature=full_time_feature,
             draw_feature=draw_feature,
+            old_horse_feature=old_horse_feature,
+            trainer_residual_feature=trainer_residual_feature,
         )
 
         return {
@@ -875,6 +884,8 @@ class RacingEngine(NarrativeMixin):
             "full_time_speed_feature": full_time_feature,
             "full_time_speed_detail": full_time_detail,
             "draw_feature": draw_feature,
+            "old_horse_feature": old_horse_feature,
+            "trainer_residual_feature": trainer_residual_feature,
             # EXP-20261009-04 回退影子：class_score 入 class_weight 對綜合分嘅貢獻。
             # 舊公式分數 = 綜合分 − 呢個數（矩陣冇 clip 嗰陣逐位一樣）。
             "class_score_live_delta": round(
@@ -902,7 +913,8 @@ class RacingEngine(NarrativeMixin):
             "grade_transparency": grade_transparency,
             "jt_fit_detail": self.jt_fit_detail,
             # 純顯示標籤（同 HKJC tags.py 同一格式），評分完先砌，唔郁分數；出錯 → {"_error": …}
-            "tags": _tags.build(self, matrix_scores, wet_feature=wet_form_feat, draw_feature=draw_feature),
+            "tags": _tags.build(self, matrix_scores, wet_feature=wet_form_feat, draw_feature=draw_feature,
+                                old_horse_feature=old_horse_feature, trainer_residual_feature=trainer_residual_feature),
             "preparation_detail": getattr(self, "preparation_detail", None),
             "trial_speed_detail": getattr(self, "trial_speed_detail", None),
             "stability_detail": {

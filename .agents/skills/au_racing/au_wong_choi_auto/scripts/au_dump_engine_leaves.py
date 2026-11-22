@@ -163,6 +163,8 @@ def main():
                     "proven_class": float(res.get("proven_class_feature") or 0.0),
                     "full_time": float(res.get("full_time_speed_feature") or 0.0),
                     "draw": float(res.get("draw_feature") or 0.0),
+                    "old_horse": float(res.get("old_horse_feature") or 0.0),
+                    "trainer_residual": float(res.get("trainer_residual_feature") or 0.0),
                     "ability": float(res.get("ability_score") or 0.0),
                     # 分層用（唔入分）：初出／休後實驗要喺同一份 dump 切 cohort。
                     "career_starts": hd.get("career_race_starts"),

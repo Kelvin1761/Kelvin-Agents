@@ -57,7 +57,9 @@ def race_rows(logic, result_rows):
                "sp": result.get("sp"), "wet": auto.get("wet_form_feature") or 0.0,
                "proven_class": auto.get("proven_class_feature") or 0.0,
                "full_time": auto.get("full_time_speed_feature") or 0.0,
-               "draw": float(auto.get("draw_feature") or 0.0)}
+               "draw": float(auto.get("draw_feature") or 0.0),
+               "old_horse": float(auto.get("old_horse_feature") or 0.0),
+               "trainer_residual": float(auto.get("trainer_residual_feature") or 0.0)}
         base_features = dict(features)
         is_proxy = (auto.get("score_provenance") or {}).get("form_quality_score") == PROXY_SOURCE
         if is_proxy:
