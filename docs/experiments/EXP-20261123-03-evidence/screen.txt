@@ -1,0 +1,110 @@
+  au-display/cand: Δ +0.00000 [+0.00000] AUC +0.000[+0.000] Gold +0.00 Good +0.00
+  au-going-sim/G25: Δ +0.00269 [+0.00354] AUC -0.590[-0.811] Gold -0.65 Good -0.68
+  au-going-sim/G50: Δ +0.00078 [+0.00129] AUC -0.198[-0.356] Gold -0.18 Good -0.12
+  au-narrative/cand: Δ +0.00000 [+0.00000] AUC +0.000[+0.000] Gold +0.00 Good +0.00
+  au-noise-20261113/FINAL: Δ +0.00004 [+0.00022] AUC -0.004[-0.074] Gold +0.17 Good +0.07
+  au-noise-20261113/FLFIX: Δ +0.00000 [+0.00000] AUC +0.000[+0.000] Gold +0.00 Good +0.00
+  au-noise-20261113/P1: Δ +0.00043 [+0.00054] AUC -0.134[-0.203] Gold -0.07 Good +0.03
+  au-noise-20261113/T1: Δ +0.00028 [+0.00051] AUC -0.073[-0.151] Gold +0.00 Good +0.03
+  au-noise-20261113/T2: Δ +0.00030 [+0.00051] AUC -0.034[-0.109] Gold +0.03 Good +0.07
+  au-noise-20261113/T3: Δ +0.00000 [+0.00036] AUC -0.052[-0.170] Gold -0.17 Good -0.17
+  au-noise-20261113/WA: Δ +0.00001 [+0.00020] AUC +0.004[-0.066] Gold +0.13 Good +0.03
+  au-noise-20261113/WB: Δ +0.00002 [+0.00021] AUC +0.009[-0.061] Gold +0.20 Good +0.03
+  au-position-environment-20261107/E: Δ +0.00109 [+0.00149] AUC -0.322[-0.463] Gold -0.14 Good -0.18
+  au-position-environment-20261107/EP: Δ +0.00072 [+0.00095] AUC -0.206[-0.329] Gold -0.11 Good -0.29
+  au-position-environment-20261107/N: Δ +0.00204 [+0.00271] AUC -0.245[-0.436] Gold -0.21 Good +0.29
+  au-position-environment-20261107/P: Δ +0.00064 [+0.00086] AUC -0.149[-0.250] Gold +0.00 Good -0.29
+  au-position-environment-20261107/baseline_dump: Δ +0.00000 [+0.00000] AUC +0.000[+0.000] Gold +0.00 Good +0.00
+skip /Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/au-position-environment-20261107/build.json 'int' object is not iterable
+skip /Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/au-position-environment-20261107/judgement.json 'int' object is not iterable
+  class-rebuild/C1: Δ +0.00003 [+0.00008] AUC +0.007[-0.016] Gold +0.04 Good -0.08
+  class-rebuild/C2: Δ -0.00007 [+0.00015] AUC -0.039[-0.131] Gold -0.08 Good -0.04
+  class-rebuild/C3: Δ -0.00004 [+0.00018] AUC -0.041[-0.135] Gold -0.08 Good -0.12
+★ class-rebuild/F1: Δ -0.00000 [-0.00000] AUC +0.000[+0.000] Gold +0.00 Good +0.00
+  class-rebuild/FINAL: Δ +0.00003 [+0.00007] AUC +0.002[-0.020] Gold +0.00 Good +0.00
+  class-rebuild/R0: Δ +0.00000 [+0.00004] AUC -0.051[-0.127] Gold +0.04 Good -0.04
+★ class-rebuild/R2: Δ -0.00000 [-0.00000] AUC +0.000[+0.000] Gold +0.00 Good +0.00
+  class-rebuild/R5: Δ +0.00011 [+0.00016] AUC +0.017[-0.015] Gold +0.00 Good +0.23
+  class-rebuild/RALL: Δ +0.00015 [+0.00023] AUC -0.012[-0.069] Gold +0.00 Good +0.08
+  class-rebuild/RD: Δ +0.00000 [+0.00002] AUC +0.005[-0.009] Gold +0.04 Good -0.08
+  class-rebuild/RM: Δ +0.00003 [+0.00007] AUC +0.002[-0.020] Gold +0.00 Good +0.00
+  class-rebuild/aa: Δ +0.00000 [+0.00000] AUC +0.000[+0.000] Gold +0.00 Good +0.00
+  class-rebuild/final_code: Δ +0.00003 [+0.00007] AUC +0.002[-0.020] Gold +0.00 Good +0.00
+  debut-d1/D1: Δ +0.00006 [+0.00015] AUC -0.034[-0.089] Gold +0.00 Good +0.11
+skip /Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/debut-d1/fixed_D1.json 'int' object is not iterable
+skip /Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/debut-d1/s8_D1.json 'int' object is not iterable
+  draw-straight/cand: Δ -0.00004 [+0.00000] AUC +0.004[-0.004] Gold +0.00 Good +0.08
+skip /Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/draw-straight/judge.json 'int' object is not iterable
+  fit-rule/R: Δ +0.00000 [+0.00000] AUC +0.000[+0.000] Gold +0.00 Good +0.00
+  fit-rule/S: Δ -0.00004 [+0.00000] AUC +0.004[-0.004] Gold +0.00 Good +0.08
+skip /Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/fit-rule/judge.json 'int' object is not iterable
+skip /Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/fit-rule/judge_S.json 'int' object is not iterable
+★ fq-prize/C1: Δ -0.00060 [-0.00013] AUC +0.156[+0.006] Gold -0.04 Good +0.33
+  fq-prize/C2: Δ -0.00048 [+0.00027] AUC +0.206[+0.001] Gold +0.00 Good +1.10
+  fq-prize/C3: Δ +0.00052 [+0.00080] AUC +0.047[-0.072] Gold +0.41 Good +0.18
+★ fq-prize/SHIP: Δ -0.00110 [-0.00029] AUC +0.386[+0.160] Gold +0.33 Good +0.99
+skip /Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/fq-prize/fixed_C1.json 'int' object is not iterable
+skip /Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/fq-prize/fixed_C2.json 'int' object is not iterable
+skip /Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/fq-prize/fixed_C3.json 'int' object is not iterable
+skip /Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/fq-prize/s8_C1.json 'int' object is not iterable
+skip /Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/fq-prize/s8_C2.json 'int' object is not iterable
+skip /Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/fq-prize/s8_C3.json 'int' object is not iterable
+★ fq-scale/F1: Δ -0.00122 [-0.00067] AUC +0.039[-0.110] Gold +0.10 Good -0.37
+  fq-scale/F2: Δ -0.00106 [-0.00027] AUC -0.013[-0.169] Gold +0.13 Good -0.34
+skip /Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/fq-scale/fixed_F1.json 'int' object is not iterable
+skip /Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/fq-scale/fixed_F2.json 'int' object is not iterable
+skip /Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/fq-scale/s8_F1.json 'int' object is not iterable
+skip /Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/fq-scale/s8_F2.json 'int' object is not iterable
+  fq-tail/SP: Δ +0.00052 [+0.00084] AUC -0.041[-0.101] Gold -0.15 Good -0.04
+skip /Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/fq-tail/judge_fixed.json 'int' object is not iterable
+skip /Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/fq-tail/judge_s8.json 'int' object is not iterable
+  heavy-c2/H1: Δ -0.00016 [+0.00007] AUC +0.054[-0.047] Gold +0.18 Good -0.18
+  heavy-c2/H2: Δ -0.00012 [+0.00007] AUC +0.046[-0.008] Gold +0.04 Good +0.18
+skip /Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/heavy-c2/fixed_H1.json 'int' object is not iterable
+skip /Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/heavy-c2/fixed_H2.json 'int' object is not iterable
+skip /Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/heavy-c2/s8_H1.json 'int' object is not iterable
+skip /Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/heavy-c2/s8_H2.json 'int' object is not iterable
+skip /Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/jt-review/judge_fix.json 'int' object is not iterable
+  jt-review/new: Δ -0.00000 [+0.00001] AUC -0.008[-0.019] Gold +0.00 Good +0.00
+  jt-review/scan: Δ +0.00000 [+0.00000] AUC +0.000[+0.000] Gold +0.00 Good +0.00
+  track-s8/SP: Δ -0.00017 [+0.00009] AUC +0.081[-0.043] Gold +0.27 Good -0.04
+skip /Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/track-s8/judge.json 'int' object is not iterable
+  track-simplify/base2: Δ +0.00000 [+0.00000] AUC +0.000[+0.000] Gold +0.00 Good +0.00
+  track-simplify/fix: Δ -0.00000 [+0.00000] AUC +0.000[+0.000] Gold +0.00 Good +0.00
+skip /Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/track-simplify/judge.json 'int' object is not iterable
+skip /Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/track-simplify/judge_fix.json 'int' object is not iterable
+  track-simplify/new: Δ +0.00000 [+0.00000] AUC +0.000[+0.000] Gold +0.00 Good +0.00
+  track-specialism/SP: Δ -0.00017 [+0.00009] AUC +0.081[-0.043] Gold +0.27 Good -0.04
+★ track-specialism/SPG: Δ -0.00011 [-0.00003] AUC -0.004[-0.059] Gold +0.31 Good -0.08
+  track-specialism/SPW: Δ -0.00040 [+0.00006] AUC +0.166[+0.000] Gold +0.12 Good +0.08
+skip /Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/track-specialism/judge.json 'int' object is not iterable
+  EXP-20261101-30/arms/P: Δ -0.00006 [+0.00016] AUC -0.025[-0.134] Gold -0.16 Good +0.24
+  EXP-20261101-30/arms/R: Δ -0.00020 [+0.00001] AUC +0.012[-0.095] Gold -0.24 Good +0.36
+  EXP-20261101-30/arms/RP: Δ -0.00014 [+0.00018] AUC -0.084[-0.228] Gold -0.40 Good +0.55
+  EXP-20261101-31/arms/S: Δ +0.00015 [+0.00079] AUC -0.042[-0.255] Gold -0.47 Good -0.28
+  EXP-20261101-31/arms/S0: Δ +0.00013 [+0.00063] AUC -0.041[-0.210] Gold -0.63 Good -0.04
+  EXP-20261101-33/arms/G: Δ +0.00003 [+0.00067] AUC -0.044[-0.232] Gold -0.12 Good -0.04
+  EXP-20261101-33/arms/SH: Δ +0.00057 [+0.00128] AUC -0.182[-0.368] Gold -0.47 Good -0.24
+  EXP-20261101-37/arms/G: Δ +0.00003 [+0.00067] AUC -0.044[-0.232] Gold -0.12 Good -0.04
+  EXP-20261101-37/arms/GW: Δ +0.00006 [+0.00070] AUC -0.079[-0.269] Gold +0.12 Good -0.36
+  EXP-20261101-37/arms/GWX: Δ -0.00013 [+0.00060] AUC -0.136[-0.375] Gold -0.04 Good -0.24
+  EXP-20261101-38/arms/X1_no_wet: Δ -0.00017 [+0.00016] AUC -0.033[-0.171] Gold +0.20 Good -0.28
+  EXP-20261101-38/arms/X2_no_proven_class: Δ -0.00009 [+0.00010] AUC -0.055[-0.135] Gold -0.04 Good -0.28
+  EXP-20261101-38/arms/X3_no_full_time: Δ +0.00003 [+0.00006] AUC -0.012[-0.038] Gold +0.00 Good +0.00
+  EXP-20261101-38/arms/X4_no_trip_pen: Δ +0.00053 [+0.00072] AUC -0.136[-0.198] Gold -0.04 Good -0.12
+skip /Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/EXP-20261101-38/arms/x5_rail.json 'int' object is not iterable
+★ draw-bigfield/arms/R8: Δ -0.00098 [-0.00055] AUC +0.133[+0.009] Gold +0.39 Good +0.31
+★ draw-bigfield/arms/Z10: Δ -0.00059 [-0.00021] AUC +0.075[-0.023] Gold +0.00 Good -0.04
+★ draw-bigfield/arms/Z8: Δ -0.00096 [-0.00056] AUC +0.132[+0.016] Gold +0.19 Good +0.08
+★ draw-bigfield/arms/ZD8: Δ -0.00083 [-0.00039] AUC +0.075[-0.048] Gold +0.16 Good +0.23
+  exp-20261028-fq-weight-class/arms/A1: Δ +0.00015 [+0.00026] AUC -0.016[-0.099] Gold -0.26 Good -0.09
+★ exp-20261028-fq-weight-class/arms/A2: Δ -0.00065 [-0.00012] AUC +0.108[-0.055] Gold -0.09 Good -0.26
+  exp-20261028-fq-weight-class/arms/A3: Δ -0.00048 [+0.00012] AUC +0.100[-0.076] Gold -0.26 Good -0.30
+  exp-20261028-fq-weight-class/arms/B1: Δ +0.00001 [+0.00009] AUC +0.014[-0.027] Gold -0.09 Good -0.04
+  exp-20261028-fq-weight-class/arms/B2: Δ +0.00000 [+0.00008] AUC +0.014[-0.026] Gold -0.09 Good -0.04
+  exp-20261028-fq-weight-class/arms/C0: Δ +0.00034 [+0.00048] AUC -0.009[-0.109] Gold +0.17 Good +0.04
+  exp-20261028-fq-weight-class/arms/C1: Δ +0.00001 [+0.00005] AUC -0.032[-0.069] Gold -0.04 Good +0.00
+  exp-20261028-fq-weight-class/arms/C2: Δ +0.00011 [+0.00016] AUC -0.022[-0.064] Gold -0.09 Good +0.00
+  exp-20261028-fq-weight-class/arms/C3: Δ +0.00004 [+0.00012] AUC +0.005[-0.056] Gold +0.09 Good -0.04
+  exp-20261028-fq-weight-class/arms/C4: Δ +0.00000 [+0.00003] AUC -0.003[-0.023] Gold +0.04 Good +0.00
+  exp-20261028-fq-weight-class/arms/C5: Δ +0.00000 [+0.00004] AUC +0.012[-0.007] Gold +0.00 Good +0.00

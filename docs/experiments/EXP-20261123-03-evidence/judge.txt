@@ -1,0 +1,2 @@
+F1: PASS/logloss_supported_gain 郁 20835 匹｜Δ -0.00171 [-0.00225,-0.00120]｜AUC +0.0013 [+0.0001]｜Gold +0.17(-0.22) Good +0.26(-0.22)｜top2 +0.28｜null 1.0｜Holm 0.000
+SPG: PASS/logloss_supported_gain 郁 23904 匹｜Δ -0.00006 [-0.00012,-0.00001]｜AUC -0.0001 [-0.0005]｜Gold -0.03(-0.21) Good +0.11(-0.09)｜top2 -0.09｜null 0.995｜Holm 0.005
