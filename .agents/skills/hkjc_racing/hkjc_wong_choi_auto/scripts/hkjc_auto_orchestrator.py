@@ -51,7 +51,7 @@ from hkjc_racing_engine import market_history
 from hkjc_racing_engine import draw_style
 from hkjc_racing_engine import incident_history, distance_move
 from hkjc_racing_engine import surface_move
-from hkjc_racing_engine import venue_distance, horse_age
+from hkjc_racing_engine import venue_distance, horse_age, joint_signals
 from hkjc_racing_engine import thin_evidence, excuse_streak
 from hkjc_racing_engine.validation import validate_engine_scripts, validate_logic_data
 from wongchoi_paths import is_materialized_file
@@ -366,6 +366,9 @@ def _refresh_grade_transparency(horses):
         hage = float(auto.get("horse_age_delta", 0.0) or 0.0)
         if hage:
             adjustments.append({"key": "horse_age", "label": "馬齡", "raw": round(hage, 2)})
+        joint = float(auto.get("joint_signals_delta", 0.0) or 0.0)
+        if joint:
+            adjustments.append({"key": "joint_signals", "label": "聯合訊號", "raw": round(joint, 2)})
         exc = float(auto.get("excuse_streak_delta", 0.0) or 0.0)
         if exc:
             adjustments.append({"key": "excuse_streak", "label": "連續兩仗有藉口", "raw": round(exc, 2)})
@@ -1174,6 +1177,8 @@ class HKJCAutoOrchestrator:
         excuse_streak.apply(horses, race_context.get("race_date"))
         # 薄證據長休馬收窄信心（EXP-20261119-05 S3，實驗性上線）：最後一個後置組件，grade／排名之前
         thin_evidence.apply(horses, race_context)
+        # 聯合訊號（EXP-20261122-34 J3）：17 個細訊號一齊入，薄證據收窄之後（同回放次序：live base 已含收窄，再加 J3）、grade／排名之前
+        joint_signals.apply(horses, race_context, Path(race_file).parent)
         _refresh_grade_transparency(horses)
         self._apply_7d_official_ranking(horses)
         # ensure_verdict owns the single deterministic ranking path, including

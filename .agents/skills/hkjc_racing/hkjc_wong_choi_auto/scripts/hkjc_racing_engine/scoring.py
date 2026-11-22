@@ -158,6 +158,12 @@ RANKING_ADJUSTMENTS = (
         "missing": "外隊馬／冇事件報告表／上兩仗任何一仗冇報告或者搵唔到名次 = 不套用",
     },
     {
+        "key": "joint_signals",
+        "label": "聯合訊號（EXP-20261122-34）",
+        "formula": "Σ β_k·(f_k − 場均)，17 個細訊號一齊 fit（事件報告 4 項、評分跌返贏馬分 3 項、老馬贏後、配備除去／首次、大幅減程、評分喺班內位置、十日內再出、同程 4 項）；β 見 hkjc_racing_engine/joint_signals.py",
+        "missing": "冇事件報告／往績／配備 = 該項 0；外隊馬中性",
+    },
+    {
         "key": "thin_evidence",
         "label": "薄證據收窄（EXP-20261119-05，實驗性上線、未證實改善）",
         "formula": "本地馬、香港往績 ≤2 仗、上一仗距今 >180 日：raw' = 場均 + 0.5·(raw − 場均)，再全場置中（收窄、唔係扣分：高分跌、低分升）；往績 = HKJC 馬匹頁香港賽事、日期嚴格早過今仗（hkjc_racing_engine/thin_evidence.py）",

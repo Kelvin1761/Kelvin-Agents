@@ -119,6 +119,7 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
     ForwardTest("form_patterns_shadow", "老馬贏後／降班評分回落入分（shadow）", "EXP-20261115-15", "harness_ab", 150,
                 since="2026-11-15", arm="docs/experiments/patches/hkjc_arm_form_patterns_shadow.py",
                 action="自動判：forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議入分（等你決定）；否則維持只顯示",
+                decided="2026-11-22 由 EXP-20261122-34 J3 聯合訊號取代（已入分，回放 v5.1 dev／holdout PASS）；呢個 shadow 唔再判",
                 extra={"pass_verdict": "建議入分（等你決定）"}),
     # EXP-20261116-07 HR（Kelvin「負磅 dig deep」）：一二班評分項＋分級賽負磅／評分項，回放 dev CI 跨零，唔入分。
     # 只郁一二班同分級賽（約一成場次）→ 用 150 場。
@@ -165,6 +166,7 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
     ForwardTest("joint_signals_shadow", "13 個未入分訊號一齊 refit（shadow）", "EXP-20261117-05", "harness_ab", 150,
                 since="2026-11-18", arm="docs/experiments/patches/hkjc_arm_joint_signals_shadow.py",
                 action="自動判：forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議入分（等你決定）；否則維持唔入分",
+                decided="2026-11-22 由 EXP-20261122-34 J3 聯合訊號取代（已入分，回放 v5.1 dev／holdout PASS）；呢個 shadow 唔再判",
                 extra={"pass_verdict": "建議入分（等你決定）"}),
     # EXP-20261117-06 K2：轉場（谷草／田草／泥地）入分；回放 dev／holdout Holm 3 PASS。退回式 forward 監察。
     ForwardTest("surface_move_post_live", "轉場組件上線後 vs 冇組件", "EXP-20261117-06", "harness_ab", 60,
@@ -187,10 +189,16 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 since="2026-11-22", arm="docs/experiments/patches/hkjc_arm_thin_shrink_revert.py",
                 action="自動判：退回版 forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議退回（等你決定）；否則保留",
                 extra={"pass_verdict": "建議退回（等你決定）"}),
+    # EXP-20261122-34 J3（Kelvin 2026-11-22「J1 加埋同程一齊入」）：17 個細訊號一齊入分；回放 v5.1 dev／holdout PASS。退回式 forward 監察。
+    ForwardTest("joint_signals_post_live", "聯合訊號上線後 vs 冇組件", "EXP-20261122-34", "harness_ab", 60,
+                since="2026-11-25", arm="docs/experiments/patches/hkjc_arm_joint_signals_revert.py",
+                action="自動判：退回版 forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議退回（等你決定）；否則保留",
+                extra={"pass_verdict": "建議退回（等你決定）"}),
     # EXP-20261117-07：J1 精簡版（9 個特徵，逐個拎走揀；揀用咗 dev → 只由 forward 判）。
     ForwardTest("joint_signals_lean_shadow", "未入分訊號 refit 精簡版（9 個，shadow）", "EXP-20261117-07", "harness_ab", 150,
                 since="2026-11-18", arm="docs/experiments/patches/hkjc_arm_joint_signals_lean_shadow.py",
                 action="自動判：forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議入分（等你決定）；否則維持唔入分",
+                decided="2026-11-22 由 EXP-20261122-34 J3 聯合訊號取代（已入分，回放 v5.1 dev／holdout PASS）；呢個 shadow 唔再判",
                 extra={"pass_verdict": "建議入分（等你決定）"}),
     # EXP-20261117-07 R1（Kelvin 2026-11-17「可以開 forward 觀察」）：9 個維度權重修正（穩定性、檔位走位減；評分與經驗變負）。
     ForwardTest("weight_refit_shadow", "現行權重 refit（shadow）", "EXP-20261117-07", "harness_ab", 150,

@@ -843,6 +843,41 @@ def _incident_tag(auto: dict) -> list[dict]:
     return out
 
 
+# 聯合訊號（EXP-20261122-34）：已有 chip 嘅概念直接升級做「已入分」＋影響；冇 chip 嘅另出一個。一樣嘢一個 chip。
+_JOINT_FROM_TAG = {"incident_ride": ("ride_q",), "incident_wide_two_back": ("wide2",), "old_won_last": ("old_won",),
+                   "classdrop_rating_back": ("drop_rb",), "rating_near_win": ("rb_any", "rb_placed"),
+                   "gear_removed": ("gear_off",), "gear_first": ("gear_on",), "quick_backup": ("backup10",),
+                   "specialist": ("sd_rate",)}
+JOINT_CHIP_FLOOR = 0.3
+
+
+def _apply_joint_signals(special: list[dict], auto: dict) -> list[dict]:
+    from .joint_signals import LABEL
+    js = auto.get("joint_signals") or {}
+    flags, parts = js.get("flags") or {}, js.get("parts") or {}
+    if not parts:
+        return special
+    note = "已入分（聯合訊號：17 個細訊號一齊 fit，回放 holdout log-loss −0.00152、排序 AUC +0.0032，EXP-20261122-34）"
+    used = set()
+    out = []
+    for tg in special:
+        keys = [k for k in _JOINT_FROM_TAG.get(tg["key"], ()) if flags.get(k) and k in parts]
+        if keys and not (tg["key"] == "rating_near_win" and not tg["label"].startswith("評分跌返")):
+            imp = round(sum(parts[k] for k in keys), 2)
+            tg = dict(tg, scored=True, impact=imp, tone="good" if imp > 0 else "bad",
+                      why=(tg.get("why") or "").replace("未入分", "").rstrip("；。 ") + f"。{note}；今場影響 {imp:+.2f}。")
+            used.update(keys)
+        out.append(tg)
+    for k, imp in parts.items():
+        if k in used or abs(imp) < JOINT_CHIP_FLOOR or (k != "class_pos" and not flags.get(k)):
+            continue
+        if k == "class_pos" and abs(imp) < 0.5:
+            continue
+        out.append(_tag(f"joint:{k}", LABEL[k], "good" if imp > 0 else "bad", scored=True, impact=round(imp, 2),
+                        why=f"{LABEL[k]}。{note}；今場影響 {imp:+.2f}（場內置中）。"))
+    return out
+
+
 def horse_tags(no: str, horse: dict, auto: dict, *, runs: list[dict], meta: dict,
                priority: str = "", extra: list | None = None) -> dict:
     special = _trainer_tags(auto) + _jockey_change_tag(horse, auto, runs) + _distance_venue_tags(horse, auto, runs, meta) + _distance_move_tags(auto)
@@ -852,6 +887,7 @@ def horse_tags(no: str, horse: dict, auto: dict, *, runs: list[dict], meta: dict
         special = [t for t in special if t["key"] != "specialist"]
     special += venue + _horse_age_tag(auto) + _excuse_streak_tag(auto) + _thin_evidence_tag(auto) + _trainer_work_tag(horse)
     special += extra or []
+    special = _apply_joint_signals(special, auto)
     if "+" in str(priority or ""):
         special.append(_tag("trainer_ace", "練馬師王牌", "note",
                             why="排位表「優先參賽次序」標 +（練馬師用王牌確保出賽）。"
