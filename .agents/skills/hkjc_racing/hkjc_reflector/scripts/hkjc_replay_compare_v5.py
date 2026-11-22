@@ -5,6 +5,7 @@ v4：p = σ(a + α·(raw − 場均))。一場 N 匹只有 3 個位，所以 6 �
 v4 唔知 N，細場系統性估低、大場估高 → log-loss 同殘差診斷都帶住場次大細雜訊（EXP-20261122-22／23 發現）。
 v5：p = σ(a + α·(raw − 場均) + γ·logit(3/N))，(a, α, γ) 由訓練段 fit（γ 理論值 ≈1）。
 v5.1（EXP-20261122-33）：護欄 2 改為「場內 AUC Δ CI 下界 > −0.0015，而且 Gold、Good 點估計 > −1.0pp」。
+v5.2（EXP-20261123-03）：加護欄 4「爭勝馬頭二 Plackett–Luce 損失唔准顯著變差」（兩個模型頭四聯集入面，邊兩匹跑頭二）；每次照印。
 
 主指標：入頭三 log-loss（逐匹）。(a, α, γ) 由訓練段 fit：
   dev 窗 → 逐季 walk-forward（測 2021/22–2023/24，各用之前季，最早 2020/21）；holdout／terminal 窗 → 用全 dev fit。
@@ -84,6 +85,51 @@ def auc(x, raws=None):
     return float(np.mean([(p > n) + 0.5 * (p == n) for p in pos for n in neg]))
 
 
+# ---- v5.2 頭二護欄（EXP-20261123-03）：爭勝馬頭二 Plackett–Luce 損失 ----
+# 爭勝馬 = baseline 同候選各自頭四名嘅聯集；喺呢班馬入面，P(第一) = softmax(β·(raw − 集內平均))，
+# P(第二 | 第一已走) 同一個 softmax 剷走頭馬再正規化；損失 = −log P(第一) − log P(第二 | 第一)。β 由訓練段 fit（各自）。
+def _top2_parts(x, raws=None):
+    hs = [h for h in x["horses"] if h["pos"]]
+    r = np.array([h["raw"] for h in hs]) if raws is None else np.asarray(raws, float)
+    return r, np.array([h["pos"] for h in hs]), [h["n"] for h in hs]
+
+
+def _top4(r, ids):
+    return {ids[i] for i in np.argsort(-r, kind="stable")[:4]}
+
+
+def top2_loss(r, pos, ids, cset, b):
+    idx = [i for i, n in enumerate(ids) if n in cset]
+    rr, pp = r[idx], pos[idx]
+    order = np.argsort(pp, kind="stable")
+    i1, i2 = order[0], order[1]
+    z = b * (rr - rr.mean())
+    z = z - z.max()
+    e = np.exp(z)
+    s = e.sum()
+    return float(-(np.log(e[i1] / s) + np.log(e[i2] / (s - e[i1]))))
+
+
+def _top2_ok(x):
+    pos = [h["pos"] for h in x["horses"] if h["pos"]]
+    return pos.count(1) == 1 and 2 in pos
+
+
+def fit_top2(B, C, keys, use_c):
+    from scipy.optimize import minimize_scalar
+    rows = []
+    for k in keys:
+        if k not in C or not _top2_ok(B[k]):
+            continue
+        rb, pos, ids = _top2_parts(B[k])
+        cmap = {h["n"]: h["raw"] for h in C[k]["horses"]}
+        rc = np.array([cmap.get(n, v) for n, v in zip(ids, rb)])
+        cset = _top4(rb, ids) | _top4(rc, ids)
+        rows.append((rc if use_c else rb, pos, ids, cset))
+    f = lambda b: sum(top2_loss(r, pos, ids, cs, b) for r, pos, ids, cs in rows)   # noqa: E731
+    return float(minimize_scalar(f, bounds=(0.0, 2.0), method="bounded").x)
+
+
 def main():
     a = sys.argv
     window = a[a.index("--window") + 1] if "--window" in a else "dev"
@@ -102,9 +148,14 @@ def main():
             params[ts] = (fit([B[k] for k in tr]), fit([CC[k] for k in tr if k in CC]))
         test = [k for k in test if season(B[k]["date"]) in params]
         par = lambda k: params[season(B[k]["date"])]
+        t2par = {ts: (fit_top2(B, CC, [k for k in devk if season(B[k]["date"]) < ts], False),
+                      fit_top2(B, CC, [k for k in devk if season(B[k]["date"]) < ts], True)) for ts in params}
+        t2 = lambda k: t2par[season(B[k]["date"])]
     else:
         pb, pc = fit([B[k] for k in devk]), fit([CC[k] for k in devk if k in CC])
         par = lambda k: (pb, pc)
+        t2b, t2c = fit_top2(B, CC, devk, False), fit_top2(B, CC, devk, True)
+        t2 = lambda k: (t2b, t2c)
     rows = []
     for k in test:
         pb, pc = par(k)
@@ -116,7 +167,20 @@ def main():
         mb = race_metrics(B[k]["picks"], top, actual_pos=pos)
         mc = race_metrics(C[k]["picks"], top, actual_pos=pos)
         ab, ac = auc(B[k]), auc(C[k])
-        rows.append({"k": k, "date": B[k]["date"], "dl": (lc - lb), "n": n, "auc": (ac - ab) if ab is not None else 0.0,
+        t2d = 0.0
+        if _top2_ok(B[k]):
+            rb2, pos2, ids2 = _top2_parts(B[k])
+            cmap = {h["n"]: h["raw"] for h in C[k]["horses"]}
+            rc2 = np.array([cmap.get(n_, v) for n_, v in zip(ids2, rb2)])
+            cs2 = _top4(rb2, ids2) | _top4(rc2, ids2)
+            tb, tc = t2(k)
+            t2d = top2_loss(rc2, pos2, ids2, cs2, tc) - top2_loss(rb2, pos2, ids2, cs2, tb)
+        def _hits(picks):   # Kelvin 2026-11-23：頭二入面入頭三匹數、首選贏
+            p2 = [n_ for n_ in picks if n_ in pos][:2]
+            return [sum(pos[n_] <= 3 for n_ in p2), float(bool(p2) and pos[p2[0]] == 1)]
+        hb, hc = _hits(B[k]["picks"]), _hits(C[k]["picks"])
+        rows.append({"k": k, "date": B[k]["date"], "dl": (lc - lb), "n": n, "auc": (ac - ab) if ab is not None else 0.0, "t2": t2d,
+                     "hit": [hc[0] - hb[0], hc[1] - hb[1]],
                      "m": [float(mc[q]) - float(mb[q]) for q in ("gold", "good_positional", "top3_capture_at5", "top2_any_hit")]})
     days = sorted({r["date"] for r in rows})
     by_day = defaultdict(list)
@@ -126,14 +190,18 @@ def main():
     nn = np.array([r["n"] for r in rows])
     M = np.array([r["m"] for r in rows])
     AU = np.array([r["auc"] for r in rows])
+    T2 = np.array([r["t2"] for r in rows])
+    HT = np.array([r["hit"] for r in rows], dtype=float)
     rng = np.random.default_rng(0)
-    bs_l, bs_m, bs_a = [], [], []
+    bs_l, bs_m, bs_a, bs_t2, bs_h = [], [], [], [], []
     for _ in range(2000):
         ii = np.concatenate([by_day[days[j]] for j in rng.integers(0, len(days), len(days))])
         bs_l.append(dl[ii].sum() / nn[ii].sum())
         bs_m.append(M[ii].mean(0))
         bs_a.append(AU[ii].mean())
-    bs_l, bs_m, bs_a = np.array(bs_l), np.array(bs_m), np.array(bs_a)
+        bs_t2.append(T2[ii].mean())
+        bs_h.append(HT[ii].sum(0))
+    bs_l, bs_m, bs_a, bs_t2, bs_h = np.array(bs_l), np.array(bs_m), np.array(bs_a), np.array(bs_t2), np.array(bs_h)
     d_ll = dl.sum() / nn.sum()
     # null：候選對 baseline 嘅 raw Δ 喺場內洗牌，加返落 baseline，同一套校準（用候選嘅 α）
     null = []
@@ -161,14 +229,20 @@ def main():
     pass2 = auc_lo > AUC_GUARD and pts[0] > -1.0 and pts[1] > -1.0
     old_pass2 = lo_m[0] > -1.0 and lo_m[1] > -1.0
     pass3 = (null > d_ll).mean() >= 0.95
+    # v5.2 頭二護欄（EXP-20261123-03）：爭勝馬頭二 PL 損失唔准顯著變差（95% CI 下界 > 0 = 差咗 → REJECT）
+    t2_lo, t2_hi = np.percentile(bs_t2, [2.5, 97.5])
+    pass4 = t2_lo <= 0
     print(f"窗 {window}：{len(rows)} 場、{len(days)} 日｜v5 校準（baseline）{par(rows[0]['k'])[0]}" if rows else "冇場")
     print(f"baseline 絕對 log-loss（每匹）{sum(ll(B[r['k']], par(r['k'])[0])[0] for r in rows) / nn.sum():.5f}")
     print(f"Δlog-loss（每匹）{d_ll:+.5f} [{np.percentile(bs_l, 2.5):+.5f},{np.percentile(bs_l, 97.5):+.5f}]｜好過 null {(null > d_ll).mean() * 100:.0f}%")
     print(f"Δ場內 AUC {AU.mean():+.4f} [{np.percentile(bs_a, 2.5):+.4f},{np.percentile(bs_a, 97.5):+.4f}]")
     for i, lab in enumerate(("Gold", "Good", "capture@5", "頭二選有中")):
         print(f"{lab} {M[:, i].mean() * 100:+.2f} [{lo_m[i]:+.2f},{np.percentile(bs_m[:, i], 97.5) * 100:+.2f}]")
-    verdict = "PASS" if (pass1 and pass2 and pass3) else "REJECT"
-    print(f"v5.1 判決：{verdict}（log-loss CI 上界<0 {'✅' if pass1 else '❌'}｜AUC 下界>{AUC_GUARD} 而且 Gold／Good 點估計>−1pp {'✅' if pass2 else '❌'}｜好過 95% null {'✅' if pass3 else '❌'}）")
+    print(f"Δ爭勝馬頭二 PL 損失（每場，負 = 頭二排得準啲）{T2.mean():+.4f} [{t2_lo:+.4f},{t2_hi:+.4f}]")
+    h_lo, h_hi = np.percentile(bs_h, 2.5, axis=0), np.percentile(bs_h, 97.5, axis=0)
+    print(f"頭二入面入頭三（總匹數差，Kelvin 上線參考）{HT[:, 0].sum():+.0f} [{h_lo[0]:+.0f},{h_hi[0]:+.0f}]｜首選贏 {HT[:, 1].sum():+.0f} [{h_lo[1]:+.0f},{h_hi[1]:+.0f}]")
+    verdict = "PASS" if (pass1 and pass2 and pass3 and pass4) else "REJECT"
+    print(f"v5.2 判決：{verdict}（log-loss CI 上界<0 {'✅' if pass1 else '❌'}｜AUC 下界>{AUC_GUARD} 而且 Gold／Good 點估計>−1pp {'✅' if pass2 else '❌'}｜好過 95% null {'✅' if pass3 else '❌'}｜頭二唔顯著變差 {'✅' if pass4 else '❌'}）")
     print(f"（舊 v5 護欄 Gold／Good CI 下界>−1pp：{'✅' if old_pass2 else '❌'} —— 只供對照）")
 
 
