@@ -3072,7 +3072,7 @@ test("晨操格退出排名：冇假分數，顯示晨操類型 (Kelvin 2026-11-
   assert.doesNotMatch(html, /56\.1/);
 });
 
-test("9維排名矩陣 carries the verdict, a one-liner under each bar, and opens each dimension in place (Kelvin 2026-11-18)", () => {
+test("9維排名矩陣 drops the verdict, keeps a one-liner under each bar, and opens each dimension in place (Kelvin 2026-11-18)", () => {
   const { renderHorseCard } = loadTemplateFunctions();
   const raw = [
     "#### 🧮 9D 評分矩陣逐項拆解",
@@ -3095,8 +3095,8 @@ test("9維排名矩陣 carries the verdict, a one-liner under each bar, and open
       verdict: { text: "模型首選，拋離第二名 18.4 分。", good: ["近績好"], bad: ["大幅增程"], ref: "首選歷史上名約 58%" },
     },
   }, 1, {}, null);
-  assert.match(html, /strip-verdict__text">模型首選，拋離第二名 18\.4 分。/);
-  assert.match(html, /本錢<\/span><span>近績好/);
+  // 總評唔再顯示（Kelvin 2026-11-24：「pretty useless」）
+  assert.doesNotMatch(html, /strip-verdict/);
   assert.match(html, /dim-row__brief">潘頓（強）配大衛希斯（有支持）/);
   assert.match(html, /data-dim="騎練訊號"[^>]*onclick="toggleDimRow\(/);
   assert.match(html, /dim-row__tone--up">極強/);

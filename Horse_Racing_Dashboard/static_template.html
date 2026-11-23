@@ -6873,7 +6873,7 @@ function renderDimensionStrip(horse, cardId) {
     h += `<span class="dim-strip__evidence${thin ? ' dim-strip__evidence--thin' : ''}">${thin ? '⚠️ ' : ''}${horse.evidence_dimensions}/${horse.evidence_dimensions_total} 維有實測</span>`;
   }
   h += '</div>';
-  h += renderDimVerdict(horse.analysis_summary && horse.analysis_summary.verdict);
+  // 總評（模型首選拋離幾多分／本錢／隱憂／參考）2026-11-24 Kelvin 話冇用，唔再顯示；標籤同維度一句照留。
   const briefs = dimBriefMap(horse.analysis_summary && horse.analysis_summary.dims);
   if (cardId) STRIP_LABELS_BY_CARD.set(cardId, new Set(details.map(d => dimMatchKey(d.name))));
   let rowIndex = 0;
@@ -6977,15 +6977,6 @@ function sectionEmbeddedInStrip(section, cardId) {
   const embedded = STRIP_LABELS_BY_CARD.get(cardId);
   const kids = section.children || [];
   return !!(embedded && kids.length && kids.every(c => embedded.has(dimMatchKey(c.title))));
-}
-
-function renderDimVerdict(v) {
-  if (!v || !v.text) return '';
-  const line = (cls, label, items) => (items && items.length)
-    ? `<div class="strip-verdict__row"><span class="strip-verdict__key strip-verdict__key--${cls}">${label}</span><span>${items.map(esc).join('、')}</span></div>` : '';
-  return `<div class="strip-verdict"><div class="strip-verdict__text">${esc(v.text)}</div>`
-    + line('up', '本錢', v.good) + line('down', '隱憂', v.bad) + line('ref', '參考', v.ref ? [v.ref] : [])
-    + '</div>';
 }
 
 function cardSections(cardId) {
