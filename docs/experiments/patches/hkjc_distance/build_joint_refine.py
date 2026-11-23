@@ -21,6 +21,12 @@ R6 佰勝金龍 受阻＋出閘慢）。11-22 只用嚟揀「要測咩」，唔�
   3. 最後確認：terminal 窗（2026/27）+ 11-22 沙田賽前快照「頭二入頭三」唔少過 base（Kelvin 嘅否決條件；單日冇功效，只做否決唔做揀）。
      holdout 已經喺 J3 睇過，今次只報（標明唔獨立），唔用嚟揀。
   唔調 C、唔調門檻；leave-one-out 結果只用嚟寫記錄同提出下一輪假設。
+第三輪（Kelvin 2026-11-23「J3 唔好用晒 13+4，淨係用幫到手嘅訊號」）—— 跑之前寫低：
+  base 換做 SW（表現數字取代段速，EXP-20261123-10 上線版）：`<scratch>/f_SW.jsonl`。
+  SEL  只留 dev leave-one-out 剔走後 log-loss 變差 ≥ 0.00005 嘅 8 個（J3 −0.00100 基準）：
+       ride_q、wide2、rb_any、drop_rb、old_won、class_pos、sd_worse、sd_rate（規則只睇 dev LOO；冇睇 11-22、holdout）。
+  判：dev v5.2 PASS ＋ 頭二入頭三 Δ ≥ 0；holdout 照報但唔獨立（J3 家族 holdout 已睇過）；terminal 報；
+      11-22 否決：頭二入頭三唔少過 SW、頭二有頭馬唔少過 SW。
 用法：python3 build_joint_refine.py <base_live.jsonl> <old_incidents.json> <out_prefix>
 """
 import json
@@ -90,6 +96,8 @@ def arm_matrix(m, arm):
     col = {k: m[:, j] for j, k in enumerate(ALL)}
     if arm == "J3":
         names = list(NAMES)
+    elif arm == "SEL":
+        names = ["ride_q", "wide2", "rb_any", "drop_rb", "old_won", "class_pos", "sd_worse", "sd_rate"]
     elif arm.startswith("LOO_"):
         names = [k for k in NAMES if k != arm[4:]]
     else:

@@ -107,3 +107,17 @@ R7 拆解（11-22 賽前，β 0.00941）：10-25 同場原始表現 精算暴雪
 淨低差距主要係檔位×跑法 +2.73、狀態 +2.09。
 **結論：SW 係今日第一個 dev／holdout 頭二都正、11-22 唔差嘅候選**。未上線：live 要每個賽日 PIT 重估賽事效應（而家只有研究腳本），
 上線前要做 live 實作、golden／data_contract、dashboard 顯示、forward 退回 arm，同 Kelvin 批准。
+
+## 第四輪（base = SW 表現數字取代段速，EXP-20261123-10 上線版）
+**SEL**（Kelvin「J3 淨係用幫到手嘅訊號」；揀法只用 dev LOO：剔走後 log-loss 變差 ≥0.00005 → 8 個：ride_q、wide2、rb_any、drop_rb、old_won、class_pos、sd_worse、sd_rate）：
+| 窗 | Δlog-loss | AUC | Gold | Good | 頭二 PL | 頭二入頭三 | 首選贏 | v5.2 |
+|---|---|---|---|---|---|---|---|---|
+| dev | −0.00118 [−0.00161,−0.00076] | +0.0024 | +0.56 | −0.16 | −0.0079 | **−8 [−35,+19]** | −5 | PASS（頭二條件唔過） |
+| holdout（唔獨立） | −0.00088 | +0.0021 | −0.35 | +0.00 | −0.0052 | +10 | −10 | PASS |
+| terminal（186 場） | +0.00090 | **−0.0073 [−0.0143,−0.0008]** | −1.08 | −1.61 | −0.0003 | −3 | +1 | REJECT |
+→ 預先登記條件（dev 頭二 ≥ 0）唔過 → **REJECT**。terminal AUC CI 全負：J3 類訊號喺 2026/27 季變差，要留意。
+
+**維度審計**（SW base，非初出馬，係數 ÷ 其餘；1.0 = 現行權重啱；dev／holdout）：stability 0.69／0.70、form_score 0.59／0.64、consistency 0.45／0.30、
+trainer_signal 1.21／0.87、race_shape 0.97／0.94、form_line 0.56／1.27、horse_health 1.16／0.00（CI 極闊）。
+**ST70**（睇完 dev 審計先寫：狀態維度貢獻 ×0.7，唔 fit）：dev Δlog-loss **+0.00068 [+0.00006,+0.00133]**、AUC −0.0023 → REJECT（holdout +0.00083）。
+教訓：偏係數 < 1 唔代表縮權重會好（同 AU「pairwise weight moves fail」一樣）。近績分「只睇名次」要改就要改 leaf 計法（例如計埋輸幾遠），唔係縮權重。
