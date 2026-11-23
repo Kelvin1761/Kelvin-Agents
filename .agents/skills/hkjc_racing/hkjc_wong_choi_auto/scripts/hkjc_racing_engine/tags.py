@@ -358,6 +358,28 @@ def _thin_evidence_tag(auto: dict) -> list[dict]:
                      "⚠️ 實驗性上線、未證實改善（回放樣本太少，把尺量唔到；EXP-20261119-05）。")]
 
 
+def _performance_figure_tag(auto: dict) -> list[dict]:
+    """表現數字取代段速（EXP-20261123-10）：一個 chip，數字同組成（扣走段速幾多、加表現數字幾多）寫喺 tooltip。"""
+    info = auto.get("performance_figure") or {}
+    if not info:
+        return []
+    delta = float(auto.get("performance_figure_delta") or 0.0)
+    fig, mu = info.get("figure"), info.get("field_mean")
+    if fig is None or mu is None:
+        label, tone = "表現數字：往績不足", "note"
+        detail = "近 6 仗少過 2 仗有完成時間，用全場平均（再按回放扣少少）。"
+    else:
+        gap = fig - mu
+        label = f"表現數字：{'快' if gap >= 0 else '慢'}過全場平均 {abs(gap):.2f} 秒／公里"
+        tone = "good" if gap >= 0.05 else "bad" if gap <= -0.05 else "note"
+        detail = f"表現數字 {fig:+.3f}（全場平均 {mu:+.3f}）。"
+    return [_tag("performance_figure", label, tone, scored=True, impact=round(delta, 2),
+                 why=detail + "表現數字 = 近 6 仗每公里時間，扣走嗰場賽事本身快慢，再按今仗負磅換算（每磅 0.0094 秒／公里），"
+                     "越近嗰仗越重。佢取代咗段速分（輸頭馬差距、能量、L400 走勢、前段對標準一級級跳嘅標籤）："
+                     f"扣走段速 {float(info.get('sectional_removed') or 0):+.2f}、加表現數字 {float(info.get('figure_added') or 0):+.2f}。"
+                     "6,047 場回放：dev／holdout log-loss 都改善，頭二入頭三 +19／+3（EXP-20261123-10）。")]
+
+
 def _class_move_tags(horse: dict, meta: dict) -> list[dict]:
     """Kelvin 2026-11-17（EXP-20261117-06）：初落班＋同程上過名、升班輕磅（上仗未贏）。都未入分。"""
     hist = _hist(horse)
@@ -850,7 +872,7 @@ def horse_tags(no: str, horse: dict, auto: dict, *, runs: list[dict], meta: dict
     venue = _same_distance_venue_tags(auto)
     if venue:   # 同一件事（同程）只出一個 chip：場地 chip 已講晒 distance_fit
         special = [t for t in special if t["key"] != "specialist"]
-    special += venue + _horse_age_tag(auto) + _excuse_streak_tag(auto) + _thin_evidence_tag(auto) + _trainer_work_tag(horse)
+    special += venue + _horse_age_tag(auto) + _excuse_streak_tag(auto) + _thin_evidence_tag(auto) + _trainer_work_tag(horse) + _performance_figure_tag(auto)
     special += extra or []
     if "+" in str(priority or ""):
         special.append(_tag("trainer_ace", "練馬師王牌", "note",

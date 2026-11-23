@@ -163,6 +163,12 @@ RANKING_ADJUSTMENTS = (
         "formula": "本地馬、香港往績 ≤2 仗、上一仗距今 >180 日：raw' = 場均 + 0.5·(raw − 場均)，再全場置中（收窄、唔係扣分：高分跌、低分升）；往績 = HKJC 馬匹頁香港賽事、日期嚴格早過今仗（hkjc_racing_engine/thin_evidence.py）",
         "missing": "外隊馬／初出／冇香港往績 = 不套用",
     },
+    {
+        "key": "performance_figure",
+        "label": "表現數字取代段速（EXP-20261123-10）",
+        "formula": "− 0.1285·(段速維度分 − 場均) ＋ 4.99·(表現數字 − 場均) − 0.95·(冇表現數字 − 場均)（原始分）；表現數字 = 近 6 仗每公里時間扣賽事效應、按今仗負磅換算（每磅 0.0094 秒／公里）、1/k 加權；賽果 = 日期嚴格早過今仗（hkjc_racing_engine/performance_figure.py）",
+        "missing": "少過 2 仗有時間（初出／外隊）= 用場均＋缺失旗；冇賽果庫 = 不套用（段速照計）",
+    },
 )
 
 DEBUT_MATRIX_WEIGHTS = dimensions.debut_weights()

@@ -187,6 +187,11 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 since="2026-11-22", arm="docs/experiments/patches/hkjc_arm_thin_shrink_revert.py",
                 action="自動判：退回版 forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議退回（等你決定）；否則保留",
                 extra={"pass_verdict": "建議退回（等你決定）"}),
+    # EXP-20261123-10（Kelvin 2026-11-23「寫 live 版，上咗線先」）：表現數字取代段速；回放 dev／holdout v5.2 PASS → 退回式 forward 監察。
+    ForwardTest("performance_figure_post_live", "表現數字取代段速上線後 vs 段速分", "EXP-20261123-10", "harness_ab", 60,
+                since="2026-11-26", arm="docs/experiments/patches/hkjc_arm_performance_figure_revert.py",
+                action="自動判：退回版 forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議退回（等你決定）；否則保留",
+                extra={"pass_verdict": "建議退回（等你決定）"}),
     # EXP-20261117-07：J1 精簡版（9 個特徵，逐個拎走揀；揀用咗 dev → 只由 forward 判）。
     ForwardTest("joint_signals_lean_shadow", "未入分訊號 refit 精簡版（9 個，shadow）", "EXP-20261117-07", "harness_ab", 150,
                 since="2026-11-18", arm="docs/experiments/patches/hkjc_arm_joint_signals_lean_shadow.py",
