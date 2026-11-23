@@ -27,6 +27,9 @@ R6 佰勝金龍 受阻＋出閘慢）。11-22 只用嚟揀「要測咩」，唔�
        ride_q、wide2、rb_any、drop_rb、old_won、class_pos、sd_worse、sd_rate（規則只睇 dev LOO；冇睇 11-22、holdout）。
   判：dev v5.2 PASS ＋ 頭二入頭三 Δ ≥ 0；holdout 照報但唔獨立（J3 家族 holdout 已睇過）；terminal 報；
       11-22 否決：頭二入頭三唔少過 SW、頭二有頭馬唔少過 SW。
+第五輪（Kelvin 2026-11-24「同程表現由 J3 拆出嚟獨立測，睇下應唔應該上／點改善」）—— 跑之前寫低：
+  base = live（SW＋DT，db_DT）。SD4 = sd_worse、sd_hicls、sd_locls、sd_rate；SD2 = sd_worse、sd_rate（dev LOO 證明有用嗰兩個）。
+  判：全期 dev v5.2 PASS ＋ 頭二入頭三 Δ ≥ 0；holdout 照判（J3 家族睇過，唔獨立）；11-22 否決。
 用法：python3 build_joint_refine.py <base_live.jsonl> <old_incidents.json> <out_prefix>
 """
 import json
@@ -96,6 +99,10 @@ def arm_matrix(m, arm):
     col = {k: m[:, j] for j, k in enumerate(ALL)}
     if arm == "J3":
         names = list(NAMES)
+    elif arm == "SD4":
+        names = ["sd_worse", "sd_hicls", "sd_locls", "sd_rate"]
+    elif arm == "SD2":
+        names = ["sd_worse", "sd_rate"]
     elif arm == "SEL":
         names = ["ride_q", "wide2", "rb_any", "drop_rb", "old_won", "class_pos", "sd_worse", "sd_rate"]
     elif arm.startswith("LOO_"):
