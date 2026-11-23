@@ -97,7 +97,7 @@ This creates a persistent data pipeline across the subagent boundary.
 - Batch 1 = `run_command` + `safe_file_writer.py --mode overwrite` 建檔
 - Batch 2+ = `run_command` + `safe_file_writer.py --mode append` 追加
 - Self-check: If about to write 4+ items in one tool call → STOP and split
-- **寫入規則（對齊 GEMINI.md P0）：**
+- **寫入規則（對齊 GEMINI.md P0）：**（GEMINI.md 已於 2026-10-29 刪除，以 AGENTS.md 為準）
   - ❌ `write_to_file` → 嚴禁（Google Drive 同步鎖定風險）
   - ✅ `replace_file_content` / `multi_replace_file_content` → 允許（<50 行小型編輯）
   - ✅ `run_command` + `safe_file_writer.py` → 大量寫入 / 新建文件
@@ -173,7 +173,7 @@ Benefit: Cross-session reuse, orchestrator context window relief, single source 
 **Solution**: All analysis/report file writing MUST use the Safe-Writer Protocol:
 - **首選:** `run_command` + `safe_file_writer.py`（base64 編碼 → 原子寫入）
 - **次選:** OS-native 指令（Windows: PowerShell `Set-Content`; macOS: `cat >`）
-- **寫入規則（對齊 GEMINI.md P0）：**
+- **寫入規則（對齊 GEMINI.md P0）：**（GEMINI.md 已於 2026-10-29 刪除，以 AGENTS.md 為準）
   - ❌ `write_to_file` → 嚴禁
   - ✅ `replace_file_content` / `multi_replace_file_content` → 允許（<50 行小型編輯）
   - ✅ `run_command` + scripts → 大量寫入

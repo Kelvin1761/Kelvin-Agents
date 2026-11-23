@@ -39,6 +39,10 @@ python3 .agents/scripts/codex_delegate.py status
 Luna 答錯或者冇改到，先升 Terra。Luna 都係食同一個 Codex 額度，只係每次食得好少，所以收緊（tight）都照派。
 同一時間可以派幾個 Luna 去做互不相干嘅細嘢（各自 worktree／唯讀）。
 
+**Luna 要窄，唔好叫佢探索**（2026-11-24 實測）：叫佢「自己搵積壓」會淺——一個做一半收工、一個 log 掃描乜都搵唔到，
+唯讀 sandbox 入面 `git ls-files` 有時都用唔到。叫佢「改 X 檔第 N 行做 Y」就好準（兩個文檔 chore 各 <50 秒、全部啱）。
+所以：**Claude 先劃範圍、列清單（檔案:行號＋要改成點），Luna 逐項執行**；要開放式探索就派 Terra 或者自己做。
+
 值唔值得派，問兩條：
 1. **呢舊嘢可唔可以用一份 brief 講清楚、獨立核實？** 唔得就自己做 —— 解釋背景嘅 token 會多過慳返嘅。
 2. **細過 ~5 個 tool call？** 係就自己做 —— 除非係 Luna 做得嘅唯讀查詢，平到唔使計。

@@ -1,5 +1,7 @@
 # Windows Workstation Setup — Wong Choi
 
+> ⚠️ **2026-11-21 起 Google Drive 已退役**（見 AGENTS.md）。Drive 唔再更新，下面第 2 節嘅 Drive 設定只會令 Windows 讀到舊資料；舊資料完整副本喺 Mac 外置碟 `gdrive-export-20261121/`。HKJC 部分唔靠 Drive，照用。
+
 由零開始，喺一部新 Windows 機跑 AU / HKJC / NBA / Tennis Wong Choi 同 Cloudflare dashboard。
 （macOS/Linux 睇 [SETUP.md](SETUP.md)。）
 
@@ -35,7 +37,7 @@ powershell -ExecutionPolicy Bypass -File .\bootstrap.ps1
 
 ---
 
-## 2. Google Drive —— AU 引擎嘅硬性要求
+## 2. Google Drive（2026-11-21 已退役，只讀舊資料）
 
 AU 評分要讀兩個 CSV（`AU_Historical_Raw_Race_Results.csv` 851 KB、
 `AU_Backfill_Race_Results.csv` 78 KB）同 157 個 archive 賽事資料夾。呢啲**冇入 git**

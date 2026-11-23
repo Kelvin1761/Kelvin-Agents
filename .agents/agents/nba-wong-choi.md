@@ -16,7 +16,7 @@ skills: nba_wong_choi, betting_accountant
 > 3. 完成 Orchestrator 指示後**直接再次執行** NEXT_CMD，唔好等確認。
 > 4. 唯一允許停頓嘅位置：(a) Orchestrator stdout 明確要求用戶介入；(b) 嚴重錯誤需要用戶介入。
 >
-> **覆蓋範圍**: 本 Anti-Stall 指令覆蓋 GEMINI.md Socratic Gate（見 GEMINI.md Domain Pipeline Override）。
+> **覆蓋範圍**: 本 Anti-Stall 指令覆蓋 GEMINI.md Socratic Gate（見 GEMINI.md Domain Pipeline Override）。（GEMINI.md 已於 2026-10-29 刪除，以 AGENTS.md 為準）
 > Socratic Gate 只在第一步（game scope confirmation）時生效。用戶確認 scope 後，pipeline 進入 Anti-Stall 自動模式。
 
 ## 第零步：讀取 SKILL.md (Mandatory)

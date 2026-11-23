@@ -46,7 +46,7 @@ source .venv/bin/activate      # macOS / Linux
 #  .venv\Scripts\Activate.ps1  # Windows
 ```
 
-bootstrap 會問你 **`DATA_ROOT`** —— 即係啲大型「Wong Choi … Analysis」資料夾放邊（通常喺 Google Drive）。你貼個路徑，佢寫入 `.wongchoi_data_root`（每部機各自設定，唔入 git）。`wongchoi_paths.py` 會據此解析所有資料路徑，所以 **Mac 同 Windows 都跑得**。想手動設亦得：設環境變數 `WONGCHOI_DATA_ROOT`。
+bootstrap 會問你 **`DATA_ROOT`** —— 即係啲大型「Wong Choi … Analysis」資料夾放邊（Mac 預設 `~/WongChoiData`；唔好指去 Google Drive —— 2026-11-21 已退役）。你貼個路徑，佢寫入 `.wongchoi_data_root`（每部機各自設定，唔入 git）。`wongchoi_paths.py` 會據此解析所有資料路徑，所以 **Mac 同 Windows 都跑得**。想手動設亦得：設環境變數 `WONGCHOI_DATA_ROOT`。
 
 > ⚠️ **唔好將 code repo 放喺 Google Drive 同步資料夾入面。** Drive 同步 `.git` 會令 `git commit` 卡死、多機之間 branch ref 跳動、檔案消失（實測過）。**Code 放本地、用 `git pull/push` 經 GitHub 同步;資料先放 Drive。** 詳見 `wongchoi_paths.py` 開頭註解。
 
@@ -190,7 +190,7 @@ HKJC 喺加入 unattended scheduler 後亦改用 local primary，但唔會自動
 placeholder；舊三個月 archive 要先設 Available Offline，再按需要一次過複製入
 local HK root。NBA / tennis 仍跟各自主線設定。
 
-Windows 唔設 per-sport variables 就得 —— AU / HKJC 自動跌返 Drive 路徑。
+Windows 唔設 per-sport variables 就得 —— AU / HKJC 自動跌返 Drive 路徑。（⚠️ Drive 2026-11-21 起唔再更新，Windows 經呢條路讀到嘅係舊資料。）
 
 ## 3. Create A Virtual Environment
 
@@ -551,6 +551,8 @@ PYTHONPATH=src python -m tennis_wc.cli generate-report --date 2026-05-08
 ## 12. Dashboard And Cloudflare Deploy
 
 ### 一句講晒：任何機、任何位置，都係 run 一個指令
+
+> ⚠️ 2026-11-21 起 Google Drive 已退役。下面講嘅 Drive copy／proxy 係舊機制，留低做背景；而家部署一律喺本機 clone 行 `./deploy.sh`。
 
 ```bash
 ./deploy.sh

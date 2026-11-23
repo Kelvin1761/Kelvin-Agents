@@ -1,3 +1,5 @@
+> ⚠️ **LLM 年代舊指引，已退役**：AU 主線而家 100% Python（見 AGENTS.md），唔需要 LLM 判維度或步速信心。留低只供比對。
+
 <!-- Pace & Positional Notes (AU V4.3 Lightweight) -->
 <!-- Replaces full 02d_eem_pace.md (archived 2026-04-25) -->
 

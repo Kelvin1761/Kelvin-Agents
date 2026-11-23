@@ -39,7 +39,7 @@ ag_kit_skills:
 2. **系統性聚焦**:覆盤時**不要過度聚焦單場特例**,而要提煉出能改善未來所有比賽的通用規則。
 3. **強制人工審核**:生成覆盤報告後必須向用戶提交並暫停,**嚴禁**直接修改任何 Agent 檔案。
 
-> ⚠️ **P33-WLTM**: 遵循 GEMINI.md 之中規定的 `safe_file_writer.py` 進行操作。嚴禁使用 `write_to_file`。
+> ⚠️ **P33-WLTM**: 遵循 GEMINI.md 之中規定的 `safe_file_writer.py` 進行操作。嚴禁使用 `write_to_file`。（GEMINI.md 已於 2026-10-29 刪除，以 AGENTS.md 為準）
 
 # Interaction Logic (Step-by-Step)
 
