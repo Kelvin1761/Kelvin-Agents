@@ -44,6 +44,7 @@
 | 薄證據收窄（EXP-20261119-05，實驗性上線、未證實改善） `thin_evidence` | 本地馬、香港往績 ≤2 仗、上一仗距今 >180 日：raw' = 場均 + 0.5·(raw − 場均)，再全場置中（收窄、唔係扣分：高分跌、低分升）；往績 = HKJC 馬匹頁香港賽事、日期嚴格早過今仗（hkjc_racing_engine/thin_evidence.py） | 外隊馬／初出／冇香港往績 = 不套用 |
 | 表現數字取代段速（EXP-20261123-10） `performance_figure` | − 0.1285·(段速維度分 − 場均) ＋ 4.99·(表現數字 − 場均) − 0.95·(冇表現數字 − 場均)（原始分）；表現數字 = 近 6 仗每公里時間扣賽事效應、按今仗負磅換算（每磅 0.0094 秒／公里）、1/k 加權；賽果 = 日期嚴格早過今仗（hkjc_racing_engine/performance_figure.py） | 少過 2 仗有時間（初出／外隊）= 用場均＋缺失旗；冇賽果庫 = 不套用（段速照計） |
 | 初出馬練馬師初出紀錄（EXP-20261123-13） `debut_trainer` | 1.88·(z − 場均)（原始分）；z 只限初出馬 =（練馬師之前初出馬入頭三率，收縮 k=10 向 25%）− 0.190 ÷ 0.070；非初出馬 z = 0；初出馬賽果 = 日期嚴格早過今仗（hkjc_racing_engine/debut_trainer.py） | 冇初出馬嘅場 = 不套用；冇表 = z 0 |
+| 直路表現數字（EXP-20261123-18，實驗性上線、未證實改善） `straight_figure` | 只限沙田直路 1000 米：5.04·(gap − 場均) − 0.16·(有 gap − 場均)（原始分）；gap = 最近 6 仗直路表現數字（≥1 仗）− 最近 6 仗整體（≥2 仗），都換算今仗負磅（hkjc_racing_engine/straight_figure.py、performance_figure.segment_gap） | 冇直路往績或者整體少過 2 仗 = gap 0、有 gap 旗 0；唔係直路 = 不套用 |
 
 **「權重」同「實測影響力」有咩分別？**  權重係配方上寫死嘅數。實測影響力係
 實際跑落去，呢個維度喺同一場馬入面真係拉開幾多分距離 —— 一個權重好高但成場馬
@@ -225,10 +226,10 @@ Grade 只係一個閱讀標籤，排名純粹按分數高低，唔會因為 Grad
 
 ## 呢份文件由邊度嚟
 
-- 生成時間：`2026-11-23 22:23 AEDT`
-- Git commit：`ac22321d`
+- 生成時間：`2026-11-24 01:31 AEDT`
+- Git commit：`f359515a`
 - Scoring contract：`HKJC_9D_CONTRACT_2026_10_10_REGISTRY_TRACKWORK_DISTANCE_FIT_RACE_SHAPE_ROBUST_WINSOR10_PIT_RAIL_DRAW_V2_DISTANCE_COMPONENT_V1`
-- `scoring.py` 指紋：`11bb20cb4d5f`
+- `scoring.py` 指紋：`58985fc49a1c`
 - `matrix_mapper.py` 指紋：`a675ec199a4c`
 - `renderer.py` 指紋：`e07926aa2737`
 - 實測樣本：**139 場、1707 匹馬**，由 `2026-10-11_ShaTin` 到 `2026-11-25_HappyValley`（跳過 351 個舊格式檔案）

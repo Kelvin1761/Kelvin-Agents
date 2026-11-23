@@ -84,14 +84,23 @@ def _segment_figure_tag(horse, meta):
     segment = "awt" if surface == "泥地" else ("straight" if surface == "田草" and meta.get("distance") == 1000 else None)
     if not segment or not meta.get("date"):
         return []
-    result = pf.segment_gap(pf.figures_as_of(meta["date"]).get(horse_code(horse)), pf._weight(horse), segment)
-    if not result or abs(result["gap"]) < 0.10:
+    code = horse_code(horse)
+    result = pf.segment_gap(pf.figures_as_of(meta["date"]).get(code), pf.segment_figures(meta["date"])[segment].get(code),
+                            pf._weight(horse))
+    delta = (horse.get("python_auto") or {}).get("straight_figure_delta") if segment == "straight" else None
+    scored = delta is not None
+    # 入分係場內置中：gap 細但影響大（或者 gap 正但全場更高、影響負）都要顯示，顏色跟影響方向（Sol 覆核 2026-11-24）。
+    if not result or (abs(result["gap"]) < 0.10 and not (scored and abs(float(delta)) >= 0.3)):
         return []
     gap = result["gap"]
     name = "泥地" if segment == "awt" else "直路"
-    evidence = ("六季泥地場機率準咗但頭二變差" if segment == "awt" else "Gold +1.94、Good +2.91，但只有 206 場")
-    return [_tag("segment_figure:" + segment, f"{name}表現{'好' if gap > 0 else '差'}過平時 {abs(gap):.2f} 秒／公里（未入分）", "good" if gap > 0 else "bad",
-                 why=f"近六仗中{result['n']}仗分段表現數字，換算今仗負磅後減全部近仗。EXP-20261123-18：{evidence}；未入分。")]
+    status = "實驗性入分" if scored else "未入分"
+    evidence = ("六季泥地場機率準咗但頭二變差；未入分" if segment == "awt"
+                else "六季直路 206 場 Gold +1.94、Good +2.91、頭二 +5，但 CI 跨零；Kelvin 2026-11-24 決定實驗性上線，forward 退回監察")
+    return [_tag("segment_figure:" + segment, f"{name}表現{'好' if gap > 0 else '差'}過平時 {abs(gap):.2f} 秒／公里（{status}）",
+                 ("good" if float(delta) > 0 else "bad") if scored else ("good" if gap > 0 else "bad"),
+                 scored=scored, impact=None if delta is None else round(float(delta), 2),
+                 why=f"最近 {result['n']} 仗{name}表現數字（最多 6 仗）減最近 6 仗整體，都換算今仗負磅。EXP-20261123-18：{evidence}。")]
 
 
 def _head_to_head_tags(horse, horses, meta):

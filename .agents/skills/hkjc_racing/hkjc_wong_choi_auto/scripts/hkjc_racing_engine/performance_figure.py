@@ -31,6 +31,7 @@ BUCKETS = ((1000, 54, 60), (1200, 66.5, 73.5), (1400, 79, 87), (1600, 91, 98.2),
            (1800, 104.5, 113), (2000, 118, 127), (2200, 131, 141), (2400, 144, 156))
 _ROWS = None
 _CACHE: dict = {}
+_SEG_CACHE: dict = {}
 
 
 def _secs(t):
@@ -118,15 +119,28 @@ def figures_as_of(race_date: str, R=None):
     f = -(P.tkm_cap.values - P.race.map(rmap).values)
     f = f - np.nanmean(f)
     P = P.assign(fig=f)
+    seg = {"awt": {}, "straight": {}}
     for code, g in P.groupby("code", sort=False):
         tail = g.tail(6).iloc[::-1]
         out[code] = list(zip(tail.fig.tolist(), tail.w.tolist(), tail.km.tolist(), tail.date.tolist(), tail.surface.tolist(), tail.straight.tolist()))
+        for name, mask in (("awt", g.surface == "泥地"), ("straight", g.straight)):
+            st = g[mask].tail(6).iloc[::-1]
+            if len(st):
+                seg[name][code] = list(zip(st.fig.tolist(), st.w.tolist(), st.km.tolist(), st.date.tolist(),
+                                           st.surface.tolist(), st.straight.tolist()))
     _CACHE[race_date] = out
+    _SEG_CACHE[race_date] = seg
     return out
 
 
-def figure_w(runs, today_weight):
-    """figW（換算到今仗負磅）；少過 2 仗有數 = None。runs = figures_as_of()[code]。"""
+def segment_figures(race_date: str) -> dict:
+    """{"awt"|"straight": {馬匹編號: 最近 6 仗該分段嘅仗（最近先，同 figures_as_of 一樣嘅 tuple）}}，日期嚴格早過 race_date。"""
+    if race_date not in _SEG_CACHE:
+        figures_as_of(race_date)
+    return _SEG_CACHE.get(race_date, {"awt": {}, "straight": {}})
+
+
+def _wavg(runs, today_weight, need):
     import math
     if not runs or today_weight is None:
         return None
@@ -138,20 +152,22 @@ def figure_w(runs, today_weight):
         ok += 1
         num += (fv - BETA_LB * (today_weight - w) * km) / k
         den += 1.0 / k
-    return num / den if ok >= 2 else None
+    return num / den if ok >= need else None
 
 
-def segment_gap(runs, today_weight, segment) -> dict | None:
-    if segment not in {"awt", "straight"}:
-        raise ValueError(f"unknown segment: {segment}")
-    runs = (runs or [])[:6]
-    overall = figure_w(runs, today_weight)
-    selected = [r for r in runs if len(r) >= 6 and (r[4] == "泥地" if segment == "awt" else r[5])]
-    if overall is None or not selected:
+def figure_w(runs, today_weight):
+    """figW（換算到今仗負磅）；少過 2 仗有數 = None。runs = figures_as_of()[code]。"""
+    return _wavg(runs, today_weight, 2)
+
+
+def segment_gap(runs, seg_runs, today_weight) -> dict | None:
+    """分段表現數字 − 整體（EXP-20261123-18 定義，唯一一份）：整體 = 最近 6 仗（≥2 仗），分段 = 最近 6 仗該分段（≥1 仗），
+    都換算今仗負磅、1/k 加權。標籤同直路入分（straight_figure.py）都用呢個。"""
+    overall = figure_w((runs or [])[:6], today_weight)
+    part = _wavg((seg_runs or [])[:6], today_weight, 1)
+    if overall is None or part is None:
         return None
-    # figure_w 要至少兩仗；複製唯一一仗並不改變其加權平均。
-    value = figure_w(selected if len(selected) > 1 else selected * 2, today_weight)
-    return None if value is None else {"gap": value - overall, "n": len(selected)}
+    return {"gap": part - overall, "n": len(seg_runs or [])}
 
 
 def _weight(h):

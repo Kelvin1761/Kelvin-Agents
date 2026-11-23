@@ -175,6 +175,12 @@ RANKING_ADJUSTMENTS = (
         "formula": "1.88·(z − 場均)（原始分）；z 只限初出馬 =（練馬師之前初出馬入頭三率，收縮 k=10 向 25%）− 0.190 ÷ 0.070；非初出馬 z = 0；初出馬賽果 = 日期嚴格早過今仗（hkjc_racing_engine/debut_trainer.py）",
         "missing": "冇初出馬嘅場 = 不套用；冇表 = z 0",
     },
+    {
+        "key": "straight_figure",
+        "label": "直路表現數字（EXP-20261123-18，實驗性上線、未證實改善）",
+        "formula": "只限沙田直路 1000 米：5.04·(gap − 場均) − 0.16·(有 gap − 場均)（原始分）；gap = 最近 6 仗直路表現數字（≥1 仗）− 最近 6 仗整體（≥2 仗），都換算今仗負磅（hkjc_racing_engine/straight_figure.py、performance_figure.segment_gap）",
+        "missing": "冇直路往績或者整體少過 2 仗 = gap 0、有 gap 旗 0；唔係直路 = 不套用",
+    },
 )
 
 DEBUT_MATRIX_WEIGHTS = dimensions.debut_weights()

@@ -99,6 +99,12 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 extra={"pass_verdict": "建議入分（等你決定）"},
                 decided="2026-11-23 被 EXP-20261123-13 取代：回放 v5.2 dev／holdout／六季初出馬場全 PASS，Kelvin 批准入分（β 1.88）；"
                         "新 forward = debut_trainer_post_live（退回監察）"),
+    # EXP-20261123-18（Kelvin 2026-11-24「實驗性上線」）：直路表現數字入分；回放 206 場方向正但 CI 跨零 → 退回式 forward。
+    # tracker 數嘅係全部賽事；直路只佔 ~4%（六季 206／5,219）→ 1,000 場 ≈ 40 場直路賽（Sol 覆核 2026-11-24：40 場會太早判）。
+    ForwardTest("straight_figure_post_live", "直路表現數字實驗性上線後 vs 冇", "EXP-20261123-18", "harness_ab", 1000,
+                since="2026-11-26", arm="docs/experiments/patches/hkjc_arm_straight_figure_revert.py",
+                action="自動判：退回版 forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議退回（等你決定）；否則保留",
+                extra={"pass_verdict": "建議退回（等你決定）"}),
     # EXP-20261123-13（Kelvin 2026-11-23「可以上線」）：初出馬練馬師初出上名率入分 → 退回式 forward 監察。
     ForwardTest("debut_trainer_post_live", "初出馬練馬師初出紀錄入分上線後 vs 冇", "EXP-20261123-13", "harness_ab", 60,
                 since="2026-11-26", arm="docs/experiments/patches/hkjc_arm_debut_trainer_revert.py",
