@@ -32,6 +32,7 @@ BUCKETS = ((1000, 54, 60), (1200, 66.5, 73.5), (1400, 79, 87), (1600, 91, 98.2),
 _ROWS = None
 _CACHE: dict = {}
 _SEG_CACHE: dict = {}
+_DIST_CACHE: dict = {}
 
 
 def _secs(t):
@@ -100,6 +101,7 @@ def figures_as_of(race_date: str, R=None):
     if race_date in _CACHE:
         return _CACHE[race_date]
     R = load_results() if R is None else R
+    _DIST_CACHE.pop(race_date, None)
     out: dict = {}
     if R is None or R.empty:
         _CACHE[race_date] = out
@@ -120,9 +122,12 @@ def figures_as_of(race_date: str, R=None):
     f = f - np.nanmean(f)
     P = P.assign(fig=f)
     seg = {"awt": {}, "straight": {}}
+    distances = {}
     for code, g in P.groupby("code", sort=False):
         tail = g.tail(6).iloc[::-1]
         out[code] = list(zip(tail.fig.tolist(), tail.w.tolist(), tail.km.tolist(), tail.date.tolist(), tail.surface.tolist(), tail.straight.tolist()))
+        distances[code] = list(zip(g.fig.tolist(), g.w.tolist(), g.km.tolist(), g.date.tolist(),
+                                   g.surface.tolist(), g.straight.tolist()))[::-1]
         for name, mask in (("awt", g.surface == "泥地"), ("straight", g.straight)):
             st = g[mask].tail(6).iloc[::-1]
             if len(st):
@@ -130,6 +135,7 @@ def figures_as_of(race_date: str, R=None):
                                            st.surface.tolist(), st.straight.tolist()))
     _CACHE[race_date] = out
     _SEG_CACHE[race_date] = seg
+    _DIST_CACHE[race_date] = distances
     return out
 
 
@@ -138,6 +144,22 @@ def segment_figures(race_date: str) -> dict:
     if race_date not in _SEG_CACHE:
         figures_as_of(race_date)
     return _SEG_CACHE.get(race_date, {"awt": {}, "straight": {}})
+
+
+def distance_runs_as_of(race_date: str, distance: float, tol: float = 200) -> dict:
+    """最近六仗同程紀錄，沿用同日 figures_as_of 計算及 tuple 格式。"""
+    if race_date not in _CACHE:
+        figures_as_of(race_date)
+    if race_date not in _DIST_CACHE and _CACHE.get(race_date):
+        # 補齊舊式或測試注入的快取。
+        _CACHE.pop(race_date, None)
+        figures_as_of(race_date)
+    out = {}
+    for code, runs in _DIST_CACHE.get(race_date, {}).items():
+        selected = [run for run in runs if abs(run[2] * 1000 - distance) <= tol][:6]
+        if selected:
+            out[code] = selected
+    return out
 
 
 def _wavg(runs, today_weight, need):

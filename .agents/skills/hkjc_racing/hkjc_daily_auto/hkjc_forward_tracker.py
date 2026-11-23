@@ -47,6 +47,19 @@ class ForwardTest:
 
 
 FORWARD_TESTS: tuple[ForwardTest, ...] = (
+    # 同程全場 300 場；分級賽約 6%、泥地約 10%，各用 1000 場累積足夠目標場次。
+    ForwardTest("samedist_figure_shadow", "同程表現數字（shadow）", "EXP-20261124-05", "harness_ab", 300,
+                since="2026-11-26", arm="docs/experiments/patches/hkjc_arm_samedist_figure_shadow.py",
+                action="自動判：forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議上線（等你決定）；否則唔上",
+                extra={"pass_verdict": "建議上線（等你決定）"}),
+    ForwardTest("group_rating_shadow", "分級賽評分負磅（shadow）", "EXP-20261124-10", "harness_ab", 1000,
+                since="2026-11-26", arm="docs/experiments/patches/hkjc_arm_group_rating_shadow.py",
+                action="自動判：forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議上線（等你決定）；否則唔上",
+                extra={"pass_verdict": "建議上線（等你決定）"}),
+    ForwardTest("awt_figure_shadow", "泥地表現數字（shadow）", "EXP-20261123-18", "harness_ab", 1000,
+                since="2026-11-26", arm="docs/experiments/patches/hkjc_arm_awt_figure_shadow.py",
+                action="自動判：forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議上線（等你決定）；否則唔上",
+                extra={"pass_verdict": "建議上線（等你決定）"}),
     ForwardTest("gear_removed", "配備「除去」−3 剷走", "EXP-20261010-05", "harness_ab", 60,
                 since="2026-10-11", arm="docs/experiments/patches/hkjc_arm_no_gear_removed.py",
                 action="自動判：Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議剷走 −3；否則維持",
