@@ -20,6 +20,10 @@ SUBSET = sys.argv[4] if len(sys.argv) > 4 else "group"   # group｜d1000（EXP-2
 if SUBSET == "group":
     grp = {k for k, r in hb.load_index()["results"].items()
            if str((r.get("_header") or {}).get("RaceClass") or "").startswith("Group")}
+elif SUBSET == "awt":   # EXP-20261123-15：泥地
+    _idx = hb.load_index()["results"]
+    grp = {(x["date"], x["race"]) for x in map(json.loads, open(base)) if "horses" in x
+           and (x.get("awt") or "全天候" in str((_idx.get((x["date"], x["race"])) or {}).get("course") or ""))}
 elif SUBSET == "debut":   # EXP-20261123-13：有初出馬嘅場
     grp = {(x["date"], x["race"]) for x in map(json.loads, open(base)) if "horses" in x and any(h.get("debut") for h in x["horses"])}
 else:
