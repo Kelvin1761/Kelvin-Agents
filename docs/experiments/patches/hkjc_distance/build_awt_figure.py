@@ -105,6 +105,8 @@ def main():
             x["_feat"] = m - m.mean(axis=0)
         cache.pop(D, None)
     feats = {(x["date"], x["race"]): x.pop("_feat") for x in targets}
+    import pickle
+    pickle.dump(feats, open(f"{sys.argv[2]}_feats.pkl", "wb"))
     by = defaultdict(list)
     for x in rows:
         by[season(x["date"])].append(x)
