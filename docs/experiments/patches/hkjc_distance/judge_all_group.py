@@ -16,11 +16,17 @@ C = types.ModuleType("v5all"); C.__file__ = "/Users/imac/Antigravity-repo/.agent
 exec(compile(_src, "v5all", "exec"), C.__dict__)
 
 base, cand, out = sys.argv[1], sys.argv[2], Path(sys.argv[3])
-grp = {k for k, r in hb.load_index()["results"].items()
-       if str((r.get("_header") or {}).get("RaceClass") or "").startswith("Group")}
+SUBSET = sys.argv[4] if len(sys.argv) > 4 else "group"   # group｜d1000（EXP-20261123-11 第二輪：Kelvin「好似級際賽咁用六季全部 1000 米場次判」）
+if SUBSET == "group":
+    grp = {k for k, r in hb.load_index()["results"].items()
+           if str((r.get("_header") or {}).get("RaceClass") or "").startswith("Group")}
+elif SUBSET == "debut":   # EXP-20261123-13：有初出馬嘅場
+    grp = {(x["date"], x["race"]) for x in map(json.loads, open(base)) if "horses" in x and any(h.get("debut") for h in x["horses"])}
+else:
+    grp = {(x["date"], x["race"]) for x in map(json.loads, open(base)) if "horses" in x and x.get("distance") == 1000}
 paths = []
 for src in (base, cand):
-    dst = out / ("grpall_" + Path(src).name)
+    dst = out / (f"{SUBSET}all_" + Path(src).name)
     with open(dst, "w") as f:
         for line in open(src):
             x = json.loads(line)
