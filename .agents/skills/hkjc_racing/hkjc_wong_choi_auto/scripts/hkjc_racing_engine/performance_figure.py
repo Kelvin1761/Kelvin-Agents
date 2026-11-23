@@ -72,7 +72,7 @@ def load_results(root: Path | None = None):
                 if t is None or not str(w).isdigit() or not str(r.get("pos")).strip().isdigit() or not code:
                     continue
                 rows.append({"race": "|".join(rid), "date": rid[0], "code": code.group(1), "w": int(w), "time": t,
-                             "pos": int(r["pos"])})
+                             "pos": int(r["pos"]), "surface": "泥地" if "全天候" in str(race.get("course") or "") else ("谷草" if venue == "HV" else "田草")})
     R = pd.DataFrame(rows)
     if R.empty:
         _ROWS = R
@@ -83,6 +83,7 @@ def load_results(root: Path | None = None):
     R["dist"] = R.t_win.map(lambda t: next((d for d, lo, hi in BUCKETS if lo <= t < hi), float("nan")))
     R = R[R.groupby("race").dist.transform(lambda s: s.notna().all())].copy()
     R["km"] = R.dist / 1000.0
+    R["straight"] = (R.surface == "田草") & (R.dist == 1000)
     R["tkm"] = R.time / R.km
     R["tkm_cap"] = (R.t_win + R.beaten.clip(upper=3.0)) / R.km
     R["hs"] = R.code + "|" + R.season.astype(str)
@@ -119,7 +120,7 @@ def figures_as_of(race_date: str, R=None):
     P = P.assign(fig=f)
     for code, g in P.groupby("code", sort=False):
         tail = g.tail(6).iloc[::-1]
-        out[code] = list(zip(tail.fig.tolist(), tail.w.tolist(), tail.km.tolist(), tail.date.tolist()))
+        out[code] = list(zip(tail.fig.tolist(), tail.w.tolist(), tail.km.tolist(), tail.date.tolist(), tail.surface.tolist(), tail.straight.tolist()))
     _CACHE[race_date] = out
     return out
 
@@ -131,13 +132,26 @@ def figure_w(runs, today_weight):
         return None
     num = den = 0.0
     ok = 0
-    for k, (fv, w, km, _d) in enumerate(runs, 1):
+    for k, (fv, w, km, *_rest) in enumerate(runs, 1):
         if fv is None or (isinstance(fv, float) and math.isnan(fv)):
             continue
         ok += 1
         num += (fv - BETA_LB * (today_weight - w) * km) / k
         den += 1.0 / k
     return num / den if ok >= 2 else None
+
+
+def segment_gap(runs, today_weight, segment) -> dict | None:
+    if segment not in {"awt", "straight"}:
+        raise ValueError(f"unknown segment: {segment}")
+    runs = (runs or [])[:6]
+    overall = figure_w(runs, today_weight)
+    selected = [r for r in runs if len(r) >= 6 and (r[4] == "泥地" if segment == "awt" else r[5])]
+    if overall is None or not selected:
+        return None
+    # figure_w 要至少兩仗；複製唯一一仗並不改變其加權平均。
+    value = figure_w(selected if len(selected) > 1 else selected * 2, today_weight)
+    return None if value is None else {"gap": value - overall, "n": len(selected)}
 
 
 def _weight(h):

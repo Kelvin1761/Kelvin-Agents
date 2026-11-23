@@ -73,7 +73,89 @@ def _race_meta(logic_data: dict) -> dict:
         "venue": "HV" if "跑馬地" in venue or "Happy" in venue else ("ST" if "沙田" in venue or "Sha" in venue else ""),
         "awt": "AWT" in venue.upper() or "AWT" in track.upper() or "全天候" in venue + track,
         "race_class": ra.get("race_class"),
+        "race_context": ra,
     }
+
+
+def _segment_figure_tag(horse, meta):
+    from . import performance_figure as pf, surface_move
+    from .market_history import horse_code
+    surface = surface_move.today_surface(meta.get("race_context") or {})
+    segment = "awt" if surface == "泥地" else ("straight" if surface == "田草" and meta.get("distance") == 1000 else None)
+    if not segment or not meta.get("date"):
+        return []
+    result = pf.segment_gap(pf.figures_as_of(meta["date"]).get(horse_code(horse)), pf._weight(horse), segment)
+    if not result or abs(result["gap"]) < 0.10:
+        return []
+    gap = result["gap"]
+    name = "泥地" if segment == "awt" else "直路"
+    evidence = ("六季泥地場機率準咗但頭二變差" if segment == "awt" else "Gold +1.94、Good +2.91，但只有 206 場")
+    return [_tag("segment_figure:" + segment, f"{name}表現{'好' if gap > 0 else '差'}過平時 {abs(gap):.2f} 秒／公里（未入分）", "good" if gap > 0 else "bad",
+                 why=f"近六仗中{result['n']}仗分段表現數字，換算今仗負磅後減全部近仗。EXP-20261123-18：{evidence}；未入分。")]
+
+
+def _head_to_head_tags(horse, horses, meta):
+    from datetime import date, timedelta
+    import math
+    from . import performance_figure as pf
+    from .market_history import horse_code
+    try:
+        today = date.fromisoformat(meta["date"])
+        weight = float(horse["weight"])
+        km = float(meta["distance"]) / 1000
+        if not math.isfinite(weight) or not math.isfinite(km) or km <= 0:
+            return []
+    except (KeyError, TypeError, ValueError):
+        return []
+    code = horse_code(horse)
+    if not code:
+        return []
+    rows = pf.load_results()
+    if rows is None or rows.empty:
+        return []
+    past = rows[(rows.date < today.isoformat()) & (rows.date >= (today - timedelta(days=365)).isoformat())]
+    mine = past[past.code == code]
+    def rank(item):
+        no, h = item
+        auto = h.get("python_auto") or {}
+        return (-float(auto.get("ability_score") or 0), -float(auto.get("ability_score_raw") or 0), int(no) if str(no).isdigit() else 9999)
+    out = []
+    for no, opponent in sorted(horses.items(), key=rank):
+        other_code = horse_code(opponent)
+        if not other_code or other_code == code:
+            continue
+        try:
+            other_weight = float(opponent["weight"])
+            if not math.isfinite(other_weight):
+                continue
+        except (KeyError, TypeError, ValueError):
+            continue
+        common = mine.merge(past[past.code == other_code], on="race", suffixes=("_self", "_other"))
+        if common.empty:
+            continue
+        common = common.sort_values(["date_self", "race"], ascending=False)
+        for row in common.itertuples(index=False):
+            try:
+                t1, t2, w1, w2, old_km = map(float, (row.time_self, row.time_other, row.w_self, row.w_other, row.km_self))
+                if not all(map(math.isfinite, (t1, t2, w1, w2, old_km))):
+                    continue
+            except (TypeError, ValueError):
+                continue
+            raw = t2 - t1
+            adjusted = max(-1.0, min(1.0, raw + pf.BETA_LB * old_km * (w1 - w2) - pf.BETA_LB * km * (weight - other_weight)))
+            def wording(v):
+                if abs(v) < 0.005:
+                    return "平手"
+                if abs(v) >= 1.0:   # 換算值截 ±1 秒；原始差距同樣咁寫，唔會出現「輸 3.44、換算輸 1.00」
+                    return f"{'贏' if v > 0 else '輸'}超過 1 秒"
+                return f"{'贏' if v > 0 else '輸'} {abs(v):.2f} 秒"
+            name = opponent.get("horse_name") or str(no) + "號"
+            out.append(_tag("head_to_head:" + str(no), f"上次對 {name}：{wording(raw)}；換算今仗負磅 {wording(adjusted)}（未入分）", "note",
+                            why="最近一次同場完成時間，按當時及今仗路程與負磅換算，結果截於 ±1 秒。EXP-20261123-08：級際賽交手訊號 β 大好多，全部場頭二 −14；未入分。"))
+            break
+        if len(out) >= 2:
+            break
+    return out
 
 
 # ── 往績（HKJC 馬匹頁）─────────────────────────────────────────────────────────
@@ -872,7 +954,7 @@ def _incident_tag(auto: dict) -> list[dict]:
 
 
 def horse_tags(no: str, horse: dict, auto: dict, *, runs: list[dict], meta: dict,
-               priority: str = "", extra: list | None = None) -> dict:
+               priority: str = "", extra: list | None = None, horses: dict | None = None) -> dict:
     special = _trainer_tags(auto) + _jockey_change_tag(horse, auto, runs) + _distance_venue_tags(horse, auto, runs, meta) + _distance_move_tags(auto)
     special += _surface_move_tags(horse, auto) + _class_move_tags(horse, meta) + _age_weight_tag(horse)
     venue = _same_distance_venue_tags(auto)
@@ -880,6 +962,7 @@ def horse_tags(no: str, horse: dict, auto: dict, *, runs: list[dict], meta: dict
         special = [t for t in special if t["key"] != "specialist"]
     special += venue + _horse_age_tag(auto) + _excuse_streak_tag(auto) + _thin_evidence_tag(auto) + _trainer_work_tag(horse) + _performance_figure_tag(auto)
     special += extra or []
+    special += _segment_figure_tag(horse, meta) + _head_to_head_tags(horse, horses or {}, meta)
     if "+" in str(priority or ""):
         special.append(_tag("trainer_ace", "練馬師王牌", "note",
                             why="排位表「優先參賽次序」標 +（練馬師用王牌確保出賽）。"
@@ -922,7 +1005,7 @@ def race_tags(logic_data: dict, meeting_dir: Path | None = None) -> dict:
             tp = {t["key"].split(":", 1)[1] for t in extra[no] if t["key"].startswith("trainer_pattern:")}
             extra[no].extend(_gear_tags(gear.get(no, []), tp) + _backup_tag(h["python_auto"]) + _next_entry_tag(h))
         return {no: horse_tags(no, h, h["python_auto"], runs=runs_by_no.get(no) or [], meta=meta,
-                               priority=priorities.get(no, ""), extra=extra.get(no))
+                               priority=priorities.get(no, ""), extra=extra.get(no), horses=horses)
                 for no, h in horses.items()}
     except Exception as exc:  # 純顯示：出錯就冇標籤，唔可以令評分失敗
         return {"_error": f"{type(exc).__name__}: {exc}"}

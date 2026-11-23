@@ -42,11 +42,12 @@ class FigureTest(unittest.TestCase):
                 rows.append({"race": f"{d}|ST|1", "date": d, "code": c, "w": 123, "time": t, "pos": 1 if t == min(t1, t2) else 2})
         R = pd.DataFrame(rows)
         R["season"] = 2025; R["t_win"] = R.groupby("race").time.transform("min"); R["beaten"] = R.time - R.t_win
+        R["surface"] = "田草"; R["straight"] = False
         R["dist"] = 1200.0; R["km"] = 1.2; R["tkm"] = R.time / 1.2
         R["tkm_cap"] = (R.t_win + R.beaten.clip(upper=3)) / 1.2; R["hs"] = R.code + "|2025"
         pf._CACHE.clear()
         t = pf.figures_as_of("2026-03-01", R)
-        self.assertEqual({d for *_x, d in t["A"]}, {"2026-01-01", "2026-02-01"})   # 唔包今仗
+        self.assertEqual({run[3] for run in t["A"]}, {"2026-01-01", "2026-02-01"})   # 唔包今仗
         pf._CACHE.clear()
 
     def test_apply_tag_and_disable(self):
