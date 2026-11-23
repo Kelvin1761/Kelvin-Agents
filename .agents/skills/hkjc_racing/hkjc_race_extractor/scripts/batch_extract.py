@@ -430,18 +430,6 @@ def main():
         print(f"   ↪ PDF 唔再卡發佈閘：海外往績會逐匹改用 fsc 來港前賽績（只係警告）。")
     print()
 
-    # Step 2: Extract 晨操 (trackwork) — all races in one shot, fail-soft
-    print(f"🏇 Extracting 晨操 (trackwork) for {len(races)} races...")
-    tw_results = extract_trackwork_meeting(args.base_url, races, output_dir, date_prefix)
-    tw_ok_count = sum(1 for v in tw_results['races'].values() if v['json_ok'] and v['md_ok'])
-    if tw_results['ok']:
-        print(f"   ✅ 晨操: {tw_ok_count}/{len(races)} races")
-    else:
-        print(f"   ⚠️ 晨操: {tw_ok_count}/{len(races)} races (下游將使用 fallback)")
-        if tw_results['error']:
-            print(f"      {tw_results['error']}")
-    print()
-
     # Step 3: Extract racecard + formguide concurrently
     print(f"🔄 Extracting {len(races)} races (max {args.max_workers} concurrent)...")
     all_results = []
@@ -480,6 +468,21 @@ def main():
             else:
                 result['errors'].append(f"Formguide R{r}: 舊檔對唔上排位表（{why}）")
                 print(f"   ❌ Race {r}: 舊賽績檔對唔上排位表 —— {why}")
+
+    # Step 3b: 晨操 (trackwork) —— 一定要喺排位表之後抽（2026-11-23 修）：
+    # extract_trackwork 用本地排位表做馬匹名單（parse_racecard_horse_list），
+    # 冇排位表就跌返去 HKJC localtrackwork 頁 —— 嗰頁唔跟後備馬補上更新。
+    # 11-25 跑馬地 R2：晨操先抽 → 用咗舊名單（雙子美麗、皇金合），補上嘅天下寵兒、領袖勁力冇晨操、冇「練馬師親自操」標籤。
+    print(f"🏇 Extracting 晨操 (trackwork) for {len(races)} races...")
+    tw_results = extract_trackwork_meeting(args.base_url, races, output_dir, date_prefix)
+    tw_ok_count = sum(1 for v in tw_results['races'].values() if v['json_ok'] and v['md_ok'])
+    if tw_results['ok']:
+        print(f"   ✅ 晨操: {tw_ok_count}/{len(races)} races")
+    else:
+        print(f"   ⚠️ 晨操: {tw_ok_count}/{len(races)} races (下游將使用 fallback)")
+        if tw_results['error']:
+            print(f"      {tw_results['error']}")
+    print()
 
     # Summary
     all_results.sort(key=lambda x: x['race'])
