@@ -20,6 +20,13 @@ SUBSET = sys.argv[4] if len(sys.argv) > 4 else "group"   # group｜d1000（EXP-2
 if SUBSET == "group":
     grp = {k for k, r in hb.load_index()["results"].items()
            if str((r.get("_header") or {}).get("RaceClass") or "").startswith("Group")}
+elif SUBSET == "straight":   # 沙田草地 1000 米
+    _idx = hb.load_index()["results"]
+    grp = {(x["date"], x["race"]) for x in map(json.loads, open(base)) if "horses" in x and x["venue"] != "跑馬地"
+           and x.get("distance") == 1000 and not (x.get("awt") or "全天候" in str((_idx.get((x["date"], x["race"])) or {}).get("course") or ""))}
+elif SUBSET == "small":   # EXP-20261123-17：出賽 ≤ 9 匹
+    grp = {(x["date"], x["race"]) for x in map(json.loads, open(base)) if "horses" in x
+           and sum(1 for h in x["horses"] if h["pos"]) <= 9}
 elif SUBSET == "awt":   # EXP-20261123-15：泥地
     _idx = hb.load_index()["results"]
     grp = {(x["date"], x["race"]) for x in map(json.loads, open(base)) if "horses" in x
