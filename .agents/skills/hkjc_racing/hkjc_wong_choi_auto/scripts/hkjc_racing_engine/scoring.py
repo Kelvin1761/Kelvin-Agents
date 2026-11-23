@@ -169,6 +169,12 @@ RANKING_ADJUSTMENTS = (
         "formula": "− 0.1285·(段速維度分 − 場均) ＋ 4.99·(表現數字 − 場均) − 0.95·(冇表現數字 − 場均)（原始分）；表現數字 = 近 6 仗每公里時間扣賽事效應、按今仗負磅換算（每磅 0.0094 秒／公里）、1/k 加權；賽果 = 日期嚴格早過今仗（hkjc_racing_engine/performance_figure.py）",
         "missing": "少過 2 仗有時間（初出／外隊）= 用場均＋缺失旗；冇賽果庫 = 不套用（段速照計）",
     },
+    {
+        "key": "debut_trainer",
+        "label": "初出馬練馬師初出紀錄（EXP-20261123-13）",
+        "formula": "1.88·(z − 場均)（原始分）；z 只限初出馬 =（練馬師之前初出馬入頭三率，收縮 k=10 向 25%）− 0.190 ÷ 0.070；非初出馬 z = 0；初出馬賽果 = 日期嚴格早過今仗（hkjc_racing_engine/debut_trainer.py）",
+        "missing": "冇初出馬嘅場 = 不套用；冇表 = z 0",
+    },
 )
 
 DEBUT_MATRIX_WEIGHTS = dimensions.debut_weights()

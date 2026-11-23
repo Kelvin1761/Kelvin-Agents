@@ -692,17 +692,23 @@ def _foreign_tag(horse: dict) -> list[dict]:
 
 
 def _debut_trainer_tag(horse: dict, meta: dict) -> list[dict]:
-    """初出馬：練馬師初出紀錄（Kelvin 2026-11-14 決定 3；EXP-20261114-06）—— 未入分，forward shadow 觀察緊。"""
+    """初出馬：練馬師初出紀錄（EXP-20261123-13 入分；Kelvin 2026-11-23 上線）。一個 chip，影響寫喺 impact。"""
     if not (horse.get("is_debut") or horse.get("debut_runner")) or not meta.get("date"):
         return []
+    auto = horse.get("python_auto") or {}
+    delta = auto.get("debut_trainer_delta")
     from .debut_trainer import rate
     info = rate(str(horse.get("trainer") or "").strip(), meta["date"])
-    if not info or info["starts"] < 5:
+    if not info:
+        return []
+    if info["starts"] < 5 and (delta is None or abs(float(delta)) < 0.3):
         return []
     tone = "good" if info["z"] >= 1 else ("bad" if info["z"] <= -1 else "note")
     return [_tag("debut_trainer", f"練馬師初出馬上名率 {info['rate'] * 100:.0f}%（{info['places']}/{info['starts']}）", tone,
-                 why="練馬師之前帶初出馬入頭三嘅比率（收縮向 25%）。回放證實喺模型之上有剩餘（EXP-20261114-06）；"
-                     "未入分，forward 觀察緊。")]
+                 scored=delta is not None, impact=None if delta is None else round(float(delta), 2),
+                 why="練馬師之前帶初出馬入頭三嘅比率（收縮向 25%：初出馬少嘅練馬師會靠近 25%）。已入分：每高 1 個標準差（7pp）"
+                     "加 1.88 原始分，再同全場比。6,047 場回放：dev／holdout log-loss 都改善，六季有初出馬嘅場 AUC +0.0021"
+                     "（EXP-20261123-13）。")]
 
 
 def _form_pattern_tags(horse: dict, meta: dict) -> list[dict]:
