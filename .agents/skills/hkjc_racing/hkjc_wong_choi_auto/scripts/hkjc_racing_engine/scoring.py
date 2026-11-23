@@ -129,9 +129,9 @@ RANKING_ADJUSTMENTS = (
     },
     {
         "key": "distance_move",
-        "label": "大幅增程（EXP-20261117-03）",
+        "label": "大幅增程（EXP-20261117-03；返首本豁免 EXP-20261124-08）",
         "formula": "β·([今仗路程 − 上仗路程 ≥ 400 米] − 場均)，β = −0.926（原始分）；上仗 = HKJC 馬匹頁最近一場香港賽事、日期嚴格早過今仗（hkjc_racing_engine/distance_move.py）",
-        "missing": "冇上仗（初出／外隊）= 冇旗；冇今仗路程 = 不套用；大幅減程只顯示、唔入分",
+        "missing": "冇上仗（初出／外隊）= 冇旗；冇今仗路程 = 不套用；大幅減程只顯示、唔入分；以前喺今仗路程 ±100 米上過名或者上上仗／再前一仗跑過 = 返首本，唔當增程",
     },
     {
         "key": "surface_move",
@@ -180,6 +180,12 @@ RANKING_ADJUSTMENTS = (
         "label": "直路表現數字（EXP-20261123-18，實驗性上線、未證實改善）",
         "formula": "只限沙田直路 1000 米：5.04·(gap − 場均) − 0.16·(有 gap − 場均)（原始分）；gap = 最近 6 仗直路表現數字（≥1 仗）− 最近 6 仗整體（≥2 仗），都換算今仗負磅（hkjc_racing_engine/straight_figure.py、performance_figure.segment_gap）",
         "missing": "冇直路往績或者整體少過 2 仗 = gap 0、有 gap 旗 0；唔係直路 = 不套用",
+    },
+    {
+        "key": "group_rating",
+        "label": "級際賽淨評分（EXP-20261124-09，實驗性上線、未證實改善）",
+        "formula": "只限一／二／三級賽：4.41·(淨評分 − 場均)（原始分）；淨評分 =（官方評分 − 場均）÷10 −（今仗負磅 − 場均）÷10（hkjc_racing_engine/group_rating.py）",
+        "missing": "任何一匹冇香港評分（外隊馬）或者冇負磅 = 成場不套用；唔係級際賽 = 不套用",
     },
 )
 

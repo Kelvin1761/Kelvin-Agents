@@ -345,6 +345,11 @@ def _distance_move_tags(auto: dict) -> list[dict]:
         out.append(_tag("distance_up", f"大幅增程（{prev}→{dist}米）", "bad", scored=True, impact=round(delta, 2),
                         why=f"上仗 {prev}米，今仗 {dist}米（增 ≥400 米）。歷史上大幅增程嘅馬入位率低過模型預測約 2pp，"
                             "短途（≤1200）轉一哩以上更明顯（約 −4～−6pp）；6,000 場回放 dev／holdout 都改善（EXP-20261117-03）。"))
+    elif prev and dist and mv.get("home"):
+        delta = float(auto.get("distance_move_delta") or 0.0)
+        out.append(_tag("distance_up_home", f"大幅增程但返首本（{prev}→{dist}米，唔扣）", "note", scored=True, impact=round(delta, 2),
+                        why=f"上仗 {prev}米，今仗 {dist}米（增 ≥400 米），但以前喺今仗路程 ±100 米上過名、或者上上仗／再前一仗跑過呢個路程，"
+                            "所以唔當大幅增程扣分（只剩全場置中嘅細微影響）。回放 1,121 匹次：唔扣唔會變差（頭二入頭三 +2／+1，EXP-20261124-08）。"))
     elif prev and dist and prev - dist >= BIG_MOVE:
         out.append(_tag("distance_down", f"大幅減程（{prev}→{dist}米）", "note",
                         why=f"上仗 {prev}米，今仗 {dist}米（減 ≥400 米）。歷史上冇穩定加減（dev +1.5、holdout −0.2pp）；未入分。"))
@@ -447,6 +452,22 @@ def _thin_evidence_tag(auto: dict) -> list[dict]:
                  why="香港得 1–2 仗又休咗半年以上，綜合分向全場平均收窄一半（高分跌、低分升，唔係扣分）。"
                      "歷史同類馬（本地 116 匹）模型排頭 2 嘅入位 29%、模型估 55%；排 3–5 就準（33%／28%）。"
                      "⚠️ 實驗性上線、未證實改善（回放樣本太少，把尺量唔到；EXP-20261119-05）。")]
+
+
+def _group_rating_tag(auto: dict) -> list[dict]:
+    """級際賽淨評分（EXP-20261124-09，實驗性入分）：一個 chip，評分、負磅、淨評分寫喺 tooltip。"""
+    info = auto.get("group_rating") or {}
+    if not info:
+        return []
+    delta = float(auto.get("group_rating_delta") or 0.0)
+    net = float(info.get("net") or 0.0)
+    if abs(delta) < 0.3:
+        return []
+    return [_tag("group_rating", f"級際賽淨評分{'高' if net > 0 else '低'}過全場平均 {abs(net):.0f} 分（實驗性入分）",
+                 "good" if delta > 0 else "bad", scored=True, impact=round(delta, 2),
+                 why=f"官方評分 {info.get('rating'):.0f}、負 {info.get('weight'):.0f} 磅；扣返負磅（1 分 = 1 磅）之後同全場比。"
+                     "級際賽負磅冇好似讓磅賽咁抵銷評分，所以評分高嘅馬要加返。六季級際賽 160 場：首選贏 +7，但 Good −1.88、CI 好闊"
+                     "（EXP-20261124-09）；Kelvin 決定實驗性上線，forward 退回監察。")]
 
 
 def _performance_figure_tag(auto: dict) -> list[dict]:
@@ -969,7 +990,7 @@ def horse_tags(no: str, horse: dict, auto: dict, *, runs: list[dict], meta: dict
     venue = _same_distance_venue_tags(auto)
     if venue:   # 同一件事（同程）只出一個 chip：場地 chip 已講晒 distance_fit
         special = [t for t in special if t["key"] != "specialist"]
-    special += venue + _horse_age_tag(auto) + _excuse_streak_tag(auto) + _thin_evidence_tag(auto) + _trainer_work_tag(horse) + _performance_figure_tag(auto)
+    special += venue + _horse_age_tag(auto) + _excuse_streak_tag(auto) + _thin_evidence_tag(auto) + _trainer_work_tag(horse) + _performance_figure_tag(auto) + _group_rating_tag(auto)
     special += extra or []
     special += _segment_figure_tag(horse, meta) + _head_to_head_tags(horse, horses or {}, meta)
     if "+" in str(priority or ""):

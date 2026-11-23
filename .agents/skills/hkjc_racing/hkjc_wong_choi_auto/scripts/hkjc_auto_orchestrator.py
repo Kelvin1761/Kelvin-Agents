@@ -51,7 +51,7 @@ from hkjc_racing_engine import market_history
 from hkjc_racing_engine import draw_style
 from hkjc_racing_engine import incident_history, distance_move
 from hkjc_racing_engine import surface_move
-from hkjc_racing_engine import venue_distance, horse_age, performance_figure, debut_trainer, straight_figure
+from hkjc_racing_engine import venue_distance, horse_age, performance_figure, debut_trainer, straight_figure, group_rating
 from hkjc_racing_engine import thin_evidence, excuse_streak
 from hkjc_racing_engine.validation import validate_engine_scripts, validate_logic_data
 from wongchoi_paths import is_materialized_file
@@ -381,6 +381,9 @@ def _refresh_grade_transparency(horses):
         sfg = float(auto.get("straight_figure_delta", 0.0) or 0.0)
         if sfg:
             adjustments.append({"key": "straight_figure", "label": "直路表現數字（實驗性）", "raw": round(sfg, 2)})
+        grt = float(auto.get("group_rating_delta", 0.0) or 0.0)
+        if grt:
+            adjustments.append({"key": "group_rating", "label": "級際賽淨評分（實驗性）", "raw": round(grt, 2)})
         transparency["adjustments"] = adjustments
         # 報告「評分總覽」嘅總分係引擎階段（後置調整之前）印嘅：補一行點樣去到最終分，唔然頂部同總覽對唔上。
         summary = transparency.get("summary")
@@ -1189,6 +1192,8 @@ class HKJCAutoOrchestrator:
         debut_trainer.apply(horses, race_context)
         # 直路表現數字（EXP-20261123-18 SF，Kelvin 2026-11-24 實驗性上線）：初出馬之後、grade／排名之前
         straight_figure.apply(horses, race_context)
+        # 級際賽淨評分（EXP-20261124-09 NRGo，Kelvin 2026-11-24 實驗性上線）：直路之後、grade／排名之前
+        group_rating.apply(horses, race_context)
         _refresh_grade_transparency(horses)
         self._apply_7d_official_ranking(horses)
         # ensure_verdict owns the single deterministic ranking path, including
