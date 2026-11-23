@@ -17,6 +17,11 @@ arm（同 J3 做法：場內置中、線性 L2 C=0.1、每季 walk-forward、加
   W   加 figW（換算後表現數字）
   U   加 figU（唔換算；消融，唔判）
 判：dev v5.2 PASS ＋ dev 頭二入頭三 Δ ≥ 0。過咗先開 holdout（呢個家族喺回放尺 holdout 未睇過）；11-22 只做否決。唔調 β、窗、封頂。
+第二輪（Kelvin 2026-11-23「R7 再 dig deeper」；睇咗 W／U dev＋holdout 之後先加，要披露）：
+  診斷（dev／holdout 都量）：加咗 figW 之後，段速分嘅係數由現行權重 0.63／0.71 跌到 0.04 [−0.20,+0.33]／0.04 [−0.28,+0.41]
+  → 表現數字包晒段速分嘅資訊。
+  SW  用表現數字取代段速維度：raw' = raw − 0.1285×(段速分 − 場均) ＋ β·(figW, 缺失旗)，β walk-forward（同上）。
+  判：dev v5.2 PASS ＋ 頭二入頭三 Δ ≥ 0；holdout 照判但唔獨立（W 嘅 holdout 同段速係數診斷已睇過）；11-22 否決。
 用法：python3 build_figure_replay.py <base.jsonl> <out_prefix>
 """
 import json
@@ -85,7 +90,12 @@ def main():
     by = defaultdict(list)
     for x in rows:
         by[season(x["date"])].append(x)
-    for arm, cols in (("WD", [2, 3]), ("W", [1, 3]), ("U", [0, 3])):
+    arms = sys.argv[3].split(",") if len(sys.argv) > 3 else ["WD", "W", "U"]
+    sec = {(x["date"], x["race"]): np.array([hh["m"].get("sectional", 60.0) for hh in x["horses"]]) * 0.1285 for x in rows}
+    for arm, cols in (("WD", [2, 3]), ("W", [1, 3]), ("U", [0, 3]), ("SW", [1, 3])):
+        if arm not in arms:
+            continue
+        off = (lambda k: sec[k] - sec[k].mean()) if arm == "SW" else (lambda k: 0.0)
         models = {}
         for s in sorted(by):
             if s < 2020:
@@ -93,7 +103,7 @@ def main():
             Rr, ZZ, Y = [], [], []
             for x in (x for t in by if 2019 <= t < s for x in by[t]):
                 keep = [i for i, hh in enumerate(x["horses"]) if hh["pos"]]
-                r = np.array([hh["raw"] for hh in x["horses"]])
+                r = np.array([hh["raw"] for hh in x["horses"]]) - off((x["date"], x["race"]))
                 Rr.append((r - r.mean())[keep]); ZZ.append(feats[(x["date"], x["race"])][:, cols][keep])
                 Y += [int(x["horses"][i]["pos"] <= 3) for i in keep]
             Rr, ZZ, Y = np.concatenate(Rr), np.vstack(ZZ), np.array(Y)
@@ -107,7 +117,7 @@ def main():
                 s = season(x["date"])
                 y = dict(x, arm=f"figure_{arm}")
                 if s in models:
-                    r = np.array([hh["raw"] for hh in x["horses"]])
+                    r = np.array([hh["raw"] for hh in x["horses"]]) - off((x["date"], x["race"]))
                     new = r + feats[(x["date"], x["race"])][:, cols] @ models[s]
                     y["horses"] = [dict(hh, raw=round(float(v), 4)) for hh, v in zip(x["horses"], new)]
                     y["picks"] = [hh["n"] for hh in sorted(y["horses"], key=lambda hh: -hh["raw"])]
