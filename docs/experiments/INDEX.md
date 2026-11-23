@@ -619,4 +619,5 @@
 - [EXP-20261122-33](EXP-20261122-33-hkjc-ruler-guard-v51.md) — 回放尺護欄 v5.1：Gold／Good CI 護欄冇靈敏度（剷走狀態維度 Good 仲升；同幅度雜訊捉 14/30）→ 改場內 AUC CI 下界 > −0.0015 ＋ Gold／Good 點估計 > −1pp；唔追溯
 - [EXP-20261122-31](EXP-20261122-31-hkjc-samedist-vs-own-average.md) — 同程上名率比自己平均低 >0.25 殘差 −4.0／−4.1；R1 dev 過、holdout CI 跨零 REJECT；R2 REJECT；同程上名率高唔罕見（11%）
 - [EXP-20261122-32](EXP-20261122-32-hkjc-samedist-class-and-wins.md) — 同程贏過冇額外價值；同程高班上名 +1.4／+1.6 但 K1／K2 REJECT；細訊號功效算術（1.4pp × 9% ≈ 0.00005 vs 尺 ±0.0003）
+- [EXP-20261123-07](EXP-20261123-07-hkjc-j3-refine-and-h2h.md) — J3 剷噪音（藉口封頂、慢閘非慣性、剷 4 個噪音訊號）＋同場對手交手（按負磅換算，級際賽 β 大好多）：ABLH dev −0.00164、頭二 PL 顯著、頭二入頭三 +2；dev 揀出、terminal 冇功效、11-22 頭二 14→13 → 未上
 - [EXP-20261122-34](EXP-20261122-34-hkjc-joint-signals-j3.md) — 聯合訊號 J3（J1 13 項＋同程 4 項）v5.1 holdout −0.00152、AUC +0.0032、Gold +0.64、Good +0.99（舊護欄都過）→ 上線
