@@ -12,6 +12,18 @@ arm（各自獨立加落 base_live，同 J3 一樣：線性 L2 C=0.1、每季 wa
 判：dev v5.2 PASS ＋ dev 頭二入頭三 Δ ≥ 0；過咗先睇 holdout。
   **披露**：HG 嘅分組 β 喺 holdout 睇過（EXP-20261123-07 診斷，冇睇 log-loss）→ HG 嘅 holdout 唔算獨立，只報；RG 嘅 holdout 未睇過。
   11-22 只做否決。唔調任何參數。
+第二輪追加（Kelvin 2026-11-23：「有評分就要處理負磅，如果唔係一定偏高分重磅馬；嘉應高昇負多少少磅，又未完全平磅」）——
+跑之前寫低，屬同一家族第二個 arm（RG 結果已經睇咗，要披露）：
+  NR  淨評分 =（評分 − 場均）÷10 −（實際負磅 − 場均）÷10（1 分評分 = 1 磅，HKJC 讓磅規則，唔擬合），全部場一條式；
+      讓磅賽負磅已經抵銷大部分評分 → 自然接近 0；級際賽 ≈ 評分差。實際負磅含見習騎師減磅（披露）。
+  舊證據：EXP-20261112-22 喺 5,757 場讓磅賽量過 well-in（能力高過負磅）冇剩餘；今次差別係包埋級際賽同評分本身。
+  判同上（dev v5.2 PASS＋頭二 Δ ≥ 0；過先開 holdout；11-22 否決）。
+第三輪（Kelvin 2026-11-23：「呢個問題好大，要解決；用六季全部級際賽判」）—— 跑之前寫低：
+  RGo   只喺級際賽加評分（rat_grp；讓磅賽完全唔郁）【主】
+  HRGo  級際賽評分＋級際賽交手（h2h_grp、h2hn_grp、rat_grp）【副】
+  判：六季級際賽（2020/21–2026/27，每季用之前季 fit β 再預測 = 全部樣本外；dev／holdout 唔再分開 —— Kelvin 決定，披露：
+  RG／HG 嘅 dev 結果同 HG holdout β 已睇過）用 v5.2（全窗口 walk-forward 校準）＋頭二入頭三 Δ ≥ 0。11-22 R7–R9 只做否決。
+  `judge_all_group.py` 做評估（將 v5 尺嘅 dev 窗擴到全期）。
 用法：python3 build_group_class.py <base.jsonl> <out_prefix>（要 <out_prefix>_h2h.pkl，由 build_h2h.py 出）
 """
 import json
@@ -39,12 +51,16 @@ def main():
     hf = pickle.load(open(out + "_h2h.pkl", "rb"))
     idx = hb.load_index()["results"]
     grp = {k: str((r.get("_header") or {}).get("RaceClass") or "").startswith("Group") for k, r in idx.items()}
-    no2code = {}
+    no2code, wt = {}, {}
     for k, r in idx.items():
         for q in r.get("results") or []:
             m = re.search(r"\(([A-Z]\d{3})\)", str(q.get("horse_name") or ""))
             if m:
                 no2code[(k, str(q.get("horse_no")))] = m.group(1)
+                try:
+                    wt[(k, str(q.get("horse_no")))] = float(q.get("actual_wt"))
+                except (TypeError, ValueError):
+                    pass
     pages, _ = F.load()
     rating = {}
     for c, rr in pages.items():
@@ -64,14 +80,22 @@ def main():
         cov[0] += len(have); cov[1] += len(rat)
         r = np.array([((v if v is not None else mu) - mu) / 10.0 for v in rat])
         h = hf[k][:, :2]; h = h - h.mean(axis=0)
-        feats[k] = np.column_stack([h * g, h * (1 - g), r * g, r * (1 - g)])
+        ws = [wt.get((k, str(hh["n"]))) for hh in x["horses"]]
+        wv = [v for v in ws if v is not None]
+        wm = np.mean(wv) if wv else 0.0
+        w = np.array([((v if v is not None else wm) - wm) / 10.0 for v in ws])
+        feats[k] = np.column_stack([h * g, h * (1 - g), r * g, r * (1 - g), r - w])
     print("評分覆蓋", round(cov[0] / cov[1], 4), flush=True)
     by = defaultdict(list)
     for x in rows:
         by[season(x["date"])].append(x)
-    for arm, cols, names in (("HG", [0, 1, 2, 3], ["h2h_grp", "h2hn_grp", "h2h_oth", "h2hn_oth"]),
+    arms = sys.argv[3].split(",") if len(sys.argv) > 3 else ["HG", "RG", "HRG"]
+    for arm, cols, names in (("RGo", [4], ["rat_grp"]), ("HRGo", [0, 1, 4], ["h2h_grp", "h2hn_grp", "rat_grp"]),
+                             ("NR", [6], ["net_rating"]), ("HG", [0, 1, 2, 3], ["h2h_grp", "h2hn_grp", "h2h_oth", "h2hn_oth"]),
                              ("RG", [4, 5], ["rat_grp", "rat_oth"]),
                              ("HRG", [0, 1, 2, 3, 4, 5], ["h2h_grp", "h2hn_grp", "h2h_oth", "h2hn_oth", "rat_grp", "rat_oth"])):
+        if arm not in arms:
+            continue
         models = {}
         for s in sorted(by):
             if s < 2020:
