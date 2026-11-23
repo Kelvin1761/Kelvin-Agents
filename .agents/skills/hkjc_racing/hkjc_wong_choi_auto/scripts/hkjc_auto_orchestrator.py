@@ -51,7 +51,7 @@ from hkjc_racing_engine import market_history
 from hkjc_racing_engine import draw_style
 from hkjc_racing_engine import incident_history, distance_move
 from hkjc_racing_engine import surface_move
-from hkjc_racing_engine import venue_distance, horse_age, performance_figure
+from hkjc_racing_engine import venue_distance, horse_age, performance_figure, debut_trainer
 from hkjc_racing_engine import thin_evidence, excuse_streak
 from hkjc_racing_engine.validation import validate_engine_scripts, validate_logic_data
 from wongchoi_paths import is_materialized_file
@@ -375,6 +375,9 @@ def _refresh_grade_transparency(horses):
         pfig = float(auto.get("performance_figure_delta", 0.0) or 0.0)
         if pfig:
             adjustments.append({"key": "performance_figure", "label": "表現數字（取代段速）", "raw": round(pfig, 2)})
+        dtr = float(auto.get("debut_trainer_delta", 0.0) or 0.0)
+        if dtr:
+            adjustments.append({"key": "debut_trainer", "label": "初出馬練馬師初出紀錄", "raw": round(dtr, 2)})
         transparency["adjustments"] = adjustments
         # 報告「評分總覽」嘅總分係引擎階段（後置調整之前）印嘅：補一行點樣去到最終分，唔然頂部同總覽對唔上。
         summary = transparency.get("summary")
@@ -1179,6 +1182,8 @@ class HKJCAutoOrchestrator:
         thin_evidence.apply(horses, race_context)
         # 表現數字取代段速維度（EXP-20261123-10 SW）：真正最後一個後置組件（回放 base 已含以上全部），grade／排名之前
         performance_figure.apply(horses, race_context)
+        # 初出馬練馬師初出上名率（EXP-20261123-13 DT）：表現數字之後、grade／排名之前（回放 base 已含表現數字）
+        debut_trainer.apply(horses, race_context)
         _refresh_grade_transparency(horses)
         self._apply_7d_official_ranking(horses)
         # ensure_verdict owns the single deterministic ranking path, including

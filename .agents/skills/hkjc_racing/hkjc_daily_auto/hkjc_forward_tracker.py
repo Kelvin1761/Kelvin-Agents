@@ -96,7 +96,14 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
     ForwardTest("debut_trainer_shadow", "初出馬練馬師初出紀錄入分（shadow）", "EXP-20261114-06", "harness_ab", 60,
                 since="2026-11-15", arm="docs/experiments/patches/hkjc_arm_debut_trainer_shadow.py",
                 action="自動判：forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議入分（等你決定）；否則維持只顯示",
-                extra={"pass_verdict": "建議入分（等你決定）"}),
+                extra={"pass_verdict": "建議入分（等你決定）"},
+                decided="2026-11-23 被 EXP-20261123-13 取代：回放 v5.2 dev／holdout／六季初出馬場全 PASS，Kelvin 批准入分（β 1.88）；"
+                        "新 forward = debut_trainer_post_live（退回監察）"),
+    # EXP-20261123-13（Kelvin 2026-11-23「可以上線」）：初出馬練馬師初出上名率入分 → 退回式 forward 監察。
+    ForwardTest("debut_trainer_post_live", "初出馬練馬師初出紀錄入分上線後 vs 冇", "EXP-20261123-13", "harness_ab", 60,
+                since="2026-11-26", arm="docs/experiments/patches/hkjc_arm_debut_trainer_revert.py",
+                action="自動判：退回版 forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議退回（等你決定）；否則保留",
+                extra={"pass_verdict": "建議退回（等你決定）"}),
     # EXP-20261114-08（Kelvin 2026-11-15）：「換上頂級騎師」做 forward 收集數據，唔入分。
     # 回放：模型之上 dev／holdout 都真，但固定加分 holdout Gold −0.88。shadow arm = jockey_up 嘅非初出馬 raw + 1.0。
     ForwardTest("jockey_up_shadow", "換上頂級騎師入分（shadow）", "EXP-20261114-08", "harness_ab", 60,
