@@ -345,6 +345,11 @@ def _distance_move_tags(auto: dict) -> list[dict]:
         out.append(_tag("distance_up", f"大幅增程（{prev}→{dist}米）", "bad", scored=True, impact=round(delta, 2),
                         why=f"上仗 {prev}米，今仗 {dist}米（增 ≥400 米）。歷史上大幅增程嘅馬入位率低過模型預測約 2pp，"
                             "短途（≤1200）轉一哩以上更明顯（約 −4～−6pp）；6,000 場回放 dev／holdout 都改善（EXP-20261117-03）。"))
+    elif prev and dist and mv.get("home"):
+        delta = float(auto.get("distance_move_delta") or 0.0)
+        out.append(_tag("distance_up_home", f"大幅增程但返首本（{prev}→{dist}米，唔扣）", "note", scored=True, impact=round(delta, 2),
+                        why=f"上仗 {prev}米，今仗 {dist}米（增 ≥400 米），但以前喺今仗路程 ±100 米上過名、或者上上仗／再前一仗跑過呢個路程，"
+                            "所以唔當大幅增程扣分（只剩全場置中嘅細微影響）。回放 1,121 匹次：唔扣唔會變差（頭二入頭三 +2／+1，EXP-20261124-08）。"))
     elif prev and dist and prev - dist >= BIG_MOVE:
         out.append(_tag("distance_down", f"大幅減程（{prev}→{dist}米）", "note",
                         why=f"上仗 {prev}米，今仗 {dist}米（減 ≥400 米）。歷史上冇穩定加減（dev +1.5、holdout −0.2pp）；未入分。"))

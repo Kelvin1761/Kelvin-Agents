@@ -626,6 +626,7 @@
 - [EXP-20261123-03](EXP-20261123-03-hkjc-top2-ruler.md) — 頭二尺 v5.2：爭勝馬（兩模型頭四聯集）頭二 PL 損失；舊頭二計法連剷一半騎練都量唔到，新尺捉到剷維度同雜訊；舊 PASS 全部照過；J3 頭二 z −2.6
 - [EXP-20261123-04](EXP-20261123-04-hkjc-j3-top2-variants.md) — J3 頭二向四改法（換目標、半力度、保護頭二）dev 頭二入頭三全部 < 0 → REJECT；J3h 保住 11-22 頭二但未過；Kelvin 暫停 J3
 - [EXP-20261123-05](EXP-20261123-05-hkjc-rating-drop-switch-return.md) — 評分跌 ≥10＋近仗轉程／配備＋今仗返首本組合：+0.2／−0.9pp 冇訊號（模型已經反映）
+- [EXP-20261124-08](EXP-20261124-08-hkjc-distance-home-exempt.md) — 大幅增程返首本（±100 米上過名或者近仗跑過）唔扣：兩窗打和、頭二 +2／+1 → 上線（正確性修正）
 - [EXP-20261124-04](EXP-20261124-04-hkjc-straight-figure-experimental-live.md) — 直路表現數字實驗性上線（Kelvin 決定；六季直路 206 場 Gold +1.94、Good +2.91、頭二 +5 但 CI 跨零，v5.2 REJECT）；forward 退回監察 1,000 場；Sol 覆核
 - [EXP-20261123-13](EXP-20261123-13-hkjc-debut-trainer-on-figure-base.md) — 初出馬練馬師初出上名率入分（β 1.88，表現數字 base）：v5.2 dev −0.00020、holdout −0.00026、六季初出馬場 −0.00066／AUC +0.0021 全 PASS；11-22 唔差 → 上線＋forward 退回監察
 - [EXP-20261123-10](EXP-20261123-10-hkjc-performance-figure-replaces-sectional.md) — 表現數字（扣賽事效應＋按今仗負磅換算）取代段速維度：回放 v5.2 dev −0.00117、holdout −0.00151、頭二入頭三 +19／+3；11-22 頭二 14→16 → 上線＋forward 退回監察；只加負磅換算（WD）冇效

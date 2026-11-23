@@ -36,7 +36,7 @@
 | 上仗市場熱度（EXP-20261115-07） `market_history` | β₁·(上仗 HKJC 最終獨贏 log 賠率 − 場均) + β₂·(冇上仗紀錄 − 場均)；只用日期嚴格早過今仗嘅賠率，今仗賠率永遠唔用（hkjc_racing_engine/market_history.py） | 冇上仗 = 場均＋缺失指示；外隊馬中性；冇表 = 不套用 |
 | 檔位×跑法修正（EXP-20261116-01） `draw_style` | β_style·(跑法格值 − 場均) + β_curve·(逐檔格值 − 場均)；跑法格 = 組別 × 慣性跑法（之前最多 6 仗早段位置）× 檔位段，逐檔格 = 組別 × 檔號 × 大場（hkjc_racing_engine/draw_style.py，格值凍結喺 resources/hkjc_draw_style.json） | 冇檔號 = 格值 0；之前少過 2 仗 = 跑法「未知」；冇賽日 = 不套用 |
 | 上仗事件報告（EXP-20261116-06） `incident_history` | β_wide·(上仗走外疊冇遮擋 − 場均) + β_med·(上仗醫療事故 − 場均)；只睇日期嚴格早過今仗嘅最近一仗 HKJC 競賽事件報告（hkjc_racing_engine/incident_history.py） | 上仗冇事件報告／冇上仗 = 當冇旗；外隊馬中性；冇表 = 不套用 |
-| 大幅增程（EXP-20261117-03） `distance_move` | β·([今仗路程 − 上仗路程 ≥ 400 米] − 場均)，β = −0.926（原始分）；上仗 = HKJC 馬匹頁最近一場香港賽事、日期嚴格早過今仗（hkjc_racing_engine/distance_move.py） | 冇上仗（初出／外隊）= 冇旗；冇今仗路程 = 不套用；大幅減程只顯示、唔入分 |
+| 大幅增程（EXP-20261117-03；返首本豁免 EXP-20261124-08） `distance_move` | β·([今仗路程 − 上仗路程 ≥ 400 米] − 場均)，β = −0.926（原始分）；上仗 = HKJC 馬匹頁最近一場香港賽事、日期嚴格早過今仗（hkjc_racing_engine/distance_move.py） | 冇上仗（初出／外隊）= 冇旗；冇今仗路程 = 不套用；大幅減程只顯示、唔入分；以前喺今仗路程 ±100 米上過名或者上上仗／再前一仗跑過 = 返首本，唔當增程 |
 | 轉場（EXP-20261117-06） `surface_move` | Σ β·(旗 − 場均)：跑馬地轉沙田草地 −2.65、沙田草地轉跑馬地 +1.12、初次沙田草地 −1.70、初次泥地 −2.03（原始分）；往績 = HKJC 馬匹頁香港賽事、日期嚴格早過今仗（hkjc_racing_engine/surface_move.py） | 冇香港往績（初出／外隊）= 冇旗；其他轉場方向只顯示、唔入分 |
 | 同程上名場地（EXP-20261119-01） `same_distance_venue` | β·([今仗路程有上名、但冇一次喺今仗場地（谷草／田草／泥地）] − 場均)，β = −1.27（原始分）；同程有上名嘅 +0.4284 照留；往績 = HKJC 馬匹頁香港賽事、日期嚴格早過今仗（hkjc_racing_engine/venue_distance.py） | 冇香港往績（初出／外隊）= 冇旗；冇今仗路程 = 不套用 |
 | 馬齡（EXP-20261119-01） `horse_age` | β·(max(0, 馬齡 − 6) − 場均)，β = −0.37／歲（原始分）；馬齡 = HKJC 馬匹頁（hkjc_racing_engine/horse_age.py） | 冇馬齡 = 當 ≤6 歲（中性） |
@@ -226,10 +226,10 @@ Grade 只係一個閱讀標籤，排名純粹按分數高低，唔會因為 Grad
 
 ## 呢份文件由邊度嚟
 
-- 生成時間：`2026-11-24 01:31 AEDT`
-- Git commit：`f359515a`
+- 生成時間：`2026-11-24 08:40 AEDT`
+- Git commit：`8120acde`
 - Scoring contract：`HKJC_9D_CONTRACT_2026_10_10_REGISTRY_TRACKWORK_DISTANCE_FIT_RACE_SHAPE_ROBUST_WINSOR10_PIT_RAIL_DRAW_V2_DISTANCE_COMPONENT_V1`
-- `scoring.py` 指紋：`58985fc49a1c`
+- `scoring.py` 指紋：`355f14a94c6e`
 - `matrix_mapper.py` 指紋：`a675ec199a4c`
 - `renderer.py` 指紋：`e07926aa2737`
 - 實測樣本：**139 場、1707 匹馬**，由 `2026-10-11_ShaTin` 到 `2026-11-25_HappyValley`（跳過 351 個舊格式檔案）

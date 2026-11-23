@@ -154,13 +154,25 @@ def test_post_live_revert_says_old_version_did_not_lose(tmp_path):
     """EXP-20261111-10：Δ = 舊版 − live，全部 ≥ 0 要講「舊版唔輸」，唔係「建議上線」或「建議剷走」。"""
     for i in range(6):
         _meeting(tmp_path, f"2026-11-{12 + i:02d}_ShaTin", 11)
-    run, calls = _fake_run((0.0, 0.0, 0.0))
+    run, calls = _fake_run((0.001, 0.0, 0.0))
     state: dict = {}
     lines = tracker.judge_ready(state, root=tmp_path, run_cmd=run, harness=Path("h.py"), python="py",
                                 out_dir=tmp_path / "fc", stamp=lambda: "now")
     post = [line for line in lines if "上線後" in line]
     assert post and "舊版唔輸" in post[0] and "剷走" not in post[0]
     assert any("hkjc_arm_revert_rating_gap.py" in " ".join(map(str, c)) for c in calls)
+
+
+def test_identical_arms_are_not_judged(tmp_path):
+    """Sol 覆核 2026-11-24：低覆蓋訊號兩邊完全冇分別（Δ 全 0）唔可以當「全部 ≥ 0」建議退回；唔凍結，繼續收集。"""
+    for i in range(6):
+        _meeting(tmp_path, f"2026-11-{12 + i:02d}_ShaTin", 11)
+    run, _ = _fake_run((0.0, 0.0, 0.0))
+    state: dict = {}
+    lines = tracker.judge_ready(state, root=tmp_path, run_cmd=run, harness=Path("h.py"), python="py",
+                                out_dir=tmp_path / "fc", stamp=lambda: "now")
+    assert lines and all("唔判" in line for line in lines if "上線後" in line)
+    assert not state[tracker.STATE_KEY]["judged"]
 
 
 def test_not_enough_races_runs_nothing(tmp_path):

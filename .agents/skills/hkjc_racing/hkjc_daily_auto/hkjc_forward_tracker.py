@@ -99,6 +99,12 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 extra={"pass_verdict": "建議入分（等你決定）"},
                 decided="2026-11-23 被 EXP-20261123-13 取代：回放 v5.2 dev／holdout／六季初出馬場全 PASS，Kelvin 批准入分（β 1.88）；"
                         "新 forward = debut_trainer_post_live（退回監察）"),
+    # EXP-20261124-08（Kelvin 2026-11-24「去返首本路程唔應該扣，打和或者更好就拎走」）：大幅增程返首本豁免；回放打和 → 退回式 forward。
+    # 豁免馬佔大約 1.6% 匹次 → 400 場（≈ 有豁免馬嘅場 ~80 場）。
+    ForwardTest("distance_home_post_live", "大幅增程返首本唔扣上線後 vs 照扣", "EXP-20261124-08", "harness_ab", 400,
+                since="2026-11-26", arm="docs/experiments/patches/hkjc_arm_distance_home_revert.py",
+                action="自動判：退回版 forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議退回（等你決定）；否則保留",
+                extra={"pass_verdict": "建議退回（等你決定）"}),
     # EXP-20261123-18（Kelvin 2026-11-24「實驗性上線」）：直路表現數字入分；回放 206 場方向正但 CI 跨零 → 退回式 forward。
     # tracker 數嘅係全部賽事；直路只佔 ~4%（六季 206／5,219）→ 1,000 場 ≈ 40 場直路賽（Sol 覆核 2026-11-24：40 場會太早判）。
     ForwardTest("straight_figure_post_live", "直路表現數字實驗性上線後 vs 冇", "EXP-20261123-18", "harness_ab", 1000,
@@ -596,6 +602,11 @@ def judge_ready(state: dict, *, root: Path, run_cmd: Callable, harness: Path, py
         deltas = _compare_deltas(json.loads(cmp_path.read_text(encoding="utf-8")))
         if None in (deltas["gold"], deltas["good"], deltas["ndcg"]):
             lines.append(f"⚠️ {test.label} 判定輸出缺欄位，要人手睇 {cmp_path}")
+            continue
+        # 兩邊完全冇分別（低覆蓋訊號冇觸發）唔可以當「全部 ≥ 0」—— 否則一定判「建議退回」（Sol 覆核 2026-11-24）。
+        # 唔凍結，下次夠數再判。
+        if all(abs(deltas[k]) < 1e-12 for k in ("gold", "good", "ndcg")):
+            lines.append(f"ℹ️ {test.label}（{test.experiment}）forward {deltas['races']} 場兩邊冇分別（訊號未觸發夠），唔判，繼續收集")
             continue
         passed = deltas["gold"] >= 0 and deltas["good"] >= 0 and deltas["ndcg"] >= 0
         verdict = test.extra.get("pass_verdict", "建議剷走（等你決定）") if passed else "維持現狀"
