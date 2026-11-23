@@ -19,7 +19,7 @@ python3 .agents/scripts/codex_delegate.py status
 | Codex 狀態 | 做法 |
 |---|---|
 | normal | 照下面規則派 |
-| tight | 只派 review／quick；grunt 自己做（除非 Claude 本週 ≥80%，咁就 `--force` 並寫原因；`--force` 只越過 tight，越唔過 stop） |
+| tight | 只派 review／quick／chore；grunt 自己做（除非 Claude 本週 ≥80%，咁就 `--force` 並寫原因；`--force` 只越過 tight，越唔過 stop） |
 | stop | 唔派，喺回覆講一句「Codex 額度停派中」 |
 | unknown | 可以派，但每次之後再 `status` |
 
@@ -31,12 +31,17 @@ python3 .agents/scripts/codex_delegate.py status
 |---|---|---|---|
 | **grunt** | Terra 最新 | 寫／補測試、批量改名或改文檔、寫一次性資料審計腳本、喺大量檔案搵 pattern、整理 log、重複性 refactor | 改評分邏輯本身、改 `config.json` 係數、任何要判斷「好唔好」嘅嘢 |
 | **review** | Sol 最新 | leakage 審計（逐欄問「落注嗰刻拎唔拎到」）、實驗結論覆核、`./保存.sh` 之前覆核 diff、一個好得出奇嘅回測結果 | 叫佢代你判 KEEP／REJECT |
-| **quick** | Luna 最新 | 一句問題、短摘要 | 任何要寫檔嘅嘢 |
+| **quick** | Luna 最新（唯讀） | 搵 code／pattern、睇 log 搵錯、摘要長檔、列出受影響嘅檔、核對兩份輸出差異 | 要判斷好壞嘅嘢 |
+| **chore** | Luna 最新（寫入） | 改名、改格式、補 docstring／type hint、照樣板加測試、改文檔字眼、update 路徑 | 要理解模型邏輯嘅嘢 —— 升 Terra |
 | **deep** | Astra 最新 | Sol 同你意見唔同、而結論影響上唔上線 | 日常覆核 |
+
+**Luna 先行（Kelvin 2026-11-24：當免費勞工用）**：機械式、答案易核實嘅嘢一律先派 Luna（quick／chore）；
+Luna 答錯或者冇改到，先升 Terra。Luna 都係食同一個 Codex 額度，只係每次食得好少，所以收緊（tight）都照派。
+同一時間可以派幾個 Luna 去做互不相干嘅細嘢（各自 worktree／唯讀）。
 
 值唔值得派，問兩條：
 1. **呢舊嘢可唔可以用一份 brief 講清楚、獨立核實？** 唔得就自己做 —— 解釋背景嘅 token 會多過慳返嘅。
-2. **細過 ~5 個 tool call？** 係就自己做，唔好為派而派。
+2. **細過 ~5 個 tool call？** 係就自己做 —— 除非係 Luna 做得嘅唯讀查詢，平到唔使計。
 
 **一定要 review 嘅情況**（只要額度唔係 stop）：改模型嘅 KEEP 判決之前、任何 leakage-audit、回測結果好過預期。
 

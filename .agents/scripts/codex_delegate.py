@@ -8,13 +8,15 @@ Kelvin 2026-11-24：佢自己唔再點用 Codex，全部交畀 Claude 決定幾�
 角色（模型一律揀該系列最新一代，Codex 出新版自動跟）：
   grunt   Terra  —— 粗重、重複、攰人嘅工作：寫測試、批量改、資料審計腳本、搵 code
   review  Sol    —— 第二意見：同 Opus 獨立睇同一樣嘢（leakage、實驗結論、diff）
-  quick   Luna   —— 好細嘅查詢／摘要
+  quick   Luna   —— 唯讀：查詢、摘要、搵 code、睇 log
+  chore   Luna   —— 寫入：簡單機械式改動（改名、格式、補 docstring、小測試）；做唔掂先升 Terra
   deep    Astra  —— 只喺 Sol 同 Opus 意見唔同、又值得再判嗰陣先用
 
 用法：
   python3 codex_delegate.py status                       # 兩個窗嘅用量、節奏、建議
   python3 codex_delegate.py run review  --prompt-file brief.md
   python3 codex_delegate.py run grunt   --cd <worktree> --prompt-file brief.md --out result.md
+  python3 codex_delegate.py run chore   --cd <worktree> --prompt-file brief.md
 
 額度：Codex `exec --json` 唔會報額度，但每個 session 檔（~/.codex/sessions/**.jsonl）
 入面有 `rate_limits`（5 小時窗＋7 日窗 used_percent／resets_at）。讀最新嗰個。
@@ -41,6 +43,7 @@ ROLES: dict[str, tuple[str, str, str]] = {
     "grunt": ("terra", "medium", "workspace-write"),
     "review": ("sol", "high", "read-only"),
     "quick": ("luna", "low", "read-only"),
+    "chore": ("luna", "medium", "workspace-write"),
     "deep": ("astra", "xhigh", "read-only"),
 }
 # 冇 models_cache.json 嗰陣嘅後備（2026-11-24 嘅最新）
@@ -54,8 +57,8 @@ STOP_FIVE_HOUR = 85.0   # 5 小時窗 ≥ 呢個 = 停派（等佢重置）
 # 唔用「用量 vs 時間進度」：Kelvin 以前自己用嘅額度已經用咗，再罰落去冇意思；
 # 要問嘅係「剩低嗰份夠唔夠用到重置」。
 TIGHT_PER_DAY = 4.0
-# 收緊嗰陣仲准派嘅角色：review 最值錢，quick 好平
-TIGHT_ROLES = frozenset({"review", "quick"})
+# 收緊嗰陣仲准派嘅角色：review 最值錢；Luna（quick／chore）最平（Kelvin 2026-11-24：當免費勞工用）
+TIGHT_ROLES = frozenset({"review", "quick", "chore"})
 
 BRIEF_PREAMBLE = """\
 你係被 Claude Code 委派嘅子任務（Claude 主導、Codex 分擔，見 AGENTS.md）。
@@ -85,13 +88,36 @@ def _version(text: str) -> tuple[int, ...]:
     return tuple(int(p) for p in text.split("."))
 
 
-def latest_model(family: str, models: list[dict] | None = None) -> str:
-    """該系列最新、公開（visibility=list）嘅模型 slug。"""
-    if models is None:
+_CATALOG: list[dict] | None = None
+
+
+def model_catalog() -> list[dict]:
+    """Codex 嘅模型目錄。先問 `codex debug models`（即時，~0.5s），失敗先用
+    ~/.codex/models_cache.json（上一次 run 嗰陣抓嘅）。Kelvin 2026-11-24：一出新模型就要即刻用。"""
+    global _CATALOG
+    if _CATALOG is not None:
+        return _CATALOG
+    models: list[dict] = []
+    try:
+        proc = subprocess.run(["codex", "debug", "models"], capture_output=True, text=True, timeout=30)
+        if proc.returncode == 0:
+            data = json.loads(proc.stdout)
+            models = data.get("models", []) if isinstance(data, dict) else list(data)
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        models = []
+    if not models:
         try:
             models = json.loads((CODEX_HOME / "models_cache.json").read_text()).get("models", [])
         except (OSError, ValueError):
             models = []
+    _CATALOG = models
+    return models
+
+
+def latest_model(family: str, models: list[dict] | None = None) -> str:
+    """該系列最新、公開（visibility=list）嘅模型 slug。"""
+    if models is None:
+        models = model_catalog()
     best: tuple[tuple[int, ...], str] | None = None
     for m in models:
         slug = str(m.get("slug") or "")

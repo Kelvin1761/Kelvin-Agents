@@ -39,6 +39,31 @@ class LatestModelTest(unittest.TestCase):
         self.assertEqual(cd.latest_model("astra", MODELS), cd.FALLBACK_MODELS["astra"])
 
 
+class ModelCatalogTest(unittest.TestCase):
+    def setUp(self):
+        cd._CATALOG = None
+
+    def tearDown(self):
+        cd._CATALOG = None
+
+    def test_prefers_live_catalog_so_new_models_are_used_at_once(self):
+        live = json.dumps({"models": [{"slug": "gpt-7-terra", "visibility": "list"}]})
+        with mock.patch.object(cd.subprocess, "run",
+                               return_value=mock.Mock(returncode=0, stdout=live, stderr="")):
+            self.assertEqual(cd.latest_model("terra"), "gpt-7-terra")
+
+    def test_falls_back_to_cache_file_when_cli_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, "models_cache.json").write_text(json.dumps({"models": MODELS}))
+            with mock.patch.object(cd, "CODEX_HOME", Path(tmp)), \
+                    mock.patch.object(cd.subprocess, "run", side_effect=FileNotFoundError):
+                self.assertEqual(cd.latest_model("sol"), "gpt-6.2-sol")
+
+    def test_chore_is_luna_and_writes(self):
+        family, _, sandbox = cd.ROLES["chore"]
+        self.assertEqual((family, sandbox), ("luna", "workspace-write"))
+
+
 def _limits(weekly_used, week_left_h, five_used=0.0, now=1_000_000.0):
     return cd.Limits(
         five_hour=cd.Window(five_used, 300, now + 3600),
@@ -76,6 +101,10 @@ class BudgetStateTest(unittest.TestCase):
         self.assertTrue(cd.role_allowed("grunt", "normal"))
         self.assertFalse(cd.role_allowed("grunt", "tight"))
         self.assertTrue(cd.role_allowed("review", "tight"))
+        # Luna 最平，收緊都照派（Kelvin 2026-11-24）
+        self.assertTrue(cd.role_allowed("chore", "tight"))
+        self.assertTrue(cd.role_allowed("quick", "tight"))
+        self.assertFalse(cd.role_allowed("deep", "tight"))
         self.assertFalse(cd.role_allowed("review", "stop"))
 
 
@@ -160,6 +189,7 @@ class RunGuardTest(unittest.TestCase):
                 return mock.Mock(returncode=0, stdout='{"type":"turn.started"}\n', stderr="")
 
             with mock.patch.object(cd, "read_limits", return_value=None), \
+                    mock.patch.object(cd, "_CATALOG", MODELS), \
                     mock.patch.object(cd, "append_ledger", return_value=Path(tmp) / "l"), \
                     mock.patch.object(cd.subprocess, "run", side_effect=fake_run):
                 rc = cd.cmd_run(self._args(role="review", prompt_file=str(brief), out=str(out), cd=tmp))

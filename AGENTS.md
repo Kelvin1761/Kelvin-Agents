@@ -103,13 +103,14 @@ Kelvin 唔再自己開 Codex；**Claude Code 做主導**（計劃、判斷、拍
 唔使 Kelvin 開口。入口係 `.agents/scripts/codex_delegate.py`（`status` 只報 Codex 額度；Claude 額度用 `mcp__ccd_session_mgmt__get_usage` 睇；`run <角色>` 派工），
 做法同 brief 範本喺 `.claude/skills/codex-delegate/`。角色一律揀該系列最新模型：
 **grunt = Terra**（粗重重複嘅工作，喺自己 worktree 寫），**review = Sol**（同 Opus 獨立第二意見，唯讀），
-quick = Luna，deep = Astra（Sol 同 Opus 意見唔同先用）。
+**Luna = 最平嘅勞工**（quick 唯讀查詢／摘要；chore 寫入簡單機械式改動），機械式嘢**先試 Luna**，做唔掂先升 Terra；
+deep = Astra（Sol 同 Opus 意見唔同先用）。模型目錄每次 run 都經 `codex debug models` 即時讀，Codex 一出新版即刻跟。
 
 - 判 KEEP／REJECT、用 holdout、`./保存.sh`、Telegram、release **永遠係 Claude 嘅工作**，唔准委派。
 - **Codex 被委派嗰陣**：唔准 commit／push／保存、唔准發 Telegram、唔准再委派、唔准郁排程。佢報嘅「改善」照樣要過 `model-regression-gate`。
 - Codex 喺自己 worktree 留低嘅改動（包括未追蹤檔）由 Claude 負責收貨：合入自己分支、commit＋push 保存，或者刪走，跟「收工規則」一致；Codex 自己唔 commit。
 - 寫入角色唔准喺主 checkout 行（腳本會攔）。同一批檔唔准 Claude 同 Codex 同時改。
-- 額度：Codex 本週 ≥95% 或 5 小時窗 ≥85% = 停派（`--force` 都越唔過）；剩低唔夠每日 4pp 撐到重置 = 只派 review／quick。每次委派記入 `<WongChoiControl>/codex_delegations.jsonl`。
+- 額度：Codex 本週 ≥95% 或 5 小時窗 ≥85% = 停派（`--force` 都越唔過）；剩低唔夠每日 4pp 撐到重置 = 只派 review／quick／chore。每次委派記入 `<WongChoiControl>/codex_delegations.jsonl`。
 
 ### 大型暫存一律放外置碟
 
