@@ -628,6 +628,7 @@
 - [EXP-20261123-05](EXP-20261123-05-hkjc-rating-drop-switch-return.md) — 評分跌 ≥10＋近仗轉程／配備＋今仗返首本組合：+0.2／−0.9pp 冇訊號（模型已經反映）
 - [EXP-20261124-31](EXP-20261124-31-miss-autopsy-market-wrong-bucket.md) — 失手體檢加「市場都估唔中」（SP 頭三熱門最多中 1 隻）：舊「模型判錯」47% 係呢種（頭馬平均 $8.2）；AU 近期模型判錯 75%→40%、市場都唔中 34%；冇數據缺口；只做賽後診斷
 - [EXP-20261124-30](EXP-20261124-30-au-transfer-and-same-distance-elsewhere.md) — AU 版轉場／同程上名只喺其他場地（由 HKJC 搬）：V2 β +1.10 方向同 HKJC 相反、T1 人造地 103 匹冇功效、T2 方向轉換冇改善 → 三個 REJECT
+- [EXP-20261124-32](EXP-20261124-32-au-sectionals-status-and-capture-guard.md) — AU 段速用得未：逐駒手機分段覆蓋 11-24 得 6%（Sportsbet 只留 11 日、11-17 先開始抓），推算 12-08 66%、12-15 76% → 12 月中重做逐駒段速測試；加抓取健康警報（斷咗 11 日永遠補唔返）
 - [EXP-20261124-23](EXP-20261124-23-au-place-bets-paper-only.md) — AU 位注策略轉紙上盤（Kelvin 2026-11-24）：2,379 注 ROI −22.3%，每個賠率段／月／metro 實際入位低過隱含 7–10pp；冇用結果揀新門檻；順手修冇 SP 完成馬當退注（2 注，累計 −0.3u）
 - [EXP-20261124-21](EXP-20261124-21-au-lpos-backfill-impossible.md) — AU Lpos 歷史回填（EXP-20261120-87）停：Sportsbet AllRacing 只回溯約 11 日，08-05 起每晚第一個請求 HTTP 400、0/3,974；放棄冇判決，Lpos 只靠 forward
 - [EXP-20261124-22](EXP-20261124-22-au-rejudge-on-true-live.md) — AU 真 live dump 重判：**R2 PASS 更強**（Δ −0.00211、Gold +0.99 CI 全正）；練馬師剩餘表現 CI 跨零（點估計正，交 forward 判）；-05 PR2／PR3 v2 PASS 但 Gold／Good 負，唔建議上；-07 四個 arm 照 REJECT

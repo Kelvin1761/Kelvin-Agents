@@ -475,6 +475,64 @@ def yesterday_odds_advisories(day: str) -> list[str]:
     return morning_odds_gaps(prev)
 
 
+MOBILE_RETENTION_DAYS = 10     # Sportsbet AllRacing 只回溯約 11 日（EXP-20261124-21），留 1 日餘量
+MOBILE_STALE_HOURS = 36
+MOBILE_MIN_SHARE = 0.8
+
+
+def mobile_sectionals_advisories(day: str, *, root: Path | None = None,
+                                 status_path: Path | None = None,
+                                 now: datetime | None = None) -> list[str]:
+    """手機逐駒分段抓取（EXP-20261116-20）有冇斷。
+
+    呢份數據**過咗約 11 日就永遠補唔返**（Sportsbet 只保留咁耐），而段速 leaf 要靠逐日累積先有覆蓋
+    （2026-11-24 只有 6% 馬有抓到嘅往績）。所以抓取停咗、或者某日抓唔齊，要喺仲救得返嘅時候出聲。
+    做 advisory 唔做 blocking：今日嘅預測同發佈唔靠佢。
+    """
+    sys.path.insert(0, str(HERE.parent / "au_wong_choi_auto" / "scripts"))
+    try:
+        import au_mobile_sectionals as ams  # noqa: PLC0415
+    except Exception as exc:  # noqa: BLE001
+        return [f"手機分段檢查載入唔到（{type(exc).__name__}）"]
+    out: list[str] = []
+    now = now or datetime.now()
+    path = status_path or (HERE / "work" / "au-mobile-sectionals-fetch.json")
+    try:
+        status = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        status = None
+    if not status:
+        out.append("手機分段抓取冇狀態檔 —— 04:30 job 可能冇跑（過咗約 11 日嘅賽事就永遠補唔返）")
+    else:
+        try:
+            finished = datetime.fromisoformat(status.get("finished_at") or status.get("started_at") or "")
+            age_h = (now - finished).total_seconds() / 3600
+        except ValueError:
+            age_h = None
+        if age_h is not None and age_h > MOBILE_STALE_HOURS:
+            out.append(f"手機分段抓取 {age_h:.0f} 個鐘冇跑過（過咗約 11 日就永遠補唔返）")
+        if status.get("state") not in ("ok", "page_cap", "outside_window", "window_closed"):
+            out.append(f"手機分段抓取停咗：{status.get('state')}（{status.get('stop_reason') or '冇原因'}）")
+    try:
+        today = date.fromisoformat(day)
+    except ValueError:
+        return out
+    store = ams.store_dir(root)
+    for back in range(1, MOBILE_RETENTION_DAYS + 1):
+        d = (today - timedelta(days=back)).isoformat()
+        if d < ams.FORWARD_START:
+            break
+        wanted = len(ams.analysed_races(d, root))
+        if not wanted:
+            continue
+        folder = store / d
+        got = len(list(folder.glob("*.json.gz"))) if folder.exists() else 0
+        if got < MOBILE_MIN_SHARE * wanted:
+            left = MOBILE_RETENTION_DAYS + 1 - back
+            out.append(f"手機分段 {d} 抓咗 {got}／{wanted} 場（分析場次），大約仲有 {left} 日可以補")
+    return out
+
+
 def quality_issues(day: str) -> tuple[list[str], list[str]]:
     """`(阻塞, best-effort)`。
 
@@ -497,6 +555,7 @@ def quality_issues(day: str) -> tuple[list[str], list[str]]:
     # 要留返畀「今日仲救得到」嘅嘢。但一定要出聲：呢個係排程靜靜失效嘅唯一證據。
     advisories.extend(yesterday_odds_advisories(day))
     advisories.extend(snapshot_headroom_advisories())
+    advisories.extend(mobile_sectionals_advisories(day))
     return blocking, advisories
 
 
