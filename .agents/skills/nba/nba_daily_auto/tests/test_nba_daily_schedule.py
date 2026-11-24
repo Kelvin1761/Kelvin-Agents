@@ -703,6 +703,16 @@ class NbaDailyScheduleTests(unittest.TestCase):
             schedule.send_partial_betting_card("2026-10-29", Path(tmp) / "s", ["LAL_LAC"], _Log())
         notify.assert_not_called()
 
+    def test_unbuildable_sgm_card_still_sends_partial_featured_card(self) -> None:
+        """SGM is track-only: a ValueError building it must not also withhold 精選 (Sol 2026-11-24)."""
+        exported = {"validation_status": "partial", "recommendations": [], "warnings": []}
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(
+            schedule, "export_nba_snapshot", return_value=exported
+        ), mock.patch.object(schedule, "nba_betting_message", side_effect=ValueError("no combos")), \
+                mock.patch.object(schedule, "_send_featured_card") as featured:
+            schedule.send_partial_betting_card("2026-11-25", Path(tmp) / "s", ["UTA_LAL"], _Log())
+        featured.assert_called_once()
+
     # ── Kelvin 2026-11-10: SGM card stays daily; 大細盤精選 follows it; the board tracks both ──
 
     def test_roi_board_records_sgm_and_featured_as_separate_lines(self) -> None:

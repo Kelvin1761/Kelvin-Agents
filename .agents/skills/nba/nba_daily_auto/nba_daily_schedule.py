@@ -956,6 +956,7 @@ def _run_orchestrator_refresh(
 
     blocked: set[str] = set()
     passed: set[str] = set()
+    waiting: set[str] = set()
     for command in commands:
         tag = command[-1] if "--game" in command else "all"
         started = datetime.now()
@@ -993,7 +994,17 @@ def _run_orchestrator_refresh(
         if game_markets:
             raise GameMarketsWaiting(game_markets)
         if waiting_games:
-            raise PlayerMarketsWaiting(waiting_games)
+            waiting_set = set(waiting_games)
+            if not waiting_set <= refreshable_tags or (tag != "all" and waiting_set != {tag}):
+                raise PlayerMarketsWaiting(waiting_games)
+            if tag == "all":
+                if waiting_set == refreshable_tags:
+                    raise PlayerMarketsWaiting(waiting_games)
+                waiting.update(waiting_set)
+                commands.extend([*base, "--game", game] for game in sorted(refreshable_tags - waiting_set))
+            else:
+                waiting.update(waiting_set)
+            continue
         if outcome and partial_ok:
             # Keep going: in per-game mode the other games still need their run.
             blocked.update(outcome["blocked"])
@@ -1015,6 +1026,9 @@ def _run_orchestrator_refresh(
                  game_tags=sorted(passed - blocked), exit_code=compile_result.returncode)
         if compile_result.returncode != 0:
             raise TemporaryFailure(f"compile_refreshed_games_exit_{compile_result.returncode}")
+    if waiting and waiting == refreshable_tags:
+        raise PlayerMarketsWaiting(sorted(waiting))
+    blocked.update(waiting)
     if blocked:
         raise AnalysisGamesBlocked(sorted(blocked), sorted(passed - blocked))
 
@@ -1213,6 +1227,8 @@ def send_partial_betting_card(
         card = nba_betting_message(target_date, exported)
     except ValueError as exc:
         log.step("telegram_partial_betting_card", "blocked", reason=str(exc))
+        # SGM is track-only; an unbuildable SGM card must not also withhold the featured card.
+        _send_featured_card(target_date, snapshot, log)
         return
     title, _, body = card.partition("\n")
     card = f"{title}（部分場次）\n⏳ 未開盤／未通過：{', '.join(sorted(blocked))}；稍後完整卡會再發。\n{body}"
