@@ -114,6 +114,8 @@ deep = Astra（Sol 同 Opus 意見唔同先用）。模型目錄每次 run 都�
 - **按兩邊額度揀分工模式**（Kelvin 2026-11-24，怕 Opus 唔夠用）：開工先用 `get_usage` 攞 Claude 每週用量，跑
   `codex_delegate.py status --claude-weekly <%> --claude-resets <ISO>`。Claude 用得快過時間（≥10pp）或者 Codex 就嚟重置仲剩好多
   = `offload-max`：實作同重活派 Terra、覆核派 Sol 唔開 Opus subagent、讀檔摘要派 Luna，Opus 只做計劃同判決。其他模式見 skill。
+  Kelvin 講「呢個禮拜放心用 Opus」就開 `codex_delegate.py pacing --spend-freely-until <重置時間>`（過期自動失效）。
+  Claude 自己嘅搜尋／讀 log subagent 用 `model: "sonnet"`／`"haiku"`；Sol review 要貼 diff、限定檔案，細改動用 `--effort medium`。
 
 ### 大型暫存一律放外置碟
 

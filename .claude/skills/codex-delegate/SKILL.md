@@ -26,6 +26,13 @@ python3 .agents/scripts/codex_delegate.py status --claude-weekly <percentUsed> -
 | keep-claude | Codex tight、Claude 慢過時間 ≥20pp | Opus 自己做多啲，Codex 留畀 review |
 | claude-only | Codex stop | 唔派，喺回覆講一句「Codex 額度停派中」；Claude subagent 用平啲嘅模型 |
 
+**「放心用 Opus」開關**（Kelvin 2026-11-24：佢有時特登快啲用 Opus，因為之後有額外 reset）：
+`codex_delegate.py pacing --spend-freely-until <Claude 每週重置 ISO> --reason "..."` 開；`pacing --clear` 閂；過期自動失效。
+開住嗰陣唔理 Claude 用得幾快（照 balanced），只有本週 ≥85% 先轉 offload-max。Kelvin 講「呢個禮拜放心用」先開，唔好自己開。
+
+**Claude 自己嘅 subagent 都要慳**：搵 code、讀 log、掃檔呢類 Explore／research subagent 一律傳 `model: "sonnet"`（純搜尋用 `"haiku"`）；
+只有要判斷／設計嘅先用 Opus。offload-max 時先考慮派 Luna。
+
 Codex 狀態本身：normal 照派；tight 只派 review／quick／chore（`--force` 只越過 tight，越唔過 stop）；unknown 可以派但每次之後再 `status`。
 
 ## 2. 派唔派：角色同例子
@@ -66,6 +73,11 @@ Luna 答錯或者冇改到，先升 Terra。Luna 都係食同一個 Codex 額度
 ```
 
 review 嘅 brief **唔好講你自己嘅結論**，否則唔係獨立意見。畀佢睇原材料（diff、實驗記錄路徑、命令），問佢搵錯。
+
+**review 要窄先平**（2026-11-24 量度：8 次 Sol review 食咗 1,240 萬 input tokens，平均每次 150 萬，因為佢自己周圍搵嘢讀）：
+- 將 `git diff` 直接貼入 brief（或者寫入檔再講路徑），**列明只准讀邊幾個檔**，講明「唔使掃成個 repo」。
+- 細改動（< ~200 行、唔涉模型判決）用 `--effort medium`；改模型 KEEP 判決、leakage 審計先用預設 high。
+- 每次派完睇 `status` 嘅「近 7 日委派」，review 每次平均 input 應該跌到 50 萬以下。
 
 ## 4. 派
 

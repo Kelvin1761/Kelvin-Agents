@@ -262,10 +262,43 @@ class OffloadModeTest(unittest.TestCase):
     def test_claude_critical_even_if_late_in_week(self):
         self.assertEqual(self.mode("normal", self.codex(50, 4), 88, 0.5), "offload-max")
 
+    def test_spend_freely_ignores_pace(self):
+        mode = cd.offload_mode("normal", self.codex(50, 4), 42, self.NOW + 6.2 * self.DAY,
+                               now=self.NOW, spend_freely=True)[0]
+        self.assertEqual(mode, "balanced")
+
+    def test_spend_freely_still_guards_critical(self):
+        mode = cd.offload_mode("normal", self.codex(50, 4), 90, self.NOW + 1 * self.DAY,
+                               now=self.NOW, spend_freely=True)[0]
+        self.assertEqual(mode, "offload-max")
+
+    def test_spend_freely_with_codex_tight_keeps_claude(self):
+        mode = cd.offload_mode("tight", self.codex(85, 4), 60, self.NOW + 4 * self.DAY,
+                               now=self.NOW, spend_freely=True)[0]
+        self.assertEqual(mode, "keep-claude")
+
+    def test_switch_file_expires(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "claude_pacing.json"
+            p.write_text(json.dumps({"spend_freely_until": "2030-01-01T00:00:00Z", "reason": "r"}))
+            self.assertIsNotNone(cd.spend_freely_until(now=self.NOW, path=p))
+            self.assertIsNone(cd.spend_freely_until(now=cd._parse_ts("2030-01-02T00:00:00Z"), path=p))
+            p.write_text("garbage")
+            self.assertIsNone(cd.spend_freely_until(now=self.NOW, path=p))
+
+    def test_pacing_cli_roundtrip(self):
+        with tempfile.TemporaryDirectory() as tmp, \
+             mock.patch.dict(os.environ, {"WONGCHOI_CONTROL_STATE_ROOT": tmp}):
+            self.assertEqual(cd.main(["pacing", "--spend-freely-until", "2099-01-01T00:00:00Z"]), 0)
+            self.assertIsNotNone(cd.spend_freely_until())
+            self.assertEqual(cd.main(["pacing", "--clear"]), 0)
+            self.assertIsNone(cd.spend_freely_until())
+
     def test_status_prints_mode(self):
         import io, contextlib
         buf = io.StringIO()
         with mock.patch.object(cd, "read_limits", return_value=self.codex(50, 4)), \
+             mock.patch.object(cd, "spend_freely_until", return_value=None), \
              mock.patch.object(cd, "ledger_summary", return_value={}), \
              mock.patch.object(cd, "latest_model", return_value="m"), \
              contextlib.redirect_stdout(buf):
