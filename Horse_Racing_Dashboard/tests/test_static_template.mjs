@@ -3128,3 +3128,12 @@ test('NBA calibration paper panel handles data, empty, unavailable and interrupt
   assert.doesNotMatch(render({status:'unavailable'}),/模型校準（紙上/);
   assert.match(render({...base,interrupted:'2026-12-10<script>'}),/2026-12-10&lt;script&gt; 換咗模型/);
 });
+
+test('featured CLV displays close, line movement, pending and notice',()=>{
+  const rec=(id,clv)=>({id,day:'2026-11-24',event_name:'A @ B',game_tag:'A_B',start_time_utc:'2099-01-01T00:00:00Z',odds:1.8,stake:1,edge:0.05,p_model:0.6,p_fair:0.5,state:'pending',clv,legs:[{player:'P',market:'pts',stat:'PTS',ou_line:20.5,side:'under',price:1.8,state:'pending'}]});
+  const tracking={status:'valid',records:[],featured_records:[rec('a',{status:'same_line',pp:1.2,fair_pick:0.5,fair_close:0.512}),rec('b',{status:'line_moved',close_line:21.5,our_way:true}),rec('c',{status:'pending'})],featured_clv:{n:1,mean_pp:1.2,our_way:1,against:0}};
+  const api=loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,sports_feed:{sports:{nba:{tracking}}}});
+  api.setSportsTabForTest('featured');const html=api.renderSportsWorkspace('nba');
+  assert.match(html,/收市 \+1\.2pp/);assert.match(html,/收市線 20\.5→21\.5（順）/);
+  assert.match(html,/收市價：開波後先有/);assert.match(html,/收市價對照（CLV）/);
+});

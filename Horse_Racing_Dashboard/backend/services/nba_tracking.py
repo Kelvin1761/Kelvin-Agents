@@ -316,12 +316,22 @@ def build_tracking(roots, ledger_root, firewall):
             except (OSError, ValueError, KeyError, TypeError, AttributeError):
                 warnings.append(f'publication_unavailable:{day}:{tag}')
         featured_records.extend(_featured_records(day, day_picks, actuals, sources))
+    featured_clv = None
+    try:
+        auto = Path(__file__).resolve().parents[3] / '.agents' / 'skills' / 'nba' / 'nba_daily_auto'
+        if str(auto) not in sys.path:
+            sys.path.insert(0, str(auto))
+        import nba_featured_clv
+        nba_featured_clv.annotate(featured_records, ledger_root / 'ledger', ledger_root / 'reports')
+        featured_clv = nba_featured_clv.summary(featured_records)
+    except Exception:
+        pass
     return {'schema_version':2, 'inception_date':TRACKING_START_DATE, 'basis':'first_verified_formal_or_steady_research', 'stake_dollars':1,
             'status':'valid' if folders else 'unavailable', 'generated_at':datetime.now(timezone.utc).isoformat(),
             'covered_dates':sorted(folders), 'records':records,
             # EXP-20261110-01 大細盤精選 paper bets: kept apart so the ROI board, the steady
             # stop-loss and the SGM views (which all read `records`) never see them.
-            'featured_records':featured_records, 'featured_inception_date':FEATURED_START_DATE,
+            'featured_records':featured_records, 'featured_clv':featured_clv, 'featured_inception_date':FEATURED_START_DATE,
             'featured_v2':_featured_v2(ledger_root),
             'recal_forward':_recal_forward(ledger_root),
             'warnings':sorted(set(warnings))}

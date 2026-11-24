@@ -383,3 +383,14 @@ def test_recal_forward_failure_does_not_break_tracking(tmp_path, monkeypatch):
 
     monkeypatch.setattr(importlib.util, "spec_from_file_location", fail)
     assert _recal_forward(tmp_path) == {"status": "unavailable", "error": "OSError: missing evaluator"}
+
+
+def test_clv_annotation_failure_does_not_break_tracking(tmp_path, monkeypatch):
+    _featured(tmp_path)
+    import nba_featured_clv
+    def fail(*args, **kwargs):
+        raise RuntimeError('CLV failure')
+    monkeypatch.setattr(nba_featured_clv, 'annotate', fail)
+    out = build(tmp_path)
+    assert len(out['featured_records']) == 1
+    assert out['featured_clv'] is None
