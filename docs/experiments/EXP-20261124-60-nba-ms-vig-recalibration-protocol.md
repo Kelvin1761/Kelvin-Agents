@@ -34,3 +34,18 @@
 
 ## 洩漏
 `p_market`／`p_s` 都係 21:00 run 寫低嘅賽前值；`y` 只做標籤。冇用今仗以後嘅任何嘢。
+
+## 修訂 1（2026-11-24，睇任何結果之前；同上面原文分開 commit）
+砌完數據先發現兩樣嘢，令原本切法做唔到：
+1. ledger 嘅 `p_s`／`p_market` 欄 **11-11 先開始記**（S2 shadow 接線嗰日），所以 dev（≤11-11）只得 1 日有 `p_s`，R1–R3（要重擬合 γ·logit(S)）擬合唔到。
+2. 11-04 或之前嘅 `p_final` 係舊引擎（`calibrated:C-2026-10-22`），MS（`nba_engine:ms:a140747bfae0c724`）11-05 先上線。
+3. （數據缺口，另外跟）11-19 冇任何 `production` model_obs，只有 `final_refresh`；嗰日唔計。
+
+**改為**（R1–R3 原文作廢，以下取代）：
+- **母體**：target_date ≥ 2026-11-05、`probability_model_id = nba_engine:ms:a140747bfae0c724` 嘅最早開波前 production model_obs。
+- **dev** = 11-05 … 11-11；**holdout** = 11-12 … 11-24（11-19 冇數）。
+- 候選全部係**事後校準**，只用 `p_final` 同 m = 1/`price_at_model`（clip 0.02–0.98 再 logit）：
+  - **R1**：logit p = a_stat + b·logit(p_final) —— 純粹再校準。
+  - **R2**：R1 ＋ c·logit(m) ＋ d·logit(m)²（各 stat 共用 c、d）—— 抽水曲線假設。
+  - **R3**：R2 但 c、d 逐 stat。
+- dev LODO 揀 R2／R3 其中一個（LODO log-loss 低啲嗰個）；判決規則不變（holdout 對 `p_final` 同對 R1 都要 CI 上限 < 0）。
