@@ -65,7 +65,10 @@ SOURCES = [
     ("data", HOME / "WongChoiData"),
     ("betfair-log", ARCHIVE / "betfair-market-log"),
     ("pred-snapshots", ARCHIVE / "prediction-snapshots"),
+    # Google Drive 退役（2026-11-21）之後，舊 Drive 資料**只有**呢份（外置碟）；唔變，上傳一次之後每代重用
+    ("gdrive-export", ARCHIVE / "gdrive-export-20261121"),
 ]
+# 刻意未包（大、要 Kelvin 揀目的地容量）：ARCHIVE/hkjc-history（15GB，回放語料＋歷史抓取）、ARCHIVE/tennis（5.2GB）
 TENNIS_DB_POINTER = HOME / ".wongchoi_tennis_db"
 SKIP_NAMES = {".DS_Store", "__pycache__", ".pytest_cache"}
 SKIP_SUFFIXES = (".db-wal", ".db-shm", ".pyc", ".tmp")
