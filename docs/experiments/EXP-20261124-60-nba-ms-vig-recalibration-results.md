@@ -60,3 +60,9 @@ python3 docs/experiments/patches/nba_ms_recal/build_dataset.py --out <csv>
 /usr/bin/python3 docs/experiments/patches/nba_ms_recal/evaluate.py <csv> holdout R2
 /usr/bin/python3 docs/experiments/patches/nba_ms_recal/sensitivity.py <csv>
 ```
+
+## 補充（同日，設計 forward 時量；描述性）
+- 每週重擬合 walk-forward（`rolling_sim.py`）：R2 用晒之前數據 −0.0036，每日或每週重擬合冇分別；只用最近 7 日差啲（−0.0028）。
+- **淨係用市場價去水曲線**（`market_only.py`，唔用 `p_final`）−0.0033，同 R2 一樣；R2 − 純市場 +0.0001 [−0.0000, +0.0003]。
+  → 而家 `p_final` 喺「去水去得啱嘅市場價」之上冇加到資訊；改善全部嚟自去水形狀。精選嘅 edge 好可能大部分係去水誤差。
+- forward 登記：EXP-20261124-61（RW 主 arm，另有 R2F／R1W／MKT 對照）。
