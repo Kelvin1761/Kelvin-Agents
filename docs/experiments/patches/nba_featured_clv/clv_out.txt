@@ -1,0 +1,9 @@
+picks 67, with close 44; days 13
+mean CLV (pp of fair prob, our side) +0.88 [-0.61, +2.09]  share positive 0.52  share zero 0.20
+  under: n=44 mean +0.88
+  AST: n=34 mean +0.76
+  PTS: n=10 mean +1.30
+  win rate CLV>0: 13/23 = 0.57
+  win rate CLV<=0: 11/21 = 0.52
+no same-line close: 23; closing main line moved our way 2, against 8, unknown/zero 13
+control: 4752 line-quotes; mean drift of fair P(over) first->close -0.28pp  (under side = minus this)

@@ -41,6 +41,14 @@ def test_unavailable_or_unmatched_players_never_qualify():
     assert featured.candidates(odds, [_leg(line=25.0, p=0.2, availability="dtd")]) == []
 
 
+def test_non_finite_line_or_price_is_skipped():
+    odds = _odds({"points": {"Jayson Tatum": {
+        "NaN": {"over": "1.90", "under": "1.90"},
+        "24.5": {"over": "inf", "under": "1.90"},
+    }}})
+    assert featured.candidates(odds, [_leg(line=25.0)]) == []
+
+
 def test_daily_cap_keeps_the_ten_largest_edges():
     picks = [{"edge": e / 100, "player": f"P{e}", "game_tag": f"G{e}"} for e in range(5, 20)]
     top = featured.daily_top(picks)

@@ -106,7 +106,9 @@ def _games(season_log: dict) -> list[dict] | None:
     return [{"date": dates[i], "season": seasons[i], "team": teams[i], **{f: cols[f][i] for f in cols}}
             for i in range(len(dates))
             if "pre" not in str(kinds[i]).lower() and cols["MIN"][i] > 0
-            and all(math.isfinite(cols[f][i]) and cols[f][i] >= 0 for f in cols)]
+            and all(math.isfinite(cols[f][i]) and cols[f][i] >= 0 for f in cols)
+            and cols["FG3A"][i] <= cols["FGA"][i] and cols["FG3M"][i] <= cols["FGM"][i]
+            and cols["FGM"][i] <= cols["FGA"][i] and cols["FTM"][i] <= cols["FTA"][i]]
 
 
 def season_mu(season_log: dict, stat: str, opponent: dict, season: str, team: str,

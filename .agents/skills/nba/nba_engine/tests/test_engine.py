@@ -67,6 +67,14 @@ def test_season_rate_needs_opponent_and_history():
     assert model.s_prob(season_log(), "REB", 5.5, OPP, "2026-27", "AAA") is None
 
 
+def test_games_discards_box_scores_with_three_point_attempts_over_field_goals():
+    log = season_log(n=2)
+    log["FG3A"][0] = 16.0
+    games = model._games(log)
+    assert games is not None and len(games) == 1
+    assert games[0]["date"] == log["dates"][1]
+
+
 def test_opponent_that_allows_more_raises_the_mean():
     soft = json.loads(json.dumps(OPP))
     soft["allowed"]["REB"] = [55.0] * 5
@@ -135,6 +143,15 @@ def test_build_legs_skips_decimal_lines_and_out_players():
     assert {l.line for l in legs} == {6.0, 10.0}
     assert "BBB Star2" not in {l.player for l in legs} and skipped["out"] == 1
     assert all(l.p_c is not None and l.p_s is not None and l.p_final == l.p_ms for l in legs)
+
+
+def test_build_legs_skips_zero_plus_lines():
+    odds, package = game()
+    for props in odds["player_props"].values():
+        for entry in props.values():
+            entry["lines"]["0"] = "1.5"
+    legs, _ = build_legs(odds, package)
+    assert legs and all(l.line >= 1 for l in legs)
 
 
 class Quoted:

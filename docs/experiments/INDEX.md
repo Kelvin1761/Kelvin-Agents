@@ -644,3 +644,4 @@
 - [EXP-20261123-06](EXP-20261123-06-au-v2-rescreen-old-candidates.md) — AU 舊候選用 v2 尺重跑：81 個舊 arm 篩出 F1（近績 SD 下限）同 SPG；喺現行 live 重建 F1 PASS（Δ −0.00171、AUC CI 全正、Gold／Good／頭二選正），SPG PASS 但細到唔建議；dump 工具補 field_trainers（之前 baseline 冇練馬師剩餘表現）；上唔上線待 Kelvin
 - [EXP-20261124-70](EXP-20261124-70-nba-ms-vig-recalibration-results.md) — NBA p_final 事後校準：holdout −0.0035（12/12 日改善；中段低估 5–6pp＝精選永遠揀細、頂段穩膽高估 3.4pp），但假設來源同 holdout 重疊、二次項乾淨子集唔顯著 → NEEDS MORE TESTING，等 S2 判咗先開 forward
 - [EXP-20261124-61](EXP-20261124-61-nba-weekly-recalibration-forward-protocol.md) — NBA 每週重校準層 forward（11-25 起，14 日＋10,000 腿判）；設計量度發現純市場去水曲線＝R2，即 p_final 喺市場之上冇加到資訊，RW − MKT 做次要對照
+- [EXP-20261124-71](EXP-20261124-71-nba-featured-clv.md) — NBA 精選收市價 CLV：同線 +0.88pp [−0.61,+2.09]，扣 under 自然漂移 +0.28 後跨零；線郁嗰批 2 順 8 逆 → 冇真 edge 證據（67 注，旁證）

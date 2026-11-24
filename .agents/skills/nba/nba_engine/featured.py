@@ -34,7 +34,8 @@ def candidates(odds: dict, legs: list) -> list[dict]:
                     over, under = float(prices["over"]), float(prices["under"])
                 except (KeyError, TypeError, ValueError):
                     continue
-                if ou.is_integer() or over < 1.01 or under < 1.01:
+                if (not (math.isfinite(ou) and math.isfinite(over) and math.isfinite(under))
+                        or ou.is_integer() or over < 1.01 or under < 1.01):
                     continue
                 leg = by_leg.get((player, stat, float(math.ceil(ou))))
                 if leg is None or leg.p_final is None or leg.availability != "ok":

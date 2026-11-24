@@ -166,7 +166,7 @@ def build_legs(odds: dict, package: dict) -> tuple[list[Leg], dict]:
                 "opponent_factor": round(fit["opponent_factor"], 3), "games": fit["games"]}
             for line_text, price_text in (entry.get("lines") or {}).items():
                 line, price = float(line_text), float(price_text)
-                if not line.is_integer() or price < 1.01:
+                if not line.is_integer() or line < 1 or price < 1.01:
                     continue
                 hit10 = _rate(l10, line)
                 p_s = model.s_prob(gamelog.get("season_log"), stat, line, opp_ctx, season, team)
