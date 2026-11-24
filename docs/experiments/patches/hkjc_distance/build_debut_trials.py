@@ -10,6 +10,11 @@ arm（線性 L2 C=0.1、每季 walk-forward β）：
   TR1  tmar【主】
   TR2  tmar ＋ tcnt ＋ ttop3 ＋ tgap
 判：六季有初出馬嘅場（judge_all_group.py debut）v5.2 PASS ＋ 頭二入頭三 Δ ≥ 0；全期 dev／holdout 照報；11-22 否決另做。
+第二輪修正（2026-11-24，Sol 覆核搵到兩個實作錯；寫喺重跑之前；arm 同判決規則不變，輸出加 `_fix` 後綴）：
+  1. 馬位英文縮寫：SH／S/H 0.1、N／NOSE 0.05、HD 0.2、NECK 0.3、DH 0（大細楷都得）；「4 1/4」空格分數；
+     ML 同其他解唔到 = 缺值（之前當 15 馬位：SH 811 次）。
+  2. 缺值用 walk-forward 平均：季 t 用 t 之前各季初出馬試閘平均（2019 季只做訓練，用自己）；之前用咗全期平均（含未來）。
+  環境變數 WC_TR_FIX=1。
 用法：python3 build_debut_trials.py <db_DT.jsonl> <trials_dir> <out_prefix>
 """
 import datetime as dt
@@ -46,6 +51,28 @@ def lengths(t):
     return int(m.group(1)) + (int(m.group(2)) / int(m.group(3)) if m.group(2) else 0.0)
 
 
+FIX = __import__("os").environ.get("WC_TR_FIX") == "1"
+ABBR = {"SH": 0.1, "S/H": 0.1, "N": 0.05, "NOSE": 0.05, "HD": 0.2, "NECK": 0.3, "DH": 0.0}
+
+
+def lengths_fixed(t):
+    raw = str(t or "").strip()
+    if not raw:
+        return 0.0
+    u = raw.upper().rstrip("L").strip()
+    if u in ABBR:
+        return ABBR[u]
+    for w, v in WORDS:
+        if w in raw:
+            return v
+    m = re.fullmatch(r"(\d+)(?:[ -](\d+)/(\d+))?|(\d+)/(\d+)", u)
+    if not m:
+        return None
+    if m.group(4):
+        return int(m.group(4)) / int(m.group(5))
+    return int(m.group(1)) + (int(m.group(2)) / int(m.group(3)) if m.group(2) else 0.0)
+
+
 def secs(t):
     m = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", str(t or "").strip())
     return int(m.group(1)) * 60 + int(m.group(2)) + int(m.group(3)) / 100 if m else None
@@ -62,7 +89,7 @@ def parse_day(path):
             grp = {"id": c[0], "rows": []}; out.append(grp); continue
         m = re.search(r"\(([A-Z]\d{3})\)", c[0])
         if grp is not None and m and len(c) >= 9:
-            grp["rows"].append({"code": m.group(1), "margin": lengths(c[5]), "time": secs(c[7]), "result": c[8]})
+            grp["rows"].append({"code": m.group(1), "margin": (lengths_fixed if FIX else lengths)(c[5]), "time": secs(c[7]), "result": c[8]})
     return out
 
 
@@ -82,8 +109,8 @@ def main():
                 continue
             t0 = min(r["time"] for r in rs)
             for i, r in enumerate(rs):
-                mar = r["margin"] if r["margin"] is not None else 15.0
-                hist[r["code"]].append((d, min(mar, 15.0), i, int(i < 3), min(r["time"] - t0, 3.0)))
+                mar = r["margin"] if r["margin"] is not None else (float("nan") if FIX else 15.0)
+                hist[r["code"]].append((d, min(mar, 15.0) if mar == mar else mar, i, int(i < 3), min(r["time"] - t0, 3.0)))
     print("試閘馬匹", len(hist), "試閘紀錄", sum(len(v) for v in hist.values()), flush=True)
     idx = hb.load_index()["results"]
     n2c = {}
@@ -111,8 +138,19 @@ def main():
     print("初出馬有試閘", cover, flush=True)
     allm = np.vstack([m[d] for m, d in F.values() if d.any()])
     mu = np.nanmean(allm, axis=0)
+    if FIX:
+        bys = defaultdict(list)
+        for k, (m, d) in F.items():
+            if d.any():
+                bys[season(k[0])].append(m[d])
+        mus = {}
+        for t in sorted(bys):
+            prev = [a for u in bys if u < t for a in bys[u]] or bys[t]
+            mus[t] = np.nanmean(np.vstack(prev), axis=0)
     feats = {}
     for k, (m, d) in F.items():
+        if FIX:
+            mu = mus.get(season(k[0]), mu)
         z = np.where(np.isnan(m), mu, m); z[~d] = 0.0
         z = np.where(d[:, None], z - mu, 0.0)
         feats[k] = z - z.mean(axis=0)
@@ -134,7 +172,7 @@ def main():
             c = LogisticRegression(C=0.1, max_iter=20000).fit(np.column_stack([R / rs, Z / sd]), Y).coef_[0]
             models[s] = (c[1:] / sd) / (c[0] / rs)
         print(arm, {s: [round(float(b), 2) for b in m] for s, m in models.items()}, flush=True)
-        with open(f"{sys.argv[3]}_{arm}.jsonl", "w") as f:
+        with open(f"{sys.argv[3]}_{arm}{'_fix' if FIX else ''}.jsonl", "w") as f:
             for x in rows:
                 s = season(x["date"]); y = dict(x, arm=f"trials_{arm}")
                 if s in models:
