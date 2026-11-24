@@ -31,3 +31,8 @@
 
 ## 附：引擎邊界 bug 修正嘅 parity
 同一個 release 修咗 Sol 搵到嘅三個邊界 bug（NaN 線、出手數唔一致、0+ 線）。`engine_parity_check.py` 用 11-18…11-25 共 41 場、8,783 條腿新舊引擎各跑一次：輸出逐位元一樣。
+
+## 附：dashboard 顯示（2026-11-24）
+每注精選而家喺 dashboard 顯示收市 CLV；唯一計法喺 `.agents/skills/nba/nba_daily_auto/nba_featured_clv.py`（只計揀注發佈之後嘅報價）。
+用 dashboard 嘅精選（sidecar，包括 11-19）核對：同線 53 注平均 +0.85pp、線郁 順 3／逆 8、睇唔到 12 —— 同上面研究版一致。
+第一版實作將「21:00 之後收咗嘅線」當咗 0pp（因為最後一個報價就係 21:00 嗰個），已修並加測試。
