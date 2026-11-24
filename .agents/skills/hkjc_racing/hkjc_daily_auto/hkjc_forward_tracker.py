@@ -129,6 +129,11 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 since="2026-11-26", arm="docs/experiments/patches/hkjc_arm_debut_trainer_revert.py",
                 action="自動判：退回版 forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議退回（等你決定）；否則保留",
                 extra={"pass_verdict": "建議退回（等你決定）"}),
+    # 試閘時間數字（EXP-20261124-17；Kelvin 2026-11-24「唔上，forward monitor 住」）。只喺有初出馬嘅場有分別（約三成場），所以 600 場。
+    ForwardTest("trial_time_shadow", "初出馬試閘時間數字（shadow）", "EXP-20261124-17", "harness_ab", 600,
+                since="2026-11-26", arm="docs/experiments/patches/hkjc_arm_trial_time_shadow.py",
+                action="自動判：forward Gold、Good、NDCG@5 Δ 全部 ≥ 0 → 建議上線（等你決定）；否則唔上",
+                extra={"pass_verdict": "建議上線（等你決定）"}),
     # EXP-20261114-08（Kelvin 2026-11-15）：「換上頂級騎師」做 forward 收集數據，唔入分。
     # 回放：模型之上 dev／holdout 都真，但固定加分 holdout Gold −0.88。shadow arm = jockey_up 嘅非初出馬 raw + 1.0。
     ForwardTest("jockey_up_shadow", "換上頂級騎師入分（shadow）", "EXP-20261114-08", "harness_ab", 60,
