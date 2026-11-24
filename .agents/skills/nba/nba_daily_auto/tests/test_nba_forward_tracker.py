@@ -36,7 +36,7 @@ class FakeScript:
 
 
 def test_registry_covers_both_tests():
-    assert {t.test for t in tracker.FORWARD_TESTS} == {"M", "T", "F250", "F1000", "FU_AVG", "FU_EDGE", "S2", "V2_250", "V2_600"}
+    assert {t.test for t in tracker.FORWARD_TESTS} == {"M", "T", "F250", "F1000", "FU_AVG", "FU_EDGE", "S2", "V2_250", "V2_600", "RC"}
     for t in tracker.FORWARD_TESTS:
         assert (REPO / t.script).is_file()
 
@@ -131,3 +131,29 @@ def test_featured_interim_stops_only_when_clearly_losing(tmp_path):
 
 def _load_featured():
     return tracker._load("docs/experiments/patches/nba_featured/evaluate.py")
+
+
+def test_recal_tracker_numbers_summary_and_check(tmp_path):
+    test = next(t for t in tracker.FORWARD_TESTS if t.test == "RC")
+    result = {"n_legs": 10000, "days": 14, "logloss": {"pub": 0.5, "rw": 0.49},
+              "primary_delta": -0.01, "ci95": [-0.02, -0.001], "pass": True,
+              "secondary": {"rw_minus_mkt": {"delta": 0.002}}, "interrupted": "2026-12-10"}
+    msg = tracker._numbers(test, result)
+    assert "10000 腿、14 日" in msg and "-0.0100 [-0.0200, -0.0010]" in msg
+    assert "RW − 純市場 +0.0020" in msg and "2026-12-10 換咗模型" in msg
+
+    class Recal:
+        def status(self, ledger, analysis):
+            return {"RC": {"days": 14, "flagged_legs": 10000, "checkpoint": {"days": 14, "flagged_legs": 10000}, "ready": True}}
+        def evaluate(self, ledger, analysis, reports, only=None):
+            assert only == "RC"
+            return {only: result}
+
+    sent = []
+    report = tracker.check(ledger=tmp_path, analysis=tmp_path, reports=tmp_path,
+                           notify=lambda k, m: sent.append((k, m)), tests=(test,), loader=lambda _: Recal())
+    assert sent[0][0] == "forward-ready:recal_weekly" and "PASS" in sent[0][1]
+    # Other registered tests are represented as errors for the complete summary.
+    complete = {t.key: {"error": "not loaded"} for t in tracker.FORWARD_TESTS}
+    complete.update(report)
+    assert "14/14 日、10000/10000 腿 ✅" in tracker.summary_line(complete)
