@@ -8,22 +8,25 @@ description: 'Claude-led delegation to Codex CLI. Use proactively, without being
 Kelvin 2026-11-24：佢唔再自己用 Codex，全部交畀 Claude 決定。**你係主導**，Codex 係下屬：
 你計劃、派工、核實、拍板。唔使等 Kelvin 講「畀 Codex 做」。
 
-## 1. 每次派之前：睇額度
+## 1. 每次開工（同每次派之前）：睇兩邊額度，揀分工模式
+
+先用 `mcp__ccd_session_mgmt__get_usage` 攞 Claude「Weekly · all models」嘅 `percentUsed` 同 `resetsAt`，再：
 
 ```bash
-python3 .agents/scripts/codex_delegate.py status
+python3 .agents/scripts/codex_delegate.py status --claude-weekly <percentUsed> --claude-resets <resetsAt>
 ```
 
-同時用 `mcp__ccd_session_mgmt__get_usage` 睇 Claude 自己嘅額度。
+佢會印 Codex 狀態同**分工模式**（Kelvin 2026-11-24：按 quota 調整 offload 幾多，Opus 唔好用爆）：
 
-| Codex 狀態 | 做法 |
-|---|---|
-| normal | 照下面規則派 |
-| tight | 只派 review／quick／chore；grunt 自己做（除非 Claude 本週 ≥80%，咁就 `--force` 並寫原因；`--force` 只越過 tight，越唔過 stop） |
-| stop | 唔派，喺回覆講一句「Codex 額度停派中」 |
-| unknown | 可以派，但每次之後再 `status` |
+| 分工模式 | 幾時 | 做法 |
+|---|---|---|
+| offload-max | Claude 用得快過時間 ≥10pp、或本週 ≥85%；或者 Codex <2 日重置仲剩好多 | 實作同重活一律派 Terra（我寫 brief、睇 diff）；覆核派 Sol，**唔開 Opus subagent**；讀 log／grep／摘要派 Luna；Opus 只做計劃、判決、保存、Telegram |
+| balanced | 兩邊都正常 | 照下面第 2 節常規分工 |
+| offload-light | Claude 緊但 Codex 都 tight | 只派 review／quick／chore；Claude 本週 ≥85% 先 `--force` 派 grunt 並寫原因 |
+| keep-claude | Codex tight、Claude 慢過時間 ≥20pp | Opus 自己做多啲，Codex 留畀 review |
+| claude-only | Codex stop | 唔派，喺回覆講一句「Codex 額度停派中」；Claude subagent 用平啲嘅模型 |
 
-反方向：**Claude 嗰邊緊（5 小時 ≥70% 或本週 ≥80%）就盡量將 grunt 推畀 Codex。**
+Codex 狀態本身：normal 照派；tight 只派 review／quick／chore（`--force` 只越過 tight，越唔過 stop）；unknown 可以派但每次之後再 `status`。
 
 ## 2. 派唔派：角色同例子
 

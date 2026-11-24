@@ -226,5 +226,52 @@ class LedgerTest(unittest.TestCase):
             self.assertEqual(summary["grunt"], {"runs": 1, "ok": 1, "input": 7, "output": 3})
 
 
+
+class OffloadModeTest(unittest.TestCase):
+    NOW = 1_800_000_000.0
+    DAY = 86400.0
+
+    def codex(self, used, days_left):
+        week = cd.Window(used, 10080, self.NOW + days_left * self.DAY)
+        return cd.Limits(None, week, self.NOW)
+
+    def mode(self, codex_state, codex, claude_used, claude_days_left):
+        return cd.offload_mode(codex_state, codex, claude_used,
+                               self.NOW + claude_days_left * self.DAY, now=self.NOW)[0]
+
+    def test_claude_running_hot_offloads_max(self):
+        # 2026-11-24 實況：Claude 42%、時間先過 12%
+        self.assertEqual(self.mode("normal", self.codex(50, 4), 42, 6.2), "offload-max")
+
+    def test_on_pace_is_balanced(self):
+        self.assertEqual(self.mode("normal", self.codex(50, 4), 30, 5), "balanced")
+
+    def test_codex_stop_means_claude_only(self):
+        self.assertEqual(self.mode("stop", self.codex(96, 4), 90, 1), "claude-only")
+
+    def test_both_tight_is_light(self):
+        self.assertEqual(self.mode("tight", self.codex(85, 4), 60, 4), "offload-light")
+
+    def test_codex_tight_claude_idle_keeps_claude(self):
+        self.assertEqual(self.mode("tight", self.codex(85, 4), 5, 4), "keep-claude")
+
+    def test_codex_about_to_reset_with_headroom_use_it(self):
+        # Claude 正常，但 Codex 一日後重置仲剩 45pp
+        self.assertEqual(self.mode("normal", self.codex(50, 1), 30, 5), "offload-max")
+
+    def test_claude_critical_even_if_late_in_week(self):
+        self.assertEqual(self.mode("normal", self.codex(50, 4), 88, 0.5), "offload-max")
+
+    def test_status_prints_mode(self):
+        import io, contextlib
+        buf = io.StringIO()
+        with mock.patch.object(cd, "read_limits", return_value=self.codex(50, 4)), \
+             mock.patch.object(cd, "ledger_summary", return_value={}), \
+             mock.patch.object(cd, "latest_model", return_value="m"), \
+             contextlib.redirect_stdout(buf):
+            cd.main(["status", "--claude-weekly", "42", "--claude-resets", "2099-01-01T00:00:00Z", "--json"])
+        self.assertIn("分工模式：", buf.getvalue())
+        self.assertIn('"mode"', buf.getvalue())
+
 if __name__ == "__main__":
     unittest.main()
