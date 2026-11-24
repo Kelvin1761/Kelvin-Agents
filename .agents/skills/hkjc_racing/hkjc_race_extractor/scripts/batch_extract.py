@@ -484,6 +484,12 @@ def main():
             print(f"      {tw_results['error']}")
     print()
 
+    # Trial updates are optional and must not interrupt the racecard pipeline.
+    try:
+        subprocess.run([sys.executable, os.path.join(SKILL_DIR, 'extract_barrier_trials.py')], timeout=1800, check=False)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        print(f"⚠️ 試閘更新失敗：{exc}")
+
     # Summary
     all_results.sort(key=lambda x: x['race'])
     total_rc = sum(1 for r in all_results if r['racecard_ok'])
