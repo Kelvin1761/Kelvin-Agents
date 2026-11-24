@@ -138,7 +138,25 @@ def check(*, ledger: Path, analysis: Path, reports: Path,
                f"🧪 NBA forward 測試夠數：{test.label}（{test.experiment}）\n"
                f"判決：{_verdict(result)}\n{_numbers(test, result)}\n"
                f"下一步：{test.action}\n（live 唔會自動改，上唔上線係你決定）")
+    try:   # 共用總板（系統升級第 5 項）；壞咗都唔阻判決同推送
+        fb = _forward_board()
+        fb.publish("nba", [_board_row(fb, t, report.get(t.key) or {}) for t in tests])
+    except Exception as exc:  # noqa: BLE001
+        print(f"forward 總板寫唔到：{type(exc).__name__}: {exc}")
     return report
+
+
+def _board_row(fb, test: ForwardTest, item: dict) -> dict:
+    """NBA 進度嘅計數欄唔一樣（注／日／宗）：揀第一個有 checkpoint 嘅欄。"""
+    if item.get("error"):
+        return fb.row(test.key, test.label, test.experiment, status="error", note=item["error"])
+    cp = item.get("checkpoint") or {}
+    for field, unit in (("bets", "注"), ("days", "日"), ("events", "宗")):
+        if field in cp:
+            return fb.row(test.key, test.label, test.experiment, count=item.get(field), minimum=cp[field],
+                          unit=unit, status="ready" if item.get("ready") else "collecting",
+                          note=test.action if item.get("ready") else "")
+    return fb.row(test.key, test.label, test.experiment, status="ready" if item.get("ready") else "collecting")
 
 
 def summary_line(report: dict) -> str:
@@ -159,3 +177,13 @@ def summary_line(report: dict) -> str:
                          f"{item.get('event_legs')}/{item['checkpoint']['event_legs']} 腿"
                          + (" ✅" if item.get("ready") else ""))
     return "；".join(parts)
+
+
+def _forward_board():
+    """共用 forward 總板（shared_wong_choi/forward_board.py）；用檔案路徑載入，唔拉成個 package。"""
+    import importlib.util
+    path = Path(__file__).resolve().parents[2] / "shared_wong_choi" / "forward_board.py"
+    spec = importlib.util.spec_from_file_location("wc_forward_board", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module

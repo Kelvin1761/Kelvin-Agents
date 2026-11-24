@@ -163,6 +163,16 @@ def check(*, work_dir: Path, push: Callable[[str], None], run: Callable = _defau
                  "（live 唔會自動改，上唔上線係你決定）")
             notified[test.key] = {"count": item["count"], "minimum": item["minimum"]}
     state["last"] = report
+    try:   # 共用總板（系統升級第 5 項）；壞咗都唔阻判決同推送
+        fb = _forward_board()
+        fb.publish("au", [fb.row(t.key, t.label, t.experiment, count=report[t.key]["count"],
+                                 minimum=report[t.key]["minimum"], unit=t.unit,
+                                 status=("error" if report[t.key]["error"] else "decided" if report[t.key]["done"]
+                                         else "ready" if report[t.key]["ready"] else "collecting"),
+                                 note=report[t.key]["error"] or (t.action if report[t.key]["ready"] else ""))
+                          for t in tests])
+    except Exception as exc:  # noqa: BLE001
+        print(f"forward 總板寫唔到：{type(exc).__name__}: {exc}", file=sys.stderr)
     work_dir.mkdir(parents=True, exist_ok=True)
     state_path.write_text(json.dumps(state, ensure_ascii=False, indent=1), encoding="utf-8")
     return report
@@ -178,3 +188,13 @@ def summary_line(report: dict) -> str:
             parts.append(f"{test.experiment.split(' / ')[0]} {item.get('count')}/{item.get('minimum')}"
                          + (" ✅" if item.get("ready") else ""))
     return "；".join(parts)
+
+
+def _forward_board():
+    """共用 forward 總板（shared_wong_choi/forward_board.py）；用檔案路徑載入，唔拉成個 package。"""
+    import importlib.util
+    path = Path(__file__).resolve().parents[2] / "shared_wong_choi" / "forward_board.py"
+    spec = importlib.util.spec_from_file_location("wc_forward_board", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module

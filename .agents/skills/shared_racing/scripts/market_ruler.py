@@ -21,7 +21,9 @@
 
 AU：`--price sp`（預設）= dump 每匹嘅 `sp`（賽果 SP，任何 dump 都有）；
     `--price bsp` = Betfair BSP（`au_bsp.py`：記錄器＋公開 CSV，EXP-20261124-92），較 sharp；配唔齊 BSP 嘅場會剔走並報數。
-HKJC：未接駁 —— 回放語料冇當日最終賠率（下一步）。
+HKJC：回放 jsonl（`horses[{n, pos, raw}]`）＋賽果庫最終獨贏賠率（`hkjc_history_replay_pit.load_all_rows_extended`，
+      同「上仗賠率」表同一個來源），按 (日期, 場次, 名次) 配對；配唔齊嘅場剔走並報數（EXP-20261124-93）。
+      今仗賠率只做評估基準 —— 模型只准用**上仗**賠率（AGENTS.md），呢度冇改到嗰條。
 """
 from __future__ import annotations
 
@@ -306,9 +308,49 @@ def _fmt(s):
 
 
 def _load(path, platform):
-    if platform != "au":
-        sys.exit(f"--platform {platform} 未接駁：HKJC 回放語料冇當日最終賠率，見 docs/model-evaluation-contract.md「市場尺」")
+    if platform == "hkjc":
+        return load_hkjc(path)
     return json.loads(Path(path).read_text(encoding="utf-8"))["races"]
+
+
+_HK_ODDS = None
+
+
+def hkjc_odds() -> dict:
+    """→ {(日期, 場地, 場次, 名次): 最終獨贏賠率}；同一 key 有兩匹（平頭馬）就唔要。場地防同日兩個場地撞。"""
+    global _HK_ODDS
+    if _HK_ODDS is None:
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "hkjc_racing" / "hkjc_reflector" / "scripts"))
+        import hkjc_history_replay_pit as pit
+        df = pit.load_all_rows_extended()
+        df = df[df["Odds"].notna() & df["Rank"].notna() & df["RaceNo"].notna()]
+        out, dup = {}, set()
+        for r in df.itertuples():
+            k = (str(r.Date)[:10], str(r.Venue), int(r.RaceNo), int(r.Rank))
+            if k in out:
+                dup.add(k)
+            out[k] = float(r.Odds)
+        for k in dup:
+            out.pop(k, None)
+        _HK_ODDS = out
+    return _HK_ODDS
+
+
+def load_hkjc(path) -> list[dict]:
+    """回放 jsonl → market_ruler 場次格式；每匹 `sp` = 賽果最終獨贏賠率（配唔到 = None → prepare 會剔走成場）。"""
+    odds = hkjc_odds()
+    races = []
+    with open(path, encoding="utf-8") as fh:
+        for line in fh:
+            x = json.loads(line)
+            if "horses" not in x:
+                continue
+            rows = [{"name": str(h["n"]), "pos": int(h["pos"]), "ability": float(h["raw"]),
+                     "sp": odds.get((x["date"], str(x.get("venue") or "").replace("AWT", ""),
+                                     int(x["race"]), int(h["pos"])))}
+                    for h in x["horses"] if h.get("pos")]
+            races.append({"date": x["date"], "meeting": x["meeting"], "race": int(x["race"]), "rows": rows})
+    return races
 
 
 def attach_bsp(*arms):

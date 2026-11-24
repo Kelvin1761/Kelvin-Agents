@@ -555,8 +555,10 @@ def remind(state: dict, *, root: Path, ledger_path: Path | None,
     tracker = state.setdefault(STATE_KEY, {})
     sent = tracker.setdefault("notified", {})
     messages = []
+    rows = []
     for test in FORWARD_TESTS:
         item = progress(test, root=root, ledger=ledger, state=state)
+        rows.append((test, item))
         if item["status"] not in {"ready", "stalled"}:
             continue
         marker = item["status"]
@@ -570,6 +572,14 @@ def remind(state: dict, *, root: Path, ledger_path: Path | None,
         if notify(message):
             sent[test.key] = marker
             messages.append(message)
+    try:   # 共用總板（系統升級第 5 項）；壞咗都唔阻判決同推送
+        fb = _forward_board()
+        fb.publish("hkjc", [fb.row(t.key, t.label, t.experiment, count=i["count"], minimum=i["minimum"], unit="場",
+                                   status={"unknown": "error"}.get(i["status"], i["status"]),
+                                   note=i["note"] or (t.action if i["status"] == "ready" else ""))
+                            for t, i in rows])
+    except Exception as exc:  # noqa: BLE001
+        print(f"forward 總板寫唔到：{type(exc).__name__}: {exc}")
     return messages
 
 
@@ -637,3 +647,13 @@ def judge_ready(state: dict, *, root: Path, run_cmd: Callable, harness: Path, py
 
 _SAFE_KEY = re.compile(r"^[a-z0-9_]+$")
 assert all(_SAFE_KEY.match(t.key) for t in FORWARD_TESTS)
+
+
+def _forward_board():
+    """共用 forward 總板（shared_wong_choi/forward_board.py）；用檔案路徑載入，唔拉成個 package。"""
+    import importlib.util
+    path = Path(__file__).resolve().parents[2] / "shared_wong_choi" / "forward_board.py"
+    spec = importlib.util.spec_from_file_location("wc_forward_board", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module

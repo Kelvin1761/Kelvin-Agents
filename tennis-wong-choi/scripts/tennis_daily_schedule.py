@@ -268,6 +268,11 @@ def daily(today: date) -> None:
         sharp_forward_milestone(LOG_DIR)
     except Exception as exc:  # noqa: BLE001
         log(f"Betfair sharp forward milestone check skipped: {exc}")
+    try:
+        from tennis_wc.publish.telegram import publish_forward_board
+        publish_forward_board(LOG_DIR)
+    except Exception as exc:  # noqa: BLE001
+        log(f"forward 總板 skipped: {exc}")
     _dashboard_settlements(yesterday)
     if run.results_extracted(review):
         _archive(yesterday)

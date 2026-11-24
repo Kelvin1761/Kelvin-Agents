@@ -152,3 +152,29 @@ class SinceTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class HkjcLoaderTest(unittest.TestCase):
+    def test_joins_odds_by_date_race_position(self):
+        import json
+        import tempfile
+        old = mr._HK_ODDS
+        mr._HK_ODDS = {("2026-01-01", "沙田", 1, 1): 2.5, ("2026-01-01", "沙田", 1, 2): 4.0,
+                       ("2026-01-01", "跑馬地", 1, 3): 9.9}                   # 另一個場地唔可以配入嚟
+        try:
+            with tempfile.NamedTemporaryFile("w", suffix=".jsonl", delete=False) as fh:
+                fh.write(json.dumps({"arm": "x"}) + "\n")                       # 冇 horses 嘅行唔要
+                fh.write(json.dumps({"date": "2026-01-01", "meeting": "2026-01-01_ShaTin", "venue": "沙田",
+                                     "race": 1, "horses": [
+                    {"n": 3, "pos": 1, "raw": 61.0}, {"n": 7, "pos": 2, "raw": 58.0},
+                    {"n": 9, "pos": 3, "raw": 55.0}, {"n": 4, "pos": 0, "raw": 50.0}]}) + "\n")
+                fh.write(json.dumps({"date": "2026-01-01", "meeting": "2026-01-01_ShaTin", "venue": "沙田AWT",
+                                     "race": 1, "horses": [{"n": 1, "pos": 1, "raw": 1.0}]}) + "\n")   # 泥地都係沙田
+            races = mr.load_hkjc(fh.name)
+        finally:
+            mr._HK_ODDS = old
+        self.assertEqual(len(races), 2)
+        self.assertEqual(races[1]["rows"][0]["sp"], 2.5)
+        rows = races[0]["rows"]
+        self.assertEqual([r["name"] for r in rows], ["3", "7", "9"])          # pos 0（冇完成）剔走
+        self.assertEqual([r["sp"] for r in rows], [2.5, 4.0, None])            # 配唔到 = None → prepare 剔成場

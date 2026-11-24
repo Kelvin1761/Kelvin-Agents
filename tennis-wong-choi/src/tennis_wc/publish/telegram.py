@@ -280,3 +280,43 @@ def sharp_forward_milestone(log_dir: Path) -> str | None:
         state[key] = {"verdict": verdict, "settled": settled, "sent_at": datetime.now().isoformat()}
         state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2))
     return verdict
+
+
+def publish_forward_board(log_dir: Path) -> int:
+    """共用 forward 總板（系統升級第 5 項）：精選、shadow arms、Sportsbet 對 Betfair 一份快照。唔推 Telegram。"""
+    import importlib.util
+    from tennis_wc.store.db import get_connection
+    from tennis_wc.select import featured, featured_shadow, sharp_forward
+
+    path = Path(__file__).resolve().parents[4] / ".agents" / "skills" / "shared_wong_choi" / "forward_board.py"
+    spec = importlib.util.spec_from_file_location("wc_forward_board", path)
+    fb = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(fb)
+    state_path = log_dir / FORWARD_STATE
+    state = json.loads(state_path.read_text()) if state_path.exists() else {}
+
+    def status(settled, final, decided_key):
+        if decided_key in state:
+            return "decided"
+        return "ready" if settled >= final else "collecting"
+
+    rows = []
+    with get_connection() as conn:
+        perf = featured.performance(featured.picks_with_results(conn))
+        rows.append(fb.row("featured", "網球精選前向測試", "EXP-20261105-10", count=perf["settled"],
+                           minimum=featured.FORWARD_FINAL_VERDICT, unit="注",
+                           status=status(perf["settled"], featured.FORWARD_FINAL_VERDICT,
+                                         str(featured.FORWARD_FINAL_VERDICT))))
+        for arm in featured_shadow.ARMS.values():
+            p = featured.performance(featured_shadow.picks_with_results(conn, arm.name))
+            rows.append(fb.row(f"shadow_{arm.name}", f"精選 shadow：{arm.label or arm.name}", arm.experiment,
+                               count=p["settled"], minimum=featured.FORWARD_FINAL_VERDICT, unit="注",
+                               status=status(p["settled"], featured.FORWARD_FINAL_VERDICT,
+                                             f"{arm.name}:{featured.FORWARD_FINAL_VERDICT}")))
+        p = featured.performance(sharp_forward.picks_with_results(conn))
+        rows.append(fb.row("sharp", "Sportsbet 對 Betfair 紙上測試", sharp_forward.EXPERIMENT, count=p["settled"],
+                           minimum=sharp_forward.FINAL_VERDICT, unit="注",
+                           status=status(p["settled"], sharp_forward.FINAL_VERDICT,
+                                         f"sharp:{sharp_forward.FINAL_VERDICT}")))
+    fb.publish("tennis", rows)
+    return len(rows)

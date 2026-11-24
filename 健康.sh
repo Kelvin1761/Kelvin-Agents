@@ -154,6 +154,19 @@ for f in "$HOME"/Library/LaunchAgents/com.antigravity.*.plist; do
     ok "${short}（已載入，未到首次執行時間）"
   else
     st=$(echo "$detail" | sed -n 's/^[[:space:]]*last exit code = //p' | head -1)
+    # 系統升級第 4 項（2026-11-25）：有登記輸出嘅 job 睇「輸出新唔新鮮、最新 run 有冇寫住失敗」，
+    # 唔信退出碼 —— 舊退出碼自癒咗都照嗌，而靜靜冇輸出嘅 job 退出碼可以係 0。
+    fresh_line=$("$PY" .agents/scripts/job_freshness.py --classify "$short" "${st:-0}" 2>/dev/null || true)
+    fresh_level=${fresh_line%%$'\t'*}
+    fresh_msg=${fresh_line#*$'\t'}
+    if [ -n "$fresh_line" ] && [ "$fresh_msg" != "$short" ]; then
+      case "$fresh_level" in
+        ok) ok "$fresh_msg" ;;
+        bad) note_bad "$fresh_msg" ;;
+        *) warn "$fresh_msg" ;;
+      esac
+      continue
+    fi
     case "${st:-0}" in
       0) ok "$short" ;;
       *)
@@ -536,6 +549,40 @@ while IFS=$'\t' read -r kind arg count; do
   esac
 done <<< "$LOG_SCAN"
 [ "$found" = "0" ] && ok "近 3 日嘅日誌冇 traceback / 權限錯誤 / 排程階段失敗"
+
+# ── Forward 測試總板（系統升級第 5 項，2026-11-25）──────────────────────────
+# 四個 domain 各自判同推 Telegram；呢度一個地方睇晒，仲捉「tracker 自己停咗」（總板快照過期）。
+hdr "Forward 測試總板（AU／HKJC／NBA／Tennis）"
+if "$PY" - <<'PYFB'
+import importlib.util, sys
+from pathlib import Path
+spec = importlib.util.spec_from_file_location("fb", Path(".agents/skills/shared_wong_choi/forward_board.py"))
+fb = importlib.util.module_from_spec(spec); spec.loader.exec_module(fb)
+b = fb.board()
+for line in fb.render(b):
+    print("  " + line)
+s = fb.summary(b)
+print(f"  合共：夠數 {s['ready']}、冇累積 {s['stalled']}、讀唔到 {s['error']}、收集中 {s['collecting']}、已判 {s['decided']}")
+missing = [d for d in fb.DOMAINS if b[d]["missing"]]
+raise SystemExit(1 if [d for d in s["stale_domains"] if d not in missing] or s["error"] else 0)
+PYFB
+then ok "forward 總板正常"
+else warn "forward 總板有 tracker 過期或者讀唔到（睇上面）"; fi
+
+# ── 異地加密備份（系統升級第 2 項）──────────────────────────────────────────
+hdr "異地加密備份"
+if OFF=$("$PY" .agents/scripts/offsite_backup.py status 2>/dev/null); then
+  "$PY" - "$OFF" <<'PYOFF'
+import json, sys
+s = json.loads(sys.argv[1])
+if not s["configured"]:
+    print("  ⚠️  未設定（offsite_backup.py init）—— 而家 code 喺 GitHub，但資料冇屋企以外嘅副本"); raise SystemExit
+mark = "✅" if s["fresh"] else "❌"
+print(f"  {mark} {s['backend']}：上次成功 {s['last_success']}（{s.get('age_hours')} 鐘前），保留 {s['generations']} 代")
+d = s.get("last_drill_ok")
+print(f"  {'✅' if d else '⚠️ '} 還原演練：{'通過' if d else '未做過／失敗'}（{s.get('last_drill_at')}）")
+PYOFF
+fi
 
 # ── 預先登記嘅重測條件 ────────────────────────────────────────────────────
 # 2026-08-26：有幾個候選係「證據方向一致但功效唔夠」—— 唔係死咗，係語料未夠厚，
