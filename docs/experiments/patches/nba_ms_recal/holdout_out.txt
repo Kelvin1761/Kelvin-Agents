@@ -1,0 +1,21 @@
+dev 7903 legs / 7 days; holdout 13991 / 12 days
+R2 coefficients [-0.1341, -0.149, -0.1794, -0.0038, 0.1731, 0.8173, -0.0584]
+R1 coefficients [0.0891, -0.0093, 0.0719, -0.0161, 0.97]
+holdout log-loss p_final 0.4526  R1 0.4509  R2 0.4491
+  cand - p_final: -0.0035 [-0.0048, -0.0021]
+  cand - R1: -0.0018 [-0.0032, -0.0004]
+  R1 - p_final: -0.0017 [-0.0022, -0.0012]
+per stat (cand - p_final):
+  pts: n=4339 -0.0045 [-0.0067, -0.0022]  mean y 0.393 p_final 0.364 cand 0.380
+  reb: n=3592 -0.0022 [-0.0040, -0.0005]  mean y 0.337 p_final 0.333 cand 0.336
+  ast: n=2594 -0.0058 [-0.0092, -0.0030]  mean y 0.374 p_final 0.336 cand 0.349
+  fg3m: n=3466 -0.0018 [-0.0042, +0.0011]  mean y 0.407 p_final 0.411 cand 0.408
+banker-zone p_final>=0.7: n=2864 -0.0039 [-0.0070, -0.0005]  y 0.841 p_final 0.858 cand 0.839
+calibration by p_final bucket (holdout): bucket n y p_final cand
+  [0.0,0.2)  6206 0.096 0.088 0.090
+  [0.2,0.4)  2402 0.351 0.292 0.322
+  [0.4,0.6)  1722 0.551 0.495 0.526
+  [0.6,0.8)  1638 0.687 0.702 0.709
+  [0.8,0.9)   918 0.844 0.849 0.830
+  [0.9,1.0)  1105 0.911 0.945 0.915
+O/U main-line legs n=1612: actual over 0.499 p_final 0.460 cand 0.487 de-vig 0.489

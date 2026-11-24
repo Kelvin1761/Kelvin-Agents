@@ -57,6 +57,9 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
     ForwardTest("s2_blend", "自己模型佔更大份額：市場＋S2（新上場時間預測）對現行發佈機率",
                 "EXP-20261111-05 S2", "docs/experiments/patches/nba_s2_forward/evaluate.py", "S2",
                 "PASS（log-loss 差 95% CI 上限 < 0）先可以申請將發佈機率換做 MS2，要過 model-regression-gate；未過就維持現行"),
+    ForwardTest("recal_weekly", "發佈機率每週重校準（修正中段低估、頂段高估）對現行 p_final",
+                "EXP-20261124-61 RC", "docs/experiments/patches/nba_recal_forward/evaluate.py", "RC",
+                "PASS（log-loss 差 95% CI 上限 < 0）先可以申請接入發佈機率，要過 model-regression-gate；同時睇 RW − 純市場：跨零 = 模型冇 edge，精選 edge 要當去水誤差"),
 )
 
 
@@ -84,6 +87,15 @@ def _numbers(test: ForwardTest, result: dict) -> str:
         hit = result.get("hit_rate")
         return (f"{result.get('n_bets')} 注、{result.get('days')} 日；命中 {'N/A' if hit is None else f'{hit * 100:.1f}%'}；"
                 f"平注 ROI {pct(result.get('roi'))} [{pct(ci[0])}, {pct(ci[1])}]")
+    if test.test == "RC":
+        loss = result.get("logloss") or {}
+        num = lambda v: "N/A" if v is None else f"{v:+.4f}"  # noqa: E731
+        text = (f"{result.get('n_legs')} 腿、{result.get('days')} 日；log-loss 發佈 {num(loss.get('pub'))}、"
+                f"RW {num(loss.get('rw'))}；差 {num(result.get('primary_delta'))} [{num(ci[0])}, {num(ci[1])}]；"
+                f"RW − 純市場 {num(((result.get('secondary') or {}).get('rw_minus_mkt') or {}).get('delta'))}")
+        if result.get("interrupted"):
+            text += f"；⚠️ p_final 喺 {result['interrupted']} 換咗模型，母體截止"
+        return text
     if test.test == "S2":
         loss = result.get("logloss") or {}
         num = lambda v: "N/A" if v is None else f"{v:+.4f}"  # noqa: E731
@@ -138,7 +150,7 @@ def summary_line(report: dict) -> str:
         elif test.test.startswith(("F", "V2_")):
             parts.append(f"{test.experiment} {item.get('bets')}/{item['checkpoint']['bets']} 注"
                          + (" ✅" if item.get("ready") else ""))
-        elif test.test in ("M", "S2"):
+        elif test.test in ("M", "S2", "RC"):
             parts.append(f"{test.experiment} {item.get('days')}/{item['checkpoint']['days']} 日、"
                          f"{item.get('flagged_legs')}/{item['checkpoint']['flagged_legs']} 腿"
                          + (" ✅" if item.get("ready") else ""))

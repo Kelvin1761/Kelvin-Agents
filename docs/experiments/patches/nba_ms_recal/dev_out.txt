@@ -1,0 +1,5 @@
+dev 7903 legs / 7 days; holdout 13991 / 12 days
+p_final LODO log-loss 0.4494
+R1: 0.4506  Δ vs p_final +0.0012 [-0.0001, +0.0028]
+R2: 0.4493  Δ vs p_final -0.0001 [-0.0009, +0.0013]
+R3: 0.4503  Δ vs p_final +0.0009 [-0.0003, +0.0023]
