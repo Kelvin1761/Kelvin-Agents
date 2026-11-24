@@ -385,6 +385,17 @@ def extract_trackwork_meeting(base_url, races, output_dir, date_prefix):
     return results
 
 
+def update_barrier_trials():
+    """試閘表更新：非致命。測試入面（pytest）或者 WC_SKIP_TRIAL_UPDATE=1 唔跑 —— 否則 gate 測試會真係上網兼寫本機資料根。"""
+    if os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("WC_SKIP_TRIAL_UPDATE") == "1":
+        return False
+    try:
+        subprocess.run([sys.executable, os.path.join(SKILL_DIR, 'extract_barrier_trials.py')], timeout=1800, check=False)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        print(f"⚠️ 試閘更新失敗：{exc}")
+    return True
+
+
 def main():
     parser = argparse.ArgumentParser(description="Batch extract HKJC race data")
     parser.add_argument("--base_url", required=True, help="Any racecard URL from the meeting")
@@ -484,11 +495,7 @@ def main():
             print(f"      {tw_results['error']}")
     print()
 
-    # Trial updates are optional and must not interrupt the racecard pipeline.
-    try:
-        subprocess.run([sys.executable, os.path.join(SKILL_DIR, 'extract_barrier_trials.py')], timeout=1800, check=False)
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        print(f"⚠️ 試閘更新失敗：{exc}")
+    update_barrier_trials()
 
     # Summary
     all_results.sort(key=lambda x: x['race'])
