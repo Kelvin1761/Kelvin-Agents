@@ -136,6 +136,9 @@ def default_scorer(row):
         + float(row.get("proven_class") or 0.0)
         + float(row.get("full_time", row.get("full_time_speed_feature", 0)) or 0.0)
         + float(row.get("draw", row.get("draw_feature", 0)) or 0.0)
+        # 2026-11-22／-24 實驗性上線嘅 overlay（以前漏咗，令 default_scorer ≠ live ability；EXP-20261124-40 Sol 覆核）
+        + float(row.get("old_horse") or 0.0) + float(row.get("trainer_residual") or 0.0)
+        + float(row.get("people_prize") or 0.0) + float(row.get("speed") or 0.0)
     )
 
 

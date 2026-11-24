@@ -37,6 +37,7 @@ from au_racing_engine.io_utils import write_text_atomic as _atomic_write_text
 from au_racing_engine.renderer import ensure_verdict, render_meeting_csv, validate_report_text, write_race_outputs
 from au_racing_engine.validation import validate_engine_scripts, validate_logic_data
 from au_racing_engine.full_time_speed import prepare_field
+from au_racing_engine import winning_time_speed as _wts
 
 
 def _condition_family(condition: str) -> str:
@@ -158,6 +159,12 @@ def score_logic_data(
         h.get("jockey") for h in logic_data.get("horses", {}).values()
         if isinstance(h, dict) and h.get("jockey")
     ]
+    # WinningTime 速度分 overlay（EXP-20261124-40）要全場速度；dump 工具用同一個函數（唔好再漏傳，EXP-20261123-06 教訓）。
+    _meeting_date = re.match(r"(\d{4}-\d{2}-\d{2})", logic_path.parent.name)
+    _race_digits = re.search(r"\d+", str(race_number or ""))
+    race_context["field_speeds"] = _wts.prepare_field(
+        logic_data, logic_path.parent, int(_race_digits.group(0)) if _race_digits else 0,
+        _meeting_date.group(1) if (_meeting_date and _race_digits) else "")   # 冇日期／場號 = 冇速度分（中性）
     for horse_num, horse in logic_data.get("horses", {}).items():
         # Inject the saddlecloth number (it is the dict key, not a field) so the
         # engine can match the horse to its speed-map pace role / settling pattern.

@@ -97,6 +97,11 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 "scheduler 夠數會用 log-loss 尺 v2 判一次並凍結；睇 au-fq-floor-forward-status.json："
                 "F1 rollback_recommended=true 就建議 WC_AU_FQ_SD_FLOOR_LIVE=0（要你決定）",
                 status_file="au-fq-floor-forward-status.json"),
+    ForwardTest("speed_live", "WinningTime 速度分（0.5 × 場內 z）上線退回監察：上線版 vs 冇速度分",
+                "EXP-20261124-42", "status_file", 1000, "場",
+                "scheduler 夠數會用 log-loss 尺 v2 判一次並凍結；睇 au-speed-forward-status.json："
+                "SPEED rollback_recommended=true（機率變差、AUC 護欄唔過、或者 Gold／Good 都跌）就建議 WC_AU_SPEED_LIVE=0（要你決定）",
+                status_file="au-speed-forward-status.json"),
 )
 
 _S2_DAYS = re.compile(r"forward days with snapshot \+ results:\s*(\d+)\s*/\s*(\d+)")

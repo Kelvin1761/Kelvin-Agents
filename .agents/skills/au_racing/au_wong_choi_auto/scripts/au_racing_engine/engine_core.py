@@ -15,6 +15,7 @@ from .preparation_cycle import preparation_cycle
 from .full_time_speed import contribution as full_time_contribution
 from . import pit as _pit
 from . import speed as _speed
+from . import winning_time_speed as _wts
 from . import class_rating as _class
 from . import draw as _draw
 from . import stability as _stab
@@ -854,8 +855,11 @@ class RacingEngine(NarrativeMixin):
         people_prize_feature = _people.prize_feature(
             self._clean_identity(self.horse_data.get("jockey")), self._clean_identity(self.horse_data.get("trainer")),
             self.race_context.get("field_jockeys"), self.race_context.get("field_trainers"), meeting_date)
+        # 實驗性上線（Kelvin 2026-11-24，EXP-20261124-40，forward 退回監察）：WinningTime 速度分 0.5 × 場內 z。
+        speed_detail = {**(self.horse_data.get("winning_time_speed") or {}), "live": _wts.speed_live()}
+        speed_feature = _wts.feature(speed_detail.get("speed"), self.race_context.get("field_speeds"))
         ability_score = round(base_ability + full_time_feature + draw_feature
-                              + old_horse_feature + trainer_residual_feature + people_prize_feature, 4)
+                              + old_horse_feature + trainer_residual_feature + people_prize_feature + speed_feature, 4)
         grade = compute_grade(ability_score)
 
         data_coverage = self._data_coverage()
@@ -877,6 +881,7 @@ class RacingEngine(NarrativeMixin):
             old_horse_feature=old_horse_feature,
             trainer_residual_feature=trainer_residual_feature,
             people_prize_feature=people_prize_feature,
+            winning_time_speed_feature=speed_feature,
         )
 
         return {
@@ -896,6 +901,8 @@ class RacingEngine(NarrativeMixin):
             "trainer_residual_feature": trainer_residual_feature,
             "people_prize_feature": people_prize_feature,
             "people_prize_leaf_delta": people_prize_leaf_delta,
+            "winning_time_speed_feature": speed_feature,
+            "winning_time_speed_detail": speed_detail,
             # EXP-20261009-04 回退影子：class_score 入 class_weight 對綜合分嘅貢獻。
             # 舊公式分數 = 綜合分 − 呢個數（矩陣冇 clip 嗰陣逐位一樣）。
             "class_score_live_delta": round(

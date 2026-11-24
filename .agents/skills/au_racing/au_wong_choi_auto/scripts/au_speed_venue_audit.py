@@ -22,7 +22,6 @@ import csv
 import json
 import math
 import random
-import re
 import statistics
 import sys
 from collections import defaultdict
@@ -41,12 +40,11 @@ from eval_metrics import race_metrics  # noqa: E402
 from sb_backfill_archive import scored_meeting_index  # noqa: E402
 
 
-RUN_RE = re.compile(
-    r"^(?P<track>.+?)\sR(?P<race>\d+)\s+(?P<date>\d{4}-\d{2}-\d{2})\s+"
-    r"(?P<distance>\d+)m\s+cond:(?P<condition>\S+)"
+# 速度分公式唯一位置：引擎 `au_racing_engine/winning_time_speed.py`（EXP-20261124-40 上線時搬過去）。
+from au_racing_engine.winning_time_speed import (  # noqa: E402,F401 —— re-export 畀 monitor／舊工具
+    MARGIN_RE, RUN_RE, WT_RE, GLOBAL_SPEED_K, SPEED_MIN_CELL_RACES, SPEED_MIN_GOING_RACES, SPEED_MIN_RUNNER_RUNS,
+    build_asof_standards, collect_reference as _collect_reference, parse_run, runner_speed_best3, zscores as _zs,
 )
-WT_RE = re.compile(r"WinningTime:(?:(\d+):)?([\d.]+)")
-MARGIN_RE = re.compile(r"margin:(-?[\d.]+)L?")
 METRICS = (
     "gold",
     "good_positional",
@@ -54,112 +52,12 @@ METRICS = (
     "champion",
     "winner_in_top3",
 )
-GLOBAL_SPEED_K = 0.5
-SPEED_MIN_CELL_RACES = 10
-SPEED_MIN_GOING_RACES = 40
-SPEED_MIN_RUNNER_RUNS = 3
 
-
-def parse_run(line: str) -> dict | None:
-    match = RUN_RE.match(line)
-    winning_time = WT_RE.search(line)
-    if not match or not winning_time or "**(TRIAL)**" in line:
-        return None
-    seconds = float(winning_time.group(2))
-    if winning_time.group(1):
-        seconds += int(winning_time.group(1)) * 60
-    if not 25.0 < seconds < 260.0:
-        return None
-    margin = MARGIN_RE.search(line)
-    return {
-        "track": match.group("track").strip(),
-        "race": int(match.group("race")),
-        "date": match.group("date"),
-        "distance": int(match.group("distance")),
-        "condition": match.group("condition"),
-        "winning_time": seconds,
-        "margin": float(margin.group(1)) if margin else 0.0,
-    }
 
 
 def collect_reference_races(root: Path) -> tuple[list[dict], int]:
     """Deduplicate race-level winning times repeated across horse form lines."""
-    unique: dict[tuple, dict] = {}
-    conflicts = 0
-    for formguide in root.rglob("*Formguide.md"):
-        text = formguide.read_text(encoding="utf-8", errors="replace")
-        for line in text.splitlines():
-            run = parse_run(line)
-            if run is None:
-                continue
-            key = (run["track"], run["date"], run["race"], run["distance"])
-            previous = unique.get(key)
-            if previous and previous["winning_time"] != run["winning_time"]:
-                conflicts += 1
-                continue
-            unique.setdefault(key, run)
-    return sorted(unique.values(), key=lambda row: row["date"]), conflicts
-
-
-def build_asof_standards(observations: list[dict], target_dates: list[str]) -> dict:
-    """For date D, fit every median using race observations strictly before D."""
-    history: list[dict] = []
-    cursor = 0
-    output = {}
-    for target_date in sorted(set(target_dates)):
-        while cursor < len(observations) and observations[cursor]["date"] < target_date:
-            history.append(observations[cursor])
-            cursor += 1
-        per_cell: dict[tuple, list[float]] = defaultdict(list)
-        for row in history:
-            per_cell[(row["track"], row["distance"])].append(row["winning_time"])
-        base = {
-            key: statistics.median(values)
-            for key, values in per_cell.items()
-            if len(values) >= SPEED_MIN_CELL_RACES
-        }
-        deviations: dict[str, list[float]] = defaultdict(list)
-        for row in history:
-            standard = base.get((row["track"], row["distance"]))
-            if standard is not None:
-                deviations[row["condition"]].append(row["winning_time"] - standard)
-        going = {
-            condition: statistics.median(values)
-            for condition, values in deviations.items()
-            if len(values) >= SPEED_MIN_GOING_RACES
-        }
-        output[target_date] = (base, going, len(history))
-    return output
-
-
-def runner_speed_best3(block: str, standards: tuple[dict, dict, int], target_date: str) -> float | None:
-    base, going, _ = standards
-    figures = []
-    for line in block.splitlines():
-        run = parse_run(line)
-        if run is None or run["date"] >= target_date:
-            continue
-        standard = base.get((run["track"], run["distance"]))
-        if standard is None:
-            continue
-        seconds_per_length = 2.4 / (run["distance"] / run["winning_time"])
-        own_time = run["winning_time"] + run["margin"] * seconds_per_length
-        adjusted = own_time - standard - going.get(run["condition"], 0.0)
-        figures.append(-adjusted / (run["distance"] / 1000.0))
-    if len(figures) < SPEED_MIN_RUNNER_RUNS:
-        return None
-    return sum(sorted(figures)[-3:]) / 3.0
-
-
-def _zs(values: list[float | None]) -> list[float]:
-    available = [value for value in values if value is not None]
-    if len(available) < 2:
-        return [0.0] * len(values)
-    average = statistics.mean(available)
-    spread = statistics.pstdev(available)
-    if spread <= 0:
-        return [0.0] * len(values)
-    return [0.0 if value is None else (value - average) / spread for value in values]
+    return _collect_reference(root)
 
 
 def load_races(root: Path, clean_from: str, standards_by_date: dict) -> list[dict]:

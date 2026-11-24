@@ -67,6 +67,7 @@ def race_rows(logic, result_rows):
                "old_horse": float(auto.get("old_horse_feature") or 0.0),
                "trainer_residual": float(auto.get("trainer_residual_feature") or 0.0),
                "people_prize": float(auto.get("people_prize_feature") or 0.0),
+               "speed": float(auto.get("winning_time_speed_feature") or 0.0),   # EXP-20261124-40
                "people_prize_leaf": float(auto.get("people_prize_leaf_delta") or 0.0),
                "features": dict(features), "keys": sorted(k for k in tag_keys(auto) if k)}
         row["ability"] = exact_score(row, MATRIX_WEIGHTS)

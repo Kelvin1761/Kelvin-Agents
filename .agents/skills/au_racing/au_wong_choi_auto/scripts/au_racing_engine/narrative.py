@@ -494,7 +494,8 @@ class NarrativeMixin:
                                            feature_notes=None, wet_form_feature=0.0,
                                            class_proof_feature=0.0, full_time_speed_feature=0.0,
                                            draw_feature=0.0, old_horse_feature=0.0,
-                                           trainer_residual_feature=0.0, people_prize_feature=0.0):
+                                           trainer_residual_feature=0.0, people_prize_feature=0.0,
+                                           winning_time_speed_feature=0.0):
         """Generate the six-dimension ranking walkthrough.
 
         ``base_7d_score`` is retained as a legacy archive field name.  The live
@@ -525,7 +526,8 @@ class NarrativeMixin:
         # 睇：「呢匹馬場地／地況總共攞幾多」。純顯示，唔改任何分數。
         overlay_values = {"track": ("濕地往績調整", wet_form_feature),
                           "class_weight": ("高班實績證明", class_proof_feature),  # 已剷（EXP-20261113-22）→ 0，唔會出
-                          "pace_perf": ("逐駒全程速度", full_time_speed_feature),
+                          "pace_perf": ("逐駒全程速度＋頭馬時間速度分",
+                                        float(full_time_speed_feature or 0) + float(winning_time_speed_feature or 0)),
                           "race_shape": ("大場次檔位", draw_feature),
                           "stability": ("老馬調整", old_horse_feature),
                           "jockey_trainer": ("練馬師剩餘表現＋騎練總獎金",
@@ -550,7 +552,8 @@ class NarrativeMixin:
             f"濕地往績調整 {float(wet_form_feature):+.2f}；"
             + (f"高班實績證明 {float(class_proof_feature):+.2f}；" if abs(float(class_proof_feature or 0)) >= 0.005 else "")
             + f"逐駒全程速度 {float(full_time_speed_feature):+.4f}；"
-            f"大場次檔位 {float(draw_feature):+.2f}；"
+            + (f"頭馬時間速度分 {float(winning_time_speed_feature):+.2f}；" if abs(float(winning_time_speed_feature or 0)) >= 0.005 else "")
+            + f"大場次檔位 {float(draw_feature):+.2f}；"
             + (f"老馬調整 {float(old_horse_feature):+.2f}；" if abs(float(old_horse_feature or 0)) >= 0.005 else "")
             + (f"練馬師剩餘表現 {float(trainer_residual_feature):+.2f}；" if abs(float(trainer_residual_feature or 0)) >= 0.005 else "")
             + (f"騎練總獎金 {float(people_prize_feature):+.2f}；" if abs(float(people_prize_feature or 0)) >= 0.005 else "")

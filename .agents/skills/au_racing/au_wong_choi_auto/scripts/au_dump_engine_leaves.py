@@ -137,6 +137,8 @@ def main():
             # dump 入面 trainer_residual 永遠 0，baseline 唔係 live）。
             ctx["field_trainers"] = [h.get("trainer") for h in horses.values() if isinstance(h, dict) and h.get("trainer")]
             ctx["field_jockeys"] = [h.get("jockey") for h in horses.values() if isinstance(h, dict) and h.get("jockey")]
+            from au_racing_engine import winning_time_speed as _wts
+            ctx["field_speeds"] = _wts.prepare_field(logic, meeting_dir, int(race_no), date)   # 同 orchestrator 一致（EXP-20261124-40）
 
             out_rows = []
             for hnum, horse in horses.items():
@@ -170,6 +172,7 @@ def main():
                     "old_horse": float(res.get("old_horse_feature") or 0.0),
                     "trainer_residual": float(res.get("trainer_residual_feature") or 0.0),
                     "people_prize": float(res.get("people_prize_feature") or 0.0),
+                    "speed": float(res.get("winning_time_speed_feature") or 0.0),
                     "ability": float(res.get("ability_score") or 0.0),
                     # 分層用（唔入分）：初出／休後實驗要喺同一份 dump 切 cohort。
                     "career_starts": hd.get("career_race_starts"),

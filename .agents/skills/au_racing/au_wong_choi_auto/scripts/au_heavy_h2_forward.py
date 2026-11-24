@@ -112,7 +112,8 @@ def race_rows(logic, result_rows):
                "draw": float(auto.get("draw_feature") or 0.0),
                "old_horse": float(auto.get("old_horse_feature") or 0.0),
                "trainer_residual": float(auto.get("trainer_residual_feature") or 0.0),
-               "people_prize": float(auto.get("people_prize_feature") or 0.0)}
+               "people_prize": float(auto.get("people_prize_feature") or 0.0),
+               "speed": float(auto.get("winning_time_speed_feature") or 0.0)}   # EXP-20261124-40
         cand_features = dict(features)
         if number in h2:
             cand_features["form_quality_score"] = h2[number]

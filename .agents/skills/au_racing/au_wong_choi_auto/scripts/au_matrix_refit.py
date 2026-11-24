@@ -112,7 +112,9 @@ class Dataset:
         self.wet = np.array([float(r["wet"] or 0.0) for r in self.rows])
         self.fixed_overlays = np.array(
             [float(r.get("proven_class") or 0.0) + float(r.get("full_time", r.get("full_time_speed_feature", 0)) or 0.0)
-             + float(r.get("draw", r.get("draw_feature", 0)) or 0.0) for r in self.rows]
+             + float(r.get("draw", r.get("draw_feature", 0)) or 0.0)
+             + float(r.get("old_horse") or 0.0) + float(r.get("trainer_residual") or 0.0)   # 同 live ability 一致
+             + float(r.get("people_prize") or 0.0) + float(r.get("speed") or 0.0) for r in self.rows]
         )
         self.engine_ability = np.array([float(r["ability"]) for r in self.rows])
         # raw[k] = clip(60 + Σ inner·(leaf−60))，即係食 gain 之前嘅維度分。

@@ -122,10 +122,20 @@ def evaluate(baseline, candidate, *, nnull=200, seed=0, version=CURRENT):
     """→ {"verdict": PASS|REJECT, "reason", 數字…}。baseline／candidate 係已經 `eligible` 過、同次序嘅場次。
 
     version="v2"（預設，2026-11-23）／"v1"（2026-11-21，重現舊判決同舊 forward）。"""
-    if version not in ("v1", "v2"):
+    if version not in ("v1", "v2", "v2.1"):
         raise ValueError(f"unknown ruler version {version!r}")
     if [(r["meeting"], r["race"]) for r in baseline] != [(r["meeting"], r["race"]) for r in candidate]:
         raise ValueError("baseline／candidate 場次唔一致")
+    # v2.1（EXP-20261124-41，研究選項，未做預設）：校準同 v2 一樣；分別只係 null 同埋逐匹對齊檢查。
+    requested = version
+    fixed_null = version == "v2.1"
+    if fixed_null:
+        for b, c in zip(baseline, candidate):
+            nb = [x.get("n", x.get("name")) for x in b["rows"]]
+            nc = [x.get("n", x.get("name")) for x in c["rows"]]
+            if nb != nc:
+                raise ValueError(f"{b['meeting']} R{b['race']}：baseline／candidate 匹馬次序唔一致")
+        version = "v2"
     cb, cc = calibrations(baseline, version), calibrations(candidate, version)
     rows = []
     for b, c in zip(baseline, candidate):
@@ -152,8 +162,15 @@ def evaluate(baseline, candidate, *, nnull=200, seed=0, version=CURRENT):
     bl, bm = np.array(bl), np.array(bm)
     d = dl.sum() / nn.sum()
     null = []
+    # v2.1：冇郁到嘅場次，佢喺實際 Δ 入面仍然有「兩邊各自校準」嘅差；洗牌一堆 0 都係 0，所以佢喺 null 嘅貢獻
+    # 同實際一模一樣 —— v2 漏咗呢份（直接 continue），令 null 同實際唔係同一把尺（Sol 覆核 2026-11-24）。
+    unchanged = 0.0
+    if fixed_null:
+        for b, c, day, dlt, *_ in rows:
+            if not np.array([y["ability"] - x["ability"] for x, y in zip(b["rows"], c["rows"])]).any():
+                unchanged += dlt
     for _ in range(nnull):
-        tot = 0.0
+        tot = unchanged
         for b, c, day, *_ in rows:
             delta = np.array([y["ability"] - x["ability"] for x, y in zip(b["rows"], c["rows"])])
             if not delta.any():
@@ -174,7 +191,7 @@ def evaluate(baseline, candidate, *, nnull=200, seed=0, version=CURRENT):
               "beats_null": bool(len(null) and (null > d).mean() >= NULL_SHARE)}
     failed = [k for k, ok in checks.items() if not ok]
     return {"verdict": "REJECT" if failed else "PASS", "reason": failed[0] if failed else "logloss_supported_gain",
-            "version": version, "checks": checks, "races": len(rows), "days": len(days),
+            "version": requested, "checks": checks, "races": len(rows), "days": len(days),
             "dlogloss": [d, float(np.percentile(bl, 2.5)), float(np.percentile(bl, 97.5))],
             "beats_null_share": float((null > d).mean()) if len(null) else None,
             "gold_pp": [float(pt[0]), float(lo[0])], "good_pp": [float(pt[1]), float(lo[1])],
