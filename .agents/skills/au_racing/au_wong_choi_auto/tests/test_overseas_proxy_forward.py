@@ -20,6 +20,12 @@ class WithoutProxyScoreTests(unittest.TestCase):
         detail = {"raw": 0.8, "run_count": 4, "field_count": 12, "field_mean": 0.5, "field_stdev": 0.3}
         self.assertAlmostEqual(without_proxy_score({}, detail), 80.0)
 
+    def test_sd_floor_follows_how_the_race_was_scored(self) -> None:
+        # F1（EXP-20261124-20）：新 code 評分嘅場次 detail 有 sd_floor → 照用；舊場次冇 → 唔用。
+        detail = {"raw": 0.8, "run_count": 4, "field_count": 12, "field_mean": 0.5, "field_stdev": 0.1}
+        self.assertAlmostEqual(without_proxy_score({}, detail), 100.0)
+        self.assertAlmostEqual(without_proxy_score({}, {**detail, "sd_floor": 0.3065}), 60 + 20 * 0.3 / 0.3065, places=5)
+
     def test_composite_fallback_when_too_few_runs(self) -> None:
         detail = {"raw": 0.8, "run_count": 1, "field_count": 12, "field_mean": 0.5, "field_stdev": 0.3}
         features = {"form_score": 70.0, "performance_quality_score": 50.0}

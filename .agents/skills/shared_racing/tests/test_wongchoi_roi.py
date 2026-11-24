@@ -26,7 +26,7 @@ def test_board_shows_only_bets_hits_roi_and_pct_for_every_wong_choi(tmp_path):
     text = roi.render(updated="tennis", today="2026-11-05", path=path)
     assert text.splitlines()[0] == "📊 旺財 ROI｜2026-11-05"
     assert "🆕 啱啱結算：🎾 網球" in text
-    assert "🇦🇺 AU 賽馬\n  昨日（11-04）：8 注｜中 5｜ROI +1.20u｜+15.0%" in text
+    assert "🇦🇺 AU 賽馬位注（紙上盤）\n  昨日（11-04）：8 注｜中 5｜ROI +1.20u｜+15.0%" in text
     assert "  累計（2026-08-12 起）：18 注｜中 9｜ROI −1.30u｜−7.2%" in text
     # 冇紀錄嘅旺財照列，等兩個人知佢未有數，唔係漏咗。
     assert "🏀 NBA SGM（只追蹤，唔計入合共）\n  未有紀錄" in text

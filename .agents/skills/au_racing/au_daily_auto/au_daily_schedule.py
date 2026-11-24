@@ -113,6 +113,7 @@ DEBUT_NEUTRAL_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_debut_n
 LPOS_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_lpos_forward.py"
 AGE_UPNIL_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_age_upnil_forward.py"
 PR1_SHADOW_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_pr1_shadow_forward.py"
+FQ_FLOOR_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_fq_floor_forward.py"
 TRAINER_RESIDUAL_TABLE = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_trainer_residual_table.py"
 PEOPLE_PRIZE_TABLE = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_people_prize_table.py"
 GENERATE_STATIC = DASHBOARD_DIR / "generate_static.py"
@@ -1736,6 +1737,35 @@ def step_pr1_shadow_forward(runlog: RunLog) -> bool:
         runlog.step("pr1-shadow-forward", "failed", detail=str(exc))
         return False
     runlog.step("pr1-shadow-forward", status.get("state", "unknown"), races=status.get("races_collected", 0),
+                target=status.get("target_races"))
+    return True
+
+
+def step_fq_floor_forward(runlog: RunLog) -> bool:
+    """EXP-20261124-20 近績質素分 SD 下限（F1，2026-11-24 上線）退回監察：上線版 vs 冇下限。
+    11-25 起夠 1,000 場用 log-loss 尺 v2 判一次並凍結；未夠數只報數量。失敗唔阻 live，永遠唔會自動改模型。"""
+    try:
+        return _step_fq_floor_forward(runlog)
+    except Exception as exc:  # noqa: BLE001 — forward 監察點都唔可以截停晚更
+        runlog.step("fq-floor-forward", "failed", detail=f"{type(exc).__name__}: {exc}")
+        return False
+
+
+def _step_fq_floor_forward(runlog: RunLog) -> bool:
+    status_path = WORK_DIR / "au-fq-floor-forward-status.json"
+    rc, out = run_cmd([sys.executable, str(FQ_FLOOR_FORWARD), "--data-root", str(AU_RACING),
+                       "--output", str(status_path)], timeout=1800)
+    if rc != 0 or not status_path.exists():
+        detail = error_excerpt(out, rc)
+        runlog.warn(f"近績 SD 下限 forward 更新失敗（唔影響 live）：{detail}")
+        runlog.step("fq-floor-forward", "failed", detail=detail)
+        return False
+    try:
+        status = json.loads(status_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        runlog.step("fq-floor-forward", "failed", detail=str(exc))
+        return False
+    runlog.step("fq-floor-forward", status.get("state", "unknown"), races=status.get("races_collected", 0),
                 target=status.get("target_races"))
     return True
 
@@ -4599,6 +4629,7 @@ def run_evening(runlog: RunLog, args, review_day: date) -> int:
         step_lpos_forward(runlog)
         step_age_upnil_forward(runlog)
         step_pr1_shadow_forward(runlog)
+        step_fq_floor_forward(runlog)
         step_sb_betfair_forward(runlog)
         step_forward_tracker(runlog)
     publisher = None

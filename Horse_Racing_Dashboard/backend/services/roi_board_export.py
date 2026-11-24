@@ -22,7 +22,7 @@ LEDGER_NAME = "roi_board.json"
 
 # Display order + where each number comes from (shown under each card).
 DOMAINS = (
-    ("au", "AU 賽馬", "au_betting 位注策略（平注 1u）"),
+    ("au", "AU 賽馬（紙上盤）", "au_betting 位注策略紙上盤（平注 1u；2026-11-24 起唔建議落真錢）"),
     ("nba", "NBA SGM", "dashboard tracking（21:00 穩膽 $1）"),
     ("nba_featured", "NBA 大細盤精選", "大細盤精選紙上盤（平注 1u，2026-11-11 起）"),
     ("tennis", "網球", "精選紙上盤（平注 1u）"),

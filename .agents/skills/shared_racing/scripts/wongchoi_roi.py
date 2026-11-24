@@ -40,7 +40,7 @@ HERE = Path(__file__).resolve().parent
 
 # 顯示次序 = 呢個 tuple 嘅次序。加新旺財只要加一行。
 DOMAINS: tuple[tuple[str, str], ...] = (
-    ("au", "🇦🇺 AU 賽馬"),
+    ("au", "🇦🇺 AU 賽馬位注（紙上盤）"),
     ("nba", "🏀 NBA SGM"),
     ("nba_featured", "🏀 NBA 大細盤精選（紙上盤）"),
     ("tennis", "🎾 網球"),

@@ -3104,6 +3104,9 @@ class RacingEngine(NarrativeMixin):
         stdev = parse_float(summary.get("form_quality_field_stdev")) or 0.0
         self.form_quality_detail = {"raw": raw, "run_count": runs, "field_count": count,
                                     "field_mean": mean, "field_stdev": stdev,
+                                    # 記低評分時嘅 SD 下限（EXP-20261124-20），海外代理／fallback 都記，
+                                    # 咁 forward 重砌反事實先知當時有冇用下限。
+                                    "sd_floor": _stab.SD_FLOOR if _stab.sd_floor_live() else 0.0,
                                     "runs": self.data.get("form_quality_runs") or []}
         proxy = self._overseas_form_quality_proxy()
         if proxy is not None:

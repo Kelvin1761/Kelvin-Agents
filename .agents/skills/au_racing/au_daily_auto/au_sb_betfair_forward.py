@@ -153,9 +153,9 @@ def _results(folder: Path) -> dict:
     parts = re.split(r"^## Race (\d+)\s*$", res.read_text(errors="replace"), flags=re.M)
     out = {}
     for i in range(1, len(parts), 2):
-        found = B.RE_SP.findall(parts[i + 1])
+        found = B.RE_FINISH.findall(parts[i + 1])   # 冇 SP 嘅完成馬都要計（唔係退出）
         if found:
-            out[int(parts[i])] = {int(n): int(pos) for pos, n, _p in found}
+            out[int(parts[i])] = {int(n): int(pos) for pos, n in found}
     return out
 
 
@@ -176,7 +176,7 @@ def settle(rows: list[dict], folders: dict) -> list[dict]:
             continue
         fin = placings[r["num"]]
         pays = R.places_paid(R.field_size(folder, r["race"]))
-        s = dict(r, overlay=r["sb_place"] / r["bf_place"] >= OVERLAY_RATIO, placed=fin <= pays, won=fin == 1)
+        s = dict(r, overlay=r["sb_place"] / r["bf_place"] >= OVERLAY_RATIO, placed=1 <= fin <= pays, won=fin == 1)
         s["place_return"] = s["sb_place"] if s["placed"] else 0.0
         s["win_return"] = (s["sb_win"] or 0.0) if s["won"] else 0.0
         out.append(s)

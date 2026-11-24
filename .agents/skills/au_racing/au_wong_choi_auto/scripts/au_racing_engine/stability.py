@@ -5,7 +5,7 @@
         z_獎金 = (log10 獎金 − 4.5863) / 0.3544
         z_獎金 > 0 時乘 (1 − 名次百分位)：頭馬攞足、最尾攞 0（EXP-20261105-05 C2）
     raw   = 最近 6 場完整正式賽，權重 1.0／0.8／0.6／0.4／0.3／0.2 嘅加權平均（最少 2 場）
-    分數  = 60 + 20 × 場內 z（raw）
+    分數  = 60 + 20 × 場內 z（raw）；z 嘅除數 = max(場內 SD, 0.3065)（EXP-20261123-06 F1，2026-11-24 上線）
     資料唔夠（本駒少過 2 場、全場少過 3 匹有 raw、或者場內冇差異）→ 0.6 × 近績分 + 0.4 × 表現質素分
     英愛法往績為主 → 官方評分代理（`overseas.py`，引擎負責）
     今場路程同最近一場合資格往績差 ≥ 400m → −5（EXP-20261016-71 F2）
@@ -25,6 +25,7 @@ refit arm Gold +1.89pp [+0.73, +3.12]、Good +1.75pp [+0.14, +3.55]。
 from __future__ import annotations
 
 import math
+import os
 import re
 
 from .scoring import clip_score
@@ -37,6 +38,14 @@ MIN_RUNS = 2
 MIN_FIELD = 3
 TRIP_CHANGE_M = 400.0
 TRIP_CHANGE_PEN = -5.0
+# 場內 SD 下限（EXP-20261111-31 F1；EXP-20261123-06 喺 log-loss 尺 v2 重建 PASS，Kelvin 2026-11-24 批准上線）。
+# 細 SD 場（例：成場近績差唔多）以前會將細差距放大成大分。0.3065 = 量度前凍結、只用賽前 raw，唔准調。
+# `WC_AU_FQ_SD_FLOOR_LIVE=0` 回退；forward 退回監察見 `au_fq_floor_forward.py`。
+SD_FLOOR = 0.3065
+
+
+def sd_floor_live():
+    return os.environ.get("WC_AU_FQ_SD_FLOOR_LIVE", "1") != "0"
 
 
 def digest(runs):
@@ -68,11 +77,13 @@ def composite(form, quality):
     return clip_score(60.0 + 0.6 * (clip_score(form) - 60.0) + 0.4 * (clip_score(quality) - 60.0))
 
 
-def field_z(raw, run_count, field_count, mean, stdev):
-    """場內 z；資料唔夠 → None。"""
+def field_z(raw, run_count, field_count, mean, stdev, *, floor=None):
+    """場內 z；資料唔夠 → None。除數 = max(場內 SD, floor)；floor 冇畀 = 上線設定（`SD_FLOOR`，或回退時 0）。"""
     if raw is None or run_count < MIN_RUNS or field_count < MIN_FIELD or mean is None or not stdev or stdev <= 0:
         return None
-    return (raw - mean) / stdev
+    if floor is None:
+        floor = SD_FLOOR if sd_floor_live() else 0.0
+    return (raw - mean) / max(stdev, floor)
 
 
 def trip_change(today_m, last_m):
@@ -104,10 +115,29 @@ def legacy_raw(runs):
                / 2 * float(r.get("weight") or 0.0) for r in rows) / total
 
 
-def score_without_proxy(features, detail):
-    """由已存嘅 feature 同 `form_quality` detail 重砌冇海外代理時嘅分數（forward 監察用）。"""
+def score_without_floor(features, detail):
+    """由已存嘅 feature 同 `form_quality` detail 重砌冇 SD 下限時嘅 `form_quality_score`（F1 退回監察用）。
+
+    海外代理（`overseas_rating_proxy`）同 fallback 組合唔受下限影響 → 照返已存分數。"""
+    stored = float(features.get("form_quality_score", 60))
+    if detail.get("overseas_rating_proxy") or detail.get("z") is None:
+        return round(stored, 6)
     z = field_z(detail.get("raw"), int(detail.get("run_count") or 0), int(detail.get("field_count") or 0),
-                detail.get("field_mean"), detail.get("field_stdev") or 0.0)
+                detail.get("field_mean"), detail.get("field_stdev") or 0.0, floor=0.0)
+    if z is None:
+        return round(stored, 6)
+    score = clip_score(60.0 + 20.0 * z)
+    if detail.get("trip_change"):
+        score = clip_score(score + TRIP_CHANGE_PEN)
+    return round(score, 6)
+
+
+def score_without_proxy(features, detail):
+    """由已存嘅 feature 同 `form_quality` detail 重砌冇海外代理時嘅分數（forward 監察用）。
+
+    SD 下限跟返嗰場評分時用嘅（`sd_floor`；F1 上線前嘅場次冇呢欄 = 冇下限），咁舊 forward 嘅 baseline 唔會靜靜郁。"""
+    z = field_z(detail.get("raw"), int(detail.get("run_count") or 0), int(detail.get("field_count") or 0),
+                detail.get("field_mean"), detail.get("field_stdev") or 0.0, floor=float(detail.get("sd_floor") or 0.0))
     score = (composite(features.get("form_score", 60), features.get("performance_quality_score", 60))
              if z is None else clip_score(60.0 + 20.0 * z))
     if detail.get("trip_change"):

@@ -37,6 +37,9 @@ RE_LABEL = re.compile(r"^## Race (\d+)\s*$\n- Performance label", re.M)
 RE_TOP3 = re.compile(r"^- Model Top 3: (.+)$", re.M)
 RE_HORSE = re.compile(r"#(\d+)\s+([^,#]+?)(?=,|$)")
 RE_SP = re.compile(r"^(\d+)(?:st|nd|rd|th):\s*#(\d+)\s+.*?SP\$([\d.]+)", re.M)
+# 完成名次唔可以靠 RE_SP：賽果檔有啲完成馬冇 SP（例：`9th: #8 Can't Touch This (7.03L)`），
+# 以前因此當咗「遲退出」退注（08-12→11-23 有 2 注，兩注都跑輸，令 ROI 報好咗少少）。
+RE_FINISH = re.compile(r"^(\d+)(?:st|nd|rd|th):\s*#(\d+)\b", re.M)
 RE_RANK = re.compile(r"^\|\s*(\d+)\s*\|\s*(\d+)\s*\|\s*([^|]+?)\s*\|", re.M)
 
 
@@ -193,21 +196,23 @@ def bet_list(day: str, which: str = "first") -> str | None:
     # ⚠️ 晚更嗰張係**觀察名單**，唔係落注單。Kelvin 2026-08-12 決定當朝落 ——
     # 前一晚落注等於喺唔知最終出賽名單之下鎖死價格，而退出馬會改變成場賽事嘅
     # 形勢。所以晚更嗰張要明確講「唔好落」，唔可以睇落似一張可以照抄嘅單。
-    tag = "落注單（當朝定價）" if which == "last" else "觀察名單"
+    # Kelvin 2026-11-24：轉做紙上盤（EXP-20261124-23）—— 08-12→11-23 2,379 注 ROI −22.3%，每個賠率段、
+    # 每個月、metro／非 metro 實際入位率都低過價錢隱含 7–10pp。照揀照結算照上 ROI 板，但唔再叫人落真錢。
+    tag = "紙上位注（當朝定價）" if which == "last" else "觀察名單"
     # 張單自己要講得出啲價幾時捕捉 —— 「當朝定價」呢個標題喺早更冇跑到嗰陣係
     # 錯嘅，而張單上面本身睇唔出分別。
     stale = sorted(x for x in tag_all if x not in MORNING_TAGS)
     if which == "last" and stale:
-        tag = "落注單（⚠️ 用緊前一晚嘅價）"
+        tag = "紙上位注（⚠️ 用緊前一晚嘅價）"
     head = "\n".join([
-        f"💰 {tag} {day}",
+        f"📝 {tag} {day}",
         f"{n_bets} 注 · 平注 · 只落{'贏' if MODE == 'win' else '位'}"
         + (f" · 👀 {n_watch} 隻差少少" if n_watch else ""),
         f"規則：頭兩選、{'贏' if MODE == 'win' else '位'}賠 ≥{MIN_ODDS:g}；"
         f"兩隻都合格但都低過 {SPREAD_ODDS:g} 就只落首選",
         ("⚠️ 呢張只係觀察 —— 唔好落，等當朝定價"
          if which == "first" else
-         "⚠️ 實測 ROI 為負，建議先紙上追蹤"),
+         "⚠️ 紙上盤：實測 ROI 一直為負（揀中率低過價錢隱含），唔建議落真錢；成績睇 ROI 板"),
         f"👀 ＝ 位賠 {WATCH_LOW:g}–{MIN_ODDS:g}，浮上 {MIN_ODDS:g} 就變一注",
     ] + ([f"賠率取自 {sorted(when_all)[0]}"] if when_all else [])
       + ([f"⚠️ 早更未跑到（快照：{'、'.join(stale)}）—— 呢啲係前一晚嘅價，"
@@ -254,9 +259,8 @@ def settle_data(day: str) -> dict | None:
         sp, finish = {}, {}
         for i in range(1, len(parts), 2):
             rno = int(parts[i])
-            found = RE_SP.findall(parts[i + 1])
-            sp[rno] = {int(n): float(p) for _pos, n, p in found}
-            finish[rno] = {int(n): int(pos) for pos, n, _p in found}
+            sp[rno] = {int(n): float(p) for _pos, n, p in RE_SP.findall(parts[i + 1])}
+            finish[rno] = {int(n): int(pos) for pos, n in RE_FINISH.findall(parts[i + 1])}
         m_stake = m_ret = 0.0
         hits, bets = [], []
         import au_reflect_notify as _R
@@ -284,7 +288,7 @@ def settle_data(day: str) -> dict | None:
                     continue
                 m_stake += STAKE
                 bets.append((r["race"], name, odds))
-                hit = (fin == 1) if MODE == "win" else fin <= pays
+                hit = (fin == 1) if MODE == "win" else 1 <= fin <= pays   # 名次 0 唔當上名
                 if hit:
                     # ⚠️ 派彩用**落注嗰刻捕捉嘅位賠**（固定賠率），唔係 SP。
                     got = sp.get(r["race"], {}).get(num, odds) if MODE == "win" \

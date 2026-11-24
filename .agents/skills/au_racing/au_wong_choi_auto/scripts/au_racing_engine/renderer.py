@@ -632,8 +632,11 @@ def _form_quality_detail_lines(d):
     if d.get("raw") is not None:
         lines.append(f"加權平均 ＝ {float(d['raw']):+.3f}")
     if d.get("z") is not None and d.get("field_mean") is not None:
+        sd_val = float(d.get("field_stdev") or 0)
+        floor = float(d.get("sd_floor") or 0)
+        floored = f"（成場差距細，用下限 {floor:.4f} 計，免得細差距放大成大分）" if floor and sd_val < floor else ""
         lines.append(f"同場 {int(d.get('field_count') or 0)} 匹有值：平均 {float(d['field_mean']):+.3f}、"
-                     f"標準差 {float(d.get('field_stdev') or 0):.3f} → 場內 z {float(d['z']):+.2f}"
+                     f"標準差 {sd_val:.3f}{floored} → 場內 z {float(d['z']):+.2f}"
                      f" → 60 ＋ 20z ＝ {float(d.get('final') or 0):.1f}（0-100 封頂）")
     trip = d.get("trip_change")
     if isinstance(trip, dict):

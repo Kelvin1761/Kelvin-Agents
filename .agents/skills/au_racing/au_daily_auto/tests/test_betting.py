@@ -158,6 +158,13 @@ class SettlementTests(unittest.TestCase):
         self.assertIn("1 注 · 中 1", text)      # 分母淨返一注，唔係兩注
         self.assertIn("ROI +150.0%", text)      # 2.5 回收 / 1 注
 
+    def test_a_finisher_without_sp_is_a_loser_not_a_refund(self):
+        # 賽果檔有啲完成馬冇 SP（`9th: #8 Can't Touch This (7.03L)`）—— 佢跑咗，唔係退出。
+        text = self._settle([(1, [(4, "Johnny Be Good", 2.5), (12, "No Sp Finisher", 3.0)])],
+                            results=RESULTS + "9th: #12 No Sp Finisher (7.03L)\n")
+        self.assertNotIn("注退回", text)
+        self.assertIn("2 注 · 中 1", text)
+
     def test_a_race_with_no_results_at_all_is_unsettled_not_lost(self):
         # 場次根本冇賽果 = 抽取未到，同「呢隻馬退出」係兩件事。
         text = self._settle([(1, [(4, "Johnny Be Good", 2.5)]),
