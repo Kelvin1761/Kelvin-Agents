@@ -787,6 +787,28 @@ def _foreign_tag(horse: dict) -> list[dict]:
                      "回放顯示外隊馬喺同一模型排名入位率高過本地馬（EXP-20261114-07）；未入分。")]
 
 
+def _trial_time_tag(horse, meta):
+    from . import debut_trainer
+    if not debut_trainer.is_debut(horse):
+        return []
+    auto = horse.get("python_auto") or {}
+    if "trial_time_delta" not in auto:
+        return []
+    info = auto.get("trial_time")
+    if not info:
+        return [_tag("trial_time", "未有試閘紀錄", "note")]
+    tf = info.get("tf")
+    if tf is None:
+        return [_tag("trial_time", "試閘：未有標準時間", "note")]
+    delta = auto.get("trial_time_delta")
+    tone = "good" if delta is not None and delta > 0 else "bad" if delta is not None and delta < 0 else "note"
+    direction = "快過" if tf >= 0 else "慢過"
+    label = f"試閘時間：{direction}標準 {abs(tf):.2f} 秒／公里（{info['date'][5:]} {info['track']} {info['dist']}米）"
+    return [_tag("trial_time", label, tone, scored=delta is not None,
+                 impact=round(delta, 2) if delta is not None else None,
+                 why=f"實驗性入分；調整 {delta:+.2f}" if delta is not None else "未入分")]
+
+
 def _debut_trainer_tag(horse: dict, meta: dict) -> list[dict]:
     """初出馬：練馬師初出紀錄（EXP-20261123-13 入分；Kelvin 2026-11-23 上線）。一個 chip，影響寫喺 impact。"""
     if not (horse.get("is_debut") or horse.get("debut_runner")) or not meta.get("date"):
@@ -1013,7 +1035,7 @@ def race_tags(logic_data: dict, meeting_dir: Path | None = None) -> dict:
         dims = [x for x in dims if x is not None]
         field_dim_mean = sum(dims) / len(dims) if len(dims) >= 2 else 0.0   # 得一匹（測試）= 冇對手可比
         for no, h in horses.items():
-            extra.setdefault(no, []).extend(_debut_trainer_tag(h, meta) + _foreign_tag(h) + _form_pattern_tags(h, meta)
+            extra.setdefault(no, []).extend(_debut_trainer_tag(h, meta) + _trial_time_tag(h, meta) + _foreign_tag(h) + _form_pattern_tags(h, meta)
                                             + _draw_tags(h, h["python_auto"], field_dim_mean) + _incident_tag(h["python_auto"])
                                             + _trainer_pattern_tags(h, meta, gear.get(no, [])))
             tp = {t["key"].split(":", 1)[1] for t in extra[no] if t["key"].startswith("trainer_pattern:")}

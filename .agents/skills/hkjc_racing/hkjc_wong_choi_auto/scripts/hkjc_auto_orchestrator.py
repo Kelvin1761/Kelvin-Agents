@@ -51,7 +51,7 @@ from hkjc_racing_engine import market_history
 from hkjc_racing_engine import draw_style
 from hkjc_racing_engine import incident_history, distance_move
 from hkjc_racing_engine import surface_move
-from hkjc_racing_engine import venue_distance, horse_age, performance_figure, debut_trainer, straight_figure
+from hkjc_racing_engine import venue_distance, horse_age, performance_figure, debut_trainer, straight_figure, barrier_trial
 from hkjc_racing_engine import thin_evidence, excuse_streak
 from hkjc_racing_engine.validation import validate_engine_scripts, validate_logic_data
 from wongchoi_paths import is_materialized_file
@@ -378,6 +378,9 @@ def _refresh_grade_transparency(horses):
         dtr = float(auto.get("debut_trainer_delta", 0.0) or 0.0)
         if dtr:
             adjustments.append({"key": "debut_trainer", "label": "初出馬練馬師初出紀錄", "raw": round(dtr, 2)})
+        tt = float(auto.get("trial_time_delta", 0.0) or 0.0)
+        if tt:
+            adjustments.append({"key": "trial_time", "label": "試閘時間（實驗性）", "raw": round(tt, 2)})
         sfg = float(auto.get("straight_figure_delta", 0.0) or 0.0)
         if sfg:
             adjustments.append({"key": "straight_figure", "label": "直路表現數字（實驗性）", "raw": round(sfg, 2)})
@@ -1189,6 +1192,7 @@ class HKJCAutoOrchestrator:
         debut_trainer.apply(horses, race_context)
         # 直路表現數字（EXP-20261123-18 SF，Kelvin 2026-11-24 實驗性上線）：初出馬之後、grade／排名之前
         straight_figure.apply(horses, race_context)
+        barrier_trial.apply(horses, race_context)
         _refresh_grade_transparency(horses)
         self._apply_7d_official_ranking(horses)
         # ensure_verdict owns the single deterministic ranking path, including

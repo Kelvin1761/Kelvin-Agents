@@ -20,6 +20,7 @@ URL = 'https://racing.hkjc.com/zh-hk/local/information/btresult?Date={}'
 
 
 def add_day(table, day, html):
+    table['schema'] = 2
     groups = barrier_trial.parse_trial_page(html)
     if not any(__import__('re').search(r'第\s*1\s*組', g['group']) for g in groups):
         if day not in table['empty']:
@@ -32,9 +33,9 @@ def add_day(table, day, html):
                 if row['time'] is None:
                     continue
                 margin = row['margin']
-                record = [day, min(margin, 15) if margin is not None else None]
+                record = [day, min(margin, 15) if margin is not None else None, group['track'], group['dist'], group['going'], row['time']]
                 entries = table['trials'].setdefault(row['code'], [])
-                if record not in entries:
+                if not any(len(e) >= 6 and (e[0], e[2], e[3], e[5]) == (day, group['track'], group['dist'], row['time']) for e in entries):
                     entries.append(record)
     if day not in table['scraped']:
         table['scraped'].append(day)

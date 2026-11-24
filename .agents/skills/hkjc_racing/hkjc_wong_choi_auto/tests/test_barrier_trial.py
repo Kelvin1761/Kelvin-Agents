@@ -29,3 +29,33 @@ def test_parse_trial_page():
     assert len(g) == 1 and [r["code"] for r in g[0]["rows"]] == ["A123", "B456"]
     assert g[0]["rows"][0]["margin"] == 0.0 and g[0]["rows"][1]["margin"] == 0.1
     assert abs(g[0]["rows"][0]["time"] - 68.84) < 1e-9
+
+
+def test_figure_day_fallback_cap_and_old_records():
+    table = {'trials': {f'X{i:03}': [['2026-01-01', 0, '草地', 1000, '好', 60.0]] for i in range(30)}}
+    table['trials']['A123'] = [['2026-01-01', 0, '草地', 1000, '好', 60], ['2026-01-02', 0, '草地', 1000, '黏', 65]]
+    table['trials']['B123'] = [['2026-01-01', 3]]
+    figures = bt.trial_figures(table)
+    assert figures['A123'] == [('2026-01-01', None), ('2026-01-02', -3.0)]
+    assert bt.trial_figures(table) is figures
+    assert bt.last_trial_figure('A123', '2026-01-02', table) == ('2026-01-01', None, '草地', 1000)
+    assert bt.last_trial_figure('B123', '2026-01-02', table) == ('2026-01-01', None, None, None)
+    assert bt.last_trial_figure('A123', '2026-01-03', table)[1] == -3
+
+
+def test_parse_metadata():
+    html = '<table><tr><td>第 1 組 - 草地 - 1000米</td></tr><tr><td>場地狀況: 好地</td></tr><tr><td>分段時間: 23.4 24.5</td></tr></table>'
+    g = bt.parse_trial_page(html)[0]
+    assert (g['track'], g['dist'], g['going'], g['splits']) == ('草地', 1000, '好地', [23.4, 24.5])
+
+
+def test_adjustments_center_and_disabled(monkeypatch):
+    horses = {'a': {'debut_runner': True}, 'b': {}}
+    monkeypatch.setattr(bt.debut_trainer, 'is_debut', lambda h: bool(h.get('debut_runner')))
+    monkeypatch.setattr(bt, 'horse_code', lambda h: 'A123')
+    monkeypatch.setattr(bt, 'last_trial_figure', lambda *args: ('2026-01-01', 1.0, '草地', 1000))
+    result = bt.adjustments(horses, '2026-01-02', {})
+    assert result['b'][1] is None
+    assert sum(v[0] for v in result.values()) == pytest.approx(0)
+    monkeypatch.setattr(bt, 'ENABLED', False)
+    assert bt.apply(horses, {'race_date': '2026-01-02'}) == 0

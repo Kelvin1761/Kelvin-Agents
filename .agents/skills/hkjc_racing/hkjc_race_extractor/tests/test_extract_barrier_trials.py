@@ -40,4 +40,13 @@ def test_recent_empty_day_is_rechecked(tmp_path, monkeypatch):
     m.update(path, today=dt.date(2026, 1, 11))
     result = json.loads(path.read_text())
     assert '2026-01-10' not in result['empty']
-    assert result['trials']['A123'] == [['2026-01-10', 0.1]]
+    assert result['trials']['A123'] == [['2026-01-10', 0.1, '', None, '', 59.1]]
+
+
+def test_v2_deduplicates_time_and_caps_margin():
+    table = {'trials': {'A123': [['2026-01-01', 2]]}, 'scraped': [], 'empty': []}
+    html = PAGE.replace('第 1 組', '第 1 組 - 草地 - 1000米').replace('SH', '20')
+    m.add_day(table, '2026-01-02', html)
+    m.add_day(table, '2026-01-02', html)
+    assert table['schema'] == 2
+    assert table['trials']['A123'] == [['2026-01-01', 2], ['2026-01-02', 15, '草地', 1000, '', 59.1]]
