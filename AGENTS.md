@@ -111,6 +111,9 @@ deep = Astra（Sol 同 Opus 意見唔同先用）。模型目錄每次 run 都�
 - Codex 喺自己 worktree 留低嘅改動（包括未追蹤檔）由 Claude 負責收貨：合入自己分支、commit＋push 保存，或者刪走，跟「收工規則」一致；Codex 自己唔 commit。
 - 寫入角色唔准喺主 checkout 行（腳本會攔）。同一批檔唔准 Claude 同 Codex 同時改。
 - 額度：Codex 本週 ≥95% 或 5 小時窗 ≥85% = 停派（`--force` 都越唔過）；剩低唔夠每日 4pp 撐到重置 = 只派 review／quick／chore。每次委派記入 `<WongChoiControl>/codex_delegations.jsonl`。
+- **按兩邊額度揀分工模式**（Kelvin 2026-11-24，怕 Opus 唔夠用）：開工先用 `get_usage` 攞 Claude 每週用量，跑
+  `codex_delegate.py status --claude-weekly <%> --claude-resets <ISO>`。Claude 用得快過時間（≥10pp）或者 Codex 就嚟重置仲剩好多
+  = `offload-max`：實作同重活派 Terra、覆核派 Sol 唔開 Opus subagent、讀檔摘要派 Luna，Opus 只做計劃同判決。其他模式見 skill。
 
 ### 大型暫存一律放外置碟
 

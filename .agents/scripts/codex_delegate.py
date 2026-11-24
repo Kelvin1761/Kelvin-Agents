@@ -237,6 +237,62 @@ def role_allowed(role: str, state: str) -> bool:
     return True
 
 
+# ── 分工模式（Kelvin 2026-11-24：按兩邊額度調整 offload 幾多）──────────────
+# Claude 嘅額度 Codex 腳本讀唔到；Claude 開工前用 mcp__ccd_session_mgmt__get_usage 睇
+# 「Weekly · all models」嘅 percentUsed 同 resetsAt，再傳 `status --claude-weekly --claude-resets`。
+CLAUDE_WEEK_SECONDS = 7 * 86400
+CLAUDE_AHEAD_PP = 10.0     # Claude 用得快過時間 ≥ 呢個 pp = 盡量 offload
+CLAUDE_BEHIND_PP = -20.0   # Claude 慢過時間 ≥ 20pp 而 Codex 又緊 = Claude 自己做多啲
+CLAUDE_CRITICAL = 85.0     # Claude 本週 ≥ 呢個 = 連 grunt 都可以 --force（Codex 未 stop 嘅話）
+USE_IT_DAYS = 2.0          # Codex 就嚟重置（< 2 日）而剩好多 = 用盡佢
+
+MODES = {
+    "offload-max": "Claude 額度緊：實作同重活派 Terra、覆核派 Sol（唔開 Opus subagent）、讀檔／摘要派 Luna；Opus 只做計劃、判決、保存",
+    "offload-light": "Claude 緊但 Codex 都緊：只派 review／quick／chore；Claude 本週 ≥85% 先可以 --force 派 grunt",
+    "balanced": "兩邊都正常：照常規分工（機械式先試 Luna，重活 Terra，結論要第二意見就 Sol）",
+    "keep-claude": "Codex 緊而 Claude 有大把：Opus 自己做多啲，Codex 留畀 review",
+    "claude-only": "Codex 停派：全部 Claude 做，慳住用（subagent 用平啲嘅模型）",
+}
+
+
+def claude_pace(used: float, resets_at: float, now: float) -> tuple[float, float]:
+    """返回 (已過時間 %, 用量快過時間幾多 pp)。"""
+    left = max(0.0, resets_at - now)
+    elapsed = max(0.0, min(100.0, 100.0 * (1 - left / CLAUDE_WEEK_SECONDS)))
+    return elapsed, used - elapsed
+
+
+def offload_mode(codex_state: str, codex: Limits | None, claude_used: float,
+                 claude_resets_at: float, now: float | None = None) -> tuple[str, str]:
+    now = time.time() if now is None else now
+    elapsed, ahead = claude_pace(claude_used, claude_resets_at, now)
+    pace = f"Claude 本週 {claude_used:.0f}%（時間過咗 {elapsed:.0f}%，{ahead:+.0f}pp）"
+    if codex_state == "stop":
+        return "claude-only", pace
+    codex_rich = False
+    if codex and codex.weekly and codex_state in ("normal", "unknown"):
+        days_left = max(0.0, codex.weekly.resets_at - now) / 86400
+        headroom = STOP_WEEKLY - codex.weekly.effective_used(now)
+        codex_rich = days_left < USE_IT_DAYS and headroom > 2 * TIGHT_PER_DAY * max(days_left, 0.5)
+        if codex_rich:
+            pace += f"；Codex {days_left:.1f} 日後重置仲剩 {headroom:.0f}pp，唔用就嘥"
+    claude_tight = ahead >= CLAUDE_AHEAD_PP or claude_used >= CLAUDE_CRITICAL
+    if codex_state == "tight":
+        if claude_tight:
+            return "offload-light", pace
+        if ahead <= CLAUDE_BEHIND_PP:
+            return "keep-claude", pace
+        return "balanced", pace
+    if claude_tight or codex_rich:
+        return "offload-max", pace
+    return "balanced", pace
+
+
+def _parse_ts(text: str) -> float:
+    from datetime import datetime
+    return datetime.fromisoformat(text.replace("Z", "+00:00")).timestamp()
+
+
 # ── 帳 ────────────────────────────────────────────────────────────────
 
 def append_ledger(entry: dict) -> Path | None:
@@ -299,8 +355,16 @@ def cmd_status(args) -> int:
         for role, row in sorted(summary.items()):
             print(f"  {role:<6} {row['runs']} 次（成功 {row['ok']}），"
                   f"input {row['input']:,} / output {row['output']:,} tokens")
+    out = {"state": state, "reason": why}
+    if args.claude_weekly is not None and args.claude_resets:
+        mode, pace = offload_mode(state, limits, args.claude_weekly, _parse_ts(args.claude_resets))
+        print(f"分工模式：{mode} —— {pace}")
+        print(f"  {MODES[mode]}")
+        out.update(mode=mode, pace=pace)
+    else:
+        print("分工模式：未計（加 --claude-weekly <%> --claude-resets <ISO> ，數字由 get_usage 嚟）")
     if args.json:
-        print(json.dumps({"state": state, "reason": why}, ensure_ascii=False))
+        print(json.dumps(out, ensure_ascii=False))
     return 0
 
 
@@ -472,6 +536,8 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     st = sub.add_parser("status")
     st.add_argument("--json", action="store_true")
+    st.add_argument("--claude-weekly", type=float, help="Claude 每週已用 %%（get_usage 嘅 Weekly · all models）")
+    st.add_argument("--claude-resets", help="Claude 每週重置時間（ISO，例如 2026-11-30T07:59:59Z）")
     st.set_defaults(func=cmd_status)
     rn = sub.add_parser("run")
     rn.add_argument("role", choices=sorted(ROLES))
