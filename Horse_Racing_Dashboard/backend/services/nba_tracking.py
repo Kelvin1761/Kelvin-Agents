@@ -177,6 +177,21 @@ def _featured_v2(ledger_root):
         return {'status':'unavailable', 'error':f'{type(exc).__name__}: {exc}', 'records':[]}
 
 
+
+def _recal_forward(ledger_root):
+    """Paper calibration monitoring must never interrupt tracking."""
+    try:
+        import importlib.util
+        script = Path(__file__).resolve().parents[3] / 'docs' / 'experiments' / 'patches' / 'nba_recal_forward' / 'evaluate.py'
+        spec = importlib.util.spec_from_file_location('nba_recal_forward_evaluate', script)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        root = Path(ledger_root)
+        return {'status': 'valid', **module.dashboard(root / 'ledger', cache_dir=root / 'reports')}
+    except Exception as exc:  # noqa: BLE001 — monitoring must never break tracking
+        return {'status': 'unavailable', 'error': f'{type(exc).__name__}: {exc}'}
+
+
 def build_tracking(roots, ledger_root, firewall):
     from .multisport_exporter import nba_combos, nba_report_sidecar
     ledger_root = Path(ledger_root)
@@ -308,6 +323,7 @@ def build_tracking(roots, ledger_root, firewall):
             # stop-loss and the SGM views (which all read `records`) never see them.
             'featured_records':featured_records, 'featured_inception_date':FEATURED_START_DATE,
             'featured_v2':_featured_v2(ledger_root),
+            'recal_forward':_recal_forward(ledger_root),
             'warnings':sorted(set(warnings))}
 
 

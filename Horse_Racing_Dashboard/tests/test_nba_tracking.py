@@ -372,3 +372,14 @@ def test_featured_market_withdrawn_before_tip_is_void_whatever_the_box_score(tmp
     assert [p['player'] for p in availability.check(day,[pick],{TAG},now=datetime(2026,11,7,20,tzinfo=timezone.utc))]==['First Player']
     (rec,)=build(tmp_path)['featured_records']
     assert (rec['state'],rec['profit'],rec['void_reason'],rec['legs'][0]['actual'])==('void',None,'market_withdrawn','void')
+
+
+def test_recal_forward_failure_does_not_break_tracking(tmp_path, monkeypatch):
+    import importlib.util
+    from services.nba_tracking import _recal_forward
+
+    def fail(*args, **kwargs):
+        raise OSError("missing evaluator")
+
+    monkeypatch.setattr(importlib.util, "spec_from_file_location", fail)
+    assert _recal_forward(tmp_path) == {"status": "unavailable", "error": "OSError: missing evaluator"}
