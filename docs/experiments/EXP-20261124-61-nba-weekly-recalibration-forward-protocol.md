@@ -25,6 +25,8 @@
 ## 母體
 target_date ≥ **2026-11-25**；每條腿最早一個開波前 `production` `model_obs`，`probability_model_id = nba_engine:ms:a140747bfae0c724`，有非 void 嘅 ledger 結算。
 如果之後某日出現其他 `probability_model_id`（例如 S2 判咗之後換 MS2），母體喺嗰日之前截止，結果標 `interrupted`（要對新 `p_final` 重新登記）。
+截止嗰刻即刻判一次（只用已有嘅日子，**永遠唔會 PASS**），等 tracker 推 Telegram 講清楚，唔會靜靜等到永遠。
+每週嘅切點用 target_date：星期一嘅場次喺星期日 21:00 發佈，嗰陣之前所有 target day 已經打完兼結算，所以「target_date < 星期一」就係嗰個星期開始時已知嘅資訊。
 
 ## 判決（只判一次，結果凍結）
 - **夠數**：≥14 個 target day 而且 ≥10,000 腿；用到兩樣都夠嗰日為止（成日計）。
@@ -40,6 +42,9 @@ target_date ≥ **2026-11-25**；每條腿最早一個開波前 `production` `mo
 
 ## 功效（預先講明）
 每日約 1,100 條腿 → 14 日約 15,000 腿，大約 12-08 夠數。EXP-60 holdout 12 日 CI 闊約 ±0.0014，真改善 ≳0.002 先判得出。
+
+## 覆核（Sol，forward 數據存在之前已修）
+換模型未夠數會永遠唔判 → 改為即刻判；壞 JSON 行會令腳本崩 → 跳過；fit 快取 key 加版本；dashboard 顯示 bootstrap 用 500 次（判決照用 2,000）；夠數後 dashboard 字眼。
 
 ## 洩漏
 `p_final`、`price_at_model` 都係 21:00 production run 寫低嘅賽前值；每週係數只用該週之前已結算嘅腿；`y` 只做標籤。

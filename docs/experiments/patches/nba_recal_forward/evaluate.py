@@ -17,7 +17,10 @@ Arms (all scored on the same legs; nothing here touches the engine, a bet, or a 
 Legs: first pre-tip `production` model_obs of each (target_date, game, player, market, line) whose
 probability_model_id is MS_ID, joined to a non-void ledger settlement. 11-19 has no production run.
 If a forward day carries any other probability_model_id (p_final changed, e.g. MS2 adopted) the
-population stops before that day and the result says `interrupted`.
+population stops before that day, the test is judged at once on what it has (never a PASS) and the
+result says `interrupted`, so the tracker reports it instead of waiting forever.
+Weeks are cut on target_date: a Monday's games are published at 21:00 on the Sunday, after every earlier
+target day has finished and settled, so "target_date < Monday" is what was known when that week began.
 
 Look (judged once, frozen): >= 14 target days and >= 10,000 legs from START on, whole days up to the day
 both are reached. PASS if the day-clustered bootstrap 95% CI upper bound of mean log-loss(RW) - mean
@@ -31,6 +34,7 @@ Protocol: docs/experiments/EXP-20261124-61-nba-weekly-recalibration-forward-prot
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import random
@@ -45,6 +49,8 @@ FIT_START = "2026-11-05"      # first day of the MS engine
 START = "2026-11-25"          # first forward target day (no ledger file existed when this was frozen)
 CHECKPOINT = {"days": 14, "flagged_legs": 10000}
 SEED, DRAWS = 20261125, 2000
+DASHBOARD_DRAWS = 500         # the running view only; the verdict uses DRAWS
+FIT_VERSION = 1               # part of the fit-cache key
 STATS = ("pts", "reb", "ast", "fg3m")
 CLIP = (0.02, 0.98)
 L2 = 1e-3
@@ -73,7 +79,10 @@ def day_legs(path: Path) -> list[dict]:
     with path.open(encoding="utf-8") as handle:
         for text in handle:
             if '"model_obs"' in text:
-                r = json.loads(text)
+                try:
+                    r = json.loads(text)
+                except ValueError:
+                    continue
                 if (r.get("row_type") != "model_obs" or r.get("snapshot_role") != "production"
                         or r.get("post_tip") is True or r.get("p_final") is None):
                     continue
@@ -81,7 +90,10 @@ def day_legs(path: Path) -> list[dict]:
                 if k not in models or r["recorded_at"] < models[k]["recorded_at"]:
                     models[k] = r
             elif '"settlement"' in text:
-                r = json.loads(text)
+                try:
+                    r = json.loads(text)
+                except ValueError:
+                    continue
                 if r.get("row_type") == "settlement":
                     settled[(r["game_tag"], r["player"], r["market"], float(r["line"]))] = r
     out = []
@@ -155,11 +167,13 @@ def _solve(a: list[list[float]], b: list[float]) -> list[float]:
 
 def fit(train: list[dict], form: str) -> list[float]:
     """L2-penalised logistic regression by Newton; starts at the identity (weight 1 on column 4)."""
-    X = [features(r, form) for r in train]
-    y = [r["y"] for r in train]
-    k = len(X[0])
+    k = len(features({"s": STATS[0], "pf": 0.5, "m": 0.5}, form))
     w = [0.0] * k
     w[4] = 1.0
+    if not train:  # nothing to learn from: the identity (p_final, or the raw market for MKT)
+        return w
+    X = [features(r, form) for r in train]
+    y = [r["y"] for r in train]
     for _ in range(50):
         g = [-L2 * v for v in w]
         H = [[L2 if i == j else 0.0 for j in range(k)] for i in range(k)]
@@ -197,8 +211,11 @@ def forward(rows: list[dict]) -> tuple[list[dict], str | None]:
     return [r for r in rows if r["d"] >= START and r["id"] == MS_ID and (stop is None or r["d"] < stop)], stop
 
 
-def score(rows: list[dict], fwd: list[dict]) -> list[dict]:
-    """Attach every arm's probability to each forward leg."""
+def score(rows: list[dict], fwd: list[dict], cache: dict | None = None) -> list[dict]:
+    """Attach every arm's probability to each forward leg.
+
+    `cache` (optional, mutated) maps a hash of a week's training legs to its fitted weights, so the
+    dashboard does not refit every week on every export; the hash changes if any training leg does."""
     history = [r for r in rows if r["id"] == MS_ID and r["d"] >= FIT_START]
     weeks = {}
     out = []
@@ -206,8 +223,14 @@ def score(rows: list[dict], fwd: list[dict]) -> list[dict]:
         wk = monday(leg["d"])
         if wk not in weeks:
             train = [r for r in history if r["d"] < wk]
-            weeks[wk] = {"R2": fit(train, "R2"), "R1": fit(train, "R1"), "MKT": fit(train, "MKT"),
-                         "n_train": len(train)}
+            digest = hashlib.sha256(json.dumps([FIT_VERSION, L2, wk, train], sort_keys=True).encode()).hexdigest()
+            if cache is not None and digest in cache:
+                weeks[wk] = cache[digest]
+            else:
+                weeks[wk] = {"R2": fit(train, "R2"), "R1": fit(train, "R1"), "MKT": fit(train, "MKT"),
+                             "n_train": len(train)}
+                if cache is not None:
+                    cache[digest] = weeks[wk]
         w = weeks[wk]
         out.append({**leg, "rw": predict(leg, w["R2"], "R2"), "r1w": predict(leg, w["R1"], "R1"),
                     "mkt": predict(leg, w["MKT"], "MKT"),
@@ -229,19 +252,19 @@ def _cut(fwd: list[dict]) -> tuple[list[dict], bool]:
     return taken, False
 
 
-def _boot(rows: list[dict], key: str) -> tuple[float, float, float]:
+def _boot(rows: list[dict], key: str, draws: int = DRAWS) -> tuple[float, float, float]:
     by = defaultdict(list)
     for r in rows:
         by[r["d"]].append(_loss(r[key], r["y"]) - _loss(r["pf"], r["y"]))
     days = sorted(by)
     rnd = random.Random(SEED)
     vals = []
-    for _ in range(DRAWS):
+    for _ in range(draws):
         pick = [x for d in (rnd.choice(days) for _ in days) for x in by[d]]
         vals.append(sum(pick) / len(pick))
     vals.sort()
     flat = [x for d in days for x in by[d]]
-    return sum(flat) / len(flat), vals[int(0.025 * DRAWS)], vals[int(0.975 * DRAWS) - 1]
+    return sum(flat) / len(flat), vals[int(0.025 * draws)], vals[int(0.975 * draws) - 1]
 
 
 def calibration(rows: list[dict]) -> list[dict]:
@@ -261,7 +284,8 @@ def status(ledger=None, analysis=None, *, rows: list[dict] | None = None) -> dic
     fwd, stop = forward(rows)
     taken, ready = _cut(fwd)
     return {TEST: {"days": len({r["d"] for r in fwd}), "flagged_legs": len(fwd),
-                   "checkpoint": dict(CHECKPOINT), "ready": ready, "interrupted": stop}}
+                   "checkpoint": dict(CHECKPOINT), "ready": ready or (stop is not None and bool(fwd)),
+                   "complete": ready, "interrupted": stop}}
 
 
 def judge(rows: list[dict]) -> dict:
@@ -309,8 +333,20 @@ def dashboard(ledger=None, cache_dir=None, *, rows: list[dict] | None = None) ->
     st = status(rows=rows)[TEST]
     out = {"experiment": EXPERIMENT, "start": START, "progress": st, "interrupted": stop}
     if fwd:
-        scored = score(rows, fwd)
-        d, lo, hi = _boot(scored, "rw")
+        path = Path(cache_dir or REPORTS) / f"{EXPERIMENT}-fit-cache.json"
+        try:
+            cache = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            cache = {}
+        before = len(cache)
+        scored = score(rows, fwd, cache)
+        if len(cache) != before:
+            try:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(json.dumps(cache), encoding="utf-8")
+            except OSError:
+                pass
+        d, lo, hi = _boot(scored, "rw", DASHBOARD_DRAWS)
         out.update(n_legs=len(scored), days=len({r["d"] for r in scored}), running_delta=d, running_ci95=[lo, hi],
                    calibration=calibration(scored))
     return out

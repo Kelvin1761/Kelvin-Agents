@@ -94,3 +94,36 @@ def test_not_ready_and_dashboard_without_forward_data(tmp_path):
     assert ev.evaluate(out_dir=tmp_path, rows=rows)["RC"]["status"] == "not_ready"
     view = ev.dashboard(rows=rows)
     assert view["progress"]["days"] == 0 and "calibration" not in view
+
+
+def test_dashboard_fit_cache_gives_identical_numbers(tmp_path):
+    rnd = random.Random(3)
+    rows = []
+    for d in ("2026-11-10", "2026-11-25", "2026-11-26"):
+        for _ in range(200):
+            p = rnd.uniform(0.05, 0.95)
+            rows.append({"d": d, "s": rnd.choice(ev.STATS), "pf": p, "m": p, "y": int(rnd.random() < p), "id": ev.MS_ID})
+    first = ev.dashboard(rows=rows, cache_dir=tmp_path)
+    assert (tmp_path / f"{ev.EXPERIMENT}-fit-cache.json").is_file()
+    second = ev.dashboard(rows=rows, cache_dir=tmp_path)
+    assert first == second and first["n_legs"] == 400
+
+
+def test_interrupted_is_judged_at_once_and_never_passes(tmp_path):
+    rows = [{"d": d, "s": "reb", "pf": 0.5, "m": 0.5, "y": i % 2, "id": mid}
+            for d, mid in (("2026-11-25", ev.MS_ID), ("2026-11-26", ev.MS_ID), ("2026-11-27", "nba_engine:ms2:x"))
+            for i in range(10)]
+    st = ev.status(rows=rows)["RC"]
+    assert st["ready"] is True and st["complete"] is False and st["interrupted"] == "2026-11-27"
+    out = ev.evaluate(out_dir=tmp_path, rows=rows)["RC"]
+    assert out["pass"] is False and out["interrupted"] == "2026-11-27" and out["days"] == 2
+
+
+def test_bad_json_lines_and_empty_history_do_not_crash(tmp_path):
+    p = tmp_path / "2026-11-25.jsonl"
+    p.write_text('{"row_type": "model_obs", broken\n' + json.dumps(_model("A", 6.0, 0.7)) + "\n"
+                 + json.dumps(_settle("A", 6.0, 1)) + "\n", encoding="utf-8")
+    assert len(ev.day_legs(p)) == 1
+    leg = {"d": "2026-11-25", "s": "reb", "pf": 0.7, "m": 0.6, "y": 1, "id": ev.MS_ID}
+    scored = ev.score([leg], [leg])[0]
+    assert abs(scored["rw"] - 0.7) < 1e-12 and abs(scored["mkt"] - 0.6) < 1e-12
