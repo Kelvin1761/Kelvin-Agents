@@ -626,6 +626,7 @@
 - [EXP-20261123-03](EXP-20261123-03-hkjc-top2-ruler.md) — 頭二尺 v5.2：爭勝馬（兩模型頭四聯集）頭二 PL 損失；舊頭二計法連剷一半騎練都量唔到，新尺捉到剷維度同雜訊；舊 PASS 全部照過；J3 頭二 z −2.6
 - [EXP-20261123-04](EXP-20261123-04-hkjc-j3-top2-variants.md) — J3 頭二向四改法（換目標、半力度、保護頭二）dev 頭二入頭三全部 < 0 → REJECT；J3h 保住 11-22 頭二但未過；Kelvin 暫停 J3
 - [EXP-20261123-05](EXP-20261123-05-hkjc-rating-drop-switch-return.md) — 評分跌 ≥10＋近仗轉程／配備＋今仗返首本組合：+0.2／−0.9pp 冇訊號（模型已經反映）
+- [EXP-20261124-50](EXP-20261124-50-au-debut-trainer-rate.md) — AU 初出馬練馬師初出上名率（由 HKJC 搬）：REJECT（全語料 Δ ≈ 0、初出馬之間 AUC 0.646→0.627）；723 個練馬師每人中位 1 匹初出馬，數據太薄；要完整全國初出歷史先值得重試
 - [EXP-20261124-41](EXP-20261124-41-au-ruler-null-asymmetry.md) — AU log-loss 尺 null 唔計冇郁場次（Sol 搵到）：v2.1 修正後 14 對判決 0 改變、噪音 10/10 照 REJECT → 唔換預設尺，v2.1 留做研究選項
 - [EXP-20261124-40](EXP-20261124-40-au-winningtime-speed-v2.md) — AU WinningTime 速度分（EXP-20260927-02）現行 live 新尺重做：S1 固定 0.5 **PASS**（Δ −0.00028、Holm 0.005、覆蓋 73.8%）但 Gold／Good 點估計輕微負；S2 walk-forward CI 啱啱跨零；live code 重現 PASS；Kelvin 批**實驗性上線**＋1,000 場退回監察（EXP-20261124-42，首選兩項都跌就建議回退）
 - [EXP-20261124-31](EXP-20261124-31-miss-autopsy-market-wrong-bucket.md) — 失手體檢加「市場都估唔中」（SP 頭三熱門最多中 1 隻）：舊「模型判錯」47% 係呢種（頭馬平均 $8.2）；AU 近期模型判錯 75%→40%、市場都唔中 34%；冇數據缺口；只做賽後診斷
