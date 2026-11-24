@@ -199,3 +199,71 @@ def test_opportunity_raw_sources_are_hash_bound_in_prediction_snapshot(tmp_path)
     files = {row['name']: row for row in manifest['files']}
     import hashlib
     assert files['NBA_Opportunity_Sources.json']['sha256'] == hashlib.sha256(raw).hexdigest()
+
+
+def test_waiting_game_freezes_others_and_retry_preserves_snapshot(tmp_path):
+    folder = tmp_path / 'live'
+    folder.mkdir()
+    tags = [f'T{i:02d}_X' for i in range(12)]
+    waiting = tags[-1]
+    now = datetime(2026, 10, 21, 0, 30, tzinfo=SYDNEY)
+    events = {tag: now + timedelta(hours=9) for tag in tags}
+    events[waiting] = now + timedelta(hours=12)
+    for tag in tags:
+        _game(folder, tag)
+    _aggregates(folder)
+    opened = False
+
+    def run(command, timeout=3600):
+        if command[:2] == ['git', 'rev-parse']:
+            return subprocess.CompletedProcess(command, 0, 'abc123\n', '')
+        if '--compile-only' in command:
+            return subprocess.CompletedProcess(command, 0, '', '')
+        if '--game' not in command and not opened:
+            return subprocess.CompletedProcess(command, 75, _payload(
+                status='waiting_player_markets', reason='player_markets_not_open',
+                waiting_games=[waiting]), '')
+        if '--game' in command:
+            tag = command[-1]
+            _game(folder, tag)
+        return subprocess.CompletedProcess(command, 0, '', '')
+
+    with mock.patch.object(schedule, 'live_dir', return_value=folder), \
+         mock.patch.object(schedule, 'refresh_sportsbet_odds'), \
+         mock.patch.object(schedule, '_check_featured_availability'), \
+         mock.patch.object(schedule, '_run', side_effect=run), \
+         mock.patch.object(schedule, 'send_partial_betting_card') as card, \
+         mock.patch.object(schedule, '_deploy'), \
+         mock.patch.object(schedule, 'notify_once', return_value={}), \
+         mock.patch.object(schedule, 'export_nba_snapshot', return_value={}), \
+         mock.patch.object(schedule, '_send_featured_card'):
+        with pytest.raises(schedule.TemporaryFailure, match='partial_snapshot_frozen'):
+            schedule.run_pregame(DATE, _Log(), at=now, schedule_events=(events, True))
+        snapshot = schedule.latest_snapshot(folder)
+        manifest = schedule.snapshot_manifest(snapshot)
+        assert manifest['game_tags'] == tags[:-1]
+        assert manifest['blocked_game_tags'] == [waiting]
+        card.assert_called_once()
+        assert card.call_args.args[1:3] == (snapshot, [waiting])
+        before = {p.name: p.read_bytes() for p in snapshot.iterdir() if p.is_file()}
+        opened = True
+        # The eleven early games have started; only the late game may refresh.
+        with mock.patch.object(schedule, 'record_prediction_decision_if_configured', return_value={}):
+            schedule.run_pregame(DATE, _Log(), at=now + timedelta(hours=10), schedule_events=(events, True))
+        assert before == {p.name: p.read_bytes() for p in snapshot.iterdir() if p.is_file()}
+        assert schedule.snapshot_manifest(schedule.latest_snapshot(folder, role=schedule.FreshnessRole.PRODUCTION))['game_tags'] == tags
+
+
+def test_all_player_markets_waiting_and_game_markets_waiting():
+    tags = {'A_B', 'C_D'}
+    for status, reason, exception in [
+        ('waiting_player_markets', 'player_markets_not_open', schedule.PlayerMarketsWaiting),
+        ('waiting_game_markets', 'sportsbet_game_data_missing', schedule.GameMarketsWaiting),
+    ]:
+        waiting = sorted(tags) if exception is schedule.PlayerMarketsWaiting else ['A_B']
+        result = subprocess.CompletedProcess([], 75, _payload(status=status, reason=reason, waiting_games=waiting), '')
+        with mock.patch.object(schedule, '_run', return_value=result) as run:
+            with pytest.raises(exception) as raised:
+                schedule._run_orchestrator_refresh(DATE, Path('/unused'), refreshable_tags=tags, schedule_tags=tags, log=_Log())
+            assert type(raised.value) is exception
+            assert run.call_count == 1
