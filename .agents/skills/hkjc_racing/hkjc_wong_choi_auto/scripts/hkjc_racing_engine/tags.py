@@ -787,6 +787,22 @@ def _foreign_tag(horse: dict) -> list[dict]:
                      "回放顯示外隊馬喺同一模型排名入位率高過本地馬（EXP-20261114-07）；未入分。")]
 
 
+def _barrier_trial_tag(horse, meta):
+    from . import debut_trainer
+    if not debut_trainer.is_debut(horse):
+        return []
+    auto = horse.get("python_auto") or {}
+    info = auto.get("barrier_trial")
+    if not info or info.get("margin") is None:
+        return [_tag("barrier_trial", "未有試閘紀錄" if not info else "試閘紀錄未有可解析馬位", "note")]
+    delta = auto.get("barrier_trial_delta")
+    tone = "good" if delta is not None and delta > 0 else "bad" if delta is not None and delta < 0 else "note"
+    status = "實驗性入分" if delta is not None else "未入分"
+    return [_tag("barrier_trial", f"試閘：上次輸 {info['margin']:g} 馬位（{info['date'][5:]}）", tone,
+                 scored=delta is not None, impact=round(delta, 2) if delta is not None else None,
+                 why=f"{status}；相對全場原始分調整 {delta:+.2f}。" if delta is not None else status)]
+
+
 def _debut_trainer_tag(horse: dict, meta: dict) -> list[dict]:
     """初出馬：練馬師初出紀錄（EXP-20261123-13 入分；Kelvin 2026-11-23 上線）。一個 chip，影響寫喺 impact。"""
     if not (horse.get("is_debut") or horse.get("debut_runner")) or not meta.get("date"):
@@ -1013,7 +1029,7 @@ def race_tags(logic_data: dict, meeting_dir: Path | None = None) -> dict:
         dims = [x for x in dims if x is not None]
         field_dim_mean = sum(dims) / len(dims) if len(dims) >= 2 else 0.0   # 得一匹（測試）= 冇對手可比
         for no, h in horses.items():
-            extra.setdefault(no, []).extend(_debut_trainer_tag(h, meta) + _foreign_tag(h) + _form_pattern_tags(h, meta)
+            extra.setdefault(no, []).extend(_debut_trainer_tag(h, meta) + _barrier_trial_tag(h, meta) + _foreign_tag(h) + _form_pattern_tags(h, meta)
                                             + _draw_tags(h, h["python_auto"], field_dim_mean) + _incident_tag(h["python_auto"])
                                             + _trainer_pattern_tags(h, meta, gear.get(no, [])))
             tp = {t["key"].split(":", 1)[1] for t in extra[no] if t["key"].startswith("trainer_pattern:")}
