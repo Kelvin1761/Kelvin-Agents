@@ -17,9 +17,10 @@
   B. 候選對 baseline（配對）：ΔΔ = Δll(候選) − Δll(baseline)。
      市場尺 PASS = 獨贏 ΔΔ CI 下界 > 0、入頭三 ΔΔ 點估計 ≥ 0、三個時間塊至少兩個 ΔΔ > 0。
 
-    python3 market_ruler.py --platform au BASE.json [CAND.json] [--out result.json]
+    python3 market_ruler.py --platform au BASE.json [CAND.json] [--price sp|bsp] [--out result.json]
 
-AU：價 = dump 每匹嘅 `sp`（賽果 SP，`au_dump_engine_leaves` 已經寫入，所以任何 dump 都用得）。
+AU：`--price sp`（預設）= dump 每匹嘅 `sp`（賽果 SP，任何 dump 都有）；
+    `--price bsp` = Betfair BSP（`au_bsp.py`：記錄器＋公開 CSV，EXP-20261124-92），較 sharp；配唔齊 BSP 嘅場會剔走並報數。
 HKJC：未接駁 —— 回放語料冇當日最終賠率（下一步）。
 """
 from __future__ import annotations
@@ -310,16 +311,34 @@ def _load(path, platform):
     return json.loads(Path(path).read_text(encoding="utf-8"))["races"]
 
 
+def attach_bsp(*arms):
+    """AU：將 BSP 寫入每匹 row["bsp"]；→ 每個 arm 嘅配對統計。"""
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "au_racing" / "au_wong_choi_auto" / "scripts"))
+    import au_bsp
+    index = au_bsp.load_all()
+    return [au_bsp.attach(races, index) for races in arms if races is not None]
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--platform", required=True, choices=["au", "hkjc"])
     ap.add_argument("base")
     ap.add_argument("cand", nargs="?")
+    ap.add_argument("--price", choices=["sp", "bsp"], default="sp")
     ap.add_argument("--out")
     a = ap.parse_args(argv)
     base = _load(a.base, a.platform)
     cand = _load(a.cand, a.platform) if a.cand else None
-    res = evaluate(base, cand, since=SINCE.get(a.platform))
+    since = SINCE.get(a.platform)
+    match = None
+    if a.price == "bsp":
+        base = [r for r in base if not since or r["date"] >= since]
+        cand = None if cand is None else [r for r in cand if not since or r["date"] >= since]
+        match = attach_bsp(base, cand)
+        print(f"BSP 配對：{match}")
+    res = evaluate(base, cand, price_key=a.price, since=since)
+    if match:
+        res["bsp_match"] = match
     for name, arm in res["arms"].items():
         print(f"== {name}：模型對收市價（{res['price']}）有冇額外資訊（每場 Δlog-lik，正 = 有）")
         for mk in MARKETS:

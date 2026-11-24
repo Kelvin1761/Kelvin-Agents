@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261124-92](EXP-20261124-92-market-ruler-bsp.md) | 2026-11-25 | AU | 市場尺接駁 Betfair BSP（`--price bsp`；記錄器＋公開 CSV） | **工具上線**：配對 99.6% 匹、4,243/4,260 場齊；記錄器同 CSV 重疊 7,889 匹完全一樣；BSP 比 SP sharp（nll −0.018/場）；現行 live 喺 BSP 獨贏 Δll −0.00037 [−0.00133,+0.00058] → 冇市場以外資訊；F1 配對 FAIL |
 | [EXP-20261124-91](EXP-20261124-91-betfair-logger-bsp-null.md) | 2026-11-24 | AU | Betfair 記錄器 BSP 11-06 起全部 null 嘅原因同修正 | **修正（數據管線）**：只要求 SP_TRADED 嘅話 Betfair 唔回 `sp`；改用 SP_AVAILABLE，真 API 沙盒 133/133 有 BSP；null 舊行自動重新結算，冇 BSP 就推 Telegram；假 rpc 改成同真 API 一樣 |
 | [EXP-20261124-90](EXP-20261124-90-market-ruler.md) | 2026-11-24 | AU（跨平台工具） | 標準「市場尺」：模型喺收市 SP 以外有冇額外資訊（條件 logit walk-forward，賽日 bootstrap） | **工具上線（唔郁模型）**：現行 live 獨贏 Δll −0.00043 [−0.00159,+0.00078] → 冇市場以外資訊（同 -60 BSP 一致）；正對照 +0.1 SD PASS、洗牌 FAIL；F1／SPG 排名尺 KEEP 但市場尺 FAIL＝分析改善唔係投注改善。合約加「市場尺 m1」：AU 候選必報、真錢落注規則必過；KEEP 規則唔變。順手發現 Betfair 記錄器 bsp 18 日全 null |
 | [EXP-20261124-80](EXP-20261124-80-tennis-momentum-confirm-and-forward.md) | 2026-11-24 | Tennis | F4 動量（前 7 日場數）喺未用過嘅 2024 fit／2025 確認；精選前向第二次覆核 | **CONFIRMED 但唔用**：ΔLL +0.00041 [+0.00003,+0.00078]，按賽事分群 CI 跨零（Sol），5.8% 抽水預期 −3%，ITF 計唔到 → 冇改動。精選 164 注 −22.4% [−37.4,−7.4]（同場盲買 −10%）、cap3 −31.6%、no_game_hcp −47%；照跑到 250 注先判 |
