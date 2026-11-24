@@ -3117,3 +3117,14 @@ test('NBA 大細盤精選 tab shows the v2 paper arm beside v1 over the same win
   assert.match(html,/<td>1 \/ 1<\/td>/);              // v2: one over, one under
   api.setSportsTabForTest('history');assert.doesNotMatch(api.renderSportsWorkspace('nba'),/紙上對照：精選 v2/);
 });
+
+
+test('NBA calibration paper panel handles data, empty, unavailable and interruption',()=>{
+  const render=r=>{const api=loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,sports_feed:{sports:{nba:{tracking:{status:'valid',records:[],featured_records:[],recal_forward:r}}}}});api.setSportsTabForTest('featured');return api.renderSportsWorkspace('nba');};
+  const base={status:'valid',start:'2026-11-25',experiment:'EXP-20261124-61',progress:{days:3,flagged_legs:1200}};
+  const html=render({...base,calibration:[{bucket:[0.2,0.4],n:42,actual:0.31,p_final:0.3,rw:0.32,mkt:0.33}],running_delta:-0.0012,running_ci95:[-0.002,0.0001]});
+  for(const text of ['模型校準（紙上 · 未入分）','3/14 日、1,200/10,000 腿','20.0%–40.0%','31.0%','-0.0012 [-0.0020, +0.0001]','未夠數，唔係判決'])assert.ok(html.includes(text),text);
+  assert.doesNotMatch(render(base),/目前 log-loss 差|機率段/);
+  assert.doesNotMatch(render({status:'unavailable'}),/模型校準（紙上/);
+  assert.match(render({...base,interrupted:'2026-12-10<script>'}),/2026-12-10&lt;script&gt; 換咗模型/);
+});

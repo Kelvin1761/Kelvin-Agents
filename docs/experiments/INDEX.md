@@ -640,3 +640,5 @@
 - [EXP-20261123-13](EXP-20261123-13-hkjc-debut-trainer-on-figure-base.md) — 初出馬練馬師初出上名率入分（β 1.88，表現數字 base）：v5.2 dev −0.00020、holdout −0.00026、六季初出馬場 −0.00066／AUC +0.0021 全 PASS；11-22 唔差 → 上線＋forward 退回監察
 - [EXP-20261123-10](EXP-20261123-10-hkjc-performance-figure-replaces-sectional.md) — 表現數字（扣賽事效應＋按今仗負磅換算）取代段速維度：回放 v5.2 dev −0.00117、holdout −0.00151、頭二入頭三 +19／+3；11-22 頭二 14→16 → 上線＋forward 退回監察；只加負磅換算（WD）冇效
 - [EXP-20261123-06](EXP-20261123-06-au-v2-rescreen-old-candidates.md) — AU 舊候選用 v2 尺重跑：81 個舊 arm 篩出 F1（近績 SD 下限）同 SPG；喺現行 live 重建 F1 PASS（Δ −0.00171、AUC CI 全正、Gold／Good／頭二選正），SPG PASS 但細到唔建議；dump 工具補 field_trainers（之前 baseline 冇練馬師剩餘表現）；上唔上線待 Kelvin
+- [EXP-20261124-60](EXP-20261124-60-nba-ms-vig-recalibration-results.md) — NBA p_final 事後校準：holdout −0.0035（12/12 日改善；中段低估 5–6pp＝精選永遠揀細、頂段穩膽高估 3.4pp），但假設來源同 holdout 重疊、二次項乾淨子集唔顯著 → NEEDS MORE TESTING，等 S2 判咗先開 forward
+- [EXP-20261124-61](EXP-20261124-61-nba-weekly-recalibration-forward-protocol.md) — NBA 每週重校準層 forward（11-25 起，14 日＋10,000 腿判）；設計量度發現純市場去水曲線＝R2，即 p_final 喺市場之上冇加到資訊，RW − MKT 做次要對照
