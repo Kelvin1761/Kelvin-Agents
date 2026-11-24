@@ -31,10 +31,14 @@ def fake_rpc(method, params):
                 {"marketId": "1.4", "marketName": "To Be Placed", "marketStartTime": START,
                  "description": {"marketType": "PLACE"}, "event": {"id": "E2"}, "runners": []}]
     if method == "listMarketBook":
-        if params["priceProjection"]["priceData"] == ["SP_TRADED"]:
+        data = params["priceProjection"]["priceData"]
+        if "SP_TRADED" in data or "SP_AVAILABLE" in data:
+            # 同真 API 一樣：淨係 SP_AVAILABLE 先有 `sp` 欄（11-24 實測；以前個假 rpc 遮住咗呢個 bug）
+            sp = (lambda v: {"sp": {"actualSP": v}}) if "SP_AVAILABLE" in data else (lambda v: {})
             return [{"marketId": "1.1", "status": "CLOSED", "runners": [
-                {"selectionId": 11, "status": "WINNER", "sp": {"actualSP": 3.4}},
-                {"selectionId": 12, "status": "LOSER", "sp": {"actualSP": 1.6}}]}]
+                {"selectionId": 11, "status": "WINNER", **sp(3.4)},
+                {"selectionId": 12, "status": "LOSER", **sp(1.6)},
+                {"selectionId": 13, "status": "REMOVED", **sp("NaN")}]}]
         return [{"marketId": m, "status": "OPEN", "inplay": False, "isMarketDataDelayed": True, "runners": [
             {"selectionId": 11, "status": "ACTIVE", "lastPriceTraded": 3.5,
              "ex": {"availableToBack": [{"price": 3.45, "size": 120}], "availableToLay": [{"price": 3.6, "size": 80}]}}]}
@@ -72,6 +76,11 @@ class LoggerTests(unittest.TestCase):
     def test_settle_and_usable_window(self) -> None:
         lg.cmd_snapshot(NOW, fake_rpc)
         self.assertEqual(lg.cmd_settle("2026-11-07", fake_rpc), 1)
+        row = lg.latest_settle(lg.LOG_ROOT / "2026-11-07")["1.1"]
+        self.assertEqual([r["bsp"] for r in row["runners"]], [3.4, 1.6, None])       # 退出馬 "NaN" → None
+        asked = []
+        lg.cmd_settle("2026-11-07", lambda m, p: asked.extend(p["marketIds"]) or [])
+        self.assertNotIn("1.1", asked)                                                # 有 BSP 就唔再問
         self.assertEqual(lg.market_type({}), "WIN")                                       # 舊目錄冇 type
         t0 = datetime(2026, 11, 7, 5, 0, tzinfo=timezone.utc).timestamp() * 1000
         snaps = [{"ts": t0 - m * 60000, "status": "OPEN", "inplay": False} for m in (65, 16, 6)]
@@ -99,7 +108,7 @@ class SettleWeightTests(unittest.TestCase):
         sizes = []
 
         def rpc(method, params):
-            if params["priceProjection"]["priceData"] == ["SP_TRADED"] and len(params["marketIds"]) * 7 > 200:
+            if len(params["marketIds"]) * 7 > 200:
                 raise bf.BetfairError("listMarketBook: TOO_MUCH_DATA")
             sizes.append(len(params["marketIds"]))
             return [{"marketId": m, "status": "CLOSED", "runners": []} for m in params["marketIds"]]
@@ -107,6 +116,44 @@ class SettleWeightTests(unittest.TestCase):
         self.assertEqual(lg.cmd_settle("2026-11-14", rpc), 102)
         self.assertLessEqual(max(sizes) * 7, 200)
         self.assertEqual(lg.cmd_settle("2026-11-14", rpc), 0)                 # 已結算唔再問
+
+
+class BspBackfillTests(unittest.TestCase):
+    """11-06 → 11-24 嘅舊結算行 bsp 全 null：要重新結算，而且讀嘅時候攞最後一行。"""
+
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory()
+        self._root = lg.LOG_ROOT
+        lg.LOG_ROOT = Path(self.tmp.name)
+        self.folder = lg.LOG_ROOT / "2026-11-07"
+        self.folder.mkdir()
+        lg.append(self.folder / "catalogue.jsonl", [{"market": "1.1", "type": "WIN"}])
+        lg.append(self.folder / "settle.jsonl", [{"market": "1.1", "status": "CLOSED", "runners": [
+            {"id": 11, "status": "WINNER", "bsp": None}, {"id": 12, "status": "LOSER", "bsp": None}]}])
+
+    def tearDown(self) -> None:
+        lg.LOG_ROOT = self._root
+        self.tmp.cleanup()
+
+    def test_null_bsp_rows_are_resettled(self) -> None:
+        self.assertEqual(lg.cmd_settle("2026-11-07", fake_rpc), 1)
+        self.assertEqual(len(lg.read(self.folder / "settle.jsonl")), 2)
+        self.assertEqual(lg.latest_settle(self.folder)["1.1"]["runners"][0]["bsp"], 3.4)
+        self.assertEqual(lg.collect_counts(lg.LOG_ROOT)["settled_markets_with_bsp"], 1)
+
+    def test_alert_when_no_bsp_at_all(self) -> None:
+        pushed = []
+        fake = type(sys)("au_notify")
+        fake.push = lambda msg, **kw: pushed.append((msg, kw))
+        sys.modules["au_notify"] = fake
+        try:
+            self.assertFalse(lg.check_bsp_present("2026-11-07"))
+            self.assertEqual(pushed[0][1]["audience"], "primary")
+            lg.cmd_settle("2026-11-07", fake_rpc)
+            self.assertTrue(lg.check_bsp_present("2026-11-07"))
+            self.assertEqual(len(pushed), 1)
+        finally:
+            sys.modules.pop("au_notify", None)
 
 
 class ExternalDiskTests(unittest.TestCase):

@@ -49,7 +49,10 @@ HARNESS = re.compile(r"\b(Pace|Trot|Pacers?|Trotters?)\b", re.I)
 AHEAD_MIN, BEHIND_MIN = 75, 10
 QUIET_HOURS = range(1, 9)        # 悉尼 01:00–08:59 冇 AU 賽事，唔 call API
 BOOK_CHUNK = 40                  # EX_BEST_OFFERS weight 5 × 40 = 200（Betfair 上限）
-SETTLE_CHUNK = 25                # SP_TRADED weight 7 × 25 = 175；用 40 會 TOO_MUCH_DATA（2026-11-07..16 每晚結算都失敗）
+SETTLE_CHUNK = 25                # 用 40 會 TOO_MUCH_DATA（2026-11-07..16 每晚結算都失敗）；SP_AVAILABLE weight 3 × 25 = 75
+# ⚠️ 一定要 SP_AVAILABLE：淨係 SP_TRADED 嘅話 Betfair 唔會回 `sp` 欄（冇 actualSP），
+# 11-06 → 11-24 每晚結算咗 1.6 萬匹，bsp 全部 null 而冇人知（EXP-20261124-91，真 API 驗證）。
+SETTLE_PRICE_DATA = ["SP_AVAILABLE"]
 SETTLE_LOOKBACK_DAYS = 7         # 每晚補返之前 7 日未結算嘅市場：一晚失敗唔會永久冇咗賽果
 TARGET_RACES = 2000             # 只計 WIN（預先登記嘅分析）；PLACE 只係記錄，分析要另開協議
 MARKET_TYPES = ("WIN", "PLACE")  # 用戶 2026-11-06：「can we track place as well」
@@ -144,21 +147,45 @@ def cmd_snapshot(now: datetime | None = None, rpc=bf.rpc) -> int:
     return len(rows)
 
 
+def actual_sp(runner: dict) -> float | None:
+    """Betfair `sp.actualSP` → float；退出馬係字串 "NaN"、未有就 None。"""
+    try:
+        v = float((runner.get("sp") or {}).get("actualSP"))
+    except (TypeError, ValueError):
+        return None
+    return v if v == v and v > 1 else None
+
+
+def bsp_missing(row: dict) -> bool:
+    """結算咗但係有跑嘅馬全部冇 BSP（11-24 之前嘅舊行）→ 要重新結算。"""
+    runners = [r for r in row.get("runners") or [] if r.get("status") != "REMOVED"]
+    return bool(runners) and all(r.get("bsp") is None for r in runners)
+
+
+def latest_settle(folder: Path) -> dict[str, dict]:
+    """→ {market: 最後一行 CLOSED 結算}。重新結算會 append 新行，讀嘅時候一定要攞最後一行。"""
+    out = {}
+    for s in read(folder / "settle.jsonl"):
+        if s.get("status") == "CLOSED":
+            out[s["market"]] = s
+    return out
+
+
 def cmd_settle(date_str: str, rpc=bf.rpc) -> int:
     folder = ensure_log_root() / date_str
     ids = sorted({m["market"] for m in read(folder / "catalogue.jsonl")})
-    done = {s["market"] for s in read(folder / "settle.jsonl") if s.get("status") == "CLOSED"}
+    done = {m for m, s in latest_settle(folder).items() if not bsp_missing(s)}
     todo = [i for i in ids if i not in done]
     rows = []
     for i in range(0, len(todo), SETTLE_CHUNK):
         books = rpc("listMarketBook", {"marketIds": todo[i:i + SETTLE_CHUNK],
-                                       "priceProjection": {"priceData": ["SP_TRADED"]}}) or []
+                                       "priceProjection": {"priceData": SETTLE_PRICE_DATA}}) or []
         for book in books:
             if book.get("status") != "CLOSED":
                 continue
             rows.append({"market": book.get("marketId"), "status": "CLOSED", "runners": [
                 {"id": r.get("selectionId"), "status": r.get("status"),
-                 "bsp": (r.get("sp") or {}).get("actualSP")} for r in book.get("runners") or []]})
+                 "bsp": actual_sp(r)} for r in book.get("runners") or []]})
     append(folder / "settle.jsonl", rows)
     return len(rows)
 
@@ -181,10 +208,12 @@ def market_type(row: dict) -> str:
 
 
 def collect_counts(root: Path = LOG_ROOT) -> dict:
-    races = days = place = 0
+    races = days = place = with_bsp = closed = 0
     for folder in sorted(p for p in root.glob("20*") if p.is_dir()):
         cat = {m["market"]: m for m in read(folder / "catalogue.jsonl")}
-        settled = {s["market"] for s in read(folder / "settle.jsonl") if s.get("status") == "CLOSED"}
+        settled = latest_settle(folder)
+        closed += len(settled)
+        with_bsp += sum(not bsp_missing(s) for s in settled.values())
         snaps = {}
         for s in read(folder / "snapshots.jsonl"):
             snaps.setdefault(s["market"], []).append(s)
@@ -193,7 +222,8 @@ def collect_counts(root: Path = LOG_ROOT) -> dict:
         races += n
         place += sum(market_type(m) == "PLACE" for m in ok)
         days += bool(n)
-    return {"races": races, "days": days, "place_markets": place}
+    return {"races": races, "days": days, "place_markets": place, "settled_markets": closed,
+            "settled_markets_with_bsp": with_bsp}
 
 
 def cmd_status(output: Path) -> dict:
@@ -201,6 +231,8 @@ def cmd_status(output: Path) -> dict:
     status = {"experiment": "EXP-20261106-02", "kind": "betfair_market_log", "target_races": TARGET_RACES,
               "races_collected": counts["races"], "race_days": counts["days"],
               "place_markets_collected": counts["place_markets"],
+              "settled_markets": counts["settled_markets"],
+              "settled_markets_with_bsp": counts["settled_markets_with_bsp"],
               "outcomes_visible": False, "state": "collecting",
               "generated_at": datetime.now(timezone.utc).isoformat()}
     output.write_text(json.dumps(status, ensure_ascii=False, indent=1), encoding="utf-8")
@@ -230,6 +262,22 @@ def notify_settle_failed(reason: str) -> None:
         print(f"Telegram 推送失敗：{type(exc).__name__}", file=sys.stderr)
 
 
+def check_bsp_present(date_str: str) -> bool:
+    """今晚結算咗嘅市場冇一個有 BSP = 同 11-06 → 11-24 一樣靜靜壞咗 → 推 primary。"""
+    settled = latest_settle(ensure_log_root() / date_str)
+    if not settled or any(not bsp_missing(s) for s in settled.values()):
+        return True
+    try:
+        sys.path.insert(0, str(HERE.parent / "au_daily_auto"))
+        import au_notify
+        au_notify.push(f"⚠️ Betfair 記錄：{date_str} 結算咗 {len(settled)} 個市場但冇一個有 BSP。"
+                       "市場尺 BSP 版同 BSP 研究會冇數據，要查 au_betfair_logger.py settle。",
+                       title="🏇 AU Betfair 記錄", audience="primary")
+    except Exception as exc:  # noqa: BLE001
+        print(f"Telegram 推送失敗：{type(exc).__name__}", file=sys.stderr)
+    return False
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -247,6 +295,7 @@ def main() -> int:
             days = [str(today - timedelta(days=k)) for k in range(SETTLE_LOOKBACK_DAYS, -1, -1)]
             for d in ([args.date] if args.date else days):
                 print(f"settle {d}: {cmd_settle(d)} markets")
+            check_bsp_present(days[-1] if not args.date else args.date)
         else:
             print(json.dumps(cmd_status(Path(args.output)), ensure_ascii=False))
     except bf.BetfairError as exc:

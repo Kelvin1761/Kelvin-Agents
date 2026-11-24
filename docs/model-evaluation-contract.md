@@ -43,8 +43,8 @@
 
 ### 未做
 - HKJC：回放語料冇當日最終賠率，未接駁（`--platform hkjc` 會講明停）。
-- BSP 版：`au_betfair_logger.py settle` 由 11-06 起每晚寫嘅 `bsp` 全部係 null（原因未查實；推測收市後 `listMarketBook` 已唔再回 SP），
-  所以 BSP 而家只有人手下載嘅 CSV；修好之前市場尺用 Sportsbet SP。
+- BSP 版：`au_betfair_logger.py settle` 11-06 → 11-23 寫嘅 `bsp` 全部係 null（只要求 SP_TRADED，Betfair 唔回 `sp`）；
+  EXP-20261124-91 已修兼補返。市場尺 m1 仍然用 Sportsbet SP；BSP 版要另外接駁 dump 配對。
 - NBA／網球：二元盤，形狀唔同；佢哋已經有去水 log-loss／CLV 研究（EXP-20261124-70／-71）。
 
 ## HKJC 歷史回放尺 v5（2026-11-22，Kelvin 同意；取代 v4 做新候選判決器）
