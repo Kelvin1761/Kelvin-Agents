@@ -248,3 +248,14 @@ class OutputTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_market_wrong_splits_off_races_the_market_also_missed():
+    """EXP-20261124-31：SP 頭三熱門最多中 1 隻 → market_wrong；有效 SP 唔夠 3 隻 → 唔判。"""
+    import miss_autopsy as M
+    rows = [{"placing": i, "horse_no": i, "odds": o} for i, o in ((1, "12.0"), (2, "15"), (3, "2.2"), (4, "1.9"), (5, "3.5"))]
+    assert M.market_top3_hits(rows) == 1
+    rows_ok = [{"placing": i, "horse_no": i, "odds": o} for i, o in ((1, "2.0"), (2, "3.0"), (3, "9.0"), (4, "4.0"))]
+    assert M.market_top3_hits(rows_ok) == 2
+    assert M.market_top3_hits([{"placing": 1, "horse_no": 1, "odds": "---"}, {"placing": "DQ", "horse_no": 2, "odds": "3"}]) is None
+    assert "market_wrong" in M.BUCKETS and M.MARKET_CHAOS_MAX == 1

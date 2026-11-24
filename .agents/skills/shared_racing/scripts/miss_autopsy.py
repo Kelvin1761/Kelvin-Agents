@@ -18,7 +18,11 @@ EXP-20260905-02（全 miss 場日，九個特徵冇一個企得住）、EXP-2026
                    HKJC ≥3 個缺數記號）、上名馬冇評分、賽果有行被丟走
     crowded        輸入正常，但頭幾名分數擠埋一齊（confidence_tier == tight 或
                    top_pick_tied）—— 本身就難估
-    model_wrong    輸入正常、分差清楚，模型都判錯
+    market_wrong   輸入正常、分差清楚，但市場都估唔中（SP 頭三熱門最多中 1 隻頭三）
+                   —— 賽事本身亂。EXP-20261124-31：09-01→11-23 舊「模型判錯」1,532 場
+                   入面 47% 係呢種（頭馬平均 SP $8.2，Gold／Good 場 $4.9）。SP 係賽後資訊，
+                   **只做賽後分類，永遠唔入模型**。
+    model_wrong    輸入正常、分差清楚、市場估得中，模型就判錯
 
 規則同門檻係**預先寫死**嘅，全部取自 engine 現有常數或者只用賽前輸入量出嚟嘅
 基準觸發率（2026-09-2x～10-0x 760 場：每條 ≤10%），**冇用過賽果去調**。
@@ -53,7 +57,8 @@ sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent / "race_reflector" / "scripts"))
 import unified_reflector_core as core  # noqa: E402
 
-BUCKETS = ("input_anomaly", "crowded", "model_wrong")
+BUCKETS = ("input_anomaly", "crowded", "market_wrong", "model_wrong")
+MARKET_CHAOS_MAX = 1   # 市場（SP 頭三熱門）最多中幾多隻頭三先算「市場都估唔中」；預先定，冇用賽果調
 SUCCESS_LABELS = frozenset({"Gold", "Good"})
 WEAK_STATES = frozenset({"fallback", "missing"})
 CROWD_RULES = frozenset({"tight", "tied"})
@@ -93,6 +98,7 @@ REPORT_END = "<!-- miss-autopsy:end -->"
 BUCKET_LABELS = {
     "input_anomaly": "輸入有問題",
     "crowded": "分數擠迫，本身難估",
+    "market_wrong": "市場都估唔中，賽事本身亂",
     "model_wrong": "輸入正常，模型判錯",
 }
 TRIGGER_LABELS = {
@@ -214,6 +220,28 @@ def _current_pf_coverage(stored: dict, horses: dict, platform: str) -> dict:
     return stored if current.get("status") == "unavailable" else current
 
 
+def market_top3_hits(actual_rows: list[dict]) -> int | None:
+    """SP 頭三熱門入面有幾多隻跑入頭三；有效 SP 少過 3 隻 → None（唔判）。賽後診斷用。"""
+    priced = []
+    for row in actual_rows:
+        try:
+            odds = float(str(row.get("odds") or "").replace("$", "").strip())
+        except ValueError:
+            continue
+        if odds > 1.0:
+            priced.append((odds, row.get("horse_no")))
+    if len(priced) < 3:
+        return None
+    favourites = {h for _o, h in sorted(priced, key=lambda t: t[0])[:3]}
+    def placing(row):
+        try:
+            return int(row.get("placing") or 0)
+        except (TypeError, ValueError):
+            return 0
+    top3 = {row.get("horse_no") for row in actual_rows if 1 <= placing(row) <= 3}
+    return len(favourites & top3)
+
+
 def classify_race(race_num: int, logic: dict, predictions: list[dict], actual_rows: list[dict],
                   *, health_issues: list | None = None, dropped_rows: int = 0,
                   platform: str = "au") -> dict:
@@ -255,10 +283,13 @@ def classify_race(race_num: int, logic: dict, predictions: list[dict], actual_ro
     if context["tied"]:
         crowd.append({"rule": "tied", "value": context["top1_top2_gap"]})
 
+    market_hits = market_top3_hits(actual_rows)
     if triggers:
         bucket = "input_anomaly"
     elif crowd:
         bucket = "crowded"
+    elif market_hits is not None and market_hits <= MARKET_CHAOS_MAX:
+        bucket = "market_wrong"
     else:
         bucket = "model_wrong"
     return {

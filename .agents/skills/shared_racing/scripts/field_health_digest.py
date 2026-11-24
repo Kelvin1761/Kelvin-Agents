@@ -29,8 +29,9 @@ import field_health as fh  # noqa: E402
 MISS_LEDGERS = {"au": "AU_Miss_Autopsy.jsonl", "hkjc": "HKJC_Miss_Autopsy.jsonl"}
 MAX_FIELDS = 5
 TOP_RULES = 3
-BUCKETS = ("input_anomaly", "crowded", "model_wrong")
-BUCKET_SHORT = {"input_anomaly": "輸入", "crowded": "擠迫", "model_wrong": "模型"}
+BUCKETS = ("input_anomaly", "crowded", "market_wrong", "model_wrong")
+# market_wrong 2026-11-24 起先有（EXP-20261124-31）；之前週嘅「模型」包埋市場都估唔中嗰批。
+BUCKET_SHORT = {"input_anomaly": "輸入", "crowded": "擠迫", "market_wrong": "市場都唔中", "model_wrong": "模型"}
 
 
 def _read_jsonl(path: Path) -> list[dict]:
