@@ -1,4 +1,4 @@
-"""EXP-20261124-60 (amendment 1): post-hoc recalibration of the published MS p_final.
+"""EXP-20261124-70 (amendment 1): post-hoc recalibration of the published MS p_final.
 
 usage: python3 evaluate.py <legs.csv> dev|holdout
   dev      leave-one-day-out on 11-05..11-11, picks R2 or R3

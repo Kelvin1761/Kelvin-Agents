@@ -1,7 +1,7 @@
 """EXP-20261124-61: frozen forward test of a weekly recalibration layer on the published p_final.
 
 The published probability p_final (MS, nba_engine:ms:a140747bfae0c724) runs low in the middle and high at
-the top (EXP-20261124-60). The candidate policy is a recalibration layer refitted every week:
+the top (EXP-20261124-70). The candidate policy is a recalibration layer refitted every week:
 
     logit p = a_stat + b*logit(p_final) + c*logit(m) + d*logit(m)^2,   m = 1/price_at_model
     (p_final and m clipped to [0.02, 0.98] before the logit)

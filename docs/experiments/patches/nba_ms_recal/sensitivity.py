@@ -1,4 +1,4 @@
-"""EXP-20261124-60 secondary checks (report only, not a verdict): per-day delta, the clean tail
+"""EXP-20261124-70 secondary checks (report only, not a verdict): per-day delta, the clean tail
 11-20..11-24 (after the bias_check window that inspired the hypothesis), and R2 without the square."""
 import sys, numpy as np
 import evaluate as E

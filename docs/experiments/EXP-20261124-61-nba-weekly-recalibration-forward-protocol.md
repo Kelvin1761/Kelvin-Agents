@@ -6,7 +6,7 @@
 - **凍結**：`docs/experiments/patches/nba_recal_forward/evaluate.py`（arm、係數、判決全部寫死），同本文件同一個 commit。
 - **唔改發佈機率**：`p_final`、穩膽、精選、SGM 全部照舊；呢個係紙上量度，唔發 Telegram content、唔入 ROI 板。
 
-## 點解（EXP-20261124-60 同設計量度）
+## 點解（EXP-20261124-70 同設計量度）
 - `p_final` 中段（20–60%）低估 5–6pp、頂段（≥90%）高估 3.4pp；事後校準 R2 喺 holdout −0.0035，但假設來源同 holdout 重疊 → NEEDS MORE TESTING。
 - **定期重擬合點做**（`patches/nba_ms_recal/rolling_sim.py`，11-12…11-24 walk-forward，描述性）：
   R2 用晒之前數據每日重擬合 −0.0036、**每週** −0.0036、只用最近 7 日 −0.0028、最近 14 日 −0.0035；R1 約 −0.0019。
