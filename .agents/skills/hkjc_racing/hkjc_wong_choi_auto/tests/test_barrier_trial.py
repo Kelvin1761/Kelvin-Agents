@@ -59,3 +59,10 @@ def test_adjustments_center_and_disabled(monkeypatch):
     assert sum(v[0] for v in result.values()) == pytest.approx(0)
     monkeypatch.setattr(bt, 'ENABLED', False)
     assert bt.apply(horses, {'race_date': '2026-01-02'}) == 0
+
+
+def test_v2_record_preferred_over_legacy_same_day():
+    rows = [["2026-01-0%d" % (i % 9 + 1), 1.0, "沙田草地", 1000, "好地", 60.0] for i in range(40)]
+    table = {"trials": {"A123": [["2026-02-01", 1.0], ["2026-02-01", 1.0, "沙田草地", 1000, "好地", 59.0]], "B999": rows}}
+    info = bt.last_trial_figure("A123", "2026-02-02", table)
+    assert info[0] == "2026-02-01" and info[1] is not None and info[2] == "沙田草地"

@@ -117,7 +117,8 @@ def last_trial_figure(code, race_date, table):
     rows = [r for r in (table or {}).get('trials', {}).get(code, []) if r[0] < race_date]
     if not rows:
         return None
-    row = sorted(rows, key=lambda r: r[0])[-1]
+    # 同日如果有舊 2 欄紀錄（未升級嘅抓取寫入）同 v2 紀錄，揀 v2。
+    row = sorted(rows, key=lambda r: (r[0], len(r) >= 6))[-1]
     figures = trial_figures(table).get(code, [])
     # Same-day trials preserve table insertion order.
     same_day = [tf for day, tf in figures if day == row[0]]
