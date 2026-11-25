@@ -122,6 +122,7 @@ TRAINER_RESIDUAL_SHADOW = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_resid
 PEOPLE_PRIZE_TABLE = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_people_prize_table.py"
 SPEED_REFERENCE_TABLE = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_speed_reference_table.py"
 CALIBRATION_BOARD = SHARED_RACING_SCRIPTS / "calibration_board.py"
+POST_REVIEW = SHARED_RACING_SCRIPTS / "post_review.py"
 GENERATE_STATIC = DASHBOARD_DIR / "generate_static.py"
 DEPLOY_SH = DASHBOARD_DIR / "deploy.sh"
 
@@ -1917,6 +1918,21 @@ def step_calibration_shadow(runlog: RunLog) -> bool:
         runlog.step("calibration-shadow", "failed", detail=detail)
         return False
     runlog.step("calibration-shadow", "ok", detail=(out or "").strip().splitlines()[-1:])
+
+
+def step_post_review(runlog: RunLog, review_day: date) -> bool:
+    """自動覆盤（自學循環 L1，Kelvin 2026-11-26）：`post_review.py` 出 `<WongChoiControl>/reviews/au/<日>.json/.md`
+    （對市場、失手分類、逐場低估／高估、跨日核實、核數），並發 content 摘要。只描述、唔改模型。
+    失敗只 log＋runlog.step，唔 runlog.warn（warning 會令 evening 變 partial）。"""
+    rc, out = run_cmd([sys.executable, str(POST_REVIEW), "--platform", "au", "--date", review_day.isoformat(),
+                       "--telegram"], timeout=900)
+    if rc != 0:
+        detail = error_excerpt(out, rc)
+        log(f"⚠️  自動覆盤失敗（唔影響 live）：{detail}")
+        runlog.step("post-review", "failed", detail=detail)
+        return False
+    runlog.step("post-review", "ok", detail=(out or "").strip().splitlines()[-1:])
+    return True
 
 
 def step_trainer_residual_shadow(runlog: RunLog) -> bool:
@@ -4782,6 +4798,7 @@ def run_evening(runlog: RunLog, args, review_day: date) -> int:
         step_sb_betfair_forward(runlog)
         step_forward_tracker(runlog)
         step_calibration_shadow(runlog)
+        step_post_review(runlog, review_day)
     publisher = None
     progressive = (not args.skip_deploy and not args.skip_analysis
                    and os.environ.get("WC_AU_PROGRESSIVE_PUBLISH", "1") != "0")

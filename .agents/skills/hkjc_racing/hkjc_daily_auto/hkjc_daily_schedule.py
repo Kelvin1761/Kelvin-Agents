@@ -78,6 +78,7 @@ HKJC_ORCHESTRATOR = (
 SHARED_SCRIPTS = PROJECT_ROOT / ".agents" / "skills" / "shared_racing" / "scripts"
 MISS_AUTOPSY = SHARED_SCRIPTS / "miss_autopsy.py"
 CALIBRATION_BOARD = SHARED_SCRIPTS / "calibration_board.py"
+POST_REVIEW = SHARED_SCRIPTS / "post_review.py"
 REFLECTOR = (
     PROJECT_ROOT
     / ".agents/skills/hkjc_racing/hkjc_reflector/scripts/hkjc_reflector_orchestrator.py"
@@ -604,6 +605,24 @@ def update_calibration_shadow_async() -> None:
         log("calibration-shadow: 背景更新已開始")
     except Exception as exc:  # noqa: BLE001 —— shadow 唔可以令覆盤失敗
         log(f"calibration-shadow: 開唔到背景更新：{exc}")
+
+
+def update_post_review_async(meeting_dirs) -> None:
+    """自動覆盤（自學循環 L1，2026-11-26）：每個完成嘅賽日喺背景出 `<WongChoiControl>/reviews/hkjc/<日>.json/.md`，
+    並發 content 摘要（Kelvin＋Heison）。只描述、唔改模型；失敗只寫 log，唔影響覆盤。"""
+    if os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("WC_DISABLE_POST_REVIEW"):
+        log("post-review: 測試／停用中，唔開")
+        return
+    days = sorted({Path(m).name[:10] for m in meeting_dirs})
+    try:
+        LOG_DIR.mkdir(parents=True, exist_ok=True)
+        with open(LOG_DIR / "post_review.log", "a", encoding="utf-8") as fh:
+            for day in days:
+                subprocess.Popen([sys.executable, str(POST_REVIEW), "--platform", "hkjc", "--date", day, "--telegram"],
+                                 cwd=str(PROJECT_ROOT), stdout=fh, stderr=subprocess.STDOUT, start_new_session=True)
+        log(f"post-review: 背景開始 {days}")
+    except Exception as exc:  # noqa: BLE001 —— 覆盤報告唔可以令覆盤失敗
+        log(f"post-review: 開唔到：{exc}")
 
 
 def store_meeting_results(meeting_dir: Path) -> dict:
@@ -1703,6 +1722,7 @@ def run_postrace(state: dict, state_path: Path) -> int:
             forward_tracker_remind(state, state_path)
             update_pit_sections_async()     # 全部賽日入咗庫先更新一次段速表
             update_calibration_shadow_async()   # 校準機率 shadow（EXP-20261125-07）
+            update_post_review_async(completed)  # 自動覆盤（自學循環 L1）
     if overall == EXIT_TEMPORARY:
         set_control_outcome("partial", reason="results_pending")
     else:

@@ -580,6 +580,17 @@ else
   note_bad "有新嘅證據 artifact 搵唔到 —— 有 step 搬咗／刪咗預測快照（搬嘢要抄、原位留低）"
 fi
 
+# ── 自動覆盤（自學循環 L1，2026-11-26）──────────────────────────────────────
+# 每個完賽日應該有 `<WongChoiControl>/reviews/<au|hkjc>/<日>.json`；核數有缺 = 有場有賽果但用唔到（快照唔齊／斷碟）。
+hdr "自動覆盤"
+if REV=$("$PY" .agents/skills/shared_racing/scripts/post_review.py --health 2>&1); then
+  printf '%s\n' "$REV" | sed 's/^/  /'
+  ok "自動覆盤有出、核數 OK"
+else
+  printf '%s\n' "$REV" | sed 's/^/  /' | tail -6
+  warn "自動覆盤冇出或者核數有缺（睇上面）"
+fi
+
 # ── 異地加密備份（系統升級第 2 項）──────────────────────────────────────────
 hdr "異地加密備份"
 if OFF=$("$PY" .agents/scripts/offsite_backup.py status 2>/dev/null); then
