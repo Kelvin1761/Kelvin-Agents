@@ -369,7 +369,13 @@ class SelfRepair:
                 continue  # 冇可靠輸出可以核對（live／startup）→ 健康.sh 照睇退出碼
             fresh = self.freshness(label, self.now)
             state = (fresh.get("state") or "").lower()
+            if fresh.get("pending_first_run"):
+                self.report.skipped.append({"label": label, "reason": "新裝、未到第一次排程"})
+                continue
             if fresh.get("fresh") and state not in job_freshness.FAILED_STATES:
+                continue
+            if fresh.get("fresh") and state == "blocked" and fresh.get("skipped_locked"):
+                self.report.skipped.append({"label": label, "reason": "最新 run 撞鎖跳過，下一轉會做返"})
                 continue
             if fresh.get("fresh"):
                 self._unknown(label, plist, info, fresh, "最新 run 自己寫住失敗（新鮮但 failed）")

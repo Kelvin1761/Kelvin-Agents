@@ -89,3 +89,16 @@ AU evening 最新 run partial、NBA warmup failed、model-probe failed、astra-a
 `if SGM_TELEGRAM:` 入面先叫。2026-11-16（eb0b58e2，SGM 改做只追蹤）`SGM_TELEGRAM = False` 之後就再冇計。
 而家每次 postgame 都計同寫檔，淨係 Telegram 嗰行仍然跟 SGM 開關（content 只收精選）。
 測試：`test_track_only_sgm_postgame_still_refreshes_reliability`。
+
+## 2026-11-26 補丁：新裝 job 同撞鎖跳過唔再當壞
+
+- **新裝、未到第一次排程**：`job_freshness.check` 喺「從未寫過輸出」而
+  `~/Library/LaunchAgents/com.antigravity.<label>.plist` mtime 未夠該 job 嘅最大年齡時，回 `pending_first_run=True`；
+  `classify` 報 ok「新裝、未到第一次排程」。一有輸出、或者 plist 舊過最大年齡，就照舊判（過期 = bad）。
+  起因：`central-wong-choi.astra-audit` 11-25 裝、每週一 08:00 先第一次跑，被報 ❌。
+  `self_repair` 見到呢個狀態記入 `skipped`，唔開診斷 bundle。
+- **撞鎖跳過**：最新 manifest `state=blocked` 而有 operation（或 `source_payload`）`status=skipped_locked` → `warn`
+  「撞鎖跳過」；其他 failed／partial／blocked 照舊 bad。`self_repair` 同樣記 `skipped`。
+- **NBA 19:00 warmup 等鎖**：`nba_daily_schedule.main` 對 `--mode pregame --freshness-role warmup`（只有 warmup plist 咁傳）
+  每 15 秒試一次鎖、最多等 10 分鐘先 `skipped_locked`（11-22、11-23、11-26 撞 15 分鐘 postgame）。
+  production／final_refresh／postgame／auto 照舊一撞即跳；warmup 等鎖期間唔揸鎖，所以唔會拖 21:00。
