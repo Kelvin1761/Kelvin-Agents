@@ -661,6 +661,8 @@ def alert(text: str) -> bool:
 
 def note_run_health(model: str, ok: bool, error: str | None, entries: list[dict] | None = None) -> None:
     """每次委派之後：同一個模型連續 HEALTH_FAIL_STREAK 次失敗 → 報一次；之後成功 → 報恢復。"""
+    if os.environ.get("WC_SKIP_RUN_HEALTH") == "1":  # 健康探測自己處理結果
+        return
     entries = _ledger_entries() if entries is None else entries
     runs = [e for e in entries if e.get("type") != "grade" and e.get("model") == model]
     state = _load_health()
@@ -742,10 +744,66 @@ def cmd_health(args) -> int:
         for fam, slug in state.get("latest", {}).items():
             print(f"  {fam:<8} {slug}")
         return 0
-    import tempfile
     msgs = check_model_versions(force=True)
+    results = _probe_once()
+    failed = [r for r in results if r["status"] == "failed"]
+    tried = [r for r in results if r["status"] != "skipped"]
+    environment = bool(tried) and len(failed) == len(tried) and len(tried) > 1
+    if environment:
+        # 全部同時失敗 = 多數係部機閒置／休眠、網絡斷（2026-11-25 16:15 實測五個一齊逾時，之後即刻正常）
+        print(f"  全部同時失敗，{PROBE_RETRY_WAIT // 60} 分鐘後重試一次…")
+        time.sleep(PROBE_RETRY_WAIT)
+        results = _probe_once()
+        failed = [r for r in results if r["status"] == "failed"]
+        tried = [r for r in results if r["status"] != "skipped"]
+        environment = bool(tried) and len(failed) == len(tried) and len(tried) > 1
+    out = control_root() / "model_probe"
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "latest.json").write_text(json.dumps({"ts": time.time(), "results": results,
+                                                 "status": "failed" if failed else "succeeded",
+                                                 "environment_failure": environment},
+                                                ensure_ascii=False, indent=2), encoding="utf-8")
+    if environment:
+        alert("⚠️ 每日模型探測：所有模型同時失敗（重試咗一次都係咁）\n多數係部機休眠／網絡問題，唔係模型本身。"
+              "\n如果持續，Claude 派工都會失敗 —— 請睇吓部 Mac 有冇瞓咗或者斷網。")
+        return 1
+    # 個別模型：探測自己標記壞／恢復（子程序唔經 note_run_health，免得探測＋重試當連續失敗洗版）
+    state = _load_health()
+    models = state.setdefault("models", {})
+    recovered = []
+    for r in results:
+        model = r.get("slug")
+        if not model:
+            continue
+        if r["status"] == "failed":
+            models[model] = {"status": "bad", "since": time.time(), "error": r["detail"][:300], "alerted": True}
+        elif r["status"] == "ok" and models.get(model, {}).get("status") == "bad":
+            models[model] = {"status": "ok", "since": time.time()}
+            recovered.append(r["model"])
+    _save_health(state)
+    if failed:
+        alert("⚠️ 每日模型探測：" + "、".join(r["model"] for r in failed) + " 唔正常\n"
+              + "\n".join(f"• {r['model']}：{r['detail'][:150]}" for r in failed)
+              + "\nClaude 派工會自動跳過／改派後備。")
+    if recovered:
+        alert("✅ 每日模型探測：" + "、".join(recovered) + " 已恢復")
+    return 1 if failed else 0
+
+
+PROBE_RETRY_WAIT = 600
+
+
+def _probe_slug(argv: list[str]) -> str | None:
+    role = argv[0]
+    if "gemini" in argv:
+        return latest_gemini(GEMINI_ROLES[role][0])
+    return latest_model(ROLES[role][0]) if role in ROLES else None
+
+
+def _probe_once() -> list[dict]:
+    import tempfile
     results = []
-    child_env = {**os.environ, "WC_SKIP_VERSION_CHECK": "1"}
+    child_env = {**os.environ, "WC_SKIP_VERSION_CHECK": "1", "WC_SKIP_RUN_HEALTH": "1"}
     with tempfile.TemporaryDirectory(prefix="model_probe_") as tmp:
         brief = Path(tmp) / "brief.md"
         brief.write_text("健康探測：唔使讀任何檔、唔使改任何嘢，只覆「OK」。\n", encoding="utf-8")
@@ -763,19 +821,13 @@ def cmd_health(args) -> int:
                 rc, err = 1, "探測逾時"
             # rc 3 = 額度唔准派（跳過）；但 CLI 唔喺 PATH 係壞咗，唔係額度
             status = "ok" if rc == 0 else ("skipped" if rc == 3 and "唔喺 PATH" not in err else "failed")
-            results.append({"model": label, "status": status, "detail": "" if rc == 0 else err})
+            try:
+                slug = _probe_slug(argv)
+            except Exception:
+                slug = None
+            results.append({"model": label, "slug": slug, "status": status, "detail": "" if rc == 0 else err})
             print(f"  {label:<9} {status}" + (f"：{err}" if rc else ""))
-    out = control_root() / "model_probe"
-    out.mkdir(parents=True, exist_ok=True)
-    (out / "latest.json").write_text(json.dumps({"ts": time.time(), "results": results,
-                                                 "status": "failed" if any(r["status"] == "failed" for r in results) else "succeeded"},
-                                                ensure_ascii=False, indent=2), encoding="utf-8")
-    failed = [r for r in results if r["status"] == "failed"]
-    if failed:
-        alert("⚠️ 每日模型探測：" + "、".join(r["model"] for r in failed) + " 唔正常\n"
-              + "\n".join(f"• {r['model']}：{r['detail'][:150]}" for r in failed)
-              + "\nClaude 派工會自動跳過／改派後備。")
-    return 1 if failed else 0
+    return results
 
 
 # ── 派工路由（Kelvin 2026-11-25）：按三邊額度揀邊個做，Opus 永遠兜底 ──────────────

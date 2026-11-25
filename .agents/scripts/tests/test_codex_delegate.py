@@ -734,16 +734,63 @@ class HealthTest(unittest.TestCase):
         fake = lambda cmd, **kw: mock.Mock(returncode=0 if cmd[0] == "git" else next(rcs),
                                            stderr="⛔ 唔派：agy 唔喺 PATH。", stdout="")
         with mock.patch.object(cd.subprocess, "run", side_effect=fake), \
-             mock.patch.object(cd, "check_model_versions", return_value=[]):
+             mock.patch.object(cd, "check_model_versions", return_value=[]), \
+             mock.patch.object(cd, "_probe_slug", side_effect=lambda a: f"m-{a[0]}"):
             self.assertEqual(cd.main(["health", "--probe"]), 1)
         state = json.loads((Path(self.tmp.name) / "model_probe" / "latest.json").read_text())
         self.assertEqual(state["results"][-1]["status"], "failed")
+
+    def test_probe_all_fail_retries_then_environment_alert(self):
+        fake = lambda cmd, **kw: mock.Mock(returncode=0 if cmd[0] == "git" else 1, stderr="timeout after 300s", stdout="")
+        with mock.patch.object(cd.subprocess, "run", side_effect=fake) as run, \
+             mock.patch.object(cd, "check_model_versions", return_value=[]), \
+             mock.patch.object(cd, "_probe_slug", side_effect=lambda a: f"m-{a[0]}"), \
+             mock.patch.object(cd.time, "sleep") as sleep:
+            self.assertEqual(cd.main(["health", "--probe"]), 1)
+        sleep.assert_called_once_with(cd.PROBE_RETRY_WAIT)
+        self.assertEqual(sum(1 for c in run.call_args_list if c[0][0][0] != "git"), 2 * len(cd.PROBES))
+        self.assertEqual(len(self.sent), 1)
+        self.assertIn("同時失敗", self.sent[0])
+        state = json.loads((Path(self.tmp.name) / "model_probe" / "latest.json").read_text())
+        self.assertTrue(state["environment_failure"])
+        self.assertFalse(cd._load_health().get("models"))  # 環境問題唔會將模型標壞
+
+    def test_probe_all_fail_then_recover_on_retry(self):
+        rcs = iter([1] * len(cd.PROBES) + [0] * len(cd.PROBES))
+        fake = lambda cmd, **kw: mock.Mock(returncode=0 if cmd[0] == "git" else next(rcs), stderr="x", stdout="")
+        with mock.patch.object(cd.subprocess, "run", side_effect=fake), \
+             mock.patch.object(cd, "check_model_versions", return_value=[]), \
+             mock.patch.object(cd, "_probe_slug", side_effect=lambda a: f"m-{a[0]}"), \
+             mock.patch.object(cd.time, "sleep"):
+            self.assertEqual(cd.main(["health", "--probe"]), 0)
+        self.assertEqual(self.sent, [])
+
+    def test_probe_marks_bad_and_recovered(self):
+        def go(rc_list):
+            rcs = iter(rc_list)
+            fake = lambda cmd, **kw: mock.Mock(returncode=0 if cmd[0] == "git" else next(rcs), stderr="boom", stdout="")
+            with mock.patch.object(cd.subprocess, "run", side_effect=fake), \
+                 mock.patch.object(cd, "check_model_versions", return_value=[]), \
+                 mock.patch.object(cd, "_probe_slug", side_effect=lambda a: f"m-{a[0]}"):
+                return cd.main(["health", "--probe"])
+        self.assertEqual(go([0, 0, 1, 0, 0]), 1)
+        self.assertEqual(cd.model_is_bad("m-review") is not None, True)
+        self.assertEqual(go([0, 0, 0, 0, 0]), 0)
+        self.assertIsNone(cd.model_is_bad("m-review"))
+        self.assertIn("已恢復", self.sent[-1])
+
+    def test_skip_run_health_env(self):
+        with mock.patch.dict(os.environ, {"WC_SKIP_RUN_HEALTH": "1"}):
+            entries = [{"ts": 1, "model": "m", "ok": False}, {"ts": 2, "model": "m", "ok": False}]
+            cd.note_run_health("m", False, "x", entries)
+        self.assertEqual(self.sent, [])
 
     def test_probe_writes_state_and_alerts_failures(self):
         rcs = iter([0, 0, 1, 3, 0])
         fake = lambda cmd, **kw: mock.Mock(returncode=0 if cmd[0] == "git" else next(rcs), stderr="boom", stdout="")
         with mock.patch.object(cd.subprocess, "run", side_effect=fake), \
-             mock.patch.object(cd, "check_model_versions", return_value=[]):
+             mock.patch.object(cd, "check_model_versions", return_value=[]), \
+             mock.patch.object(cd, "_probe_slug", side_effect=lambda a: f"m-{a[0]}"):
             rc = cd.main(["health", "--probe"])
         self.assertEqual(rc, 1)
         state = json.loads((Path(self.tmp.name) / "model_probe" / "latest.json").read_text())
