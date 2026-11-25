@@ -75,3 +75,18 @@
 3. HKJC 用回放語料（現行 code）fit，避免等幾個月。
 4. AU 入頭三中高段系統性高估 → 可以考慮非線性校準（例如 α 分段）—— 要過判決尺先講得改善。
 5. AU model_id 考慮包埋 overlay 版本。
+
+## 2026-11-26 上 dashboard（Kelvin「做 1-3」第 2 項）
+
+- **一個標準**：機率只由 `model_probability.py` 計。dashboard `backend/services/model_prob_display.py` 只係調用
+  `top3_probs`／`win_probs`（測試核對同一條公式）；舊 Monte Carlo（`mc_simulator.py`）2026-05 之後冇輸出，
+  只喺舊場次顯示並標「舊版（2026-05 前）」。跟進 1 完成。
+- **AU 馬匹卡**：總分旁邊「入位 X% · 獨贏 Y% shadow」chip，tooltip 寫明 shadow／未入分、fit 到幾時、用幾多賽日、
+  以發佈時馬數計。條件：參數 `status == ok` 而且 `model_id` == 現行 golden（模型改咗未重 fit = 唔顯示）。
+  純顯示：唔改分數／排名／grade（`test_attach_is_display_only`）。
+- **HKJC**：參數仲係 `insufficient`（現行 contract 14 日），而且 raw 係 Logic `ability_score_raw`，未接 —— 唔顯示，唔扮有。
+- **校準板**：Portfolio 頁「🎯 校準板」6 張 reliability 圖（AU 入頭三／獨贏、HKJC 入頭三、NBA 腿、網球全部／精選），
+  每桶 Wilson 95% 區間、樣本 <50 淡色、同一批去水市場 log-loss 對照。`calibration_board_export.py` 只抄
+  `<WongChoiControl>/calibration_board.json`，唔重計。跟進 2 完成（Telegram 另發）。
+- 本機用真數據（11-26 Mornington 等 4 個 AU 場次）砌過：Mornington R1 8 匹，獨贏加埋 100%、入位加埋 ≈2.94，
+  次序同分數一樣；手機 375px 冇橫向捲動。

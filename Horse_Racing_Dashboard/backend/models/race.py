@@ -114,6 +114,9 @@ class HorseAnalysis(BaseModel):
     rating_matrix: Optional[RatingMatrix] = None
     final_grade: Optional[str] = None  # A+, A, B+, etc.
     ability_score: Optional[float] = None
+    # 校準機率（shadow · 未入分，EXP-20261125-07）：{top3, win, fit_until, n_days, model_id, field_n}。
+    # 只由 services/model_prob_display（＝ shared_racing model_probability）計；唔入排名。
+    model_probability: Optional[dict] = None
     # HKJC official ranking is pure 7D.  The percentile is display-only and is
     # derived from the same score, never a second-stage ranking layer.
     official_ranking_score: Optional[float] = None

@@ -1406,6 +1406,12 @@ def parse_au_analysis(filepath: str) -> Optional[RaceAnalysis]:
             tags = captured.get("tags")
             if captured and isinstance(tags, dict) and clean_name(captured.get("name")) == clean_name(horse.horse_name):
                 horse.analysis_summary = {**(horse.analysis_summary or {}), "tags": tags}
+    # 校準機率（shadow · 未入分）：同判決尺同一條公式；條件唔符合就唔掛（見 model_prob_display）
+    try:
+        from services.model_prob_display import attach as _attach_prob
+        _attach_prob(horses, path.parent / f"Race_{race_number}_Auto_Scoring.csv", "au")
+    except Exception as exc:  # noqa: BLE001 — 純顯示，唔可以令解析失敗
+        print(f"   ⚠️ 機率顯示略過：{type(exc).__name__}: {exc}")
     return RaceAnalysis(
         full_time_speed=time_metadata.get("race") if time_metadata else None,
         race_number=race_number,

@@ -260,6 +260,14 @@
     .mkt__gap--under { background: #FEF3C7; color: #92400E; }
     .horse-card__total { font-size: 0.74rem; color: var(--color-text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
     .horse-card__total b { color: var(--color-text); font-size: 0.86rem; }
+    .horse-card__prob { font-size: 0.7rem; padding: 1px 7px; border-radius: 999px; border: 1px dashed var(--color-border, #CBD5E1); color: var(--color-text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; cursor: help; }
+    .horse-card__prob b { color: var(--color-text); }
+    .calib-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+    .calib-card { border: 1px solid var(--pf-line); border-radius: 12px; padding: 12px; background: var(--pf-paper); min-width: 0; }
+    .calib-card h3 { font-size: 0.86rem; margin: 0 0 4px; }
+    .calib-card__meta { font-size: 0.7rem; color: var(--color-text-muted); margin: 0 0 8px; }
+    .calib-card svg { width: 100%; height: auto; display: block; }
+    .calib-card__ll { font-size: 0.72rem; color: var(--color-text-secondary); margin-top: 6px; }
     .horse-card__body { word-break: break-word; box-sizing: border-box; overflow: hidden; min-width: 0; }
     .horse-card__details { overflow-wrap: break-word; word-break: break-word; min-width: 0; }
 
@@ -4194,6 +4202,57 @@ function pfHover(event, el) {
   tip.style.left = `${Math.min(Math.max(px + 12, 0), box.width - 190)}px`;
 }
 
+// 校準機率（shadow · 未入分，EXP-20261125-07）：只由 model_probability 計，後端掛落 horse.model_probability。
+// 冇就唔顯示（參數未夠數／模型改咗未重 fit／HKJC 未接）。
+function renderModelProbChip(horse) {
+  const p = horse && horse.model_probability;
+  if (!p || p.top3 == null || p.win == null) return '';
+  const pc = (v) => `${Math.round(100 * Number(v))}%`;
+  const tip = `校準機率（shadow · 未入分）：同判決尺同一條公式，由綜合分換算；用 ${p.n_days} 個賽日（${p.n_races} 場）fit 到 ${p.fit_until}；`
+    + `以發佈時 ${p.field_n} 匹計（臨場退出唔會重算）。唔郁排名。準唔準睇 Portfolio 頁「校準板」。`;
+  return `<span class="horse-card__prob" title="${esc(tip)}">入位 <b>${pc(p.top3)}</b> · 獨贏 <b>${pc(p.win)}</b> <small>shadow</small></span>`;
+}
+
+function calibSvg(buckets) {
+  const W = 240, H = 150, P = 32;
+  const x = (v) => P + v * (W - P - 8), y = (v) => H - P - v * (H - P - 8);
+  let g = `<line x1="${x(0)}" y1="${y(0)}" x2="${x(1)}" y2="${y(1)}" stroke="var(--color-text-muted)" stroke-dasharray="3 3" stroke-width="1"/>`;
+  [0, 0.5, 1].forEach(t => {
+    g += `<text x="${x(t)}" y="${H - 8}" font-size="9" text-anchor="${t === 1 ? 'end' : t === 0 ? 'start' : 'middle'}" fill="var(--color-text-muted)">${t * 100}%</text>`;
+    g += `<text x="${P - 4}" y="${y(t) + 3}" font-size="9" text-anchor="end" fill="var(--color-text-muted)">${t * 100}%</text>`;
+  });
+  (buckets || []).forEach(b => {
+    if (b.mean_p == null || b.hit_rate == null) return;
+    const cx = x(b.mean_p), cy = y(b.hit_rate), op = b.low_n ? 0.35 : 1;
+    if (Array.isArray(b.ci)) g += `<line x1="${cx}" y1="${y(b.ci[0])}" x2="${cx}" y2="${y(b.ci[1])}" stroke="#2563EB" stroke-width="1.5" opacity="${op}"/>`;
+    g += `<circle cx="${cx}" cy="${cy}" r="3.5" fill="#2563EB" opacity="${op}"><title>${esc(b.bucket)}：預測 ${(100 * b.mean_p).toFixed(1)}%、實際 ${(100 * b.hit_rate).toFixed(1)}%（n=${b.n}${b.low_n ? '，樣本少' : ''}）</title></circle>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="預測機率對實際命中率">${g}</svg>`;
+}
+
+function renderCalibrationBoard() {
+  const board = DASHBOARD_DATA.calibration_board;
+  if (!board || !Array.isArray(board.sections)) return '';
+  const cards = board.sections.map(s => {
+    if (!s.available) return `<article class="calib-card"><h3>${esc(s.label)}</h3><p class="calib-card__meta">未有足夠數據</p></article>`;
+    const range = [s.first_day, s.last_day].filter(Boolean).join(' → ');
+    const ll = s.market_logloss != null
+      ? `log-loss 模型 ${Number(s.model_logloss_same_rows ?? s.logloss).toFixed(4)} vs 去水市場 ${Number(s.market_logloss).toFixed(4)}（越細越準；同一批）`
+      : (s.market_gap != null ? `收市原價平均偏差 ${(100 * s.market_gap).toFixed(1)}pp（未去水）` : '');
+    return `<article class="calib-card"><h3>${esc(s.label)}</h3>
+      <p class="calib-card__meta">${esc(range)} · n=${Number(s.n).toLocaleString()} · 平均預測 ${(100 * s.mean_p).toFixed(1)}%、實際 ${(100 * s.hit_rate).toFixed(1)}%</p>
+      ${calibSvg(s.buckets)}
+      <p class="calib-card__ll">${esc(ll)}</p></article>`;
+  }).join('');
+  const stale = board.status === 'stale' ? ' · ⚠️ 讀取失敗，顯示上次數字' : '';
+  return `<section class="pf-panel">
+      <h2 class="pf-h2">🎯 校準板 <small>我哋講「X% 機會」，實際係咪 X%？（shadow · 未入分）${stale}</small></h2>
+      <div class="calib-grid">${cards}</div>
+      <p class="calib-card__meta" style="margin-top:8px">點喺虛線上 = 準；高過虛線 = 低估，低過 = 高估。直線 = 95% 區間；淡色 = 樣本 &lt; ${esc(String(board.low_n || 50))}。
+      AU／HKJC 係 walk-forward（每日只用之前賽日 fit），跨咗模型版本；NBA 同一場嘅腿互相相關。網球精選係「揀咗模型最高估嗰批」，所以偏差特別大。</p>
+    </section>`;
+}
+
 function renderPortfolioWorkspace() {
   const anchor = pfAnchor();
   const period = pfPeriod(pfGranularity, anchor, pfOffset);
@@ -4261,6 +4320,7 @@ function renderPortfolioWorkspace() {
       <h2 class="pf-h2">${tableTitle} <small>ROI% · 盈虧 · 注數</small></h2>
       <div class="pf-table-wrap"><table class="pf-table"><thead><tr><th scope="col">時段</th>${PF_SPORTS.map(s => `<th scope="col"><span class="pf-dot" style="background:${s.color}"></span>${esc(s.label)}</th>`).join('')}<th scope="col">合計</th></tr></thead><tbody>${tableRows}</tbody></table></div>
     </section>
+    ${renderCalibrationBoard()}
     <div class="scope-note">
       <span>📋</span>
       <span><strong>數字點嚟：</strong>AU、NBA 大細盤精選、網球直接讀統一 ROI 板（同 Telegram 個板同一份數），每次部署更新；
@@ -7210,6 +7270,7 @@ function renderHorseCard(horse, topPickRank, marketRanks, analysisRef) {
     const rawTip = horse.score_raw_total != null ? `；排名用原始總分 ${Number(horse.score_raw_total).toFixed(2)}` : '';
     html += `<span class="horse-card__total" title="綜合戰力分（顯示尺）${rawTip}">總分 <b>${Number(horse.ability_score).toFixed(1)}</b></span>`;
   }
+  html += renderModelProbChip(horse);
   if (horse.underhorse_triggered) html += '<span class="badge badge--consensus" title="冷門馬訊號">🐴⚡</span>';
   html += '</div>';
   if (horse.horse_name_en) html += `<div class="horse-card__name-en">${esc(horse.horse_name_en)}</div>`;
@@ -8360,7 +8421,7 @@ function renderComparisonView(analyses, analysts) {
   // MC panels for each analyst
   const mcAnalysts = analysts.filter(a => analyses[a]?.monte_carlo_simulation?.length);
   if (mcAnalysts.length) {
-    html += `<div style="margin-bottom:24px"><h2 style="font-size:1rem;font-weight:700;margin-bottom:12px">🎲 Monte Carlo 概率模擬</h2>`;
+    html += `<div style="margin-bottom:24px"><h2 style="font-size:1rem;font-weight:700;margin-bottom:12px">🎲 Monte Carlo 概率模擬 <small style="font-weight:400;color:var(--color-text-muted)">舊版（2026-05 前）</small></h2>`;
     mcAnalysts.forEach(analyst => {
       const isK = analyst.toLowerCase() === 'kelvin';
       const headerClr = isK ? '#1D4ED8' : '#0F766E';
@@ -8441,7 +8502,7 @@ function renderMonteCarloPanel(analysis, noCard) {
   // Header toggle bar
   html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:linear-gradient(135deg,#0f2746,#1e3a5f);cursor:pointer;border-bottom:1px solid var(--color-border)" onclick="toggleMC('${divId}','${panelId}')" id="${panelId}">`;
   html += `<div style="display:flex;align-items:center;gap:8px"><span style="font-size:0.9rem">🎲</span>`;
-  html += `<span style="color:#fff;font-weight:700;font-size:0.82rem">Monte Carlo 模擬 <span style="font-size:0.68rem;color:var(--color-text-muted);font-weight:400">(10,000 次)</span></span></div>`;
+  html += `<span style="color:#fff;font-weight:700;font-size:0.82rem">Monte Carlo 模擬 <span style="font-size:0.68rem;color:var(--color-text-muted);font-weight:400">(10,000 次 · 舊版，2026-05 前場次；而家機率睇馬匹卡「入位機會」)</span></span></div>`;
   html += `<span id="${panelId}-arrow" style="color:var(--color-text-muted);font-size:0.65rem">▼ 展開</span></div>`;
   // Table body (starts hidden)
   html += `<div id="${divId}" style="display:none;overflow-x:auto;-webkit-overflow-scrolling:touch">`;

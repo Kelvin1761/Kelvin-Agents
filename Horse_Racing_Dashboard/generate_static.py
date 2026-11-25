@@ -48,6 +48,7 @@ from services.nba_tracking import TRACKING_START_DATE
 from services.hkjc_insights import export_insights as export_hkjc_insights
 from services.hkjc_roi_meta import export_race_meta as export_hkjc_race_meta
 from services.roi_board_export import export_roi_board
+from services.calibration_board_export import export_calibration_board
 from services.au_market_odds import enrich_au_market_odds, enrich_betfair_odds
 from models.race import AnalystName, Meeting, Region
 
@@ -998,6 +999,13 @@ def generate_html(data):
         print(f"   ⚠️ ROI board not available: {exc}")
         if isinstance(data.get("roi_board"), dict):
             data["roi_board"]["status"] = "stale"
+    # 校準板（EXP-20261125-07，shadow）：Portfolio 頁「我哋講 X%，實際係咪 X%」。失敗保留舊嗰份標 stale。
+    try:
+        data["calibration_board"] = export_calibration_board()
+    except Exception as exc:
+        print(f"   ⚠️ Calibration board not available: {exc}")
+        if isinstance(data.get("calibration_board"), dict):
+            data["calibration_board"]["status"] = "stale"
     history_path = Path(__file__).resolve().parent / "data" / "multisport_history.json"
     if "sports_history" not in data:
         try:
@@ -1500,7 +1508,7 @@ def main():
     html = generate_html(html_payload)
     # generate_html rebuilds the live sports feed on the copy it is handed;
     # carry that back so the snapshot JSON does not ship yesterday's feed.
-    for key in ("sports_feed", "sports_history", "meta", "roi_board"):
+    for key in ("sports_feed", "sports_history", "meta", "roi_board", "calibration_board"):
         if key in html_payload:
             data[key] = html_payload[key]
     
