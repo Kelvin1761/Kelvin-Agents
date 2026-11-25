@@ -39,3 +39,12 @@
 - Betfair 早上流動性薄，價唔一定落得到；判決係 Sportsbet 位注 ROI，唔係 Betfair。
 - 落注單實際時間可能遲過凍結點；凍結用第一個早更係為咗唔可以揀價。
 - PASS 都唔會自動落注；點用由 Kelvin 決定。dashboard forward 面板 Kelvin 延後咗（2026-11-20），進度經 forward tracker Telegram。
+
+## 附加（2026-11-25，唔改主判決）：落唔落到注
+Kelvin 第三輪升級第 2 項（Astra 提出：紙上價差唔等於落到）。結算時多兩個賽前欄位，判決點另報「落得到子集」：
+- `sb_place_next`／`persisted`：凍結後**最少 20 分鐘**嗰張早更 Sportsbet 快照，仲係 ≥ 1.10 倍 Betfair 先算維持到
+  （幾十秒後嘅 `morning-rebuild` 係同一份價，唔計）。
+- `bf_place_winners` vs `sb_places_paid`／`terms_match`：Betfair 位置盤 numberOfWinners（記錄器，`au_bsp.place_terms`）同 Sportsbet 派位數。
+- 落得到子集 = 高價組 ∩ 價維持 ∩ 位置規則一樣；冇數據嘅唔計入（唔當落到）。主判決 P1／P2 照舊。
+- 加入時（只數量、冇睇賽果）：高價組 185 匹；20 分鐘後價冇咗 18（10%）；位置規則唔同 39（21%）；落得到 128（69%）。
+- 仲未計：Sportsbet 對贏錢帳戶限注／封戶（軟莊風險）—— 紙上量唔到，真錢之前要考慮。

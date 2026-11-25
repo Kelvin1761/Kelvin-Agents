@@ -84,3 +84,22 @@ def test_status_is_blind_until_target_then_frozen(tmp_path, monkeypatch):
     first = st["evaluation"]
     rows.extend(_settled("2026-12-02", True, False) for _ in range(500))
     assert F.status(picks, status_path)["evaluation"] == first           # 判咗就凍結
+
+
+def test_persistence_needs_a_later_snapshot_and_terms_match(tmp_path, monkeypatch):
+    """Astra 2026-11-25：幾十秒後嘅 rebuild 唔算「之後」；位置規則唔同要標出嚟。"""
+    import json as _json
+    import au_sb_betfair_forward as F
+    folder = tmp_path / "2026-11-24 Tamworth Race 1-8"
+    folder.mkdir()
+    hist = {"1": {"2026-11-24T10:05:00|morning-refresh": {"3": [3.0, 1.5]},
+                  "2026-11-24T10:05:40|morning-rebuild": {"3": [3.0, 1.5]},
+                  "2026-11-24T10:40:00|morning-refresh": {"3": [2.6, 1.3]}}}
+    (folder / "odds_history.json").write_text(_json.dumps(hist))
+    monkeypatch.setattr(F, "_PLACE_TERMS", {("2026-11-24", "tamworth", 1): 2})
+    r = {"meeting": folder.name, "day": "2026-11-24", "race": 1, "num": 3,
+         "sb_key": "2026-11-24T10:05:00|morning-refresh", "sb_place": 1.5, "bf_place": 1.3}
+    e = F.execution_fields(folder, r, pays=3)
+    assert e["sb_place_next"] == 1.3          # 跳過 40 秒後嘅 rebuild，攞 35 分鐘後嗰張
+    assert e["persisted"] is False            # 1.3 / 1.3 < 1.10
+    assert e["terms_match"] is False and e["bf_place_winners"] == 2

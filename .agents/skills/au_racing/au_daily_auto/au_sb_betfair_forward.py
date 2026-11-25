@@ -11,6 +11,10 @@ Sportsbet 快照凍結一次，配 ±30 分鐘內最近嘅 Betfair 早更快照�
   P1 高價組 Sportsbet 位注 ROI 95% CI 下限 > 0；P2 高價組 − 其餘 ROI 差 95% CI 下限 > 0。
   兩樣都過 = PASS（訊號），否則 REJECT／INCONCLUSIVE。Bootstrap 按賽日抽，2,000 次，seed 固定。
 * 未夠數只報數量（盲測），唔報 ROI。永遠唔會自動落注、唔會改模型。
+* **落唔落到注（附加，唔改主判決；Astra 2026-11-25 提出）**：紙上價差唔等於真係落到。結算時用賽前資料加兩樣：
+  - `sb_place_next`：凍結之後下一張 Sportsbet 早更快照嘅位賠；仲係 ≥ OVERLAY_RATIO 先算「價維持到」。
+  - `bf_place_winners` vs `sb_places_paid`：Betfair 位置盤派幾多個位（記錄器 numberOfWinners）同 Sportsbet 一唔一樣。
+  判決時另報「落得到子集」（高價組 ∩ 價維持 ∩ 位置規則一樣）ROI＋CI。冇數據嘅唔計入子集（唔當係落到）。
 """
 from __future__ import annotations
 
@@ -37,6 +41,7 @@ START = "2026-11-17"          # Betfair 早更價開始有記錄
 TARGET = 1000                 # 高價組已結算位注
 PAIR_MINUTES = 30
 OVERLAY_RATIO = 1.10
+PERSIST_MINUTES = 20          # 「價維持到」：凍結之後最少 20 分鐘嗰張早更快照
 BOOT = 2000
 SEED = 20261121
 MORNING = B.MORNING_TAGS
@@ -159,6 +164,54 @@ def _results(folder: Path) -> dict:
     return out
 
 
+def _next_sb_place(folder: Path, r: dict) -> float | None:
+    """凍結點之後同日下一張早更 Sportsbet 快照嘅位賠（賽前資料）。"""
+    try:
+        sb = json.loads((folder / "odds_history.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    snaps = sb.get(str(r["race"])) or {}
+    frozen, _ = _ts(r["sb_key"])
+    after = sorted(k for k in snaps if k > r["sb_key"])
+    for key in after:
+        when, tag = _ts(key)
+        if when is None or tag not in MORNING or when.date().isoformat() != r["day"]:
+            continue
+        # 幾十秒後嘅 morning-rebuild 係同一份價重寫，唔算「之後」—— 要隔最少 PERSIST_MINUTES
+        if frozen is not None and (when - frozen).total_seconds() < PERSIST_MINUTES * 60:
+            continue
+        p = snaps[key].get(str(r["num"])) or []
+        return _price(p[1]) if len(p) == 2 else None
+    return None
+
+
+_PLACE_TERMS = None
+
+
+def _place_terms() -> dict:
+    global _PLACE_TERMS
+    if _PLACE_TERMS is None:
+        try:
+            sys.path.insert(0, str(HERE.parent / "au_wong_choi_auto" / "scripts"))
+            import au_bsp  # noqa: PLC0415
+            _PLACE_TERMS = au_bsp.place_terms()
+        except Exception:  # noqa: BLE001 — 外置碟冇插 = 冇呢項資料，唔影響主判決
+            _PLACE_TERMS = {}
+    return _PLACE_TERMS
+
+
+def execution_fields(folder: Path, r: dict, pays: int) -> dict:
+    """附加「落唔落到注」欄位（全部用賽前資料）。"""
+    nxt = _next_sb_place(folder, r)
+    venue = re.sub(r"[^a-z0-9]", "", re.sub(r"^\d{4}-\d{2}-\d{2}[ _]", "", r["meeting"]).split(" Race")[0]
+                   .split("_Race")[0].lower())
+    winners = _place_terms().get((r["day"], venue, r["race"]))
+    return {"sb_place_next": nxt,
+            "persisted": None if nxt is None or not r.get("bf_place") else nxt / r["bf_place"] >= OVERLAY_RATIO,
+            "sb_places_paid": pays, "bf_place_winners": winners,
+            "terms_match": None if winners is None else winners == pays}
+
+
 def settle(rows: list[dict], folders: dict) -> list[dict]:
     """→ 已結算：加 overlay、placed、won、place_return、win_return。遲退出（退注）同未有賽果唔計。"""
     import au_reflect_notify as R  # noqa: PLC0415
@@ -177,6 +230,7 @@ def settle(rows: list[dict], folders: dict) -> list[dict]:
         fin = placings[r["num"]]
         pays = R.places_paid(R.field_size(folder, r["race"]))
         s = dict(r, overlay=r["sb_place"] / r["bf_place"] >= OVERLAY_RATIO, placed=1 <= fin <= pays, won=fin == 1)
+        s.update(execution_fields(folder, r, pays))
         s["place_return"] = s["sb_place"] if s["placed"] else 0.0
         s["win_return"] = (s["sb_win"] or 0.0) if s["won"] else 0.0
         out.append(s)
@@ -215,7 +269,14 @@ def evaluate(settled: list[dict]) -> dict:
     for lo, hi in ((0, 0.9), (0.9, 1.0), (1.0, 1.1), (1.1, 99)):
         b = [r for r in settled if lo < r["sb_place"] / r["bf_place"] <= hi]
         bins[f"{lo}-{hi}"] = {"n": len(b), "place_roi": _roi(b)}
-    return {"verdict": "PASS" if ok else "REJECT",
+    exe = [r for r in over if r.get("persisted") is True and r.get("terms_match") is True]
+    execution = {"n": len(exe), "place_roi": _roi(exe), "place_roi_ci": _boot(exe, _roi) if exe else [None, None],
+                 "overlay_with_next_price": sum(r.get("persisted") is not None for r in over),
+                 "overlay_persisted": sum(r.get("persisted") is True for r in over),
+                 "overlay_terms_known": sum(r.get("terms_match") is not None for r in over),
+                 "overlay_terms_mismatch": sum(r.get("terms_match") is False for r in over),
+                 "note": "附加：唔改主判決；落得到子集 = 高價組 ∩ 價維持 ∩ 位置規則一樣"}
+    return {"verdict": "PASS" if ok else "REJECT", "execution": execution,
             "overlay": {"n": len(over), "place_roi": _roi(over), "place_roi_ci": p1,
                         "win_roi": _roi([r for r in over if r["sb_win"]], "win_return")},
             "rest": {"n": len(rest), "place_roi": _roi(rest)},
@@ -242,7 +303,12 @@ def status(picks_path: Path, status_path: Path) -> dict:
                       "paired_with_betfair": sum(1 for r in rows if r.get("sb_place") and r.get("bf_place")),
                       "betfair_place_bad": sum(1 for r in rows if r.get("bf_bad")),
                       "settled": len(settled), "overlay_settled": over,
-                      "rest_settled": len(settled) - over},
+                      "rest_settled": len(settled) - over,
+                      # 落唔落到注（只係數量，唔報 ROI —— 照樣盲測）
+                      "overlay_persisted": sum(1 for r in settled if r["overlay"] and r.get("persisted") is True),
+                      "overlay_terms_mismatch": sum(1 for r in settled if r["overlay"] and r.get("terms_match") is False),
+                      "overlay_executable": sum(1 for r in settled if r["overlay"] and r.get("persisted") is True
+                                                and r.get("terms_match") is True)},
           "updated_at": datetime.now().isoformat(timespec="seconds")}
     if prev.get("evaluation"):
         st["evaluation"] = prev["evaluation"]          # 判咗就凍結，唔再判

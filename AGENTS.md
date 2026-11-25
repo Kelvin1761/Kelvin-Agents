@@ -361,6 +361,10 @@ assert 緊兩個冇 merge 過嘅嘢 —— `rating_series` 只存在於
   市場尺 B PASS（AU：SP PASS＋BSP 唔反方向；HKJC：`--window dev` PASS、holdout 確認）**而且**排名尺唔顯著變差、護欄過。
   排名改善但市場尺 FAIL = REJECT，除非 Kelvin 明確話「分析用途上線」（要寫入記錄、唔准用嚟支持落注）。
   正確性修正、數據管線、純顯示照舊用排名尺。現行兩個模型都冇市場以外資訊（EXP-20261124-90／-92、EXP-20261125-01）。
+- **研究範圍（Kelvin 2026-11-25 第三輪第 5 項）**：AU／HKJC 唔再開「重新調權重／重配 leaf」嘅實驗 —— 模型對前一晚、朝早、SP、BSP
+  全部冇市場以外資訊（EXP-20261125-05），調排名唔會變錢。新研究只做兩類：(a) **市場未有嘅新資料**（例：逐駒段速、臨場變化），
+  用 `--price early` 判；(b) **唔靠模型嘅價差／時機**（EXP-20261121-31）。NBA SGM 唔再開研究（只追蹤）。紙上 arm 照預先登記判決點收，
+  唔准提早停（optional stopping）；總板 ⛔ 先提 Kelvin 決定停唔停。
 - **開實驗之前先跑功效預估**（`shared_racing/scripts/power_precheck.py`，合約 §6）：理想訊號都量唔到（PASS < 50%）就唔好開。
 - **改之前先量 baseline。** baseline 同 candidate 要行同一份語料、同一個時間窗。
   跨 harness 攞數字互相比 = 錯結論。

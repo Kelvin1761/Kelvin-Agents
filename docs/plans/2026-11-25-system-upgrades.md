@@ -57,3 +57,13 @@
   唔使信用卡；token 存本機 `~/.config/rclone/rclone.conf`。`offsite_backup.py` 加 `rclone:<remote>:<folder>` 後端
   （put／get／delete 用 `rclone copyto`／`rclone deletefile`），其他（加密、分組、保留、演練）全部照用。
 - 暫時：Kelvin Hardisk 1 照用（`./備份.sh`）。
+
+## 第三輪（2026-11-25，Claude＋Astra 合併建議；Kelvin「可以 go ahead」）
+
+| # | 升級 | 結果 |
+|---|---|---|
+| 1 | 機外監察（Astra 提出） | `.github/workflows/wongchoi-deadman.yml`：GitHub 伺服器每 3 個鐘讀 live dashboard `meta.generated_at`，>14 個鐘冇更新推 Telegram（要 Kelvin 喺 GitHub 加 `WC_TELEGRAM_TOKEN`、`WC_TELEGRAM_CHAT` 兩個 secret） |
+| 2 | 價差盲測加「落唔落到注」 | 價維持（≥20 分鐘後）＋位置規則；加入時高價組 185：價冇咗 10%、規則唔同 21%、落得到 69%。判決點另報落得到子集（EXP-20261121-31 附加） |
+| 3 | Dashboard 校準／模型 vs 市場 | **併入「自己學習」設計**：AU／HKJC dashboard 冇模型機率，要先喺發佈時由能力分轉機率 |
+| 4 | AU 晚更計時 | 單次 run 中位 78 分鐘（唔係 3.3 個鐘）；3.3 個鐘係 partial 重跑 2–3 次 —— 第二輪「未開盤唔當 partial」應該已經解決，觀察幾晚 |
+| 5 | 收窄研究範圍 | AGENTS.md 規則：唔再調 AU／HKJC 權重；只做新資料同價差／時機 |

@@ -160,3 +160,32 @@ def attach(races: list[dict], index: dict) -> dict:
         stats["races"] += 1
         stats["races_complete"] += complete
     return stats
+
+
+def place_terms(root: Path = LOG_ROOT) -> dict[tuple[str, str, int], int]:
+    """→ {(日期, 場地 norm, 場次): Betfair 位置盤派幾多個位（numberOfWinners）}。由記錄器快照攞（2026-11-06 起）。
+
+    價差測試（EXP-20261121-31）用：Sportsbet 同 Betfair 位置規則唔一樣，兩個價就唔係同一隻注（Astra 2026-11-25）。
+    """
+    out: dict[tuple[str, str, int], int] = {}
+    for folder in sorted(p for p in Path(root).glob("20*") if p.is_dir()):
+        cat = {m["market"]: m for m in _lines(folder / "catalogue.jsonl")}
+        races = {}
+        for m in cat.values():
+            rn = re.match(r"R(\d+)\b", m.get("name") or "")
+            if (m.get("type") or "WIN") == "WIN" and rn:
+                races[(m.get("event_id"), m.get("start"))] = int(rn.group(1))
+        winners: dict[str, int] = {}
+        for snap in _lines(folder / "snapshots.jsonl"):
+            w = snap.get("winners")
+            if isinstance(w, int) and w > 0:
+                winners[snap.get("market")] = w
+        for mid, m in cat.items():
+            if (m.get("type") or "WIN") != "PLACE" or mid not in winners:
+                continue
+            race_no = races.get((m.get("event_id"), m.get("start")))
+            if race_no is None:
+                continue
+            venue = norm(m.get("venue") or re.sub(r" \(AUS\).*", "", m.get("event") or ""))
+            out[(folder.name, venue, race_no)] = winners[mid]
+    return out
