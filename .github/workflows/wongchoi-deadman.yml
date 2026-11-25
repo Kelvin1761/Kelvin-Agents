@@ -1,0 +1,63 @@
+name: Wong Choi 機外監察
+
+# 系統升級第三輪第 1 項（Kelvin 2026-11-25；Astra 提出）：所有警報都由部 Mac 自己發 ——
+# 部 Mac 死機、斷電、斷網嘅時候 Telegram 會靜晒，Kelvin 只會以為「冇嘢報」。
+# 呢個 job 喺 GitHub 伺服器跑（同部 Mac 冇關），每 3 個鐘讀 live dashboard 嘅 meta.generated_at（悉尼時間），
+# 超過 STALE_HOURS 冇更新就推 Telegram。正常最長空檔約 7–8 個鐘（03:00 → 10:00），所以門檻 14 個鐘。
+# 要設兩個 repo secret（Settings → Secrets and variables → Actions）：WC_TELEGRAM_TOKEN、WC_TELEGRAM_CHAT。
+on:
+  schedule:
+    - cron: "17 */3 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  deadman:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 檢查 live dashboard 新唔新鮮
+        id: check
+        env:
+          STALE_HOURS: "14"
+          URL: "https://wongchoi-dashboard.pages.dev/dashboard-data.json"
+        run: |
+          python3 - <<'PY'
+          import json, os, time, urllib.request
+          from datetime import datetime
+          from zoneinfo import ZoneInfo
+          url = f"{os.environ['URL']}?cb={int(time.time())}"
+          msg = ""
+          try:
+              with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "wongchoi-deadman"}), timeout=90) as r:
+                  meta = json.load(r)["meta"]
+              ts = datetime.fromisoformat(meta["generated_at"])
+              if ts.tzinfo is None:
+                  ts = ts.replace(tzinfo=ZoneInfo("Australia/Sydney"))
+              age = (datetime.now(ZoneInfo("Australia/Sydney")) - ts).total_seconds() / 3600
+              print(f"dashboard generated_at {meta['generated_at']}（{age:.1f} 鐘前）")
+              if age > float(os.environ["STALE_HOURS"]):
+                  msg = (f"🚨 Wong Choi 機外監察：dashboard {age:.0f} 個鐘冇更新（最後 {meta['generated_at']} 悉尼時間）。"
+                         "部 Mac 可能死機／斷電／斷網，或者排程停咗 —— 請睇吓部機。")
+          except Exception as exc:  # noqa: BLE001
+              msg = f"🚨 Wong Choi 機外監察：讀唔到 live dashboard（{type(exc).__name__}）。Cloudflare 或者發佈可能壞咗。"
+          with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
+              fh.write(f"alert={'1' if msg else '0'}\n")
+          if msg:
+              with open("alert.txt", "w") as fh:
+                  fh.write(msg)
+              print(msg)
+          PY
+      - name: 推 Telegram
+        if: steps.check.outputs.alert == '1'
+        env:
+          WC_TELEGRAM_TOKEN: ${{ secrets.WC_TELEGRAM_TOKEN }}
+          WC_TELEGRAM_CHAT: ${{ secrets.WC_TELEGRAM_CHAT }}
+        run: |
+          if [ -z "$WC_TELEGRAM_TOKEN" ] || [ -z "$WC_TELEGRAM_CHAT" ]; then
+            echo "未設 Telegram secret，只喺 Actions 頁面顯示"; exit 1
+          fi
+          curl -sS -m 30 -o /dev/null -w '%{http_code}\n' \
+            --data-urlencode "chat_id=$WC_TELEGRAM_CHAT" --data-urlencode "text@alert.txt" \
+            "https://api.telegram.org/bot$WC_TELEGRAM_TOKEN/sendMessage"
