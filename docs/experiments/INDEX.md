@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261125-11](EXP-20261125-11-au-h1-trial-prep-forward.md) | 2026-11-25 | AU | H1：試閘＋備戰分喺 ability 份量太細（EXP-06 in-sample 殘差 +5.05／+4.56pp） | **預先登記 forward（shadow，唔郁排名）**：候選 = ability + 0.794·z(試閘) + 1.345·z(備戰)（β 一次 fit，frozen.json sha256 b497ca53…）；賽前快照、2026-11-26 起、30 賽日＋1,000 場判一次；m3 追市場軌（log-loss v2 PASS＋gap_change ≤ 0） |
 | [EXP-20261125-06](EXP-20261125-06-market-right-model-wrong.md) | 2026-11-25 | AU／HKJC | 「市場揀中、模型揀唔中」有冇訊號睇到（分歧組別、早更 vs SP、殘差） | **診斷，唔郁模型**：AU 每場 0.31 次（反向 0.17）；分歧時結果貼市場機率（D 實際 56.4%／市場 57.5%／模型 30.9%）。模型→SP 距離：~10% 現有輸入用得唔好（試閘、備戰、騎練、休後；市場已定價）、~69% 市場朝早有而我哋冇（集中喺冇證據馬）、~22% late money；輸入對早更價零額外。H1 試閘／備戰功效 3/3、H2 騎練 2/3、H4 新資料 1/3 |
 | [EXP-20261125-09](EXP-20261125-09-goals-and-keep-m3.md) | 2026-11-25 | AU／HKJC | 判決規則：分階段目標（追市場→贏市場→盈利）＋KEEP m3 雙軌＋同市場差距指標 | **規則改動（Kelvin 決定）**：取代 m2；起點差距 AU 對 SP +0.240、朝早 +0.203、HKJC dev +0.178（每場頭馬 nll） |
 | [EXP-20261125-07](EXP-20261125-07-calibrated-probability-shadow.md) | 2026-11-25 | AU／HKJC／NBA／Tennis | 校準模型機率（入頭三 σ(a+α·Δraw+γ·logit(3/N))、獨贏 softmax）同校準板 | **Shadow 工具上線（JSON，未上 dashboard）**：AU／HKJC 現行模型未夠 20 日 = insufficient；板：AU 入頭三 ll 0.557 vs 市場 0.509、0.4–0.8 段高估 2–5pp；Tennis 精選預 64% 中 39% |
