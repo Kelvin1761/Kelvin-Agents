@@ -1,0 +1,663 @@
+{
+ "races": 5061,
+ "runners": 61421,
+ "dates": [
+  "2020-09-06",
+  "2026-11-11"
+ ],
+ "sizes": {
+  "K2": 10122,
+  "M2": 10122,
+  "C": 4494,
+  "MD": 2262,
+  "MD_miss": 1600,
+  "D": 2257,
+  "A": 1062,
+  "M": 662,
+  "D_miss": 1195
+ },
+ "rates": {
+  "market_top2_place": 0.5489033787788975,
+  "model_top2_place": 0.4987156688401502,
+  "A_per_race": 0.2098399525785418,
+  "M_per_race": 0.1308041888954752
+ },
+ "expect": {
+  "D": {
+   "actual": 0.4705361098803722,
+   "market_expected": 0.4881332235693792,
+   "model_expected": 0.275406825413686
+  },
+  "MD": {
+   "actual": 0.2926613616268789,
+   "market_expected": 0.30272331841911415,
+   "model_expected": 0.4511000958169452
+  }
+ },
+ "ll_top3": {
+  "model": 0.49732141401724456,
+  "market": 0.46951830326142585
+ },
+ "smd": {
+  "A_vs_C": {
+   "m:stability": {
+    "smd": -1.507,
+    "lo": -1.588,
+    "hi": -1.441,
+    "mean_a": 0.184,
+    "mean_b": 1.255,
+    "n_a": 1062,
+    "n_b": 4494
+   },
+   "form_score": {
+    "smd": -1.39,
+    "lo": -1.472,
+    "hi": -1.317,
+    "mean_a": 0.146,
+    "mean_b": 1.262,
+    "n_a": 1062,
+    "n_b": 4494
+   },
+   "consistency_score": {
+    "smd": -1.386,
+    "lo": -1.463,
+    "hi": -1.323,
+    "mean_a": 0.222,
+    "mean_b": 1.101,
+    "n_a": 1062,
+    "n_b": 4494
+   },
+   "speed_score": {
+    "smd": -1.068,
+    "lo": -1.135,
+    "hi": -1.005,
+    "mean_a": 0.165,
+    "mean_b": 0.931,
+    "n_a": 1062,
+    "n_b": 4494
+   },
+   "m:sectional": {
+    "smd": -1.068,
+    "lo": -1.135,
+    "hi": -1.005,
+    "mean_a": 0.165,
+    "mean_b": 0.931,
+    "n_a": 1062,
+    "n_b": 4494
+   },
+   "m:trainer_signal": {
+    "smd": -0.781,
+    "lo": -0.866,
+    "hi": -0.703,
+    "mean_a": 0.336,
+    "mean_b": 1.205,
+    "n_a": 1062,
+    "n_b": 4494
+   },
+   "jockey_score": {
+    "smd": -0.762,
+    "lo": -0.844,
+    "hi": -0.685,
+    "mean_a": 0.336,
+    "mean_b": 1.213,
+    "n_a": 1062,
+    "n_b": 4494
+   },
+   "m:distance_fit": {
+    "smd": -0.497,
+    "lo": -0.562,
+    "hi": -0.417,
+    "mean_a": 0.105,
+    "mean_b": 0.517,
+    "n_a": 1062,
+    "n_b": 4494
+   },
+   "confidence_score": {
+    "smd": -0.475,
+    "lo": -0.526,
+    "hi": -0.419,
+    "mean_a": -0.143,
+    "mean_b": 0.137,
+    "n_a": 1062,
+    "n_b": 4494
+   },
+   "distance_score": {
+    "smd": -0.473,
+    "lo": -0.541,
+    "hi": -0.394,
+    "mean_a": 0.115,
+    "mean_b": 0.511,
+    "n_a": 1062,
+    "n_b": 4494
+   },
+   "same_distance_signal_score": {
+    "smd": -0.467,
+    "lo": -0.534,
+    "hi": -0.389,
+    "mean_a": 0.124,
+    "mean_b": 0.51,
+    "n_a": 1062,
+    "n_b": 4494
+   },
+   "debut": {
+    "smd": 0.422,
+    "lo": 0.366,
+    "hi": 0.477,
+    "mean_a": 0.107,
+    "mean_b": 0.01,
+    "n_a": 1062,
+    "n_b": 4494
+   },
+   "trainer_score": {
+    "smd": -0.42,
+    "lo": -0.498,
+    "hi": -0.345,
+    "mean_a": 0.162,
+    "mean_b": 0.582,
+    "n_a": 1062,
+    "n_b": 4494
+   },
+   "race_shape_context_score": {
+    "smd": -0.377,
+    "lo": -0.441,
+    "hi": -0.306,
+    "mean_a": 0.116,
+    "mean_b": 0.47,
+    "n_a": 1062,
+    "n_b": 4494
+   },
+   "m:race_shape": {
+    "smd": -0.375,
+    "lo": -0.44,
+    "hi": -0.303,
+    "mean_a": 0.109,
+    "mean_b": 0.467,
+    "n_a": 1062,
+    "n_b": 4494
+   },
+   "margin_trend_score": {
+    "smd": -0.333,
+    "lo": -0.399,
+    "hi": -0.266,
+    "mean_a": -0.041,
+    "mean_b": 0.278,
+    "n_a": 1062,
+    "n_b": 4494
+   },
+   "draw_score": {
+    "smd": -0.332,
+    "lo": -0.399,
+    "hi": -0.263,
+    "mean_a": 0.104,
+    "mean_b": 0.416,
+    "n_a": 1062,
+    "n_b": 4494
+   },
+   "formline_strength_score": {
+    "smd": -0.307,
+    "lo": -0.378,
+    "hi": -0.23,
+    "mean_a": 0.125,
+    "mean_b": 0.367,
+    "n_a": 1062,
+    "n_b": 4494
+   },
+   "m:form_line": {
+    "smd": -0.307,
+    "lo": -0.378,
+    "hi": -0.23,
+    "mean_a": 0.125,
+    "mean_b": 0.367,
+    "n_a": 1062,
+    "n_b": 4494
+   },
+   "m:class_advantage": {
+    "smd": -0.278,
+    "lo": -0.348,
+    "hi": -0.211,
+    "mean_a": 0.046,
+    "mean_b": 0.299,
+    "n_a": 1062,
+    "n_b": 4494
+   },
+   "class_score": {
+    "smd": -0.236,
+    "lo": -0.304,
+    "hi": -0.167,
+    "mean_a": -0.025,
+    "mean_b": 0.186,
+    "n_a": 1062,
+    "n_b": 4494
+   },
+   "weight_score": {
+    "smd": -0.236,
+    "lo": -0.295,
+    "hi": -0.175,
+    "mean_a": 0.086,
+    "mean_b": 0.314,
+    "n_a": 1062,
+    "n_b": 4494
+   },
+   "risk_score": {
+    "smd": -0.185,
+    "lo": -0.251,
+    "hi": -0.119,
+    "mean_a": -0.02,
+    "mean_b": 0.153,
+    "n_a": 1062,
+    "n_b": 4494
+   },
+   "m:horse_health": {
+    "smd": -0.185,
+    "lo": -0.251,
+    "hi": -0.119,
+    "mean_a": -0.02,
+    "mean_b": 0.153,
+    "n_a": 1062,
+    "n_b": 4494
+   },
+   "field_n": {
+    "smd": 0.063,
+    "lo": 0.002,
+    "hi": 0.131,
+    "mean_a": 12.123,
+    "mean_b": 12.013,
+    "n_a": 1062,
+    "n_b": 4494
+   },
+   "track_going_score": {
+    "smd": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "mean_a": 0.0,
+    "mean_b": 0.0,
+    "n_a": 1062,
+    "n_b": 4494
+   },
+   "trackwork_trend_score": {
+    "smd": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "mean_a": 0.0,
+    "mean_b": 0.0,
+    "n_a": 1062,
+    "n_b": 4494
+   },
+   "m:trackwork": {
+    "smd": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "mean_a": 0.0,
+    "mean_b": 0.0,
+    "n_a": 1062,
+    "n_b": 4494
+   }
+  },
+  "D_place_vs_miss": {
+   "field_n": {
+    "smd": -0.155,
+    "lo": -0.232,
+    "hi": -0.071,
+    "mean_a": 12.123,
+    "mean_b": 12.371,
+    "n_a": 1062,
+    "n_b": 1195
+   },
+   "debut": {
+    "smd": 0.121,
+    "lo": 0.037,
+    "hi": 0.21,
+    "mean_a": 0.107,
+    "mean_b": 0.073,
+    "n_a": 1062,
+    "n_b": 1195
+   },
+   "confidence_score": {
+    "smd": -0.1,
+    "lo": -0.184,
+    "hi": -0.017,
+    "mean_a": -0.143,
+    "mean_b": -0.07,
+    "n_a": 1062,
+    "n_b": 1195
+   },
+   "form_score": {
+    "smd": 0.068,
+    "lo": -0.019,
+    "hi": 0.147,
+    "mean_a": 0.146,
+    "mean_b": 0.093,
+    "n_a": 1062,
+    "n_b": 1195
+   },
+   "jockey_score": {
+    "smd": -0.047,
+    "lo": -0.136,
+    "hi": 0.043,
+    "mean_a": 0.336,
+    "mean_b": 0.388,
+    "n_a": 1062,
+    "n_b": 1195
+   },
+   "m:stability": {
+    "smd": 0.045,
+    "lo": -0.041,
+    "hi": 0.126,
+    "mean_a": 0.184,
+    "mean_b": 0.153,
+    "n_a": 1062,
+    "n_b": 1195
+   },
+   "margin_trend_score": {
+    "smd": -0.043,
+    "lo": -0.123,
+    "hi": 0.033,
+    "mean_a": -0.041,
+    "mean_b": -0.0,
+    "n_a": 1062,
+    "n_b": 1195
+   },
+   "m:trainer_signal": {
+    "smd": -0.043,
+    "lo": -0.129,
+    "hi": 0.041,
+    "mean_a": 0.336,
+    "mean_b": 0.382,
+    "n_a": 1062,
+    "n_b": 1195
+   },
+   "draw_score": {
+    "smd": -0.037,
+    "lo": -0.112,
+    "hi": 0.046,
+    "mean_a": 0.104,
+    "mean_b": 0.141,
+    "n_a": 1062,
+    "n_b": 1195
+   },
+   "risk_score": {
+    "smd": -0.037,
+    "lo": -0.112,
+    "hi": 0.042,
+    "mean_a": -0.02,
+    "mean_b": 0.015,
+    "n_a": 1062,
+    "n_b": 1195
+   },
+   "m:class_advantage": {
+    "smd": 0.037,
+    "lo": -0.039,
+    "hi": 0.121,
+    "mean_a": 0.046,
+    "mean_b": 0.011,
+    "n_a": 1062,
+    "n_b": 1195
+   },
+   "m:horse_health": {
+    "smd": -0.037,
+    "lo": -0.112,
+    "hi": 0.042,
+    "mean_a": -0.02,
+    "mean_b": 0.015,
+    "n_a": 1062,
+    "n_b": 1195
+   },
+   "class_score": {
+    "smd": 0.035,
+    "lo": -0.047,
+    "hi": 0.118,
+    "mean_a": -0.025,
+    "mean_b": -0.057,
+    "n_a": 1062,
+    "n_b": 1195
+   },
+   "m:race_shape": {
+    "smd": -0.035,
+    "lo": -0.108,
+    "hi": 0.048,
+    "mean_a": 0.109,
+    "mean_b": 0.143,
+    "n_a": 1062,
+    "n_b": 1195
+   },
+   "formline_strength_score": {
+    "smd": -0.031,
+    "lo": -0.116,
+    "hi": 0.046,
+    "mean_a": 0.125,
+    "mean_b": 0.152,
+    "n_a": 1062,
+    "n_b": 1195
+   },
+   "m:form_line": {
+    "smd": -0.031,
+    "lo": -0.116,
+    "hi": 0.046,
+    "mean_a": 0.125,
+    "mean_b": 0.152,
+    "n_a": 1062,
+    "n_b": 1195
+   },
+   "race_shape_context_score": {
+    "smd": -0.029,
+    "lo": -0.103,
+    "hi": 0.054,
+    "mean_a": 0.116,
+    "mean_b": 0.145,
+    "n_a": 1062,
+    "n_b": 1195
+   },
+   "m:distance_fit": {
+    "smd": -0.021,
+    "lo": -0.103,
+    "hi": 0.061,
+    "mean_a": 0.105,
+    "mean_b": 0.125,
+    "n_a": 1062,
+    "n_b": 1195
+   },
+   "distance_score": {
+    "smd": -0.016,
+    "lo": -0.097,
+    "hi": 0.069,
+    "mean_a": 0.115,
+    "mean_b": 0.13,
+    "n_a": 1062,
+    "n_b": 1195
+   },
+   "same_distance_signal_score": {
+    "smd": -0.011,
+    "lo": -0.091,
+    "hi": 0.071,
+    "mean_a": 0.124,
+    "mean_b": 0.135,
+    "n_a": 1062,
+    "n_b": 1195
+   },
+   "speed_score": {
+    "smd": 0.011,
+    "lo": -0.07,
+    "hi": 0.087,
+    "mean_a": 0.165,
+    "mean_b": 0.156,
+    "n_a": 1062,
+    "n_b": 1195
+   },
+   "m:sectional": {
+    "smd": 0.011,
+    "lo": -0.07,
+    "hi": 0.087,
+    "mean_a": 0.165,
+    "mean_b": 0.156,
+    "n_a": 1062,
+    "n_b": 1195
+   },
+   "trainer_score": {
+    "smd": 0.004,
+    "lo": -0.073,
+    "hi": 0.082,
+    "mean_a": 0.162,
+    "mean_b": 0.158,
+    "n_a": 1062,
+    "n_b": 1195
+   },
+   "weight_score": {
+    "smd": -0.003,
+    "lo": -0.094,
+    "hi": 0.077,
+    "mean_a": 0.086,
+    "mean_b": 0.088,
+    "n_a": 1062,
+    "n_b": 1195
+   },
+   "consistency_score": {
+    "smd": 0.002,
+    "lo": -0.078,
+    "hi": 0.076,
+    "mean_a": 0.222,
+    "mean_b": 0.22,
+    "n_a": 1062,
+    "n_b": 1195
+   },
+   "track_going_score": {
+    "smd": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "mean_a": 0.0,
+    "mean_b": 0.0,
+    "n_a": 1062,
+    "n_b": 1195
+   },
+   "trackwork_trend_score": {
+    "smd": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "mean_a": 0.0,
+    "mean_b": 0.0,
+    "n_a": 1062,
+    "n_b": 1195
+   },
+   "m:trackwork": {
+    "smd": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "mean_a": 0.0,
+    "mean_b": 0.0,
+    "n_a": 1062,
+    "n_b": 1195
+   }
+  }
+ },
+ "resid_gaps_z_ge_1": {
+  "class_score": {
+   "coverage": 0.182,
+   "model_resid_pp": -2.28,
+   "market_resid_pp": 0.89
+  },
+  "consistency_score": {
+   "coverage": 0.176,
+   "model_resid_pp": -2.23,
+   "market_resid_pp": -0.12
+  },
+  "m:class_advantage": {
+   "coverage": 0.176,
+   "model_resid_pp": -1.79,
+   "market_resid_pp": 0.5
+  },
+  "m:stability": {
+   "coverage": 0.18,
+   "model_resid_pp": -1.61,
+   "market_resid_pp": 0.53
+  },
+  "form_score": {
+   "coverage": 0.182,
+   "model_resid_pp": -1.6,
+   "market_resid_pp": 0.29
+  },
+  "jockey_score": {
+   "coverage": 0.141,
+   "model_resid_pp": 1.53,
+   "market_resid_pp": -1.1
+  },
+  "m:trainer_signal": {
+   "coverage": 0.148,
+   "model_resid_pp": 1.48,
+   "market_resid_pp": -0.98
+  },
+  "margin_trend_score": {
+   "coverage": 0.227,
+   "model_resid_pp": -1.12,
+   "market_resid_pp": -0.21
+  },
+  "speed_score": {
+   "coverage": 0.162,
+   "model_resid_pp": -0.69,
+   "market_resid_pp": 1.3
+  },
+  "m:sectional": {
+   "coverage": 0.162,
+   "model_resid_pp": -0.69,
+   "market_resid_pp": 1.3
+  },
+  "m:distance_fit": {
+   "coverage": 0.103,
+   "model_resid_pp": 0.39,
+   "market_resid_pp": -0.37
+  },
+  "same_distance_signal_score": {
+   "coverage": 0.104,
+   "model_resid_pp": 0.37,
+   "market_resid_pp": -0.38
+  },
+  "distance_score": {
+   "coverage": 0.104,
+   "model_resid_pp": 0.35,
+   "market_resid_pp": -0.4
+  },
+  "formline_strength_score": {
+   "coverage": 0.173,
+   "model_resid_pp": -0.24,
+   "market_resid_pp": 0.18
+  },
+  "m:form_line": {
+   "coverage": 0.173,
+   "model_resid_pp": -0.24,
+   "market_resid_pp": 0.18
+  },
+  "trainer_score": {
+   "coverage": 0.186,
+   "model_resid_pp": 0.13,
+   "market_resid_pp": 0.06
+  },
+  "weight_score": {
+   "coverage": 0.15,
+   "model_resid_pp": 0.13,
+   "market_resid_pp": -0.41
+  },
+  "draw_score": {
+   "coverage": 0.278,
+   "model_resid_pp": -0.08,
+   "market_resid_pp": 0.37
+  },
+  "race_shape_context_score": {
+   "coverage": 0.249,
+   "model_resid_pp": 0.02,
+   "market_resid_pp": 0.62
+  },
+  "m:race_shape": {
+   "coverage": 0.271,
+   "model_resid_pp": 0.02,
+   "market_resid_pp": 0.56
+  },
+  "risk_score": {
+   "coverage": 0.178,
+   "model_resid_pp": -0.0,
+   "market_resid_pp": -0.08
+  },
+  "m:horse_health": {
+   "coverage": 0.178,
+   "model_resid_pp": -0.0,
+   "market_resid_pp": -0.08
+  }
+ }
+}
