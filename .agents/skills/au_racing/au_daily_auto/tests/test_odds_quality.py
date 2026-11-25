@@ -71,3 +71,32 @@ def test_dashboard_checks_prices_per_race_and_runner():
 def test_live_odds_failure_is_not_reported_as_healthy():
     with patch.object(H, "read_live_dashboard", return_value=None):
         assert H.live_odds_issues("2026-10-16")
+
+
+def _payload(meetings):
+    """meetings = {venue: [[(win, place), ...] per race]}"""
+    out = {"meetings": [], "races": {}}
+    for venue, races in meetings.items():
+        out["meetings"].append({"region": "AU", "date": "2026-11-25", "venue": venue})
+        out["races"][f"2026-11-25|{venue}"] = {"races_by_analyst": {"auto": [
+            {"race_number": i + 1, "horses": [{"market_win_odds": w, "market_place_odds": p} for w, p in race]}
+            for i, race in enumerate(races)]}}
+    return out
+
+
+def test_unopened_meeting_is_not_a_real_issue():
+    """2026-11-25：晚更睇下一日、細郊區場冇定額盤 —— 成個場次 0 價、其他場次正常 = 未開盤，唔令 run partial。"""
+    from odds_quality import split_unopened_markets
+    p = _payload({"Wyong": [[(3.0, 1.5), (5.0, 2.0)]], "Geelong": [[(None, None), (None, None)], [(None, None)]]})
+    real, unopened = split_unopened_markets(p)
+    assert unopened == ["2026-11-25|Geelong"] and real == []
+
+
+def test_partly_priced_race_and_all_unpriced_stay_real():
+    from odds_quality import split_unopened_markets
+    partial = _payload({"Wyong": [[(3.0, 1.5), (None, None)]], "Geelong": [[(None, None)]]})
+    real, unopened = split_unopened_markets(partial)
+    assert unopened == [] and len(real) == 2            # 冇一個場次全部有價 → 唔可以證明抓價正常
+    broken = _payload({"Wyong": [[(None, None)]], "Geelong": [[(None, None)]]})
+    real, unopened = split_unopened_markets(broken)
+    assert unopened == [] and len(real) == 2            # 全部冇價 = 抓價壞咗，照報

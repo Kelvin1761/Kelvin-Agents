@@ -19,9 +19,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 DOMAINS = ("au", "hkjc", "nba", "tennis")
-STATUSES = ("ready", "stalled", "error", "collecting", "decided")
+STATUSES = ("stop", "ready", "stalled", "error", "collecting", "decided")
+# stop：去到預先登記判決點而判決係 REJECT／STOP（第二輪第 6 項）。未到判決點唔會出 stop —— 提早停 = optional stopping。
+STOP_VERDICTS = {"REJECT", "STOP"}
 STALE_HOURS = {"au": 36, "hkjc": 24 * 8, "nba": 36, "tennis": 36}   # HKJC 賽後先跑，休季可以隔成個星期
-ICON = {"ready": "⏰", "stalled": "⚠️", "error": "❌", "collecting": "⏳", "decided": "✅"}
+ICON = {"stop": "⛔", "ready": "⏰", "stalled": "⚠️", "error": "❌", "collecting": "⏳", "decided": "✅"}
 
 
 def board_dir(root: Path | None = None) -> Path:
@@ -38,12 +40,22 @@ def board_dir(root: Path | None = None) -> Path:
 
 
 def row(key: str, label: str, experiment: str, *, count=None, minimum=None, unit: str = "",
-        status: str = "collecting", note: str = "") -> dict:
+        status: str = "collecting", note: str = "", roi=None, ci=None, verdict=None) -> dict:
+    """roi／ci（紙上 ROI＋95% CI）同 verdict（預先登記判決）係選填；有 verdict 屬 STOP_VERDICTS → status 自動 stop。"""
+    if verdict in STOP_VERDICTS:
+        status = "stop"
     if status not in STATUSES:
         raise ValueError(f"unknown forward status {status!r}")
-    return {"key": key, "label": label, "experiment": experiment,
-            "count": None if count is None else int(count), "minimum": None if minimum is None else int(minimum),
-            "unit": unit, "status": status, "note": note}
+    out = {"key": key, "label": label, "experiment": experiment,
+           "count": None if count is None else int(count), "minimum": None if minimum is None else int(minimum),
+           "unit": unit, "status": status, "note": note}
+    if roi is not None:
+        out["roi"] = float(roi)
+    if ci is not None:
+        out["ci"] = [float(ci[0]), float(ci[1])]
+    if verdict is not None:
+        out["verdict"] = str(verdict)
+    return out
 
 
 def publish(domain: str, rows: list[dict], *, root: Path | None = None, now: datetime | None = None) -> Path:
@@ -99,7 +111,15 @@ def render(b: dict, *, show_decided: bool = False) -> list[str]:
             n = "—" if t["count"] is None else t["count"]
             m = "?" if t["minimum"] is None else t["minimum"]
             note = f" —— {t['note']}" if t["note"] and t["status"] != "collecting" else ""
-            lines.append(f"   {ICON[t['status']]} {t['label']}（{t['experiment']}）：{n}/{m} {t['unit']}{note}")
+            perf = ""
+            if t.get("roi") is not None:
+                ci = t.get("ci")
+                perf = f"｜ROI {t['roi']:+.1%}" + (f" [{ci[0]:+.1%}, {ci[1]:+.1%}]" if ci else "")
+                if t["status"] == "collecting":
+                    perf += "（未到判決點，唔准提早停）"
+            if t["status"] == "stop":
+                note = f" —— 預先登記判決 {t.get('verdict')}：建議停（由 Kelvin 決定）"
+            lines.append(f"   {ICON[t['status']]} {t['label']}（{t['experiment']}）：{n}/{m} {t['unit']}{perf}{note}")
     return lines
 
 

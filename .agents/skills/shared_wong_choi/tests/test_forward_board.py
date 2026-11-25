@@ -87,5 +87,33 @@ class ForwardBoardTests(unittest.TestCase):
         self.assertEqual((row["count"], row["minimum"], row["unit"], row["status"]), (40, 250, "注", "collecting"))
 
 
+class StopAndPerfTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        os.environ["WC_FORWARD_BOARD_ROOT"] = self.tmp.name
+
+    def tearDown(self):
+        os.environ.pop("WC_FORWARD_BOARD_ROOT", None)
+        self.tmp.cleanup()
+
+    def test_stop_only_from_preregistered_verdict(self):
+        r = fb.row("a", "A", "E", count=260, minimum=600, unit="注", roi=-0.3, ci=(-0.5, -0.1), verdict="REJECT")
+        self.assertEqual(r["status"], "stop")
+        r2 = fb.row("b", "B", "E", count=164, minimum=600, unit="注", roi=-0.22, ci=(-0.37, -0.07), verdict=None)
+        self.assertEqual(r2["status"], "collecting")        # 未到判決點：照收集，唔可以提早停
+        fb.publish("tennis", [r, r2], now=NOW)
+        lines = fb.render(fb.board(now=NOW))
+        self.assertTrue(any("⛔" in l for l in lines))
+        self.assertTrue(any("未到判決點，唔准提早停" in l for l in lines))
+
+    def test_nba_board_verdict_mapping(self):
+        sys.path.insert(0, str(SKILLS / "nba" / "nba_daily_auto"))
+        import nba_forward_tracker as t
+        self.assertEqual(t._board_verdict("⛔ STOP（明顯蝕緊）"), "STOP")
+        self.assertEqual(t._board_verdict("❌ 未過（冇證據）"), "REJECT")
+        self.assertEqual(t._board_verdict("➡️ 繼續（中期唔判 PASS）"), "➡️ 繼續（中期唔判 PASS）")
+        self.assertIsNone(t._board_verdict(None))
+
+
 if __name__ == "__main__":
     unittest.main()

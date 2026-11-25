@@ -39,3 +39,21 @@
 ## 刻意冇做
 - 冇重寫四個 forward tracker 嘅判決同推送（已上線、有用）；總板只係記錄同總覽。
 - 冇改任何模型、排名、注單。
+
+## 第二輪（2026-11-25，Kelvin「go ahead with 1 - 7 except 5」）
+
+| # | 升級 | 結果 |
+|---|---|---|
+| 1 | 模型對落注嗰刻嘅價（早更／前一晚 Sportsbet） | **冇額外資訊**（EXP-20261125-05）；`market_ruler --price early` |
+| 2 | 證據唔再靜靜斷 | 規則「搬嘢要抄快照、原位留低」＋`evidence_integrity.py`（健康.sh）；**唔做** sha256 代位（會破壞封印設計：搬咗本身就係證據改變） |
+| 3 | research-review 去留 | **暫停**（launchd 移除，plist 存 `WongChoiControl/paused-launchd/`；code／cursor／證據保留） |
+| 4 | 長期紅燈 | 5 個賽後抽場次排除；AU「未開盤」唔再令 run partial；NBA 撞鎖被取代唔計入 SLO（94.5% → 98.4%） |
+| 6 | 紙上測試 | 總板顯示 ROI＋CI（未到判決點標明唔准提早停）；去到判決點而預先登記判決 REJECT／STOP → ⛔ |
+| 7 | 減 code | 移除 203 個冇人提到嘅 scratch 檔（清單＋還原命令：`docs/archive/scratch-removed-20261125.md`）；防線測試唔准正式 code 行 scratch |
+
+### 異地備份：Google Drive（將來選項，Kelvin 2026-11-25 想用）
+- **唔可以**寫入 `~/Library/CloudStorage/GoogleDrive-*`：launchd 讀寫嗰度會 PermissionError 或者無聲卡死（Drive 退役原因）。
+- 可行做法：`rclone` 經 Google Drive API（唔經 CloudStorage 資料夾）。Kelvin 喺瀏覽器授權一次（`rclone config` → Google Drive），
+  唔使信用卡；token 存本機 `~/.config/rclone/rclone.conf`。`offsite_backup.py` 加 `rclone:<remote>:<folder>` 後端
+  （put／get／delete 用 `rclone copyto`／`rclone deletefile`），其他（加密、分組、保留、演練）全部照用。
+- 暫時：Kelvin Hardisk 1 照用（`./備份.sh`）。

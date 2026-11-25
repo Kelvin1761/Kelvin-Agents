@@ -50,6 +50,40 @@ def has_snapshot(snapshots: object, *, day: str | None = None) -> bool:
     )
 
 
+def split_unopened_markets(payload: dict, day: str | None = None) -> tuple[list[str], list[str]]:
+    """→ (真問題, 市場未開嘅場次)。系統升級第二輪第 4 項（2026-11-25）。
+
+    一個場次**每一場**都 0 匹有價，而同一次 run 有其他 AU 場次全部有價（證明抓價冇壞）
+    = Sportsbet 未開盤（22:00 晚更睇下一日、或者細郊區場根本冇定額盤）。呢啲唔係 run 失敗，
+    以前每次都令 run 變 partial、AU 30 日 SLO 跌到 61%。其他（部分有價、或者冇一個場次有價）照舊係真問題。
+    """
+    per_meeting: dict[str, list[tuple[int, int]]] = {}
+    issues = dashboard_odds_issues(payload, day)
+    for meeting in payload.get("meetings") or []:
+        if str(meeting.get("region") or "").upper() != "AU" or (day and meeting.get("date") != day):
+            continue
+        key = f"{meeting.get('date')}|{meeting.get('venue')}"
+        entry = (payload.get("races") or {}).get(key) or {}
+        listing = (entry.get("races_by_analyst") or {}).get("auto")
+        if listing is None:
+            listing = [race for races in (entry.get("races_by_analyst") or {}).values()
+                       if isinstance(races, list) for race in races]
+        seen, counts = set(), []
+        for race in listing:
+            if race.get("race_number") in seen:
+                continue
+            seen.add(race.get("race_number"))
+            horses = race.get("horses") or []
+            priced = sum(valid_price(h.get("market_win_odds")) and valid_price(h.get("market_place_odds"))
+                         for h in horses)
+            counts.append((priced, len(horses)))
+        per_meeting[key] = counts
+    fully_priced = [k for k, c in per_meeting.items() if c and all(p == n and n for p, n in c)]
+    unopened = sorted(k for k, c in per_meeting.items() if c and all(p == 0 for p, _ in c)) if fully_priced else []
+    real = [i for i in issues if i.split(" R", 1)[0] not in unopened]
+    return real, unopened
+
+
 def dashboard_odds_issues(payload: dict, day: str | None = None) -> list[str]:
     """Check the values actually transported to AU horse cards, per race."""
     issues = []

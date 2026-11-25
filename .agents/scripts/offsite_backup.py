@@ -11,7 +11,8 @@
   * 每代一份 manifest（記每組嘅 object、sha256、檔案清單），本身都加密上傳；保留最近 KEEP_GENERATIONS 代。
   * `drill` = 還原演練：隨機揀組，下載、核 sha256、解密、解壓，對返來源檔案大細同內容。
 
-後端：`local:<資料夾>`（測試／第二隻碟）或 `r2:<bucket>`（Cloudflare R2，經 wrangler，用 dashboard 釘死嘅版本）。
+後端：`local:<資料夾>`（測試／第二隻碟）、`rclone:<remote>:<資料夾>`（例 `rclone:gdrive:WongChoiBackup` —— Google Drive
+經 API，**唔經** `~/Library/CloudStorage`，launchd 唔會卡死；Kelvin 2026-11-25 揀做主異地備份）、或 `r2:<bucket>`。
 設定：`~/.wongchoi_offsite.json` {"backend": "...", "key_file": "~/.wongchoi_offsite.key"}。
 ⚠️ 鑰匙一定要另外抄一份去密碼管理器 —— 部 Mac 冇咗而鑰匙得一份 = 個備份解唔返。
 
@@ -67,8 +68,90 @@ SOURCES = [
     ("pred-snapshots", ARCHIVE / "prediction-snapshots"),
     # Google Drive 退役（2026-11-21）之後，舊 Drive 資料**只有**呢份（外置碟）；唔變，上傳一次之後每代重用
     ("gdrive-export", ARCHIVE / "gdrive-export-20261121"),
+    # Kelvin 2026-11-25「whole wong choi system should be backed up in google drive」：外置碟獨有嘅研究語料都包
+    ("hkjc-history", ARCHIVE / "hkjc-history"),
+    ("archive-tennis", ARCHIVE / "tennis"),
 ]
-# 刻意未包（大、要 Kelvin 揀目的地容量）：ARCHIVE/hkjc-history（15GB，回放語料＋歷史抓取）、ARCHIVE/tennis（5.2GB）
+
+# 系統狀態（git 冇、換機要嘅嘢）。(標籤, 基礎路徑, glob 列表)。每次 run 用 copy2（保留 mtime）抄去暫存再打包，
+# 冇變就重用上一代。`place` 會按 `_manifest.json` 放返原位（新機用戶名唔同都得：/Users/<舊> → $HOME）。
+# ⚠️ 加密鑰匙（~/.wongchoi_offsite.key）**唔包** —— 包咗就冇意義；Kelvin 要另外存（Apple「密碼」app）。
+SCHEDULER = Path("/Users/imac/wongchoi-scheduler")
+PRIMARY_REPO = REPO if REPO.name == "Antigravity-repo" else Path.home() / "Antigravity-repo"
+# work/：只要頂層狀態檔（forward 狀態、追蹤 state）；work/progressive/ 同 merge-*.json 係發佈暫存（3GB，會重砌）
+_STATE_GLOBS = [".agents/skills/*/*/state/**/*", ".agents/skills/*/*/work/*.json", ".agents/skills/*/*/work/*.jsonl",
+                ".wongchoi_*root",
+                "tennis-wong-choi/.env", "tennis-wong-choi/data/runtime/**/*", "tennis-wong-choi/data/logs/*.json",
+                ".agents/skills/au_racing/.sb_horse_index.json"]
+SYSTEM_ITEMS = [
+    ("home", HOME, [".wongchoi_au_data_root", ".wongchoi_betfair.env", ".wongchoi_betfair_session.json",
+                    ".wongchoi_notify.env", ".wongchoi_tennis_db", ".wongchoi_offsite.json"]),
+    ("launchagents", HOME / "Library" / "LaunchAgents", ["com.antigravity.*.plist"]),
+    ("paused-launchd", HOME / "WongChoiData" / "WongChoiControl" / "paused-launchd", ["*.plist"]),
+    ("wrangler", HOME / "Library" / "Preferences" / ".wrangler", ["config/*.toml"]),
+    ("rclone", HOME / ".config" / "rclone", ["rclone.conf"]),
+    ("claude-memory", HOME / ".claude" / "projects" / "-Users-imac-Antigravity-repo" / "memory", ["*.md"]),
+    ("scheduler-state", SCHEDULER, _STATE_GLOBS),
+    ("repo-state", PRIMARY_REPO, _STATE_GLOBS),
+]
+SYSTEM_MAX_FILE = 200 * 1024 * 1024     # 大過呢個（例如網球 DB）另外處理
+
+
+def stage_system(work: Path, items=None) -> Path | None:
+    """將系統狀態抄去 work/system/<標籤>/...，寫 `_manifest.json`。→ 暫存根目錄（冇嘢就 None）。"""
+    items = SYSTEM_ITEMS if items is None else items
+    root = work / "system"
+    manifest = {"home": str(HOME), "items": {}}
+    copied = 0
+    for label, base, globs in items:
+        if not base.is_dir():
+            continue
+        seen = set()
+        for pattern in globs:
+            for src in sorted(base.glob(pattern)):
+                if not src.is_file() or src.is_symlink() or src in seen:
+                    continue
+                if src.stat().st_size > SYSTEM_MAX_FILE or src.name.endswith(SKIP_SUFFIXES) or src.name in SKIP_NAMES:
+                    continue
+                if "__pycache__" in src.parts or "worktrees" in src.parts or src.name.startswith("merge-"):
+                    continue
+                seen.add(src)
+                dst = root / label / src.relative_to(base)
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src, dst)
+                copied += 1
+        if seen:
+            manifest["items"][label] = str(base)
+    if not copied:
+        return None
+    (root / "_manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=1), encoding="utf-8")
+    os.utime(root / "_manifest.json", (0, 0))     # 固定 mtime：內容唔變就唔令成組重傳
+    return root
+
+
+def place_system(restored: Path, *, overwrite: bool = False, dry_run: bool = False) -> dict:
+    """`restore` 出嚟嘅 `system/` → 放返原位。舊 home（/Users/<舊>）會換做而家嘅 $HOME。預設唔覆蓋現有檔。"""
+    root = restored / "system" if (restored / "system" / "_manifest.json").exists() else restored
+    manifest = json.loads((root / "_manifest.json").read_text(encoding="utf-8"))
+    old_home = manifest.get("home") or ""
+    placed, skipped = [], []
+    for label, base in manifest["items"].items():
+        target_base = Path(str(base).replace(old_home, str(HOME), 1) if old_home else base)
+        for src in sorted((root / label).rglob("*")):
+            if not src.is_file():
+                continue
+            dst = target_base / src.relative_to(root / label)
+            if dst.exists() and not overwrite:
+                skipped.append(str(dst))
+                continue
+            if not dry_run:
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src, dst)
+                if label in ("home", "wrangler", "rclone"):
+                    os.chmod(dst, 0o600)
+            placed.append(str(dst))
+    return {"placed": len(placed), "skipped_existing": len(skipped), "dry_run": dry_run,
+            "placed_files": placed[:50], "skipped_files": skipped[:50]}
 TENNIS_DB_POINTER = HOME / ".wongchoi_tennis_db"
 SKIP_NAMES = {".DS_Store", "__pycache__", ".pytest_cache"}
 SKIP_SUFFIXES = (".db-wal", ".db-shm", ".pyc", ".tmp")
@@ -165,13 +248,49 @@ class R2Backend:
         self._run("delete", f"{self.bucket}/{key}")
 
 
+class RcloneBackend:
+    """rclone（例 Google Drive API）。`remote` = `gdrive:WongChoiBackup`。launchd PATH 好細，所以搵埋 Homebrew 位置。"""
+
+    def __init__(self, remote: str):
+        self.remote = remote.rstrip("/")
+        self.bin = shutil.which("rclone") or next(
+            (p for p in ("/opt/homebrew/bin/rclone", "/usr/local/bin/rclone") if Path(p).exists()), None)
+        if not self.bin:
+            raise BackupError("搵唔到 rclone（brew install rclone，再 rclone config 授權 Google Drive）")
+
+    def _run(self, *args: str) -> subprocess.CompletedProcess:
+        last = None
+        for attempt in range(3):
+            last = subprocess.run([self.bin, *args, "--retries", "3", "--low-level-retries", "10"],
+                                  capture_output=True, encoding="utf-8", errors="replace", timeout=3600)
+            if last.returncode == 0:
+                return last
+            time.sleep(5 * (attempt + 1))
+        raise BackupError(f"rclone {args[0]} 失敗：{(last.stderr or last.stdout)[-400:]}")
+
+    def put(self, key: str, path: Path) -> None:
+        self._run("copyto", str(path), f"{self.remote}/{key}")
+
+    def get(self, key: str, path: Path) -> None:
+        self._run("copyto", f"{self.remote}/{key}", str(path))
+
+    def delete(self, key: str) -> None:
+        try:
+            self._run("deletefile", f"{self.remote}/{key}")
+        except BackupError as exc:
+            if "not found" not in str(exc).lower():
+                raise
+
+
 def backend_for(spec: str):
     kind, _, arg = spec.partition(":")
     if kind == "local" and arg:
         return LocalBackend(arg)
     if kind == "r2" and arg:
         return R2Backend(arg)
-    raise BackupError(f"唔識嘅 backend：{spec}（用 local:<路徑> 或者 r2:<bucket>）")
+    if kind == "rclone" and ":" in arg:
+        return RcloneBackend(arg)
+    raise BackupError(f"唔識嘅 backend：{spec}（用 local:<路徑>、rclone:<remote>:<資料夾> 或者 r2:<bucket>）")
 
 
 # ---------------------------------------------------------------- 分組
@@ -370,6 +489,9 @@ def _run_locked(dry_run, cfg, be, sources):
         tdb = _tennis_snapshot(work) if sources is None else None
         if tdb:
             srcs.append(("tennis", tdb.parent))
+        sysroot = stage_system(work) if sources is None else None
+        if sysroot:
+            srcs.append(("system", sysroot.parent))
         # 來源唔喺度（外置碟冇插／網球 DB 讀唔到）→ 上一代嗰啲組原封不動帶落新一代。
         # 唔帶嘅話佢哋會喺新 manifest 消失，7 代之後遠端副本就俾保留規則刪走（Sol 覆核 2026-11-25）。
         absent = {prefix for prefix, root in srcs if not root.exists()}
@@ -597,6 +719,10 @@ def main(argv=None) -> int:
     rs.add_argument("--dest", required=True)
     rs.add_argument("--group")
     rs.add_argument("--generation")
+    pl = sub.add_parser("place", help="將 restore 出嚟嘅系統狀態放返原位（新機用）")
+    pl.add_argument("--from", dest="src", required=True, help="restore --dest 嗰個資料夾")
+    pl.add_argument("--overwrite", action="store_true")
+    pl.add_argument("--dry-run", action="store_true")
     sub.add_parser("status")
     a = ap.parse_args(argv)
     try:
@@ -614,6 +740,9 @@ def main(argv=None) -> int:
                 if a.notify:
                     _notify(f"⚠️ 異地備份還原演練失敗（{rep['generation']}）：{rep['groups']}")
                 return 1
+        elif a.cmd == "place":
+            print(json.dumps(place_system(Path(a.src), overwrite=a.overwrite, dry_run=a.dry_run),
+                             ensure_ascii=False, indent=1))
         elif a.cmd == "restore":
             print(json.dumps(cmd_restore(Path(a.dest), a.group, a.generation), ensure_ascii=False, indent=1))
         else:

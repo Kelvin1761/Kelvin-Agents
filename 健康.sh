@@ -569,6 +569,17 @@ PYFB
 then ok "forward 總板正常"
 else warn "forward 總板有 tracker 過期或者讀唔到（睇上面）"; fi
 
+# ── 研究證據完整性（第二輪第 2 項，2026-11-25）────────────────────────────────
+# 證據記錄指住嘅預測快照仲搵唔搵到。NBA 歸檔搬走快照令 research-review 壞咗一個月先有人知；而家第二日就紅。
+hdr "研究證據完整性"
+if EVI=$("$PY" .agents/scripts/evidence_integrity.py --sample 100 2>&1); then
+  printf '%s\n' "$EVI" | sed 's/^/  /'
+  ok "證據 artifact 全部搵到（或者係已知）"
+else
+  printf '%s\n' "$EVI" | sed 's/^/  /' | head -12
+  note_bad "有新嘅證據 artifact 搵唔到 —— 有 step 搬咗／刪咗預測快照（搬嘢要抄、原位留低）"
+fi
+
 # ── 異地加密備份（系統升級第 2 項）──────────────────────────────────────────
 hdr "異地加密備份"
 if OFF=$("$PY" .agents/scripts/offsite_backup.py status 2>/dev/null); then

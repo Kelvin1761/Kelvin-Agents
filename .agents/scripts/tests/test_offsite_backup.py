@@ -148,3 +148,85 @@ class OffsiteSafetyTests(OffsiteBackupTests):
         finally:
             ob.CONFIG = old
         self.assertEqual(key.stat().st_mode & 0o777, 0o600)
+
+
+class RcloneBackendTests(OffsiteBackupTests):
+    """用假 rclone（喺本機資料夾模擬 copyto／deletefile）行一次完整備份同還原。"""
+
+    def setUp(self):
+        super().setUp()
+        t = Path(self.tmp.name)
+        fake_root = t / "gdrive"
+        fake_root.mkdir()
+        bindir = t / "bin"
+        bindir.mkdir()
+        script = bindir / "rclone"
+        script.write_text(f"""#!/usr/bin/env python3
+import shutil, sys, os
+from pathlib import Path
+root = Path({str(fake_root)!r})
+args = [a for a in sys.argv[1:] if not a.startswith("--") and not a.isdigit()]
+def real(x):
+    return root / x.split(":", 2)[-1] if x.startswith("gdrive:") else Path(x)
+if args[0] == "copyto":
+    dst = real(args[2]); dst.parent.mkdir(parents=True, exist_ok=True)
+    src = real(args[1])
+    if not src.exists():
+        print("object not found", file=sys.stderr); sys.exit(3)
+    shutil.copyfile(src, dst)
+elif args[0] == "deletefile":
+    p = real(args[1])
+    if not p.exists():
+        print("object not found", file=sys.stderr); sys.exit(4)
+    p.unlink()
+""")
+        script.chmod(0o755)
+        self._path = os.environ.get("PATH", "")
+        os.environ["PATH"] = f"{bindir}:{self._path}"
+        self.cfg = self.cfg | {"backend": "rclone:gdrive:WongChoiBackup"}
+        self.remote = fake_root / "WongChoiBackup"
+        self._sleep = ob.time.sleep
+        ob.time.sleep = lambda s: None
+
+    def tearDown(self):
+        os.environ["PATH"] = self._path
+        ob.time.sleep = self._sleep
+        super().tearDown()
+
+
+class SystemStateTests(unittest.TestCase):
+    """系統狀態：抄（保留 mtime、唔包鑰匙）→ place 放返原位；新機用戶名唔同會換 home；預設唔覆蓋。"""
+
+    def test_stage_and_place_with_home_remap(self):
+        with tempfile.TemporaryDirectory() as td:
+            t = Path(td)
+            old_home = t / "Users" / "imac"
+            (old_home / "state").mkdir(parents=True)
+            (old_home / ".wongchoi_notify.env").write_text("TOKEN=x")
+            (old_home / "state" / "a.json").write_text("{}")
+            (old_home / "state" / "merge-01.json").write_text("big")
+            items = [("home", old_home, [".wongchoi_notify.env", ".wongchoi_offsite.key"]),
+                     ("st", old_home / "state", ["*.json"])]
+            (old_home / ".wongchoi_offsite.key").write_text("SECRET")
+            saved_home = ob.HOME
+            ob.HOME = old_home
+            try:
+                root = ob.stage_system(t / "work", items)
+            finally:
+                ob.HOME = saved_home
+            self.assertTrue((root / "home" / ".wongchoi_offsite.key").exists())   # 呢個 test 嘅 items 叫佢包
+            self.assertFalse((root / "st" / "merge-01.json").exists())            # 發佈暫存唔包
+            self.assertNotIn(".wongchoi_offsite.key", [n for _, _, g in ob.SYSTEM_ITEMS for n in g])  # 正式清單冇鑰匙
+            new_home = t / "Users" / "kelvin"
+            new_home.mkdir(parents=True)
+            ob.HOME = new_home
+            try:
+                res = ob.place_system(t / "work")
+                again = ob.place_system(t / "work")
+            finally:
+                ob.HOME = saved_home
+            self.assertEqual((new_home / ".wongchoi_notify.env").read_text(), "TOKEN=x")
+            self.assertEqual((new_home / "state" / "a.json").read_text(), "{}")
+            self.assertEqual(oct((new_home / ".wongchoi_notify.env").stat().st_mode & 0o777), "0o600")
+            self.assertGreaterEqual(res["placed"], 3)
+            self.assertEqual(again["placed"], 0)                                   # 預設唔覆蓋

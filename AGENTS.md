@@ -22,9 +22,22 @@ import，所以**呢份文件係唯一真源** —— 新規則加喺呢度，�
 `./整理.sh`（清已合併嘅分支）。**`檢查.sh` 查 code，`健康.sh` 查資料同排程 ——
 兩者唔互相覆蓋。**
 
+**30 日 SLO 唔計嘅嘢**（2026-11-25）：高頻 poller `skipped_locked` 而之後同 mode／日子有成功 run = 被取代（`superseded_locked`）；
+AU 成個場次 0 價、其他場次正常 = Sportsbet 未開盤（`odds_quality.split_unopened_markets`，run 同 healthcheck 共用），唔令 run partial。
+
 **新 launchd job 一定要登記輸出**（2026-11-25）：`.agents/scripts/job_freshness.py` 嘅 `REGISTRY`（輸出 glob＋最大年齡）。
 `健康.sh` 排程段睇「輸出新唔新鮮、最新 run 有冇寫住 failed」，唔信退出碼 —— 舊退出碼自癒咗都照嗌，
 而 research-review 由 10-21 起日日 failed 都冇人分得出（`--classify` 第一次跑就捉到）。冇可靠輸出嘅先加去 `UNREGISTERED_REASON`。
+
+**研究證據唔准搬**（2026-11-25，EXP-20261125-03）：`evidence/records/prediction/*` 用絕對路徑＋sha256 封印預測快照。
+任何搬資料夾嘅 step（歸檔、清理、offload）**要抄 `_prediction_snapshots`、原位留低**，或者經 `wongchoi_paths` 嘅 offload marker。
+NBA 歸檔用 `shutil.move` 令 research-review 壞咗一個月。`.agents/scripts/evidence_integrity.py`（`健康.sh` 每次跑）
+認原位、offload、AU `Archive/` 三種位置；**有新嘅搵唔到 = ❌**。
+
+**research-review 暫停**（2026-11-25，Kelvin 第二輪第 3 項）：`central-wong-choi.research-review` 已由 launchd 移除
+（plist 存喺 `<WongChoiControl>/paused-launchd/`；code、cursor、證據全部保留）。原因：設計上永遠唔改模型；AU 98.5% artifact
+因歸檔搬遷睇唔到（冇 relocation root）；NBA 超 5,000 ref／512MB、網球超 128KB，要搬去分頁 runtime 兼重新封印先修到。
+要重開：抄返 plist 去 `~/Library/LaunchAgents/` 再 `launchctl bootstrap`，或者行 `central_wong_choi/install_research_review.sh`。
 
 **異地加密備份**（2026-11-25）：`.agents/scripts/offsite_backup.py`（`init`／`run`／`drill`／`status`）。
 GitHub 只有 code；資料（`~/WongChoiData`、外置碟 Betfair 記錄同舊快照、網球 DB）靠呢個先有屋企以外嘅副本。

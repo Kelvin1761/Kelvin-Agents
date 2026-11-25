@@ -134,6 +134,7 @@ def check(*, ledger: Path, analysis: Path, reports: Path,
         if not progress.get("ready"):
             continue
         result = module.evaluate(ledger, analysis, reports, only=test.test)[test.test]
+        progress["verdict"] = _verdict(result)   # forward 總板：判決點嘅預先登記判決（STOP／REJECT → ⛔）
         notify(f"forward-ready:{test.key}",
                f"🧪 NBA forward 測試夠數：{test.label}（{test.experiment}）\n"
                f"判決：{_verdict(result)}\n{_numbers(test, result)}\n"
@@ -146,6 +147,18 @@ def check(*, ledger: Path, analysis: Path, reports: Path,
     return report
 
 
+def _board_verdict(text):
+    """`_verdict()` 嘅文字 → 總板判決代碼（只認 STOP／REJECT；其他唔觸發 ⛔）。"""
+    if not text:
+        return None
+    upper = str(text).upper()
+    if "STOP" in upper:
+        return "STOP"
+    if "未過" in str(text):           # 終判未過 = 預先登記嘅「停或者重新設計」
+        return "REJECT"
+    return str(text)
+
+
 def _board_row(fb, test: ForwardTest, item: dict) -> dict:
     """NBA 進度嘅計數欄唔一樣（注／日／宗）：揀第一個有 checkpoint 嘅欄。"""
     if item.get("error"):
@@ -155,7 +168,8 @@ def _board_row(fb, test: ForwardTest, item: dict) -> dict:
         if field in cp:
             return fb.row(test.key, test.label, test.experiment, count=item.get(field), minimum=cp[field],
                           unit=unit, status="ready" if item.get("ready") else "collecting",
-                          note=test.action if item.get("ready") else "")
+                          note=test.action if item.get("ready") else "",
+                          verdict=_board_verdict(item.get("verdict")))
     return fb.row(test.key, test.label, test.experiment, status="ready" if item.get("ready") else "collecting")
 
 

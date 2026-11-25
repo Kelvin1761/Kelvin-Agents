@@ -29,7 +29,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parents[3]))
 
-from odds_quality import dashboard_odds_issues, has_snapshot, misfiled_snapshots, snapshot_day  # noqa: E402
+from odds_quality import has_snapshot, misfiled_snapshots, snapshot_day, split_unopened_markets  # noqa: E402
 
 LIVE_URL = "https://wongchoi-dashboard.pages.dev/dashboard-data.json"
 RUNNER = HERE / "run_au_daily_schedule.sh"
@@ -86,7 +86,8 @@ def live_odds_issues(day: str) -> list[str]:
     payload = read_live_dashboard()
     if payload is None:
         return ["live dashboard odds 未能核實（讀取失敗）"]
-    return dashboard_odds_issues(payload, day)
+    # 同 run 嘅判斷一樣（一樣嘢只准一個標準）：整個場次未開盤唔算問題
+    return split_unopened_markets(payload, day)[0]
 
 
 

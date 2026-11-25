@@ -50,6 +50,41 @@
       "dropped_form_rows": 8,
       "detected_by": "EXP-20261015-04",
       "decided": "2026-10-15 Kelvin"
+    },
+    {
+      "meeting": "2026-11-21 Cranbourne Race 1-10",
+      "reason": "post_race_extraction",
+      "dropped_form_rows": 4,
+      "detected_by": "健康.sh「有新嘅賽後抽場次未排除」（corpus_exclusions.detect_post_race_extraction）",
+      "decided": "2026-11-25 Claude，跟 Kelvin 2026-10-15 既定規則（賽後抽＝頁面累積統計已計埋賽果；PIT 重抽已經冇可能）"
+    },
+    {
+      "meeting": "2026-11-15 Moe Race 1-9",
+      "reason": "post_race_extraction",
+      "dropped_form_rows": 1,
+      "detected_by": "健康.sh「有新嘅賽後抽場次未排除」（corpus_exclusions.detect_post_race_extraction）",
+      "decided": "2026-11-25 Claude，跟 Kelvin 2026-10-15 既定規則（賽後抽＝頁面累積統計已計埋賽果；PIT 重抽已經冇可能）"
+    },
+    {
+      "meeting": "2026-11-03 Randwick Race 1-10",
+      "reason": "post_race_extraction",
+      "dropped_form_rows": 12,
+      "detected_by": "健康.sh「有新嘅賽後抽場次未排除」（corpus_exclusions.detect_post_race_extraction）",
+      "decided": "2026-11-25 Claude，跟 Kelvin 2026-10-15 既定規則（賽後抽＝頁面累積統計已計埋賽果；PIT 重抽已經冇可能）"
+    },
+    {
+      "meeting": "2026-11-03 Hobart Race 1-8",
+      "reason": "post_race_extraction",
+      "dropped_form_rows": 14,
+      "detected_by": "健康.sh「有新嘅賽後抽場次未排除」（corpus_exclusions.detect_post_race_extraction）",
+      "decided": "2026-11-25 Claude，跟 Kelvin 2026-10-15 既定規則（賽後抽＝頁面累積統計已計埋賽果；PIT 重抽已經冇可能）"
+    },
+    {
+      "meeting": "2026-11-03 Flemington Race 1-10",
+      "reason": "post_race_extraction",
+      "dropped_form_rows": 9,
+      "detected_by": "健康.sh「有新嘅賽後抽場次未排除」（corpus_exclusions.detect_post_race_extraction）",
+      "decided": "2026-11-25 Claude，跟 Kelvin 2026-10-15 既定規則（賽後抽＝頁面累積統計已計埋賽果；PIT 重抽已經冇可能）"
     }
   ]
 }

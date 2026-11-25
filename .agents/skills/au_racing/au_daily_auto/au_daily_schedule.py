@@ -4049,13 +4049,16 @@ def validate_snapshot(runlog: RunLog, snapshot: Path,
     if not meetings:
         problems.append("snapshot 冇任何場次")
 
-    from odds_quality import dashboard_odds_issues
-    odds_issues = dashboard_odds_issues(payload)
+    from odds_quality import split_unopened_markets
+    odds_issues, odds_not_open = split_unopened_markets(payload)
     for issue in odds_issues:
         runlog.warn(issue)
+    for key in odds_not_open:   # 未開盤唔係 run 失敗；照記低，下一次 run 會再睇
+        runlog.warn(f"{key}: Sportsbet 未開盤（全部場次冇價，其他場次正常）")
     # Keep independent model analysis available; prices have separate readiness.
     result = {"ok": not problems, "problems": problems,
               "quality_issues": odds_issues,
+              "odds_not_open": odds_not_open,
               "meetings": keys,
               "race_counts": {k: len(race_numbers_in_snapshot(races.get(k)))
                               for k in keys},

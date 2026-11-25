@@ -41,6 +41,7 @@ def test_thirty_day_slo_uses_final_attempt_and_counts_recovery(tmp_path: Path):
         "healthy": 2,
         "failed_or_partial": 0,
         "recovered_by_retry": 1,
+        "superseded_locked": 0,
         "availability": 1.0,
         "target": 0.95,
         "minimum_slots": 20,
@@ -79,3 +80,23 @@ def test_restore_drill_is_exact_and_refuses_overwrite(tmp_path: Path):
         pass
     else:
         raise AssertionError("restore drill must never overwrite a destination")
+
+
+def _poll(root, slot, state, at, status=None, target="2026-08-25"):
+    path = root / "runs" / "nba" / target / "postgame" / slot / "attempt-1.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    ops = [{"detail": {"source_payload": {"status": status}}}] if status else []
+    path.write_text(json.dumps({"idempotency_key": f"wc:nba:{slot}", "attempt": 1, "state": state,
+                                "mode": "postgame", "target_date": target, "completed_at": at,
+                                "operations": ops}), encoding="utf-8")
+
+
+def test_lock_skip_superseded_by_later_success_is_not_a_failure(tmp_path: Path):
+    """2026-11-25：15 分鐘 poller 撞鎖 skipped_locked、之後同 mode／日子成功 = 被取代；冇之後成功 = 照計失敗。"""
+    _poll(tmp_path, "t1", "blocked", "2026-08-25T10:00:00+00:00", "skipped_locked")
+    _poll(tmp_path, "t2", "succeeded", "2026-08-25T10:15:00+00:00")
+    _poll(tmp_path, "t3", "blocked", "2026-08-25T10:30:00+00:00", "skipped_locked")   # 之後冇成功
+    _poll(tmp_path, "t4", "blocked", "2026-08-25T09:00:00+00:00", "other_block")      # 唔係撞鎖
+    nba = collect_reliability(tmp_path, now=datetime(2026, 8, 26, tzinfo=timezone.utc))["domains"]["nba"]
+    assert nba["superseded_locked"] == 1
+    assert (nba["slots"], nba["healthy"], nba["failed_or_partial"]) == (3, 1, 2)

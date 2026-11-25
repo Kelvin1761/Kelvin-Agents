@@ -57,6 +57,34 @@ def _domain_reliability(root: Path, domain: Domain, cutoff: datetime) -> dict[st
     ]
     terminal = [item for item in final_attempts if item.get("state") in TERMINAL_STATES]
     healthy = [item for item in terminal if item.get("state") in HEALTHY_STATES]
+    # 系統升級第二輪第 4 項（2026-11-25）：高頻 poller（NBA postgame 每 15 分鐘）撞到上一轉仲揸住鎖就
+    # skipped_locked —— 下一轉會做返，冇嘢冇咗。之後同 mode、同 target_date 有成功 run 嘅 = 被取代，唔計入分母
+    # （30 日內 118 個，令 NBA SLO 94.5% < 95%）。冇之後成功嘅照計失敗：真係卡死嘅鎖照報。
+    def _skipped_locked(item):
+        if item.get("state") != "blocked":
+            return False
+        for op in item.get("operations") or []:
+            payload = (op.get("detail") or {}).get("source_payload") or {}
+            if isinstance(payload, dict) and payload.get("status") == "skipped_locked":
+                return True
+        return False
+
+    later_success = {}
+    for item in healthy:
+        k = (item.get("mode"), item.get("target_date"))
+        t = _aware(str(item.get("completed_at") or ""))
+        if t and (k not in later_success or t > later_success[k]):
+            later_success[k] = t
+    superseded = [
+        item for item in terminal
+        if _skipped_locked(item)
+        and (later_success.get((item.get("mode"), item.get("target_date")))
+             or datetime.min.replace(tzinfo=timezone.utc))
+        > (_aware(str(item.get("completed_at") or "")) or datetime.max.replace(tzinfo=timezone.utc))
+    ]
+    if superseded:
+        ids = {id(item) for item in superseded}
+        terminal = [item for item in terminal if id(item) not in ids]
     recovered = sum(
         1
         for values in attempts.values()
@@ -74,6 +102,7 @@ def _domain_reliability(root: Path, domain: Domain, cutoff: datetime) -> dict[st
         "healthy": len(healthy),
         "failed_or_partial": len(terminal) - len(healthy),
         "recovered_by_retry": recovered,
+        "superseded_locked": len(superseded),
         "availability": availability,
         "target": RUN_SLO_TARGET,
         "minimum_slots": RUN_SLO_MIN_SLOTS,

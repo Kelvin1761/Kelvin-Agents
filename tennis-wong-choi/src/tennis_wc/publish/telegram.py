@@ -300,23 +300,30 @@ def publish_forward_board(log_dir: Path) -> int:
             return "decided"
         return "ready" if settled >= final else "collecting"
 
+    def perf_fields(p, verdict_fn):
+        ci = (p["ci_low"], p["ci_high"]) if p.get("ci_low") is not None else None
+        return {"roi": p.get("roi"), "ci": ci, "verdict": verdict_fn(p)}
+
     rows = []
     with get_connection() as conn:
         perf = featured.performance(featured.picks_with_results(conn))
         rows.append(fb.row("featured", "網球精選前向測試", "EXP-20261105-10", count=perf["settled"],
                            minimum=featured.FORWARD_FINAL_VERDICT, unit="注",
                            status=status(perf["settled"], featured.FORWARD_FINAL_VERDICT,
-                                         str(featured.FORWARD_FINAL_VERDICT))))
+                                         str(featured.FORWARD_FINAL_VERDICT)),
+                           **perf_fields(perf, featured.forward_verdict)))
         for arm in featured_shadow.ARMS.values():
             p = featured.performance(featured_shadow.picks_with_results(conn, arm.name))
             rows.append(fb.row(f"shadow_{arm.name}", f"精選 shadow：{arm.label or arm.name}", arm.experiment,
                                count=p["settled"], minimum=featured.FORWARD_FINAL_VERDICT, unit="注",
                                status=status(p["settled"], featured.FORWARD_FINAL_VERDICT,
-                                             f"{arm.name}:{featured.FORWARD_FINAL_VERDICT}")))
+                                             f"{arm.name}:{featured.FORWARD_FINAL_VERDICT}"),
+                               **perf_fields(p, featured.forward_verdict)))
         p = featured.performance(sharp_forward.picks_with_results(conn))
         rows.append(fb.row("sharp", "Sportsbet 對 Betfair 紙上測試", sharp_forward.EXPERIMENT, count=p["settled"],
                            minimum=sharp_forward.FINAL_VERDICT, unit="注",
                            status=status(p["settled"], sharp_forward.FINAL_VERDICT,
-                                         f"sharp:{sharp_forward.FINAL_VERDICT}")))
+                                         f"sharp:{sharp_forward.FINAL_VERDICT}"),
+                           **perf_fields(p, sharp_forward.verdict)))
     fb.publish("tennis", rows)
     return len(rows)
