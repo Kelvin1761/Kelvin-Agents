@@ -85,7 +85,7 @@ GitHub 只有 code；資料（`~/WongChoiData`、外置碟 Betfair 記錄同舊�
 - **Tennis**：精選前向測試（EXP-20261105-10）由 `tennis_wc/publish/telegram.py` 嘅 `forward_milestone`
   喺每日覆盤後檢查，250／600 注第一次夠數推 Telegram（state：`data/logs/featured-forward-state.json`）。
   新開 tennis forward 測試要喺同一處加。精選 shadow arm（紙上、唔發、唔上板）登記喺 `tennis_wc/select/featured_shadow.py` 嘅 `ARMS`，
-  由 `shadow_forward_milestones` 推（現有 `cap3`：賠率 <3.0，EXP-20261116-14；`no_game_hcp`：剔走全場讓局，EXP-20261120-51）。Tennis 投注推送只有精選（**23:00 主 card**，包 21:00 靜靜揀咗嗰批；09:00 補充；Kelvin 2026-11-20 由 21:00 改）。
+  由 `shadow_forward_milestones` 推（現有 `cap3`：賠率 <3.0，EXP-20261116-14；`no_game_hcp`：剔走全場讓局，EXP-20261120-51；`max_disagree20`：唔揀模型同市場差距 >20pp，EXP-20261125-10）。Tennis 投注推送只有精選（**23:00 主 card**，包 21:00 靜靜揀咗嗰批；09:00 補充；Kelvin 2026-11-20 由 21:00 改）。
   **Sportsbet 對 Betfair 紙上測試**（EXP-20261116-23）：`scripts/tennis_betfair_tick.py`（launchd `.betfair`，每 15 分鐘）
   用 AU 嘅只讀 Betfair client（credentials `~/.wongchoi_betfair.env`）抓網球 `MATCH_ODDS`，每場喺 21:00 嗰輪 Sportsbet 價做**一次**
   決定就凍結（`select/sharp_forward.py`，表 `sharp_forward_picks`），價之後再郁都唔換注；`sharp_forward_milestone` 300／1,000 注推 primary。

@@ -16,6 +16,15 @@ Pre-registered 2026-11-20 (EXP-20261120-51) before any pick was written:
          (29 settled, -37.9% [-68.9, -6.6], EXP-20261120-50). The forward number
          was seen before this arm was registered, so this arm is the test of it.
 
+Pre-registered 2026-11-25 (EXP-20261125-10) before any pick was written:
+
+  max_disagree20  the 精選 rule unchanged, except a candidate's edge (model
+         probability minus de-vigged fair market probability, prop_tracker.edge,
+         the same number 精選 ranks by) must be <= 0.20. Why: read-only diagnosis
+         2026-11-25 found 精選 suffers winner's curse -- the biggest edges are
+         mostly model noise, and edge >= 0.20 buckets ran ROI ~ -20%. Expected
+         to cut losses, not to create an edge.
+
 A shadow arm is never sent, never shown on the dashboard and never accepts a
 live bet; its picks are written to ``featured_shadow_picks`` at the same
 moment the real 精選 runs (21:00 / 23:00 / 09:00), with the same freeze and
@@ -40,11 +49,13 @@ class ShadowArm:
     experiment: str
     excluded_families: frozenset = frozenset()
     label: str = ""  # one line for the dashboard; the rule itself is the fields above
+    max_disagreement: float | None = None  # keep only edge <= this (None = no limit)
 
 
 ARM_LABELS = {
     "cap3": "唔揀賠率 3.0 或以上",
     "no_game_hcp": "唔揀全場讓局",
+    "max_disagree20": "唔揀模型同市場差距 >20pp",
 }
 
 
@@ -52,6 +63,8 @@ ARMS: dict[str, ShadowArm] = {
     "cap3": ShadowArm("cap3", 3.0, "EXP-20261116-14", label=ARM_LABELS["cap3"]),
     "no_game_hcp": ShadowArm("no_game_hcp", float("inf"), "EXP-20261120-51",
                              frozenset({"player_game_handicap"}), label=ARM_LABELS["no_game_hcp"]),
+    "max_disagree20": ShadowArm("max_disagree20", float("inf"), "EXP-20261125-10",
+                                label=ARM_LABELS["max_disagree20"], max_disagreement=0.20),
 }
 
 SCHEMA = """
@@ -90,7 +103,8 @@ def arm_candidates(arm: ShadowArm, candidates: list[featured.Candidate]) -> list
     from tennis_wc.pricing.families import family_for_market
 
     return [c for c in candidates if c.odds < arm.max_odds_exclusive
-            and family_for_market(c.market_key, c.feed_market_name) not in arm.excluded_families]
+            and family_for_market(c.market_key, c.feed_market_name) not in arm.excluded_families
+            and (arm.max_disagreement is None or c.edge <= arm.max_disagreement)]
 
 
 def record(conn, match_date: str, run_label: str, now: datetime | None = None,

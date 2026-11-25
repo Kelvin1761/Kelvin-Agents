@@ -90,3 +90,64 @@ def test_no_game_hcp_skips_full_match_game_handicap_only(conn):
 
 def test_every_arm_names_its_experiment():
     assert all(arm.experiment.startswith("EXP-") for arm in S.ARMS.values())
+
+
+def test_max_disagree20_boundary_keeps_020_drops_02001(conn):
+    pool = [cand(1, 1, 0.2001), cand(2, 1, 0.05),   # match 1: top edge too far from market -> next best
+            cand(3, 2, 0.20),                       # exactly 20pp stays
+            cand(4, 3, 0.35)]                       # nothing else in match 3
+    added = S.record(conn, "2026-11-07", "21:00", NOW, candidates=pool)
+    assert sorted(r["prop_id"] for r in added["max_disagree20"]) == [2, 3]
+    # Existing arms see the same pool unchanged.
+    assert sorted(r["prop_id"] for r in added["cap3"]) == [1, 3, 4]
+    assert sorted(r["prop_id"] for r in added["no_game_hcp"]) == [1, 3, 4]
+
+
+def test_existing_arms_have_no_disagreement_limit():
+    assert S.ARMS["cap3"].max_disagreement is None
+    assert S.ARMS["no_game_hcp"].max_disagreement is None
+    arm = S.ARMS["max_disagree20"]
+    assert (arm.experiment, arm.max_disagreement, arm.max_odds_exclusive, arm.excluded_families) == (
+        "EXP-20261125-10", 0.20, float("inf"), frozenset())
+    assert arm.label == S.ARM_LABELS["max_disagree20"] == "唔揀模型同市場差距 >20pp"
+
+
+def test_max_disagree20_reaches_milestone(tmp_path, monkeypatch, conn):
+    import tennis_wc.publish.telegram as T
+    import tennis_wc.store.db as db
+    from contextlib import contextmanager
+
+    rows = [{"match_date": "2026-11-07", "result_status": "WON", "unit_profit": 1.0}] * 250
+
+    @contextmanager
+    def fake_conn():
+        yield conn
+
+    monkeypatch.setattr(db, "get_connection", fake_conn)
+    monkeypatch.setattr(S, "picks_with_results", lambda c, arm: rows)
+    sent = []
+    monkeypatch.setattr(T, "notify", lambda msg, audience: sent.append((msg, audience)) or True)
+    out = T.shadow_forward_milestones(tmp_path)
+    assert out["max_disagree20"] == "ELIGIBLE_FOR_RELEASE_REVIEW"
+    assert any("max_disagree20" in msg and "EXP-20261125-10" in msg and a == "primary" for msg, a in sent)
+
+
+def test_forward_board_lists_max_disagree20(tmp_path, monkeypatch, conn):
+    import tennis_wc.publish.telegram as T
+    import tennis_wc.select.sharp_forward as SF
+    import tennis_wc.store.db as db
+    from contextlib import contextmanager
+
+    @contextmanager
+    def fake_conn():
+        yield conn
+
+    monkeypatch.setenv("WC_FORWARD_BOARD_ROOT", str(tmp_path / "board"))
+    monkeypatch.setattr(db, "get_connection", fake_conn)
+    monkeypatch.setattr(F, "picks_with_results", lambda c, **kw: [])
+    monkeypatch.setattr(S, "picks_with_results", lambda c, arm: [])
+    monkeypatch.setattr(SF, "picks_with_results", lambda c: [])
+    T.publish_forward_board(tmp_path)
+    tests = json.loads((tmp_path / "board" / "tennis.json").read_text())["tests"]
+    row = next(t for t in tests if t["key"] == "shadow_max_disagree20")
+    assert row["experiment"] == "EXP-20261125-10" and "20pp" in row["label"]
