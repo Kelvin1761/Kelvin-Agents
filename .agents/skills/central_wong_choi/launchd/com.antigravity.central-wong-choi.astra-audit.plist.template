@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- 打機時段（Kelvin 2026-11-21）：Background = M1 只用效能核，性能核留俾前景 app；結果一樣，只係慢啲 -->
+  <key>ProcessType</key><string>Background</string>
+  <key>LowPriorityIO</key><true/>
+  <key>LowPriorityBackgroundIO</key><true/>
+  <key>Nice</key><integer>10</integer>
+  <key>Label</key>
+  <string>com.antigravity.central-wong-choi.astra-audit</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>__SCRIPT_DIR__/run_astra_audit.sh</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>__PROJECT_ROOT__</string>
+  <!-- 每星期一 08:00 悉尼：Astra 每週深度審計（只做診斷，Telegram primary）。 -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Weekday</key><integer>1</integer>
+    <key>Hour</key><integer>8</integer>
+    <key>Minute</key><integer>0</integer>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>__SCRIPT_DIR__/logs/astra-audit.out</string>
+  <key>StandardErrorPath</key>
+  <string>__SCRIPT_DIR__/logs/astra-audit.err</string>
+</dict>
+</plist>
