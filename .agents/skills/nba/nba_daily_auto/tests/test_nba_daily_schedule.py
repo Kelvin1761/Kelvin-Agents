@@ -915,3 +915,16 @@ def test_featured_check_never_fails_the_refresh() -> None:
             mock.patch.object(schedule, "_deploy") as deploy:
         schedule._check_featured_availability("2026-11-17", Path("/nonexistent"), {"GSW_NOP"}, log)
     assert deploy.call_count == 0
+
+
+def test_evidence_only_folder_is_not_live_for_catch_up(tmp_path, monkeypatch):
+    """EXP-20261125-03：歸檔後留低嘅 `_prediction_snapshots` 唔可以令 catch-up 對已歸檔日子重跑 postgame。"""
+    import nba_daily_schedule as sched
+    folder = tmp_path / "2026-11-20 NBA Analysis"
+    (folder / "_prediction_snapshots" / "20261120-210000-1").mkdir(parents=True)
+    monkeypatch.setattr(sched, "archived_dirs", lambda day: [])
+    assert sched.is_live(folder)                                   # 未歸檔：照舊當 live
+    monkeypatch.setattr(sched, "archived_dirs", lambda day: [tmp_path / "archive" / folder.name])
+    assert not sched.is_live(folder)                               # 已歸檔＋淨係證據 = 殼
+    (folder / "Game_A_B_Full_Analysis.md").write_text("r")
+    assert sched.is_live(folder)

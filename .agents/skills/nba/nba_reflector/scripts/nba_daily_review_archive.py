@@ -98,7 +98,7 @@ def main() -> int:
     source = WORKSPACE_ROOT / f"{analysis_date} NBA Analysis"
     destination = NBA_ANALYSIS / source.name
 
-    if not source.is_dir():
+    if not _is_live(source):
         return emit("skipped", analysis_date, "No live analysis folder exists.")
 
     # A date/game written off as no_prediction keeps its results, but its
@@ -198,13 +198,36 @@ def main() -> int:
     return _archive(source, destination, analysis_date)
 
 
+EVIDENCE_DIR = "_prediction_snapshots"
+
+
+def _is_live(folder: Path) -> bool:
+    """淨係剩 `_prediction_snapshots`（同 .DS_Store）**而且嗰日已經有歸檔** = 歸檔留低嘅證據殼，唔係 live。"""
+    if not folder.is_dir():
+        return False
+    names = {c.name for c in folder.iterdir()}
+    shell = EVIDENCE_DIR in names and names <= {EVIDENCE_DIR, ".DS_Store"}
+    return not (shell and any(NBA_ANALYSIS.glob(f"{folder.name}*")))
+
+
 def _archive(source: Path, destination: Path, analysis_date: str, **extra: str) -> int:
     NBA_ANALYSIS.mkdir(parents=True, exist_ok=True)
     final_destination = destination
     if final_destination.exists():
         stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
         final_destination = NBA_ANALYSIS / f"{source.name} rerun {stamp}"
-    shutil.move(str(source), str(final_destination))
+    # 研究證據（evidence/records/prediction）用絕對路徑指住 live 位置嘅 `_prediction_snapshots`
+    # 同埋 sha256 封印。成個資料夾搬走 = 之後每次覆核都驗唔到（10-21 起 research-review 日日 failed，
+    # EXP-20261125-03）。所以快照**抄**一份去歸檔、原本留低；其他嘢照搬。
+    final_destination.mkdir(parents=True)
+    for child in sorted(source.iterdir()):
+        target = final_destination / child.name
+        if child.name == EVIDENCE_DIR:
+            shutil.copytree(child, target, copy_function=shutil.copy2)
+        else:
+            shutil.move(str(child), str(target))
+    if not any(source.iterdir()):
+        source.rmdir()
     return emit(
         "archived",
         analysis_date,

@@ -216,6 +216,7 @@ ALLOWED = {
     # Not offloaded: the mover only walks AU Archive/ and HKJC meetings. Wire these first if that changes.
     ".agents/skills/nba/nba_daily_auto/nba_daily_schedule.py": "NBA",
     ".agents/skills/nba/nba_daily_auto/nba_no_prediction.py": "NBA",
+    ".agents/skills/nba/nba_reflector/scripts/nba_daily_review_archive.py": "NBA: archive copies snapshots, leaves the evidence path (EXP-20261125-03)",
     ".agents/scripts/nba_ml/nba_ml_pit.py": "NBA",
     "Horse_Racing_Dashboard/backend/services/nba_published_analysis.py": "NBA",
 }

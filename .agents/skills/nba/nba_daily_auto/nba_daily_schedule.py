@@ -248,6 +248,24 @@ def live_dir(target_date: str) -> Path:
     return PROJECT_ROOT / f"{target_date} NBA Analysis"
 
 
+# 歸檔之後 live 位置只會剩 `_prediction_snapshots`（研究證據記錄嘅絕對路徑指住佢，所以唔可以搬走，
+# EXP-20261125-03）。「淨係得證據，而且嗰日已經有歸檔」= 證據殼，唔係 live —— 否則 catch-up 會對已歸檔
+# 嘅日子重跑 postgame。冇歸檔嘅（例如快照寫咗但報告未出）照舊當 live。
+EVIDENCE_ONLY_NAMES = frozenset({"_prediction_snapshots", ".DS_Store"})
+
+
+def is_evidence_shell(folder: Path) -> bool:
+    if not folder.is_dir():
+        return False
+    names = {child.name for child in folder.iterdir()}
+    return ("_prediction_snapshots" in names and names <= EVIDENCE_ONLY_NAMES
+            and bool(archived_dirs(folder.name[:10])))
+
+
+def is_live(folder: Path) -> bool:
+    return folder.is_dir() and not is_evidence_shell(folder)
+
+
 def archived_dirs(target_date: str) -> list[Path]:
     if not NBA_ANALYSIS.is_dir():
         return []
@@ -1749,7 +1767,7 @@ def results_due(folder: Path, target_date: str, now: datetime, *, rows=None, att
 def run_results_refresh(target_date: str, log: RunLog) -> str:
     """Incremental verified Final results only; never archive or touch D1 bets."""
     folder = live_dir(target_date)
-    if not folder.is_dir() or latest_snapshot(folder) is None:
+    if not is_live(folder) or latest_snapshot(folder) is None:
         return "dormant"
     if no_prediction.covers_date(folder):
         return "no_prediction"
@@ -1782,7 +1800,7 @@ def run_results_refresh(target_date: str, log: RunLog) -> str:
 
 def run_postgame(target_date: str, log: RunLog) -> str:
     folder = live_dir(target_date)
-    if not folder.is_dir():
+    if not is_live(folder):
         archives = archived_dirs(target_date)
         if archives:
             if len(archives) == 1:
@@ -1917,7 +1935,7 @@ def catch_up_postgame(target_date: str, log: RunLog) -> list[str]:
     for back in range(CATCH_UP_DAYS, 0, -1):
         day = (today - timedelta(days=back)).isoformat()
         folder = live_dir(day)
-        if not folder.is_dir() or latest_snapshot(folder) is None:
+        if not is_live(folder) or latest_snapshot(folder) is None:
             continue
         try:
             status = run_postgame(day, log)
@@ -1988,7 +2006,7 @@ def mark_no_prediction(
     archive copy) and the matching market-ledger exclusion row(s).
     """
     folder = live_dir(target_date)
-    if not folder.is_dir():
+    if not is_live(folder):
         archives = archived_dirs(target_date)
         if len(archives) != 1:
             raise no_prediction.NoPredictionError(
@@ -2027,7 +2045,7 @@ def run_startup(log: RunLog) -> str:
     now = now_sydney()
     today = now.date()
     yesterday = (today - timedelta(days=1)).isoformat()
-    if live_dir(yesterday).is_dir():
+    if is_live(live_dir(yesterday)):
         try:
             run_postgame(yesterday, log)
         except TemporaryFailure as exc:
