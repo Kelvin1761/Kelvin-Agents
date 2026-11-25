@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261125-09](EXP-20261125-09-goals-and-keep-m3.md) | 2026-11-25 | AU／HKJC | 判決規則：分階段目標（追市場→贏市場→盈利）＋KEEP m3 雙軌＋同市場差距指標 | **規則改動（Kelvin 決定）**：取代 m2；起點差距 AU 對 SP +0.240、朝早 +0.203、HKJC dev +0.178（每場頭馬 nll） |
 | [EXP-20261125-04](EXP-20261125-04-keep-requires-market-ruler.md) | 2026-11-25 | AU／HKJC | 判決規則：KEEP 改為要過市場尺（m2） | **規則改動（Kelvin 決定）**：市場尺 B PASS（AU SP＋BSP；HKJC dev 窗、holdout 確認）＋排名唔顯著變差；例外：正確性／管線／顯示、Kelvin「分析用途上線」。HKJC dev 基準 −0.00018 [−0.00044,+0.00007] |
 | [EXP-20261125-05](EXP-20261125-05-au-model-vs-early-price.md) | 2026-11-25 | AU | 模型對落注嗰刻嘅價（早更／前一晚 Sportsbet）有冇額外資訊 | **冇**：早更 −0.00018 [−0.00110,+0.00079]（3,344 場）、前一晚 −0.00011 [−0.00106,+0.00085]；SP／BSP 一樣係零 → 早落注都救唔到。新工具 `--price early` |
 | [EXP-20261125-03](EXP-20261125-03-nba-archive-keeps-evidence.md) | 2026-11-25 | NBA | research-review NBA 10-21 起日日 failed 嘅原因 | **修正（管線）**：賽後歸檔 `shutil.move` 成個資料夾，證據絕對路徑全斷（5,651 檔）；改為快照抄去歸檔、原位留低，證據殼唔當 live；sha256 逐檔還原；NBA cursor 四項重驗 OK、dashboard tracking 逐字不變 |

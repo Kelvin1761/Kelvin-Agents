@@ -190,3 +190,13 @@ class ScoreWindowTest(unittest.TestCase):
         self.assertTrue(blocks)
         self.assertTrue(all(lo <= b["from"] and b["to"] <= hi for b in blocks))
         self.assertEqual(res["arms"]["baseline"]["win"]["days"], 16)
+
+
+class GapToMarketTest(unittest.TestCase):
+    def test_more_informative_model_has_smaller_gap(self):
+        weak = synth(model_w=0.0, seed=7)       # 模型淨係知市場嗰份（打折）
+        strong = synth(model_w=1.0, seed=7)     # 模型仲知市場唔知嘅
+        res = mr.evaluate(weak, strong)
+        self.assertGreater(res["arms"]["baseline"]["gap_to_market"]["dll_per_race"], 0)   # 市場準過淨模型
+        self.assertLess(res["paired"]["gap_change"]["dll_per_race"], 0)
+        self.assertTrue(res["paired"]["gap_change"]["closer_to_market"])

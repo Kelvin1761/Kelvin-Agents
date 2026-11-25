@@ -44,7 +44,7 @@ BOOTSTRAP = 2000
 BLOCKS = 3
 MIN_DAYS = 30        # 配對判決最少計分賽日（Sol 覆核：太少日 bootstrap CI 會退化）
 TOP3_MIN_FIELD = 4   # 入頭三：≤3 匹嘅場個個入三甲，冇資訊，唔計
-VERSION = "m2"   # m2（2026-11-25）：KEEP 條件（合約「市場尺 m2」）；計法同 m1 一樣，加 HKJC 窗
+VERSION = "m3"   # m2（2026-11-25）：KEEP 條件（合約「市場尺 m2」）；計法同 m1 一樣，加 HKJC 窗
 HKJC_WINDOWS = {"dev": ("2020-09-01", "2024-07-31"), "holdout": ("2024-09-01", "2026-07-31"),
                 "terminal": ("2026-08-01", "2099-12-31")}   # 同 hkjc_replay_compare_v5.WIN
 SINCE = {"au": "2026-08-05"}   # 同 au_logloss_ruler.CLEAN_SINCE：之前嘅場次唔係乾淨 point-in-time
@@ -126,6 +126,33 @@ def _win_nll(theta, races, use_model):
         ga -= r["logp"][w] - p @ r["logp"]
         gb -= r["z"][w] - p @ r["z"]
     return nll, (np.array([ga, gb]) if use_model else np.array([ga]))
+
+
+def gap_to_market(R):
+    """「同市場差距」（合約 m3 追市場軌）：每場 ll(淨市場) − ll(淨模型)，正 = 市場仲準過模型幾多。
+
+    淨市場：s = α·log p_m；淨模型：s = β·z（唔睇價）。兩邊各自 walk-forward fit（同 walk_forward 一樣嘅時間規則）。
+    候選嘅差距細過 baseline = 追近咗市場。→ 每場數值 list（warm-up = None）。
+    """
+    days = sorted({r["date"] for r in R})
+    by_day = defaultdict(list)
+    for i, r in enumerate(R):
+        by_day[r["date"]].append(i)
+    zeroed = [dict(r, logp=np.zeros_like(r["logp"])) for r in R]   # 淨模型：唔畀價入
+    out = [None] * len(R)
+    th_mkt = th_mod = None
+    for j, d in enumerate(days):
+        if j < WARMUP_DAYS:
+            continue
+        if th_mkt is None or (j - WARMUP_DAYS) % REFIT_EVERY == 0:
+            train = [i for dd in days[:j] for i in by_day[dd]]
+            th_mkt = _fit(_win_nll, [1.0], [R[i] for i in train], False)
+            th_mod = _fit(_win_nll, [0.0, 0.0], [zeroed[i] for i in train], True)
+        for i in by_day[d]:
+            nll_mkt = _win_nll(th_mkt, [R[i]], False)[0]
+            nll_mod = _win_nll(th_mod, [zeroed[i]], True)[0]
+            out[i] = nll_mod - nll_mkt
+    return out
 
 
 def _place_design(r, use_model):
@@ -294,6 +321,9 @@ def evaluate(base_races, cand_races=None, *, price_key="sp", since=None, score_w
             per[name]["_vals"][mk] = vals
             per[name][mk] = summarise(R, vals) | {"theta_last": theta}
         per[name]["has_info_beyond_market"] = judge_arm(per[name])
+        gap = gap_to_market(R)
+        per[name]["_gap"] = gap
+        per[name]["gap_to_market"] = summarise(R, gap)
     if "candidate" in per:
         pair = {}
         for mk in MARKETS:
@@ -301,8 +331,14 @@ def evaluate(base_races, cand_races=None, *, price_key="sp", since=None, score_w
                   for a, b in zip(per["candidate"]["_vals"][mk], per["baseline"]["_vals"][mk])]
             pair[mk] = summarise(arms["baseline"], dd)
         result["paired"] = pair | judge_pair(pair)
+        gd = [None if a is None or b is None else a - b
+              for a, b in zip(per["candidate"]["_gap"], per["baseline"]["_gap"])]
+        g = summarise(arms["baseline"], gd)
+        # 追市場軌（m3）：候選差距細過 baseline 而且 CI 上界 < 0 = 顯著追近咗市場
+        result["paired"]["gap_change"] = g | {"closer_to_market": bool(g["ci"] and g["ci"][1] < 0)}
     for name in per:
         per[name].pop("_vals")
+        per[name].pop("_gap", None)
     result["arms"] = per
     result["fit_failures"] = list(FIT_FAILURES)
     return result
@@ -411,12 +447,14 @@ def main(argv=None):
         for mk in MARKETS:
             print(f"   {mk:5s} {_fmt(arm[mk])}  β={arm[mk]['theta_last']}")
         print(f"   有市場以外資訊：{arm['has_info_beyond_market']}")
+        print(f"   同市場差距（每場 nll，正 = 市場準過模型）：{_fmt(arm['gap_to_market'])}")
     if "paired" in res:
         p = res["paired"]
         print("== 候選 − baseline（配對）")
         for mk in MARKETS:
             print(f"   {mk:5s} {_fmt(p[mk])}  時間塊 {[round(b['mean'] or 0, 5) for b in p[mk]['blocks']]}")
         print(f"   市場尺 {VERSION}：{p['verdict']}  {p['checks']}")
+        print(f"   追市場（差距變化，負 = 追近）：{_fmt(p['gap_change'])}  顯著追近：{p['gap_change']['closer_to_market']}")
         if res.get("mismatched_races"):
             print(f"   ⚠️ {res['mismatched_races']} 場同 key 但馬／名次／價唔同，冇配對")
     if res["fit_failures"]:

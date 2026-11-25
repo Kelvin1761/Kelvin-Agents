@@ -114,10 +114,8 @@ golden diff：<有冇馬匹分數郁到、郁咗邊個維度>
 
 決定：KEEP / REJECT / NEEDS MORE TESTING
 
-> **AU／HKJC 模型候選（2026-11-25 起）**：KEEP 要過 `docs/model-evaluation-contract.md`「市場尺 m2」——
-> `market_ruler.py` 市場尺 B PASS（AU SP＋BSP；HKJC `--window dev`，holdout 確認）**而且**排名尺唔顯著變差。
-> 排名尺 PASS 但市場尺 FAIL = REJECT（Kelvin 明確「分析用途上線」先例外，要寫入記錄）。開實驗前先跑 `power_precheck.py`。
-理由：<一兩句>
-```
+> **AU／HKJC 模型候選（2026-11-25 起，合約 m3）**：最終目標長期盈利；KEEP 兩條路 ——
+> 追市場軌（排名尺 PASS ＋ `market_ruler.py` `paired.gap_change` 點估計 ≤ 0）或者贏市場軌（市場尺 B PASS ＋ 排名唔顯著變差）。
+> 實驗記錄一定要報「同市場差距」變化；真錢落注只准贏市場軌。開實驗前先跑 `power_precheck.py`。
 
 跟住去 `experiment-review` 落底。
