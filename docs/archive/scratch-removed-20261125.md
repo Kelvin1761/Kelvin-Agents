@@ -1,0 +1,218 @@
+# scratch/ 清理（2026-11-25，系統升級第二輪第 7 項）
+
+移除 203 個**冇任何地方提到**嘅 scratch 檔（code、文件、實驗記錄、協議、記憶都冇提到佢個檔名）。
+提到嘅 249 個（包括實驗記錄要用嚟重現嘅）全部保留。git 歷史有晒。
+
+還原某個檔：
+
+```bash
+git checkout 1c030a1e -- 'scratch/<檔名>'
+```
+
+防線：`.agents/scripts/tests/test_no_production_scratch_code.py` —— 正式 code 唔准行／import scratch/*.py。
+
+## 移除清單
+
+- `scratch/09-08_沙田_Race_1_Results.md`
+- `scratch/09-08_沙田_全日賽果.md`
+- `scratch/09-17_跑馬地_Race_1_Results.md`
+- `scratch/09-17_跑馬地_全日賽果.md`
+- `scratch/analyze_advanced_stats_v1.py`
+- `scratch/analyze_advanced_stats_v5.py`
+- `scratch/analyze_venues.py`
+- `scratch/analyze_warwick_farm_factor_deltas.py`
+- `scratch/au_0606_validation.py`
+- `scratch/au_c2_heavy_diag_20261105.py`
+- `scratch/au_combined_estimate.py`
+- `scratch/au_combined_walkforward.py`
+- `scratch/au_component_rebalance_test.py`
+- `scratch/au_consistency_shadow.py`
+- `scratch/au_coverage_aware.py`
+- `scratch/au_dist_track_eval_20261016.py`
+- `scratch/au_draw_rebuild_test.py`
+- `scratch/au_extract_finishes.py`
+- `scratch/au_extract_interference.py`
+- `scratch/au_extract_last10.py`
+- `scratch/au_extract_sire_excuse.py`
+- `scratch/au_jt_fit_neutral_ab.py`
+- `scratch/au_lastfinish_cache_build.py`
+- `scratch/au_leaf_influence_and_cohort.py`
+- `scratch/au_leaf_shadow_sweep.py`
+- `scratch/au_ly_cache_build.py`
+- `scratch/au_maiden_class_fallback_test.py`
+- `scratch/au_pace_figure_rtd_shadow.py`
+- `scratch/au_pf_cache_build.py`
+- `scratch/au_pf_slow_runner.sh`
+- `scratch/au_pipeline_pressure_20260904.py`
+- `scratch/au_position_l600_eval_20261101.py`
+- `scratch/au_prep_audit_eval_20261016.py`
+- `scratch/au_prize_backfill_20260903.py`
+- `scratch/au_profile_replace_ab.py`
+- `scratch/au_profile_stats_ab.py`
+- `scratch/au_profile_stats_probe.py`
+- `scratch/au_raw_feature_ml_test.py`
+- `scratch/au_rebuild_and_verify.py`
+- `scratch/au_refit.py`
+- `scratch/au_rq_l600_truth_20261101.py`
+- `scratch/au_rq_training_20261101.py`
+- `scratch/au_runstyle_eval.py`
+- `scratch/au_runstyle_from_racenet.py`
+- `scratch/au_shortlist_rerank_test.py`
+- `scratch/au_stability_combined_shadow.py`
+- `scratch/au_strategy_search.py`
+- `scratch/au_style_confidence_gate.py`
+- `scratch/au_timing_cache_build.py`
+- `scratch/au_top2_racenet_odds_test.py`
+- `scratch/au_trainer_isolated_ab.py`
+- `scratch/au_trainer_isolated_gate.py`
+- `scratch/au_trainer_isolated_gate2.py`
+- `scratch/au_trial_backed_stability_test.py`
+- `scratch/au_unified_placerate_ab.py`
+- `scratch/au_weight_review.py`
+- `scratch/au_win_focus_trifecta_test.py`
+- `scratch/batch_extract_full_seasons.py`
+- `scratch/bloodline_sample.txt`
+- `scratch/case_diag.py`
+- `scratch/check_tables.py`
+- `scratch/compare_0801.py`
+- `scratch/consistency_reshape.py`
+- `scratch/count_horses.py`
+- `scratch/debug_horse.html`
+- `scratch/deep_pedigree_analysis.py`
+- `scratch/eval_dumps.py`
+- `scratch/extract_2425_season.py`
+- `scratch/extract_season_results.py`
+- `scratch/extraction_plan.py`
+- `scratch/final_report_gen.py`
+- `scratch/formline_join.py`
+- `scratch/full_season_analysis_v2.py`
+- `scratch/gen_final_report.py`
+- `scratch/gen_master_report_v3.py`
+- `scratch/gen_report.py`
+- `scratch/generate_skeletons_0513.py`
+- `scratch/get_dates.py`
+- `scratch/hkjc_0610_7d_ml_matrix_test.py`
+- `scratch/hkjc_0715_real_context_gate.py`
+- `scratch/hkjc_7d_score_magnitude_ml_test.py`
+- `scratch/hkjc_bodyweight_quality_gate_report.md`
+- `scratch/hkjc_competitiveness_outer_weight_fit.py`
+- `scratch/hkjc_competitiveness_residual_gate.py`
+- `scratch/hkjc_competitiveness_signal_gate.py`
+- `scratch/hkjc_current_engine_readiness_replay.py`
+- `scratch/hkjc_current_engine_readiness_replay_report.md`
+- `scratch/hkjc_dimension_source_audit.py`
+- `scratch/hkjc_dimension_source_audit_report.md`
+- `scratch/hkjc_dimension_variant_audit.py`
+- `scratch/hkjc_full_archive_meta_rank_fit.py`
+- `scratch/hkjc_iterative_dimension_gate.py`
+- `scratch/hkjc_local_position_conversion_gate.py`
+- `scratch/hkjc_local_trackwork_cache.py`
+- `scratch/hkjc_matrix_shadow_candidates.py`
+- `scratch/hkjc_matrix_shadow_candidates_report.md`
+- `scratch/hkjc_next_pre_race_signal_gate.py`
+- `scratch/hkjc_normalized_sectional_gate.py`
+- `scratch/hkjc_one_hit_forensics.py`
+- `scratch/hkjc_one_hit_forensics_report.md`
+- `scratch/hkjc_prerace_replay_report.md`
+- `scratch/hkjc_rank3_boundary_dimension_audit.py`
+- `scratch/hkjc_rank3_boundary_dimension_audit_report.md`
+- `scratch/hkjc_rating_interval_gate.py`
+- `scratch/hkjc_rating_matrix_audit_report.md`
+- `scratch/hkjc_rating_quality_gate_report.md`
+- `scratch/hkjc_readiness_promoted_mainline_verification_report.md`
+- `scratch/hkjc_readiness_promotion_audit_report.md`
+- `scratch/hkjc_readiness_promotion_evidence_report.md`
+- `scratch/hkjc_readiness_shadow_step7_report.md`
+- `scratch/hkjc_readiness_slot_holdout_validation.py`
+- `scratch/hkjc_readiness_slot_holdout_validation_report.md`
+- `scratch/hkjc_rebuilt_dimension_development_audit.py`
+- `scratch/hkjc_rebuilt_dimension_development_audit_report.md`
+- `scratch/hkjc_rebuilt_dimensions_report.md`
+- `scratch/hkjc_rebuilt_matrix_candidates_report.md`
+- `scratch/hkjc_rich_matrix_gate.py`
+- `scratch/hkjc_surgical_dimension_candidates_report.md`
+- `scratch/hkjc_top2_promotion_shadow.py`
+- `scratch/hkjc_top2_promotion_shadow_report.md`
+- `scratch/hkjc_trainer_context_feature_test.py`
+- `scratch/hkjc_trial_quality_gate_report.md`
+- `scratch/hkjc_uncertainty_slot_candidates_report.md`
+- `scratch/hkjc_upside_risk_matrix_test.py`
+- `scratch/hkjc_weight_cohort_20260904.py`
+- `scratch/hkjc_zero_hit_forensics_report.md`
+- `scratch/hkjc_zero_one_hit_baseline.py`
+- `scratch/hkjc_zero_one_hit_baseline_report.md`
+- `scratch/hkjc_zero_one_hit_manifest_report.md`
+- `scratch/inspect_debut.py`
+- `scratch/inspect_race_data.py`
+- `scratch/master_extractor_v2.py`
+- `scratch/master_log.txt`
+- `scratch/missed_fav.py`
+- `scratch/pace_12.log`
+- `scratch/pace_6.log`
+- `scratch/pace_8.log`
+- `scratch/paired_src.py`
+- `scratch/paired_src.txt`
+- `scratch/parse_results_pdf.py`
+- `scratch/people_scan.txt`
+- `scratch/pstatus.txt`
+- `scratch/recover_warwick_farm_dashboard_snapshot.py`
+- `scratch/refit_fl.txt`
+- `scratch/refit_fl2.txt`
+- `scratch/refit_off.txt`
+- `scratch/refit_pf.txt`
+- `scratch/reflect_rose.log`
+- `scratch/rerun2_flem.log`
+- `scratch/rerun2_rose.log`
+- `scratch/rerun_flemington.log`
+- `scratch/rerun_rosehill.log`
+- `scratch/rerun_soft5.log`
+- `scratch/review_0801.py`
+- `scratch/robust_season_extract.py`
+- `scratch/root_cleanup_2026-05-26/scripts/fix_indent.py`
+- `scratch/root_cleanup_2026-05-26/scripts/fix_pace.py`
+- `scratch/root_cleanup_2026-05-26/scripts/fix_scoring.py`
+- `scratch/root_cleanup_2026-05-26/scripts/maiden_analysis.py`
+- `scratch/root_cleanup_2026-05-26/scripts/maiden_deep_dive.py`
+- `scratch/root_cleanup_2026-05-26/scripts/maiden_tester.py`
+- `scratch/root_cleanup_2026-05-26/scripts/refactor_engine.py`
+- `scratch/root_cleanup_2026-05-26/scripts/refactor_stability.py`
+- `scratch/root_cleanup_2026-05-26/scripts/scratch_pdf_parser.py`
+- `scratch/root_cleanup_2026-05-26/scripts/scratch_test_pdf.py`
+- `scratch/root_cleanup_2026-05-26/scripts/test_rt.py`
+- `scratch/root_cleanup_2026-05-26/scripts/update_base_score.b64`
+- `scratch/root_cleanup_2026-05-26/scripts/update_base_score.py`
+- `scratch/root_cleanup_2026-05-26/scripts/update_engine.py`
+- `scratch/run_full_meeting.py`
+- `scratch/same_track_cohort.py`
+- `scratch/sb_fieldtest/08-01 Formguide_Index.md`
+- `scratch/sb_flem_r5.txt`
+- `scratch/sb_full_meeting/08-01 Formguide_Index.md`
+- `scratch/sb_full_meeting/08-01 Race 1 Facts.md`
+- `scratch/sb_full_meeting/08-01 Race 2 Facts.md`
+- `scratch/sb_full_meeting/08-01 Race 3 Facts.md`
+- `scratch/sb_full_meeting/08-01 Race 4 Facts.md`
+- `scratch/sb_full_meeting/08-01 Race 5 Facts.md`
+- `scratch/sb_full_meeting/08-01 Race 6 Facts.md`
+- `scratch/sb_full_meeting/08-01 Race 7 Facts.md`
+- `scratch/sb_full_meeting/08-01 Race 8 Facts.md`
+- `scratch/sb_full_meeting/08-01 Race 9 Facts.md`
+- `scratch/sb_meeting_test/08-01 Formguide_Index.md`
+- `scratch/sb_meeting_test/08-01 Race 5 Facts.md`
+- `scratch/sb_pipeline.log`
+- `scratch/sb_rose_r5.html`
+- `scratch/sb_rose_r5.txt`
+- `scratch/sec_3.log`
+- `scratch/sec_6.log`
+- `scratch/sec_9.log`
+- `scratch/set_au_logic_going.py`
+- `scratch/src_bias.txt`
+- `scratch/src_bias_run.py`
+- `scratch/status_report.py`
+- `scratch/sync_horse_metadata.py`
+- `scratch/test_au_s2_forward_shadow.py`
+- `scratch/test_horse_profile.py`
+- `scratch/test_intel_val.py`
+- `scratch/test_new_site.py`
+- `scratch/test_next_data.py`
+- `scratch/test_playwright.py`
+- `scratch/test_redirect.py`
