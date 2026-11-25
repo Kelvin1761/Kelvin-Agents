@@ -102,6 +102,11 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 "scheduler 夠數會用 log-loss 尺 v2 判一次並凍結；睇 au-speed-forward-status.json："
                 "SPEED rollback_recommended=true（機率變差、AUC 護欄唔過、或者 Gold／Good 都跌）就建議 WC_AU_SPEED_LIVE=0（要你決定）",
                 status_file="au-speed-forward-status.json"),
+    ForwardTest("trainer_residual_autorollback", "練馬師剩餘表現表版本 shadow＋自動回退（只比改寫咗舊歷史嘅重建）",
+                "EXP-20261125-08", "status_file", 7, "賽日",
+                "長開監察：每個改寫版本 3 個 7 賽日窗口；CI 下界 >0 或連續 3 個點估計 >0 = 自動回退指針並鎖定（另推 Telegram）；"
+                "睇 au-trainer-residual-shadow-status.json，鎖咗要你查成因後 `au_residual_versions.py unpin`",
+                status_file="au-trainer-residual-shadow-status.json"),
 )
 
 _S2_DAYS = re.compile(r"forward days with snapshot \+ results:\s*(\d+)\s*/\s*(\d+)")

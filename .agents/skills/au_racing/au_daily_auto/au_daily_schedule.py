@@ -116,6 +116,7 @@ PR1_SHADOW_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_pr1_shadow
 FQ_FLOOR_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_fq_floor_forward.py"
 SPEED_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_speed_forward.py"
 TRAINER_RESIDUAL_TABLE = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_trainer_residual_table.py"
+TRAINER_RESIDUAL_SHADOW = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_residual_shadow.py"
 PEOPLE_PRIZE_TABLE = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_people_prize_table.py"
 SPEED_REFERENCE_TABLE = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_speed_reference_table.py"
 CALIBRATION_BOARD = SHARED_RACING_SCRIPTS / "calibration_board.py"
@@ -1852,6 +1853,37 @@ def step_calibration_shadow(runlog: RunLog) -> bool:
         runlog.step("calibration-shadow", "failed", detail=detail)
         return False
     runlog.step("calibration-shadow", "ok", detail=(out or "").strip().splitlines()[-1:])
+
+
+def step_trainer_residual_shadow(runlog: RunLog) -> bool:
+    """EXP-20261125-08：練馬師剩餘表現表新版 vs 上一版 shadow（只比改寫咗舊歷史嘅版本），預先登記規則判到
+    明顯差就自動將版本指針指返上一版並鎖定，推 primary Telegram。失敗唔阻 live 分析（引擎照讀現有指針）。"""
+    status_path = WORK_DIR / "au-trainer-residual-shadow-status.json"
+    rc, out = run_cmd([sys.executable, str(TRAINER_RESIDUAL_SHADOW), "--data-root", str(AU_RACING),
+                       "--output", str(status_path), "--apply"], timeout=1800)
+    if rc != 0 or not status_path.exists():
+        detail = error_excerpt(out, rc)
+        # 只記 step + log，唔 runlog.warn：warning 會令 evening 變 partial（a00ed9c6 同一教訓）
+        log(f"⚠️  練馬師剩餘表現表 shadow 比較失敗（唔影響 live）：{detail}")
+        runlog.step("trainer-residual-shadow", "failed", detail=detail)
+        return False
+    try:
+        status = json.loads(status_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        runlog.step("trainer-residual-shadow", "failed", detail=str(exc))
+        return False
+    rollback = status.get("rollback_now")
+    if rollback:
+        try:
+            import au_notify
+            text = status.get("telegram") or f"練馬師剩餘表現表回退：{rollback}"
+            if not rollback.get("applied"):
+                text = "⚠️ 判咗要回退但係郁唔到指針：" + str(rollback.get("error")) + "\n" + text
+            au_notify.push(text)   # primary：系統／運維訊息
+        except Exception as exc:  # noqa: BLE001
+            runlog.warn(f"練馬師剩餘表現表回退通知發唔到：{type(exc).__name__}: {exc}")
+    runlog.step("trainer-residual-shadow", status.get("state", "unknown"), pending=status.get("pending"),
+                rollback=bool(rollback))
     return True
 
 
@@ -4667,6 +4699,7 @@ def run_evening(runlog: RunLog, args, review_day: date) -> int:
             temporary = True
     # 練馬師剩餘表現 overlay 要最新賽果（EXP-20261122-02）；分析下一日之前一定要重建。
     step_trainer_residual_table(runlog)
+    step_trainer_residual_shadow(runlog)   # 判到明顯差就自動回退指針（EXP-20261125-08），一定要喺分析之前
     if not getattr(args, "skip_speed_shadow", False):
         step_speed_shadow(runlog)
         step_speed_recency_shadow(runlog)
