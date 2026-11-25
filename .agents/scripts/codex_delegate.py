@@ -238,7 +238,8 @@ class Window:
     resets_at: float
 
     def effective_used(self, now: float) -> float:
-        return 0.0 if now >= self.resets_at else self.used
+        # resets_at 冇值（0）= 唔知幾時重置，當未重置（Sol 2026-11-26：唔好當用咗 0%）
+        return 0.0 if 0 < self.resets_at <= now else self.used
 
     def elapsed_pct(self, now: float) -> float:
         span = self.window_minutes * 60
@@ -351,6 +352,74 @@ MODES = {
     "balanced": "兩邊都正常：照常規分工（機械式先試 Hydrogen，重活 Terra，結論要第二意見就 Sol）",
     "keep-claude": "Codex 緊而 Claude 有大把：Opus 自己做多啲，Codex 留畀 review",
     "claude-only": "Codex 停派：全部 Claude 做，慳住用（subagent 用平啲嘅模型）",
+    "use-codex": "Codex 用得慢、就嚟重置（唔用就嘥）：日常類 Codex 行先（排喺 Hydrogen 前）、系列預算放寬；可以加開 Sol 覆核／Astra 預審；Opus 照做總指揮",
+    "use-claude": "Claude 用得慢、就嚟重置（唔用就嘥）：Opus 自己做多啲日常（查詢、改動、feature），覆核／設計照派 Sol／Astra 攞獨立意見",
+}
+
+# ── 用得慢就多用（Kelvin 2026-11-26）：額度唔止「快用完要慳」，仲有「用得慢、就嚟重置 = 唔用就嘥」──
+# 每個池（Codex 7 日窗、Claude 每週）：就嚟重置（≤ SURPLUS_WITHIN_DAYS 日）而剩低嘅夠多，
+# 而且用得慢過時間（落後 ≥ SURPLUS_BEHIND_PP）或者已經 < USE_IT_DAYS 日，就當「有餘」。
+# 有餘嘅池喺日常類工作排前（幾個池都有餘 = 每日要燒得最多嗰個先），Codex 有餘仲會放寬系列預算。
+# Gemini 冇得讀額度，冇得按速度調。
+SURPLUS_WITHIN_DAYS = 3.0
+SURPLUS_BEHIND_PP = 15.0
+SURPLUS_RESERVE_PP = 10.0  # 放寬系列預算時，距停派線至少留返呢啲畀 Sol 覆核
+
+
+@dataclass
+class Surplus:
+    pool: str          # "codex" / "claude"
+    used: float
+    elapsed: float     # 窗已過 %
+    headroom: float    # 距停派線仲剩幾多 pp
+    days_left: float
+
+    @property
+    def per_day(self) -> float:
+        """要喺重置前用晒，每日要燒幾多 pp —— 越大越急。"""
+        return self.headroom / max(self.days_left, 0.25)
+
+    def describe(self) -> str:
+        name = "Codex" if self.pool == "codex" else "Claude"
+        return (f"{name} {self.days_left:.1f} 日後重置仲剩 {self.headroom:.0f}pp"
+                f"（時間過咗 {self.elapsed:.0f}%、只用咗 {self.used:.0f}%），唔用就嘥")
+
+
+def pool_surplus(pool: str, used: float, resets_at: float, window_seconds: float,
+                 now: float, cap: float = STOP_WEEKLY) -> Surplus | None:
+    left = resets_at - now
+    if left <= 0 or window_seconds <= 0:
+        return None
+    days_left = left / 86400
+    elapsed = max(0.0, min(100.0, 100.0 * (1 - left / window_seconds)))
+    headroom = cap - used
+    if days_left > SURPLUS_WITHIN_DAYS or headroom <= 2 * TIGHT_PER_DAY * max(days_left, 0.5):
+        return None
+    if elapsed - used < SURPLUS_BEHIND_PP and days_left >= USE_IT_DAYS:
+        return None
+    return Surplus(pool, used, elapsed, headroom, days_left)
+
+
+def codex_surplus(limits: Limits | None, now: float | None = None) -> Surplus | None:
+    now = time.time() if now is None else now
+    if not limits or not limits.weekly:
+        return None
+    if limits.five_hour and limits.five_hour.effective_used(now) >= STOP_FIVE_HOUR:
+        return None
+    w = limits.weekly
+    return pool_surplus("codex", w.effective_used(now), w.resets_at, w.window_minutes * 60, now)
+
+
+def claude_surplus(used: float | None, resets_at: float | None, now: float | None = None) -> Surplus | None:
+    if used is None or not resets_at:
+        return None
+    now = time.time() if now is None else now
+    return pool_surplus("claude", used, resets_at, CLAUDE_WEEK_SECONDS, now, cap=CLAUDE_EXHAUSTED)
+
+
+SURPLUS_IDEAS = {
+    "codex": "Sol 覆核今週入 main 但未經 Sol 嘅改動；Astra 提早跑審計或者預審排緊嘅大工程；Terra 補測試、清技術債",
+    "claude": "Opus 親自做排緊嘅 feature／研究、重新覆核 Hydrogen／Terra 收貨、清 backlog",
 }
 
 
@@ -388,13 +457,12 @@ def offload_mode(codex_state: str, codex: Limits | None, claude_used: float,
         ahead = min(ahead, 0.0)
     if codex_state == "stop":
         return "claude-only", pace
-    codex_rich = False
-    if codex and codex.weekly and codex_state in ("normal", "unknown"):
-        days_left = max(0.0, codex.weekly.resets_at - now) / 86400
-        headroom = STOP_WEEKLY - codex.weekly.effective_used(now)
-        codex_rich = days_left < USE_IT_DAYS and headroom > 2 * TIGHT_PER_DAY * max(days_left, 0.5)
-        if codex_rich:
-            pace += f"；Codex {days_left:.1f} 日後重置仲剩 {headroom:.0f}pp，唔用就嘥"
+    codex_extra = codex_surplus(codex, now) if codex_state in ("normal", "unknown") else None
+    claude_extra = claude_surplus(claude_used, claude_resets_at, now)
+    if codex_extra:
+        pace += "；" + codex_extra.describe()
+    if claude_extra:
+        pace += "；" + claude_extra.describe()
     claude_tight = ahead >= CLAUDE_AHEAD_PP or claude_used >= CLAUDE_CRITICAL
     if codex_state == "tight":
         if claude_tight:
@@ -402,8 +470,14 @@ def offload_mode(codex_state: str, codex: Limits | None, claude_used: float,
         if ahead <= CLAUDE_BEHIND_PP or spend_freely:
             return "keep-claude", pace
         return "balanced", pace
-    if claude_tight or codex_rich:
+    if claude_tight:
         return "offload-max", pace
+    if spend_freely:
+        return "use-claude", pace  # 同 route 一致：Opus 日常先做
+    if codex_extra and (not claude_extra or codex_extra.per_day >= claude_extra.per_day):
+        return "use-codex", pace
+    if claude_extra:
+        return "use-claude", pace
     return "balanced", pace
 
 
@@ -488,6 +562,9 @@ def family_spent(limits: Limits | None, entries: list[dict] | None = None) -> di
 
 def over_budget(family: str, limits: Limits | None, entries: list[dict] | None = None) -> str | None:
     cap = FAMILY_BUDGET_PP.get(family)
+    extra = codex_surplus(limits) if cap is not None else None
+    if extra and (family == "sol" or extra.headroom > SURPLUS_RESERVE_PP):
+        return None  # 就嚟重置仲剩好多：系列預算放寬（窗重置就冇咗）；停派線照守，Sol 以外要留返 reserve
     spent = family_spent(limits, entries)
     if cap is None or spent is None:
         return None
@@ -596,9 +673,15 @@ def cmd_status(args) -> int:
             print(f"放心用 Opus：開住，{_fmt_reset(switch[0])} 自動失效（{switch[1] or '冇寫原因'}）")
         print(f"分工模式：{mode} —— {pace}")
         print(f"  {MODES[mode]}")
-        out.update(mode=mode, pace=pace)
+        extras = [x for x in (codex_surplus(limits) if state in ("normal", "unknown") else None,
+                              claude_surplus(args.claude_weekly, _parse_ts(args.claude_resets))) if x]
+        for x in sorted(extras, key=lambda x: -x.per_day):
+            print(f"  💡 {x.describe()}（每日要燒 {x.per_day:.0f}pp）—— 可以加做：{SURPLUS_IDEAS[x.pool]}")
+        out.update(mode=mode, pace=pace, surplus=[x.pool for x in extras])
     else:
         print("分工模式：未計（加 --claude-weekly <%> --claude-resets <ISO> ，數字由 get_usage 嚟）")
+        if state in ("normal", "unknown") and (x := codex_surplus(limits)):
+            print(f"  💡 {x.describe()} —— 可以加做：{SURPLUS_IDEAS['codex']}")
     if args.json:
         print(json.dumps(out, ensure_ascii=False))
     return 0
@@ -787,7 +870,36 @@ def cmd_health(args) -> int:
               + "\nClaude 派工會自動跳過／改派後備。")
     if recovered:
         alert("✅ 每日模型探測：" + "、".join(recovered) + " 已恢復")
+    try:
+        nudge_codex_surplus()
+    except Exception as exc:  # 提醒出錯唔可以令探測報失敗
+        print(f"⚠️ 用得慢提醒失敗：{exc}", file=sys.stderr)
     return 1 if failed else 0
+
+
+def nudge_codex_surplus(limits: Limits | None = None, now: float | None = None) -> bool:
+    """Codex 用得慢、就嚟重置：每個 7 日窗 Telegram 提一次（Claude 嘅額度排程讀唔到，開工時 status 先計）。"""
+    limits = read_limits() if limits is None else limits
+    x = codex_surplus(limits, now)
+    if not x or budget_state(limits, now)[0] not in ("normal", "unknown"):
+        return False
+    path = control_root() / "quota_nudge.json"
+    try:
+        seen = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        seen = {}
+    key = str(int(limits.weekly.resets_at))
+    if seen.get("codex") == key:
+        return False
+    if not alert(f"💡 {x.describe()}。\nClaude 開工時會自動將日常工作先派 Codex、放寬系列預算。"
+                 f"\n有排緊嘅大工程，而家係好時機。可以加做：{SURPLUS_IDEAS['codex']}"):
+        return False
+    seen["codex"] = key
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(seen), encoding="utf-8")
+    tmp.replace(path)
+    return True
 
 
 PROBE_RETRY_WAIT = 600
@@ -864,23 +976,44 @@ def candidate_problem(role: str, provider: str, codex: Limits | None, codex_stat
     return over_budget(ROLES[role][0], codex) or model_is_bad(latest_model(ROLES[role][0]))
 
 
+def _pool(role: str, provider: str) -> str:
+    return "claude" if role == "opus" else provider
+
+
 def route(task: str, codex: Limits | None, codex_state: str, gemini_problem: str | None,
-          claude_used: float | None = None, spend_freely: bool = False) -> dict:
+          claude_used: float | None = None, spend_freely: bool = False,
+          claude_resets_at: float | None = None, now: float | None = None) -> dict:
     risk, chain, desc = ROUTES[task]
-    if spend_freely and task in OPUS_FIRST_WHEN_SPENDING:
-        chain = [("opus", "")] + [c for c in chain if c[0] != "opus"]
+    extra = {}
+    if codex_state in ("normal", "unknown") and (c := codex_surplus(codex, now)):
+        extra["codex"] = c
+    if c := claude_surplus(claude_used, claude_resets_at, now):
+        extra["claude"] = c
+    urgency = {k: v.per_day for k, v in extra.items()}
+    if spend_freely:
+        urgency["claude"] = float("inf")
+    if task in OPUS_FIRST_WHEN_SPENDING and urgency:
+        # 有餘嘅池排前，每日要燒得多嗰個先；其餘次序照舊（sorted 係穩定排序）
+        chain = sorted(chain, key=lambda c: -urgency.get(_pool(*c), 0.0))
     skipped = []
     for role, provider in chain:
         problem = candidate_problem(role, provider, codex, codex_state, gemini_problem, claude_used)
         if problem is None:
+            pool = _pool(role, provider)
             return {"task": task, "risk": risk, "role": role, "provider": provider or "claude",
-                    "skipped": skipped, "spend_freely": spend_freely}
+                    "skipped": skipped, "spend_freely": spend_freely,
+                    "surplus": extra[pool].describe() if pool in extra and task in OPUS_FIRST_WHEN_SPENDING else None}
         skipped.append(f"{role}（{provider or 'claude'}）：{problem}")
     return {"task": task, "risk": risk, "role": None, "provider": None, "skipped": skipped,
-            "spend_freely": spend_freely}
+            "spend_freely": spend_freely, "surplus": None}
 
 
 def _route_label(r: dict) -> str:
+    label = _route_who(r)
+    return label + (f"  💡 {r['surplus']}" if r.get("surplus") else "")
+
+
+def _route_who(r: dict) -> str:
     if r["role"] is None:
         return "⛔ 全部都緊：只做必要嘅嘢、拆細，或者等重置；同 Kelvin 講"
     if r["role"] == "opus":
@@ -898,7 +1031,8 @@ def cmd_route(args) -> int:
     tasks = [args.task] if args.task else list(ROUTES)
     out = []
     for task in tasks:
-        r = route(task, limits, state, gem, args.claude_weekly, spend)
+        r = route(task, limits, state, gem, args.claude_weekly, spend,
+                  _parse_ts(args.claude_resets) if args.claude_resets else None)
         out.append(r)
         risk, _, desc = ROUTES[task]
         print(f"{task:<10}[{risk}] → {_route_label(r)}    ｜{desc}")
@@ -1294,6 +1428,7 @@ def main(argv: list[str] | None = None) -> int:
     ro = sub.add_parser("route", help="按 Claude／Codex／Gemini 額度揀邊個做（Opus 兜底）")
     ro.add_argument("task", nargs="?", choices=sorted(ROUTES), help="唔填 = 列晒所有工作類型")
     ro.add_argument("--claude-weekly", type=float, help="Claude 每週已用 %%（get_usage）")
+    ro.add_argument("--claude-resets", help="Claude 每週重置時間（ISO）；有先計到 Claude 用得慢")
     ro.add_argument("--json", action="store_true")
     ro.set_defaults(func=cmd_route)
     gr = sub.add_parser("grade", help="收貨評分：accepted（收貨）／rework（要改）／redo（重做）")

@@ -143,6 +143,11 @@ Kelvin 唔再自己開 Codex；**Claude Code 做主導**（計劃、判斷、拍
 - **派工前先 `route`**：`codex_delegate.py route <工作類型> --claude-weekly <%>` 按 Claude／Codex（狀態＋系列預算）／Gemini 額度，
   沿住每類工作嘅優先次序揀第一個有額度嘅人，**Opus 兜底**（Claude 本週 ≥95% 而其他人都用唔到 = 「全部都緊」，只做必要嘅、同 Kelvin 講）；B 級覆核冇 Sol 就 Opus 自己覆核，永遠唔會淨係落到 Hydrogen；
   「放心用 Opus」開住時日常類（lookup／big-read／edit／feature／heavy）Opus 先做，覆核／設計／終審照樣要獨立意見。
+- **用得慢就多用（Kelvin 2026-11-26）**：額度唔止「快用完要慳」，仲要「用得慢、就嚟重置 = 唔用就嘥」，目標係每個模型每週都用得盡。
+  一個池（Codex 7 日窗／Claude 每週）≤3 日重置、剩低 >8pp，而且落後時間 ≥15pp（或者 <2 日）= 有餘：`route` 將佢喺日常類排前
+  （幾個池都有餘就每日要燒得最多嗰個先），Codex 有餘仲會**放寬系列預算**（停派線 95%／5 小時窗照守）；分工模式變 `use-codex`／`use-claude`，
+  `status` 列埋可以加做嘅嘢（Sol 補覆核、Astra 提早審計／預審、Terra 補測試）。覆核／設計／終審唔會因 Claude 有餘改由 Opus 做（要獨立意見）。
+  每朝 07:30 探測見到 Codex 有餘會 Telegram 提一次（每個窗一次）。Opus 照做總指揮：揀做咩、派邊個。Gemini 冇得讀額度，唔參與。
 - **模型健康**：一律用每個系列最新型號（即時讀目錄）；轉咗新型號、讀唔到目錄（用緊後備型號）、同一模型連續 2 次失敗、Gemini 撞上限，
   都會 Telegram primary（同一件事報一次，恢復再報）。每朝 07:30 `codex_delegate.py health --probe`（launchd `central-wong-choi.model-probe`）
   每個模型最平設定試一句，唔正常先通知；`health` 睇狀態。

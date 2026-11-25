@@ -20,11 +20,15 @@ python3 .agents/scripts/codex_delegate.py status --claude-weekly <percentUsed> -
 
 | 分工模式 | 幾時 | 做法 |
 |---|---|---|
-| offload-max | Claude 用得快過時間 ≥10pp、或本週 ≥85%；或者 Codex <2 日重置仲剩好多 | 實作同重活一律派 Terra（我寫 brief、睇 diff）；覆核派 Sol，**唔開 Opus subagent**；讀 log／grep／摘要派 Hydrogen（quick／scan）；Opus 只做計劃、判決、保存、Telegram |
+| offload-max | Claude 用得快過時間 ≥10pp、或本週 ≥85% | 實作同重活一律派 Terra（我寫 brief、睇 diff）；覆核派 Sol，**唔開 Opus subagent**；讀 log／grep／摘要派 Hydrogen（quick／scan）；Opus 只做計劃、判決、保存、Telegram |
 | balanced | 兩邊都正常 | 照下面第 2 節常規分工 |
 | offload-light | Claude 緊但 Codex 都 tight | 只派 review／quick／chore；Claude 本週 ≥85% 先 `--force` 派 grunt，喺 `--title` 寫原因 |
 | keep-claude | Codex tight、Claude 慢過時間 ≥20pp | Opus 自己做多啲，Codex 留畀 review |
+| use-codex | Codex ≤3 日重置仲有餘（落後時間 ≥15pp 或 <2 日），而且比 Claude 更急 | 日常類 Codex 行先（排喺 Hydrogen 前）、系列預算放寬；主動加做：Sol 補覆核、Astra 提早審計／預審、Terra 補測試 |
+| use-claude | Claude ≤3 日重置仲有餘，而且比 Codex 更急 | Opus 自己做多啲日常；覆核／設計照派 Sol／Astra |
 | claude-only | Codex stop | 唔派，喺回覆講一句「Codex 額度停派中」；Claude subagent 用平啲嘅模型 |
+
+**用得慢就多用（Kelvin 2026-11-26）**：開工 `status`／`route` 一定要帶 `--claude-weekly`＋`--claude-resets`，唔係計唔到 Claude 有冇餘。見到 💡 就主動揀排緊嘅工作嚟用 —— 目標係每個模型每週用得盡，唔止係慳。
 
 **「放心用 Opus」開關**（Kelvin 2026-11-24：佢有時特登快啲用 Opus，因為之後有額外 reset）：
 `codex_delegate.py pacing --spend-freely-until <Claude 每週重置 ISO> --reason "..."` 開；`pacing --clear` 閂；過期自動失效。

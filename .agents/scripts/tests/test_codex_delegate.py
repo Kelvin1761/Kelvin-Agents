@@ -262,7 +262,17 @@ class OffloadModeTest(unittest.TestCase):
 
     def test_codex_about_to_reset_with_headroom_use_it(self):
         # Claude 正常，但 Codex 一日後重置仲剩 45pp
-        self.assertEqual(self.mode("normal", self.codex(50, 1), 30, 5), "offload-max")
+        self.assertEqual(self.mode("normal", self.codex(50, 1), 30, 5), "use-codex")
+
+    def test_claude_slow_near_reset_uses_claude(self):
+        # Claude 剩 2 日先用咗 40%（時間過咗 71%）
+        self.assertEqual(self.mode("normal", self.codex(50, 4), 40, 2), "use-claude")
+
+    def test_both_surplus_burn_the_more_urgent_first(self):
+        # Codex 1 日後重置剩 55pp（55pp／日）vs Claude 2.5 日剩 55pp（22pp／日）
+        self.assertEqual(self.mode("normal", self.codex(40, 1), 40, 2.5), "use-codex")
+        # Codex 3 日剩 25pp（8pp／日）vs Claude 1 日剩 45pp
+        self.assertEqual(self.mode("normal", self.codex(70, 2.5), 50, 1), "use-claude")
 
     def test_claude_critical_even_if_late_in_week(self):
         self.assertEqual(self.mode("normal", self.codex(50, 4), 88, 0.5), "offload-max")
@@ -270,7 +280,7 @@ class OffloadModeTest(unittest.TestCase):
     def test_spend_freely_ignores_pace(self):
         mode = cd.offload_mode("normal", self.codex(50, 4), 42, self.NOW + 6.2 * self.DAY,
                                now=self.NOW, spend_freely=True)[0]
-        self.assertEqual(mode, "balanced")
+        self.assertEqual(mode, "use-claude")
 
     def test_spend_freely_still_guards_critical(self):
         mode = cd.offload_mode("normal", self.codex(50, 4), 90, self.NOW + 1 * self.DAY,
@@ -401,7 +411,7 @@ class TeamSplitTest(unittest.TestCase):
 
     def limits(self, used=40.0):
         now = time.time()
-        return cd.Limits(None, cd.Window(used, 10080, now + 3 * 86400), now)
+        return cd.Limits(None, cd.Window(used, 10080, now + 5 * 86400), now)  # 5 日：唔觸發「用得慢」
 
     def test_family_spent_and_budget(self):
         lim = self.limits()
@@ -566,7 +576,7 @@ class TeamSplitTest(unittest.TestCase):
 class RouteTest(unittest.TestCase):
     def lim(self):
         now = time.time()
-        return cd.Limits(None, cd.Window(30.0, 10080, now + 3 * 86400), now)
+        return cd.Limits(None, cd.Window(30.0, 10080, now + 5 * 86400), now)  # 5 日：唔觸發「用得慢」
 
     def r(self, task, state="normal", gem=None, claude=40.0, spend=False, budget=None, bad=None):
         with mock.patch.object(cd, "over_budget", side_effect=lambda fam, lim, entries=None: (budget or {}).get(fam)), \
@@ -619,6 +629,86 @@ class RouteTest(unittest.TestCase):
     def test_design_falls_back_to_sol_then_opus(self):
         self.assertEqual(self.r("design", budget={"astra": "x"})["role"], "review")
         self.assertEqual(self.r("design", budget={"astra": "x", "sol": "y"})["role"], "opus")
+
+
+class SurplusTest(unittest.TestCase):
+    """Kelvin 2026-11-26：用得慢、就嚟重置 = 唔用就嘥，要主動多派。"""
+    NOW = 1_800_000_000.0
+    DAY = 86400.0
+
+    def lim(self, used, days_left, five=None):
+        five_w = cd.Window(five, 300, self.NOW + 3600) if five is not None else None
+        return cd.Limits(five_w, cd.Window(used, 10080, self.NOW + days_left * self.DAY), self.NOW)
+
+    def test_surplus_needs_near_reset_and_behind(self):
+        self.assertIsNone(cd.codex_surplus(self.lim(10, 5), self.NOW))   # 好早，唔急
+        self.assertIsNotNone(cd.codex_surplus(self.lim(30, 2.5), self.NOW))  # 時間過咗 64%、用咗 30%
+        self.assertIsNone(cd.codex_surplus(self.lim(60, 2.5), self.NOW))  # 差唔多跟到速度
+        self.assertIsNotNone(cd.codex_surplus(self.lim(70, 1), self.NOW))  # 剩 1 日仲有 25pp
+        self.assertIsNone(cd.codex_surplus(self.lim(92, 1), self.NOW))   # 剩得 3pp，唔值得
+        self.assertIsNone(cd.codex_surplus(self.lim(30, 1, five=90), self.NOW))  # 5 小時窗頂住
+
+    def test_unknown_reset_time_is_not_a_reset(self):
+        self.assertEqual(cd.Window(90.0, 300, 0).effective_used(self.NOW), 90.0)
+        self.assertEqual(cd.Window(90.0, 300, self.NOW - 1).effective_used(self.NOW), 0.0)
+        self.assertIsNone(cd.codex_surplus(cd.Limits(cd.Window(90.0, 300, 0),
+                                                     cd.Window(30, 10080, self.NOW + self.DAY), self.NOW), self.NOW))
+
+    def test_lifted_budget_keeps_reserve_for_sol(self):
+        entries = [{"ts": self.NOW - 3600, "model": m, "weekly_pp": 50.0} for m in ("gpt-6.1-terra", "gpt-6.2-sol")]
+        with mock.patch.object(cd.time, "time", return_value=self.NOW):
+            lim = self.lim(87, 0.5)  # 剩 8pp：有餘但唔夠 reserve
+            self.assertIsNotNone(cd.codex_surplus(lim, self.NOW))
+            self.assertIsNotNone(cd.over_budget("terra", lim, entries))
+            self.assertIsNone(cd.over_budget("sol", lim, entries))
+
+    def test_claude_surplus(self):
+        self.assertIsNotNone(cd.claude_surplus(40, self.NOW + 2 * self.DAY, self.NOW))
+        self.assertIsNone(cd.claude_surplus(80, self.NOW + 2 * self.DAY, self.NOW))
+        self.assertIsNone(cd.claude_surplus(None, None, self.NOW))
+
+    def test_surplus_lifts_family_budget(self):
+        entries = [{"ts": self.NOW - 3600, "model": "gpt-6.1-terra", "weekly_pp": 50.0}]
+        with mock.patch.object(cd.time, "time", return_value=self.NOW):
+            self.assertIsNotNone(cd.over_budget("terra", self.lim(50, 4), entries))
+            self.assertIsNone(cd.over_budget("terra", self.lim(50, 1), entries))
+
+    def r(self, task, codex, claude=None, claude_days=None, gem=None):
+        with mock.patch.object(cd, "model_is_bad", return_value=None), \
+             mock.patch.object(cd, "latest_model", side_effect=lambda f: cd.FALLBACK_MODELS[f]), \
+             mock.patch.object(cd, "latest_gemini", return_value="gemini-4-hydrogen-high"), \
+             mock.patch.object(cd.time, "time", return_value=self.NOW):
+            resets = self.NOW + claude_days * self.DAY if claude_days else None
+            return cd.route(task, codex, "normal", gem, claude, False, resets, now=self.NOW)
+
+    def test_codex_surplus_goes_before_hydrogen_for_daily_work(self):
+        r = self.r("feature", self.lim(30, 1))
+        self.assertEqual((r["role"], r["provider"]), ("grunt", "codex"))
+        self.assertIn("唔用就嘥", r["surplus"])
+        self.assertEqual(self.r("lookup", self.lim(30, 1))["provider"], "codex")
+        self.assertEqual(self.r("feature", self.lim(30, 5))["provider"], "gemini")  # 冇餘照舊
+
+    def test_claude_surplus_opus_does_daily_but_not_reviews(self):
+        self.assertEqual(self.r("edit", self.lim(50, 5), claude=40, claude_days=2)["role"], "opus")
+        self.assertEqual(self.r("review", self.lim(50, 5), claude=40, claude_days=2)["role"], "review")
+
+    def test_both_surplus_more_urgent_pool_first(self):
+        r = self.r("feature", self.lim(40, 1), claude=40, claude_days=2.5)
+        self.assertEqual(r["provider"], "codex")
+        r = self.r("feature", self.lim(70, 2.5), claude=50, claude_days=1)
+        self.assertEqual(r["role"], "opus")
+
+    def test_nudge_once_per_window(self):
+        sent = []
+        with tempfile.TemporaryDirectory() as tmp, \
+             mock.patch.dict(os.environ, {"WONGCHOI_CONTROL_STATE_ROOT": tmp}), \
+             mock.patch.object(cd, "alert", side_effect=lambda t: sent.append(t) or True):
+            lim = self.lim(30, 1)
+            self.assertTrue(cd.nudge_codex_surplus(lim, self.NOW))
+            self.assertFalse(cd.nudge_codex_surplus(lim, self.NOW))
+            self.assertFalse(cd.nudge_codex_surplus(self.lim(30, 5), self.NOW))
+        self.assertEqual(len(sent), 1)
+        self.assertIn("唔用就嘥", sent[0])
 
 
 class HealthTest(unittest.TestCase):
