@@ -118,6 +118,7 @@ SPEED_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_speed_forward.p
 TRAINER_RESIDUAL_TABLE = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_trainer_residual_table.py"
 PEOPLE_PRIZE_TABLE = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_people_prize_table.py"
 SPEED_REFERENCE_TABLE = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_speed_reference_table.py"
+CALIBRATION_BOARD = SHARED_RACING_SCRIPTS / "calibration_board.py"
 GENERATE_STATIC = DASHBOARD_DIR / "generate_static.py"
 DEPLOY_SH = DASHBOARD_DIR / "deploy.sh"
 
@@ -1837,6 +1838,20 @@ def step_trainer_residual_table(runlog: RunLog) -> bool:
         runlog.step("people-prize-table", "failed")
         return False
     runlog.step("people-prize-table", "ok", detail=(out or "").strip().splitlines()[-1:])
+    return True
+
+
+def step_calibration_shadow(runlog: RunLog) -> bool:
+    """校準機率 shadow（EXP-20261125-07）：賽果摺入之後重 fit `AU_Prob_Calibration.json` 同重建
+    `<WongChoiControl>/calibration_board.json`。純 JSON、未上 dashboard、唔郁排名；失敗只 warn。"""
+    rc, out = run_cmd([sys.executable, str(CALIBRATION_BOARD), "--refit", "au"], timeout=1200)
+    if rc != 0:
+        detail = error_excerpt(out, rc)
+        # 只記 step + log，唔 runlog.warn：warning 會令 evening 變 partial（exit 75 重試），shadow 唔值得（a00ed9c6 同一教訓）
+        log(f"⚠️  校準機率 shadow 更新失敗（唔影響 live 分析）：{detail}")
+        runlog.step("calibration-shadow", "failed", detail=detail)
+        return False
+    runlog.step("calibration-shadow", "ok", detail=(out or "").strip().splitlines()[-1:])
     return True
 
 
@@ -4667,6 +4682,7 @@ def run_evening(runlog: RunLog, args, review_day: date) -> int:
         step_speed_forward(runlog)
         step_sb_betfair_forward(runlog)
         step_forward_tracker(runlog)
+        step_calibration_shadow(runlog)
     publisher = None
     progressive = (not args.skip_deploy and not args.skip_analysis
                    and os.environ.get("WC_AU_PROGRESSIVE_PUBLISH", "1") != "0")

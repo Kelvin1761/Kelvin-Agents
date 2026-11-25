@@ -77,6 +77,7 @@ HKJC_ORCHESTRATOR = (
 )
 SHARED_SCRIPTS = PROJECT_ROOT / ".agents" / "skills" / "shared_racing" / "scripts"
 MISS_AUTOPSY = SHARED_SCRIPTS / "miss_autopsy.py"
+CALIBRATION_BOARD = SHARED_SCRIPTS / "calibration_board.py"
 REFLECTOR = (
     PROJECT_ROOT
     / ".agents/skills/hkjc_racing/hkjc_reflector/scripts/hkjc_reflector_orchestrator.py"
@@ -587,6 +588,22 @@ def update_pit_sections_async() -> None:
         log("pit-sections: 背景更新已開始")
     except Exception as exc:  # 更新表唔可以令覆盤失敗
         log(f"pit-sections: 開唔到背景更新：{exc}")
+
+
+def update_calibration_shadow_async() -> None:
+    """校準機率 shadow（EXP-20261125-07）：賽果入庫後喺背景重 fit `HKJC_Prob_Calibration.json` 同重建
+    `<WongChoiControl>/calibration_board.json`。純 JSON、未上 dashboard、唔郁排名；失敗只寫 log，唔影響覆盤。"""
+    if os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("WC_DISABLE_CALIBRATION_SHADOW"):
+        log("calibration-shadow: 測試／停用中，唔開背景更新")
+        return
+    try:
+        LOG_DIR.mkdir(parents=True, exist_ok=True)
+        with open(LOG_DIR / "calibration_shadow.log", "a", encoding="utf-8") as fh:
+            subprocess.Popen([sys.executable, str(CALIBRATION_BOARD), "--refit", "hkjc"], cwd=str(PROJECT_ROOT),
+                             stdout=fh, stderr=subprocess.STDOUT, start_new_session=True)
+        log("calibration-shadow: 背景更新已開始")
+    except Exception as exc:  # noqa: BLE001 —— shadow 唔可以令覆盤失敗
+        log(f"calibration-shadow: 開唔到背景更新：{exc}")
 
 
 def store_meeting_results(meeting_dir: Path) -> dict:
@@ -1685,6 +1702,7 @@ def run_postrace(state: dict, state_path: Path) -> int:
         if completed:
             forward_tracker_remind(state, state_path)
             update_pit_sections_async()     # 全部賽日入咗庫先更新一次段速表
+            update_calibration_shadow_async()   # 校準機率 shadow（EXP-20261125-07）
     if overall == EXIT_TEMPORARY:
         set_control_outcome("partial", reason="results_pending")
     else:
