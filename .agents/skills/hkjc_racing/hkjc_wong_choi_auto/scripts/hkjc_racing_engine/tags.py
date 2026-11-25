@@ -738,8 +738,16 @@ def _driver_label(key: str, good: bool, horse: dict, auto: dict) -> str:
         return f"{'檔位走位有利' if good else '檔位走位唔利'}" + (f"（{barrier}檔）" if barrier else "")
     if key == "stability":
         # last_6_finishes 係由新到舊（同 recent_6_detail 第1仗＝上仗一致）
-        form = [x for x in re.split(r"[-/]", str(horse.get("last_6_finishes") or "")) if x.strip().isdigit()][:3]
-        return f"{'近績好' if good else '近績差'}" + (f"（近3仗 {'-'.join(form)}）" if form else "")
+        # 呢個維度睇近 6 仗（名次＋輸距），所以標籤印 6 仗；以前只印近 3 仗，會出「近績好（近3仗 4-5-9）」咁矛盾（Kelvin 2026-11-26，天下寵兒）。
+        form = [x.strip() for x in re.split(r"[-/]", str(horse.get("last_6_finishes") or "")) if x.strip().isdigit()][:6]
+        label = "狀態穩定" if good else "狀態欠穩定"
+        if len(form) == 6:
+            recent, older = (sum(int(x) for x in form[:3]) / 3, sum(int(x) for x in form[3:]) / 3)
+            if good and recent - older >= 2:
+                label += "但近三仗回落"
+            elif not good and older - recent >= 2:
+                label += "但近三仗回升"
+        return label + (f"（近{len(form)}仗 {'-'.join(form)}）" if form else "")
     if key == "sectional":
         items = [d for d in auto.get("speed_detail") or [] if d.get("delta")]
         items = [d for d in items if (float(d["delta"]) > 0) == good]

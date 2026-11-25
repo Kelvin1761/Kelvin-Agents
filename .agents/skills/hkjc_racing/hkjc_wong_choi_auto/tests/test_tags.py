@@ -132,8 +132,19 @@ def test_dimension_drivers_become_concrete_phrases(tmp_path):
                    rows=[("race_shape", 2.8), ("stability", -0.6), ("trackwork", -0.04)])
     out = tags.race_tags(*_meeting(tmp_path, {"1": horse}, {"H1": []}))
     assert _labels(out, "1", "good") == ["內檔優勢（3檔）"]
-    assert _labels(out, "1", "bad") == ["近績差（近3仗 1-2-9）"]
+    assert _labels(out, "1", "bad") == ["狀態欠穩定（近6仗 1-2-9-4-5-6）"]
     assert out["1"]["good"][0]["impact"] == 2.8
+
+
+def test_stability_label_shows_six_runs_and_trend(tmp_path):
+    """Kelvin 2026-11-26：天下寵兒 4-5-9-4-2-2 以前印「近績好（近3仗 4-5-9）」—— 維度睇 6 仗，近三仗其實回落。"""
+    falling = _horse("甲", "袁幸堯", hid="H1", barrier=7, last6="4-5-9-4-2-2", rows=[("stability", 1.8)])
+    rising = _horse("乙", "巴度", hid="H2", barrier=3, last6="2-1-3-9-8-7", rows=[("stability", -1.2)])
+    short = _horse("丙", "潘頓", hid="H3", barrier=1, last6="3-1", rows=[("stability", 1.0)])
+    out = tags.race_tags(*_meeting(tmp_path, {"1": falling, "2": rising, "3": short}, {"H1": [], "H2": [], "H3": []}))
+    assert "狀態穩定但近三仗回落（近6仗 4-5-9-4-2-2）" in _labels(out, "1", "good")
+    assert "狀態欠穩定但近三仗回升（近6仗 2-1-3-9-8-7）" in _labels(out, "2", "bad")
+    assert "狀態穩定（近2仗 3-1）" in _labels(out, "3", "good")
 
 
 def test_fastest_finisher_needs_a_clear_leader(tmp_path):
