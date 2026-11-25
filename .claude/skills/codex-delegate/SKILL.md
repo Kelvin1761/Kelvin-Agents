@@ -30,10 +30,6 @@ python3 .agents/scripts/codex_delegate.py status --claude-weekly <percentUsed> -
 
 **用得慢就多用（Kelvin 2026-11-26）**：開工 `status`／`route` 一定要帶 `--claude-weekly`＋`--claude-resets`，唔係計唔到 Claude 有冇餘。見到 💡 就主動揀排緊嘅工作嚟用 —— 目標係每個模型每週用得盡，唔止係慳。
 
-**「放心用 Opus」開關**（Kelvin 2026-11-24：佢有時特登快啲用 Opus，因為之後有額外 reset）：
-`codex_delegate.py pacing --spend-freely-until <Claude 每週重置 ISO> --reason "..."` 開；`pacing --clear` 閂；過期自動失效。
-開住嗰陣唔理 Claude 用得幾快（照 balanced），只有本週 ≥85% 先轉 offload-max。Kelvin 講「呢個禮拜放心用」先開，唔好自己開。
-
 **Claude 自己嘅 subagent 都要慳**：搵 code、讀 log、掃檔呢類 Explore／research subagent 一律傳 `model: "sonnet"`（純搜尋用 `"haiku"`）；
 只有要判斷／設計嘅先用 Opus。offload-max 時先考慮派 Hydrogen（quick／scan）。
 
@@ -44,8 +40,8 @@ Codex 狀態本身：normal 照派；tight 只派 review／quick／chore（`--fo
 ## 1b. 派之前：`route` 揀人（Kelvin 2026-11-25）
 
 ```bash
-python3 .agents/scripts/codex_delegate.py route <lookup|big-read|edit|feature|heavy|3d|review|design|arbitrate> --claude-weekly <%>
-python3 .agents/scripts/codex_delegate.py route --claude-weekly <%>     # 列晒所有類型
+python3 .agents/scripts/codex_delegate.py route <lookup|big-read|edit|feature|heavy|3d|review|design|arbitrate> --claude-weekly <%> --claude-resets <ISO>
+python3 .agents/scripts/codex_delegate.py route --claude-weekly <%> --claude-resets <ISO>     # 列晒所有類型
 ```
 
 佢沿住每類工作嘅優先次序（例如 feature：Hydrogen sprint → Terra → Opus）揀第一個有額度嘅，印埋跳過邊個、點解。

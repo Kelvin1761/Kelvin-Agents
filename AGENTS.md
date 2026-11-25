@@ -140,9 +140,8 @@ Kelvin 唔再自己開 Codex；**Claude Code 做主導**（計劃、判斷、拍
 - **按風險分級**：A（文件、測試、工具、審計腳本）= Hydrogen／Terra 做、Opus 收貨；B（入分、模型、leakage、release、排程）=
   Terra 或 Opus 寫、**一定要 Sol 覆核**，Hydrogen 唔准單獨做；C（架構、3D、複雜系統）= Astra 先設計、Terra 做、Opus 收貨。
 - **Codex 每週預算**：Terra 45pp、Sol 30pp、Astra 15pp（design＋deep 共用），預留 10pp；每次 run 記前後 7 日窗差（`weekly_pp`），超預算 = 唔准派（`--force` 可越過，喺 `--title` 寫原因）。
-- **派工前先 `route`**：`codex_delegate.py route <工作類型> --claude-weekly <%>` 按 Claude／Codex（狀態＋系列預算）／Gemini 額度，
-  沿住每類工作嘅優先次序揀第一個有額度嘅人，**Opus 兜底**（Claude 本週 ≥95% 而其他人都用唔到 = 「全部都緊」，只做必要嘅、同 Kelvin 講）；B 級覆核冇 Sol 就 Opus 自己覆核，永遠唔會淨係落到 Hydrogen；
-  「放心用 Opus」開住時日常類（lookup／big-read／edit／feature／heavy）Opus 先做，覆核／設計／終審照樣要獨立意見。
+- **派工前先 `route`**：`codex_delegate.py route <工作類型> --claude-weekly <%> --claude-resets <ISO>` 按 Claude／Codex（狀態＋系列預算）／Gemini 額度，
+  沿住每類工作嘅優先次序揀第一個有額度嘅人，**Opus 兜底**（Claude 本週 ≥95% 而其他人都用唔到 = 「全部都緊」，只做必要嘅、同 Kelvin 講）；B 級覆核冇 Sol 就 Opus 自己覆核，永遠唔會淨係落到 Hydrogen。
 - **用得慢就多用（Kelvin 2026-11-26）**：額度唔止「快用完要慳」，仲要「用得慢、就嚟重置 = 唔用就嘥」，目標係每個模型每週都用得盡。
   一個池（Codex 7 日窗／Claude 每週）≤3 日重置、剩低 >8pp，而且落後時間 ≥15pp（或者 <2 日）= 有餘：`route` 將佢喺日常類排前
   （幾個池都有餘就每日要燒得最多嗰個先），Codex 有餘仲會**放寬系列預算**（停派線 95%／5 小時窗照守）；分工模式變 `use-codex`／`use-claude`，
@@ -159,10 +158,9 @@ Kelvin 唔再自己開 Codex；**Claude Code 做主導**（計劃、判斷、拍
 - 寫入角色唔准喺主 checkout 行（腳本會攔）。同一批檔唔准 Claude 同 Codex 同時改。
 - 額度：Codex 本週 ≥95% 或 5 小時窗 ≥85% = 停派（`--force` 都越唔過）；剩低唔夠每日 4pp 撐到重置 = 只派 review／quick／chore。每次委派記入 `<WongChoiControl>/codex_delegations.jsonl`。
 - **按兩邊額度揀分工模式**（Kelvin 2026-11-24，怕 Opus 唔夠用）：開工先用 `get_usage` 攞 Claude 每週用量，跑
-  `codex_delegate.py status --claude-weekly <%> --claude-resets <ISO>`。Claude 用得快過時間（≥10pp）或者 Codex 就嚟重置仲剩好多
+  `codex_delegate.py status --claude-weekly <%> --claude-resets <ISO>`。Claude 用得快過時間（≥10pp）
   = `offload-max`：實作同重活派 Terra、覆核派 Sol 唔開 Opus subagent、讀檔摘要派 Hydrogen，Opus 只做計劃同判決。其他模式見 skill。
   派工以 `route` 為準；分工模式只係背景。
-  Kelvin 講「呢個禮拜放心用 Opus」就開 `codex_delegate.py pacing --spend-freely-until <重置時間>`（過期自動失效）。
   Claude 自己嘅搜尋／讀 log subagent 用 `model: "sonnet"`／`"haiku"`；Sol review 要貼 diff、限定檔案，細改動用 `--effort medium`。
 
 ### 大型暫存一律放外置碟
