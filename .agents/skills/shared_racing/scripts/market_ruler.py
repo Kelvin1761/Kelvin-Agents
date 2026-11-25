@@ -322,6 +322,8 @@ def evaluate(base_races, cand_races=None, *, price_key="sp", since=None, score_w
             per[name][mk] = summarise(R, vals) | {"theta_last": theta}
         per[name]["has_info_beyond_market"] = judge_arm(per[name])
         gap = gap_to_market(R)
+        if score_window:   # 同 Δll 一樣只計窗內（EXP-20261125-11 Sol 覆核捉到：之前 gap 混埋窗外場次）
+            gap = [v if score_window[0] <= r["date"] <= score_window[1] else None for r, v in zip(R, gap)]
         per[name]["_gap"] = gap
         per[name]["gap_to_market"] = summarise(R, gap)
     if "candidate" in per:

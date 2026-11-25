@@ -200,3 +200,13 @@ class GapToMarketTest(unittest.TestCase):
         self.assertGreater(res["arms"]["baseline"]["gap_to_market"]["dll_per_race"], 0)   # 市場準過淨模型
         self.assertLess(res["paired"]["gap_change"]["dll_per_race"], 0)
         self.assertTrue(res["paired"]["gap_change"]["closer_to_market"])
+
+
+class GapWindowTest(unittest.TestCase):
+    def test_gap_respects_score_window(self):
+        races = synth(days=60, per_day=3)
+        days = sorted({r["date"] for r in races})
+        res = mr.evaluate(races, races, score_window=(days[30], days[45]))
+        g = res["arms"]["baseline"]["gap_to_market"]
+        self.assertEqual(g["days"], 16)
+        self.assertTrue(all(days[30] <= b["from"] and b["to"] <= days[45] for b in g["blocks"]))
