@@ -1,5 +1,27 @@
 # 模型評估合約（AU / HKJC Wong Choi）
 
+## 市場尺 m2 = AU／HKJC 模型 KEEP 條件（2026-11-25，Kelvin「ok 用市場尺做 KEEP 條件」）
+
+> **由 2026-11-25 起登記嘅 AU／HKJC 模型候選**（評分、排名、權重、leaf、校準）用呢條判 KEEP。之前判咗嘅唔追溯；
+> 跑緊嘅 forward 照用登記時嘅尺。計法同下面 m1 一樣（`market_ruler.py` VERSION `m2`）。
+
+### KEEP 要三樣都過
+1. **市場尺 B PASS**（下面 m1「判法 B」）：
+   - AU：`--price sp` PASS，**而且** `--price bsp` 獨贏 ΔΔ 點估計 ≥ 0（BSP 覆蓋少啲，唔要求 CI，但唔准方向相反）。
+   - HKJC：`--platform hkjc --window dev` PASS；過咗先開 `--window holdout` 確認（獨贏 ΔΔ 點估計 ≥ 0）。holdout 唔准用嚟揀候選或者調參。
+2. **排名唔准顯著變差**：排名尺（AU log-loss v2／HKJC 回放 v5.2）嘅 Δlog-loss（候選 − baseline，正 = 差咗）95% CI **下界 ≤ 0**
+   （即係唔准「顯著差咗」；排名改善唔係必要），
+   而且排名尺嘅護欄（AU：場內 AUC Δ 下界 > −0.0015、Gold／Good 點估計 > −1pp；HKJC：v5.2 護欄 2 同 4）要過。
+3. 照舊：leakage audit、§6 功效預估、多樣嘢一齊郁要 ablation、可退回 baseline。
+
+### 唔使過市場尺嘅（照舊用排名尺）
+- §7 正確性修正、數據管線修正、純顯示改動（排名唔變）。
+- Kelvin 明確話「分析用途上線」嘅改動：可以單憑排名尺 KEEP，但實驗記錄要寫明「分析改善、市場尺 FAIL」，同埋唔准用嚟支持任何落注規則。
+
+### 點解（Kelvin 2026-11-25 決定；代價已講明）
+現行 AU／HKJC 模型都冇市場以外資訊（EXP-20261124-90／-92、EXP-20261125-01）；KEEP 咗咁多排名改善 ROI 冇郁。
+改咗之後研究只會留「市場唔知嘅資訊」。**代價**：大部分純排名改善會 REJECT，dashboard 排名會難啲再進步（除非 Kelvin 逐個用「分析用途上線」放行）。
+
 ## 市場尺 m1（2026-11-24，Kelvin「做第 1 項：對市場嘅尺」；EXP-20261124-90）
 
 > 判決器：`.agents/skills/shared_racing/scripts/market_ruler.py --platform au BASE.json [CAND.json]`。
@@ -29,13 +51,13 @@
 - ability 一定要係賽前凍結嘅分（dump 本身係 point-in-time）；fit 類候選照 v3 規矩交 walk-forward 預測，
   唔准用含 SP 或者賽果嘅 fit 出嚟嘅分（Sol 覆核 2026-11-24）。
 
-### 用途（m1 起生效）
-1. **AU 模型候選一律照報市場尺**（A 同 B，`sp` 同 `bsp` 兩個價都報），寫入實驗記錄；KEEP／REJECT 仍然由排名尺判。
+### 用途（m1 起生效；KEEP 部分 2026-11-25 起由上面 m2 取代）
+1. **AU 模型候選一律照報市場尺**（A 同 B，`sp` 同 `bsp` 兩個價都報），寫入實驗記錄。（m1：KEEP 由排名尺判 —— 已由 m2 取代。）
    排名尺 KEEP 但市場尺 B FAIL = 「分析改善」，唔可以講「投注改善」。
 2. **任何真錢落注規則**（新開或者由紙上轉真錢）：用嗰個規則嘅模型版本，喺佢落注嘅市場要過 A
    （喺 Betfair 落就用 `bsp`；喺 Sportsbet 落就用 `sp`，而且 `bsp` 都要過 —— 打唔贏最 sharp 嘅價，就係靠價差唔係靠模型）；
    過咗 A 都只係必要條件，仲要過嗰個規則自己預先登記嘅 ROI forward（扣抽水）。
-3. 用市場尺 PASS 做 KEEP 條件（取代排名尺）= 另一個改判法決定，留畀 Kelvin。
+3. ~~用市場尺 PASS 做 KEEP 條件 = 留畀 Kelvin~~ → Kelvin 2026-11-25 決定做，見上面「市場尺 m2」。
 
 ### 驗證（EXP-20261124-90）
 - 正對照（頭馬 ability 加 0.1 SD）：PASS，ΔΔ +0.0076 [+0.0037, +0.0115]；負對照（場內洗牌）：FAIL。
