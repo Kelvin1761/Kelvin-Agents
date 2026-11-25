@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>ProcessType</key><string>Background</string>
+  <key>LowPriorityIO</key><true/>
+  <key>LowPriorityBackgroundIO</key><true/>
+  <key>Nice</key><integer>10</integer>
+  <key>Label</key>
+  <string>com.antigravity.central-wong-choi.self-repair</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>__SCRIPT_DIR__/run_self_repair.sh</string>
+    __MODE_ARGS__
+  </array>
+  <key>WorkingDirectory</key>
+  <string>__PROJECT_ROOT__</string>
+  <!-- 每 30 分鐘：排程自動維修（docs/plans/2026-11-25-self-repair.md）。冇 MODE_ARGS = dry-run。 -->
+  <key>StartInterval</key><integer>1800</integer>
+  <key>RunAtLoad</key><false/>
+  <key>StandardOutPath</key>
+  <string>__SCRIPT_DIR__/logs/self-repair.out</string>
+  <key>StandardErrorPath</key>
+  <string>__SCRIPT_DIR__/logs/self-repair.err</string>
+</dict>
+</plist>
