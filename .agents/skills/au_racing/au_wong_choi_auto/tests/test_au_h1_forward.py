@@ -277,7 +277,9 @@ def test_tracker_ready_flag_only_for_marked_tests(tmp_path):
     got = T.progress(marked, work_dir=tmp_path)
     assert not got["ready"] and "boolean" in got["error"]
     h1 = [t for t in T.FORWARD_TESTS if t.experiment == F.EXPERIMENT_ID][0]
-    assert h1.ready_from_status and not any(t.ready_from_status for t in T.FORWARD_TESTS if t is not h1)
+    import au_hypothesis_forward as HF      # 通用假設 arm 都要同時夠賽日同場數（2026-11-26）
+    allowed = {h1.experiment} | set(HF.ARMS)
+    assert h1.ready_from_status and not any(t.ready_from_status for t in T.FORWARD_TESTS if t.experiment not in allowed)
 
 
 # ---------------------------------------------------------------- Sol 覆核 2026-11-25 追加

@@ -1,0 +1,58 @@
+{
+ "experiment": "EXP-20261126-02",
+ "hypothesis": "H3 休後狀態曲線（休 ≥90 日、隔 ≤14 日）（EXP-20261125-06 H3）",
+ "terms": [
+  {
+   "key": "spell90",
+   "kind": "ind",
+   "name": "days_since_last",
+   "op": ">=",
+   "value": 90.0,
+   "lower_exclusive": null
+  },
+  {
+   "key": "backup14",
+   "kind": "ind",
+   "name": "days_since_last",
+   "op": "<=",
+   "value": 14.0,
+   "lower_exclusive": 0.0
+  }
+ ],
+ "fit": {
+  "source": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/au-debut-trainer-20261124/BASE.json",
+  "source_sha256": "86c01ecbe46172ccbf295f8cca11b80b26399752a17073821722f2818c5b7179",
+  "since": "2026-08-05",
+  "until": "2026-11-25",
+  "races": 4260,
+  "runners": 40938,
+  "days": 110,
+  "shape": "logit P(top3) = a + α·(ability−場均) + γ·log(3/max(N−3,1e-9)) + Σ β_k·term_k",
+  "a": -0.008868088959123225,
+  "alpha": 0.08542296734790027,
+  "gamma": 1.1255689876575787,
+  "beta": {
+   "spell90": -0.14714576004365684,
+   "backup14": 0.09861162990953957
+  },
+  "indicator_coverage": {
+   "spell90": 0.13918608627680884,
+   "backup14": 0.3328447896819581
+  },
+  "reference_without_terms": {
+   "a": -0.008907510858619785,
+   "alpha": 0.08502112591495838,
+   "gamma": 1.1243430671190993
+  },
+  "in_sample_logloss": {
+   "without": 0.5518930964875333,
+   "with": 0.551471475791789,
+   "note": "in-sample，只供參考；唔係證據"
+  }
+ },
+ "weights": {
+  "spell90": -1.7225550061306054,
+  "backup14": 1.1543924657630555
+ },
+ "unit": "ability 分 / term 單位（z = 場內 SD；ind = 0／1）"
+}

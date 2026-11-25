@@ -1,0 +1,55 @@
+{
+ "experiment": "EXP-20261126-01",
+ "hypothesis": "H2 騎師＋練馬師分加重（EXP-20261125-06 H2）",
+ "terms": [
+  {
+   "key": "jockey_score",
+   "kind": "z",
+   "name": "jockey_score",
+   "op": "",
+   "value": 0.0,
+   "lower_exclusive": null
+  },
+  {
+   "key": "trainer_score",
+   "kind": "z",
+   "name": "trainer_score",
+   "op": "",
+   "value": 0.0,
+   "lower_exclusive": null
+  }
+ ],
+ "fit": {
+  "source": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/au-debut-trainer-20261124/BASE.json",
+  "source_sha256": "86c01ecbe46172ccbf295f8cca11b80b26399752a17073821722f2818c5b7179",
+  "since": "2026-08-05",
+  "until": "2026-11-25",
+  "races": 4260,
+  "runners": 40938,
+  "days": 110,
+  "shape": "logit P(top3) = a + α·(ability−場均) + γ·log(3/max(N−3,1e-9)) + Σ β_k·term_k",
+  "a": -0.009546535439144525,
+  "alpha": 0.07781467172763071,
+  "gamma": 1.1254285822899937,
+  "beta": {
+   "jockey_score": 0.07702232328461406,
+   "trainer_score": 0.06583327259990594
+  },
+  "indicator_coverage": {},
+  "reference_without_terms": {
+   "a": -0.008907510858619785,
+   "alpha": 0.08502112591495838,
+   "gamma": 1.1243430671190993
+  },
+  "in_sample_logloss": {
+   "without": 0.5518930964875333,
+   "with": 0.5510765690280733,
+   "note": "in-sample，只供參考；唔係證據"
+  }
+ },
+ "weights": {
+  "jockey_score": 0.989817492955698,
+  "trainer_score": 0.8460264772476015
+ },
+ "unit": "ability 分 / term 單位（z = 場內 SD；ind = 0／1）"
+}

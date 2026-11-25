@@ -660,3 +660,5 @@
 - [EXP-20261124-61](EXP-20261124-61-nba-weekly-recalibration-forward-protocol.md) — NBA 每週重校準層 forward（11-25 起，14 日＋10,000 腿判）；設計量度發現純市場去水曲線＝R2，即 p_final 喺市場之上冇加到資訊，RW − MKT 做次要對照
 - [EXP-20261124-71](EXP-20261124-71-nba-featured-clv.md) — NBA 精選收市價 CLV：同線 +0.88pp [−0.61,+2.09]，扣 under 自然漂移 +0.28 後跨零；線郁嗰批 2 順 8 逆 → 冇真 edge 證據（67 注，旁證）
 - [EXP-20261125-10](EXP-20261125-10-tennis-disagreement-shadow.md) — Tennis 精選 shadow arm `max_disagree20`：唔揀模型同市場差距（edge）>20pp，改揀同場下一注；11-25 起前向，250／600 注用 forward_verdict 判；預期少蝕唔係製造 edge（預先登記）
+- [EXP-20261126-01](EXP-20261126-01-h2-jockey-trainer-forward.md) — AU H2 騎師＋練馬師分加重 forward shadow（通用假設引擎第一個 arm；11-27 起，60 日＋2,000 場判，m3 追市場軌；預先登記）
+- [EXP-20261126-02](EXP-20261126-02-h3-spell-backup-forward.md) — AU H3 休後狀態曲線（休 ≥90 日 −1.72、隔 ≤14 日 +1.15 分）forward shadow（11-27 起，60 日＋2,000 場判；預先登記）

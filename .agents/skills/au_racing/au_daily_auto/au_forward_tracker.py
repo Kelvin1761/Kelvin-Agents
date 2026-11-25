@@ -113,6 +113,16 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 "要同時夠 30 個賽日同 1,000 場；scheduler 夠數會自動判一次（m3 追市場軌：log-loss 尺 v2 PASS＋"
                 "市場尺 gap_change ≤ 0）並凍結；睇 au-h1-forward-status.json，PASS 先由你決定上唔上線（要另一個改動）",
                 status_file="au-h1-forward-status.json", ready_from_status=True),
+    # 通用假設 forward（au_hypothesis_forward.ARMS）：每個 arm 一行，status 檔 = au-hyp-forward-<id>.json。
+    # test_au_hypothesis_forward 會核對 ARMS 同呢度一一對應。
+    ForwardTest("h2_jockey_trainer", "H2 騎師＋練馬師分加重（w 凍結 0.99／0.85 分每 SD，shadow 唔郁排名）",
+                "EXP-20261126-01", "status_file", 2000, "場",
+                "要同時夠 60 個賽日同 2,000 場；夠數自動判一次（m3 追市場軌）並凍結；PASS 先由你決定上唔上線",
+                status_file="au-hyp-forward-EXP-20261126-01.json", ready_from_status=True),
+    ForwardTest("h3_spell_backup", "H3 休後狀態曲線（休 ≥90 日 −1.72、隔 ≤14 日 +1.15 分，shadow 唔郁排名）",
+                "EXP-20261126-02", "status_file", 2000, "場",
+                "要同時夠 60 個賽日同 2,000 場；夠數自動判一次（m3 追市場軌）並凍結；PASS 先由你決定上唔上線",
+                status_file="au-hyp-forward-EXP-20261126-02.json", ready_from_status=True),
 )
 
 _S2_DAYS = re.compile(r"forward days with snapshot \+ results:\s*(\d+)\s*/\s*(\d+)")

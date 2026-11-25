@@ -116,6 +116,7 @@ PR1_SHADOW_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_pr1_shadow
 FQ_FLOOR_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_fq_floor_forward.py"
 SPEED_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_speed_forward.py"
 H1_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_h1_forward.py"
+HYP_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_hypothesis_forward.py"
 TRAINER_RESIDUAL_TABLE = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_trainer_residual_table.py"
 TRAINER_RESIDUAL_SHADOW = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_residual_shadow.py"
 PEOPLE_PRIZE_TABLE = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_people_prize_table.py"
@@ -1797,6 +1798,36 @@ def step_h1_forward(runlog: RunLog) -> bool:
     except Exception as exc:  # noqa: BLE001 — forward 監察點都唔可以截停晚更
         log(f"⚠️  H1 試閘＋備戰 forward 失敗（唔影響 live）：{type(exc).__name__}: {exc}")
         runlog.step("h1-forward", "failed", detail=f"{type(exc).__name__}: {exc}")
+        return False
+
+
+def step_hyp_forward(runlog: RunLog) -> bool:
+    """通用假設 forward（`au_hypothesis_forward.ARMS`：H2 EXP-20261126-01、H3 EXP-20261126-02 …）。
+    逐個 arm `nightly --arm`（各自 timeout，一個卡住唔拖死其他）：status（盲），夠數就 evaluate 一次並凍結。
+    唔郁排名、永遠唔自動改模型。失敗只 log＋runlog.step，唔 runlog.warn（同 step_h1_forward）。"""
+    try:
+        rc, out = run_cmd([sys.executable, str(HYP_FORWARD), "list"], timeout=120)
+        arms = [x.strip() for x in (out or "").splitlines() if x.strip().startswith("EXP-")] if rc == 0 else []
+        if not arms:
+            detail = error_excerpt(out, rc)
+            log(f"⚠️  假設 forward 列唔到 arm（唔影響 live）：{detail}")
+            runlog.step("hyp-forward", "failed", detail=detail)
+            return False
+        ok = True
+        for arm in arms:
+            rc, out = run_cmd([sys.executable, str(HYP_FORWARD), "nightly", "--arm", arm, "--data-root", str(AU_RACING),
+                               "--work-dir", str(WORK_DIR)], timeout=3600)
+            if rc != 0:
+                ok = False
+                detail = error_excerpt(out, rc)
+                log(f"⚠️  假設 forward {arm} 失敗（唔影響 live）：{detail}")
+                runlog.step("hyp-forward", "failed", arm=arm, detail=detail)
+            else:
+                runlog.step("hyp-forward", "ok", arm=arm, detail=(out or "").strip()[-200:])
+        return ok
+    except Exception as exc:  # noqa: BLE001 — forward 監察點都唔可以截停晚更
+        log(f"⚠️  假設 forward 失敗（唔影響 live）：{type(exc).__name__}: {exc}")
+        runlog.step("hyp-forward", "failed", detail=f"{type(exc).__name__}: {exc}")
         return False
 
 
@@ -4747,6 +4778,7 @@ def run_evening(runlog: RunLog, args, review_day: date) -> int:
         step_fq_floor_forward(runlog)
         step_speed_forward(runlog)
         step_h1_forward(runlog)
+        step_hyp_forward(runlog)
         step_sb_betfair_forward(runlog)
         step_forward_tracker(runlog)
         step_calibration_shadow(runlog)
