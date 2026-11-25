@@ -125,14 +125,28 @@ HKJC 跑法而家只有 `hkjc_racing_engine/run_style.py`。配備代碼／名�
 ### Claude 主導、Codex 分擔（Kelvin 2026-11-24）
 
 Kelvin 唔再自己開 Codex；**Claude Code 做主導**（計劃、判斷、拍板），自己決定幾時將子任務派畀 Codex CLI，
-唔使 Kelvin 開口。入口係 `.agents/scripts/codex_delegate.py`（`status` 只報 Codex 額度；Claude 額度用 `mcp__ccd_session_mgmt__get_usage` 睇；`run <角色>` 派工），
-做法同 brief 範本喺 `.claude/skills/codex-delegate/`。角色一律揀該系列最新模型：
-**grunt = Terra**（粗重重複嘅工作，喺自己 worktree 寫），**review = Sol**（同 Opus 獨立第二意見，唯讀），
-**Luna = 最平嘅勞工**（quick 唯讀查詢／摘要；chore 寫入簡單機械式改動），機械式嘢**先試 Luna**，做唔掂先升 Terra；
-deep = Astra（Sol 同 Opus 意見唔同先用）。模型目錄每次 run 都經 `codex debug models` 即時讀，Codex 一出新版即刻跟。
-**Gemini（Kelvin 嘅 Google 訂閱，2026-11-25 加）**：經 Antigravity CLI `agy`（舊 Gemini CLI 已唔支援個人用戶），同一個 `codex_delegate.py run`：
-**scan = 最新 Gemini Flash**（唯讀、~1M context，一次過讀成堆 log／語料／實驗記錄）；**third = 最新 Gemini 非 flash（而家 Hydrogen）**
-（唯讀，第三家獨立意見 —— Sol 同 Opus 唔同意見先問佢，再唔夠先 deep）。模型經 `agy models` 即時讀；冇得讀額度，撞 429 自動停派 5 個鐘。
+唔使 Kelvin 開口。入口係 `.agents/scripts/codex_delegate.py`（`status` 報 Codex／Gemini 狀態、系列預算同收貨率；`route` 揀人；`run <角色>` 派工；Claude 額度用 `mcp__ccd_session_mgmt__get_usage` 睇），
+做法同 brief 範本喺 `.claude/skills/codex-delegate/`。角色一律揀該系列最新模型（`codex debug models`／`agy models` 即時讀，出新版即刻跟）。
+
+**分工（Kelvin 2026-11-25）：Opus 做總指揮，Hydrogen＋Terra 做日常，Sol 把關，Astra 做設計同難題。**
+- **Opus（Claude）**：計劃、拆工、收貨、KEEP／REJECT、release、Telegram；Wong Choi 判斷；質素唔夠就親自落手。
+- **Hydrogen（Gemini，經 Antigravity CLI `agy`，Kelvin 嘅 Google 訂閱）**：`quick` 唯讀查詢、`chore` 簡單改動、`sprint` 快手 feature／測試／批量改
+  （寫入角色只可以改檔、行唔到 shell）；`scan` = 一次過讀大批資料；`third` = 快速獨立檢查（唔係 Sol 級）。**唔准用 Gemini Flash／Lite**（Kelvin 2026-11-25：就退役兼太弱；`--model` 指定都會被拒）。
+  Gemini 冇得讀額度，撞 429 自動停派 5 個鐘，期間 `scan`／`quick`／`chore` 退返 Luna、`sprint` 退返 Terra。
+- **Terra**（`grunt`）：大型實作、長時間腳本、重構、3D／Blender（bpy）。**Sol**（`review`）：B 級改動一定要經佢。
+- **Astra**（`design` = 開工前睇架構／實驗設計、Hydrogen／Terra 做兩次都唔掂嘅難題；`deep` = 分歧終審）＋每週一 08:00 深度審計
+  （`central_wong_choi/scripts/astra_weekly_audit.py`，唯讀掃過去 7 日入 main 嘅 code，搵靜靜失效／洩漏／時區／路徑 bug，Telegram primary，只診斷唔改）。
+- **升級路線**：Hydrogen → Terra → Astra → Opus；同一類工作失手兩次就升一級。
+- **按風險分級**：A（文件、測試、工具、審計腳本）= Hydrogen／Terra 做、Opus 收貨；B（入分、模型、leakage、release、排程）=
+  Terra 或 Opus 寫、**一定要 Sol 覆核**，Hydrogen 唔准單獨做；C（架構、3D、複雜系統）= Astra 先設計、Terra 做、Opus 收貨。
+- **Codex 每週預算**：Terra 45pp、Sol 30pp、Astra 15pp（design＋deep 共用），預留 10pp；每次 run 記前後 7 日窗差（`weekly_pp`），超預算 = 唔准派（`--force` 可越過，喺 `--title` 寫原因）。
+- **派工前先 `route`**：`codex_delegate.py route <工作類型> --claude-weekly <%>` 按 Claude／Codex（狀態＋系列預算）／Gemini 額度，
+  沿住每類工作嘅優先次序揀第一個有額度嘅人，**Opus 兜底**（Claude 本週 ≥95% 而其他人都用唔到 = 「全部都緊」，只做必要嘅、同 Kelvin 講）；B 級覆核冇 Sol 就 Opus 自己覆核，永遠唔會淨係落到 Hydrogen；
+  「放心用 Opus」開住時日常類（lookup／big-read／edit／feature／heavy）Opus 先做，覆核／設計／終審照樣要獨立意見。
+- **模型健康**：一律用每個系列最新型號（即時讀目錄）；轉咗新型號、讀唔到目錄（用緊後備型號）、同一模型連續 2 次失敗、Gemini 撞上限，
+  都會 Telegram primary（同一件事報一次，恢復再報）。每朝 07:30 `codex_delegate.py health --probe`（launchd `central-wong-choi.model-probe`）
+  每個模型最平設定試一句，唔正常先通知；`health` 睇狀態。
+- **收貨評分**：每次收貨跑 `codex_delegate.py grade accepted|rework|redo [--note]`，`status` 顯示每個模型 14 日收貨率；兩星期後按數據調整分工。
 
 - 判 KEEP／REJECT、用 holdout、`./保存.sh`、Telegram、release **永遠係 Claude 嘅工作**，唔准委派。
 - **Codex 被委派嗰陣**：唔准 commit／push／保存、唔准發 Telegram、唔准再委派、唔准郁排程。佢報嘅「改善」照樣要過 `model-regression-gate`。
@@ -141,7 +155,8 @@ deep = Astra（Sol 同 Opus 意見唔同先用）。模型目錄每次 run 都�
 - 額度：Codex 本週 ≥95% 或 5 小時窗 ≥85% = 停派（`--force` 都越唔過）；剩低唔夠每日 4pp 撐到重置 = 只派 review／quick／chore。每次委派記入 `<WongChoiControl>/codex_delegations.jsonl`。
 - **按兩邊額度揀分工模式**（Kelvin 2026-11-24，怕 Opus 唔夠用）：開工先用 `get_usage` 攞 Claude 每週用量，跑
   `codex_delegate.py status --claude-weekly <%> --claude-resets <ISO>`。Claude 用得快過時間（≥10pp）或者 Codex 就嚟重置仲剩好多
-  = `offload-max`：實作同重活派 Terra、覆核派 Sol 唔開 Opus subagent、讀檔摘要派 Luna，Opus 只做計劃同判決。其他模式見 skill。
+  = `offload-max`：實作同重活派 Terra、覆核派 Sol 唔開 Opus subagent、讀檔摘要派 Hydrogen，Opus 只做計劃同判決。其他模式見 skill。
+  派工以 `route` 為準；分工模式只係背景。
   Kelvin 講「呢個禮拜放心用 Opus」就開 `codex_delegate.py pacing --spend-freely-until <重置時間>`（過期自動失效）。
   Claude 自己嘅搜尋／讀 log subagent 用 `model: "sonnet"`／`"haiku"`；Sol review 要貼 diff、限定檔案，細改動用 `--effort medium`。
 

@@ -20,9 +20,9 @@ python3 .agents/scripts/codex_delegate.py status --claude-weekly <percentUsed> -
 
 | 分工模式 | 幾時 | 做法 |
 |---|---|---|
-| offload-max | Claude 用得快過時間 ≥10pp、或本週 ≥85%；或者 Codex <2 日重置仲剩好多 | 實作同重活一律派 Terra（我寫 brief、睇 diff）；覆核派 Sol，**唔開 Opus subagent**；讀 log／grep／摘要派 Luna；Opus 只做計劃、判決、保存、Telegram |
+| offload-max | Claude 用得快過時間 ≥10pp、或本週 ≥85%；或者 Codex <2 日重置仲剩好多 | 實作同重活一律派 Terra（我寫 brief、睇 diff）；覆核派 Sol，**唔開 Opus subagent**；讀 log／grep／摘要派 Hydrogen（quick／scan）；Opus 只做計劃、判決、保存、Telegram |
 | balanced | 兩邊都正常 | 照下面第 2 節常規分工 |
-| offload-light | Claude 緊但 Codex 都 tight | 只派 review／quick／chore；Claude 本週 ≥85% 先 `--force` 派 grunt 並寫原因 |
+| offload-light | Claude 緊但 Codex 都 tight | 只派 review／quick／chore；Claude 本週 ≥85% 先 `--force` 派 grunt，喺 `--title` 寫原因 |
 | keep-claude | Codex tight、Claude 慢過時間 ≥20pp | Opus 自己做多啲，Codex 留畀 review |
 | claude-only | Codex stop | 唔派，喺回覆講一句「Codex 額度停派中」；Claude subagent 用平啲嘅模型 |
 
@@ -31,9 +31,25 @@ python3 .agents/scripts/codex_delegate.py status --claude-weekly <percentUsed> -
 開住嗰陣唔理 Claude 用得幾快（照 balanced），只有本週 ≥85% 先轉 offload-max。Kelvin 講「呢個禮拜放心用」先開，唔好自己開。
 
 **Claude 自己嘅 subagent 都要慳**：搵 code、讀 log、掃檔呢類 Explore／research subagent 一律傳 `model: "sonnet"`（純搜尋用 `"haiku"`）；
-只有要判斷／設計嘅先用 Opus。offload-max 時先考慮派 Luna。
+只有要判斷／設計嘅先用 Opus。offload-max 時先考慮派 Hydrogen（quick／scan）。
+
+**邊個話事**：派工以 `route`（下面 1b）為準；上面嘅分工模式只係背景，講 Claude 嗰邊有幾緊。兩者唔同意就跟 `route`。
 
 Codex 狀態本身：normal 照派；tight 只派 review／quick／chore（`--force` 只越過 tight，越唔過 stop）；unknown 可以派但每次之後再 `status`。
+
+## 1b. 派之前：`route` 揀人（Kelvin 2026-11-25）
+
+```bash
+python3 .agents/scripts/codex_delegate.py route <lookup|big-read|edit|feature|heavy|3d|review|design|arbitrate> --claude-weekly <%>
+python3 .agents/scripts/codex_delegate.py route --claude-weekly <%>     # 列晒所有類型
+```
+
+佢沿住每類工作嘅優先次序（例如 feature：Hydrogen sprint → Terra → Opus）揀第一個有額度嘅，印埋跳過邊個、點解。
+跟佢揀嘅做；佢話「Opus 自己做」就自己做（搜尋類用 Sonnet／Haiku subagent）；話「全部都緊」就只做必要嘅、拆細，同 Kelvin 講。
+B 級覆核冇 Sol 就 Opus 自己覆核（可以加 third 輔助），**唔准淨係靠 Hydrogen**。
+
+**模型健康**：`health` 睇狀態，`health --probe` 每個模型試一句（排程每朝 07:30 自動跑）。換咗新型號、目錄讀唔到、
+連續 2 次失敗、Gemini 撞上限都會自動 Telegram Kelvin —— 你唔使另外發，但回覆入面要提一句改派咗邊個。
 
 ## 2. 派唔派：角色同例子
 
@@ -41,27 +57,30 @@ Codex 狀態本身：normal 照派；tight 只派 review／quick／chore（`--fo
 |---|---|---|---|
 | **grunt** | Terra 最新 | 寫／補測試、批量改名或改文檔、寫一次性資料審計腳本、喺大量檔案搵 pattern、整理 log、重複性 refactor | 改評分邏輯本身、改 `config.json` 係數、任何要判斷「好唔好」嘅嘢 |
 | **review** | Sol 最新 | leakage 審計（逐欄問「落注嗰刻拎唔拎到」）、實驗結論覆核、`./保存.sh` 之前覆核 diff、一個好得出奇嘅回測結果 | 叫佢代你判 KEEP／REJECT |
-| **quick** | Luna 最新（唯讀） | 搵 code／pattern、睇 log 搵錯、摘要長檔、列出受影響嘅檔、核對兩份輸出差異 | 要判斷好壞嘅嘢 |
-| **chore** | Luna 最新（寫入） | 改名、改格式、補 docstring／type hint、照樣板加測試、改文檔字眼、update 路徑 | 要理解模型邏輯嘅嘢 —— 升 Terra |
+| **quick** | Hydrogen（唯讀；Gemini 停派退返 Luna） | 搵 code／pattern、睇 log 搵錯、摘要長檔、列出受影響嘅檔、核對兩份輸出差異、上網查資料 | 要判斷好壞嘅嘢 |
+| **chore** | Hydrogen（寫入，只改檔；退返 Luna） | 改名、改格式、補 docstring／type hint、照樣板加測試、改文檔字眼、update 路徑 | 要理解模型邏輯嘅嘢 —— 升 sprint／Terra |
+| **sprint** | Hydrogen high（寫入，只改檔；退返 Terra） | A 級快手工作：細 feature、寫／補測試、批量改、一次性審計腳本。佢行唔到 shell —— 測試你自己跑 | B 級（入分、模型、leakage、排程）；要跑命令先做得到嘅嘢 —— 派 Terra |
+| **design** | Astra 最新（high） | C 級開工前睇計劃／架構／實驗設計夠唔夠穩；Hydrogen 或 Terra 做兩次都唔掂嘅難題 | 日常嘢（Astra 預算得 15pp） |
 | **deep** | Astra 最新 | Sol 同你意見唔同、而結論影響上唔上線，而且 third 都講唔清 | 日常覆核 |
-| **scan** | Gemini Flash 最新（唯讀，經 `agy`） | 要一次過讀好多嘢：成堆 log、成份語料摘要、全部實驗記錄搵舊假設、長 diff 摘要。~1M context，用 Kelvin Google 訂閱，唔食 Codex／Claude 額度 | 要判斷好壞、要寫檔 |
-| **third** | Gemini 非 flash 最新（而家 Hydrogen） | 第三家獨立意見：Sol 同 Opus 唔同意見時先問佢；Codex tight／stop 時頂替 Sol 做 review | 代你判 KEEP／REJECT |
+| **scan** | Hydrogen medium（唯讀；退返 Luna）。**唔用 Gemini Flash**（Kelvin 2026-11-25） | 要一次過讀好多嘢：成堆 log、成份語料摘要、全部實驗記錄搵舊假設、長 diff 摘要。用 Kelvin Google 訂閱，唔食 Codex／Claude 額度 | 要判斷好壞、要寫檔 |
+| **third** | Hydrogen high（冇後備） | 快速獨立檢查（A 級 diff、初步搵錯）。**唔係 Sol 級**（Kelvin 2026-11-25）：B 級覆核同真分歧唔好靠佢 | 代你判 KEEP／REJECT；代替 Sol 做 B 級覆核 |
 
-**Luna 先行（Kelvin 2026-11-24：當免費勞工用）**：機械式、答案易核實嘅嘢一律先派 Luna（quick／chore）；
-Luna 答錯或者冇改到，先升 Terra。Luna 都係食同一個 Codex 額度，只係每次食得好少，所以收緊（tight）都照派。
-同一時間可以派幾個 Luna 去做互不相干嘅細嘢（各自 worktree／唯讀）。
+**Hydrogen 先行（Kelvin 2026-11-25，取代 2026-11-24 嘅「Luna 先行」）**：機械式、答案易核實嘅嘢一律先派 Hydrogen
+（quick／chore／sprint）；做唔掂先升 Terra。佢用 Kelvin 嘅 Google 訂閱，唔食 Codex 額度。Gemini 停派嗰陣腳本自動退返 Luna／Terra。
+同一時間可以派幾個做互不相干嘅細嘢（各自 worktree／唯讀）。
 
-**Gemini（scan／third）**：同一個 `run`，例如 `codex_delegate.py run third --cd <worktree> --prompt-file brief.md --out r.md`。
-一律唯讀（agy `--mode plan`）；agy 唔讀 stdin，腳本自動將 brief 寫入臨時檔叫佢讀。冇得睇額度：撞 429 會自動停派 5 個鐘，`status` 會顯示。
-2026-11-25 實測：third（Hydrogen high）覆核一個 diff 63 秒、input 4.5 萬 tokens，搵到 5 類真 bug；scan（Flash）摘要一節文件 27 秒。
+**Gemini 點用**：同一個 `run`，例如 `codex_delegate.py run sprint --cd <worktree> --prompt-file brief.md --out r.md`。
+唯讀角色用 agy `--mode plan`，寫入角色用 `--mode accept-edits`（只改檔，行唔到 shell）；agy 唔讀 stdin，腳本自動將 brief 寫入臨時檔叫佢讀。
+冇得睇額度：撞 429 會自動停派 5 個鐘，`status` 會顯示。
+2026-11-25 實測：third（Hydrogen high）覆核一個 diff 63 秒、input 4.5 萬 tokens，搵到 5 類真 bug；sprint 修 bug＋寫 3 個測試 27 秒。
 
-**Luna 要窄，唔好叫佢探索**（2026-11-24 實測）：叫佢「自己搵積壓」會淺——一個做一半收工、一個 log 掃描乜都搵唔到，
-唯讀 sandbox 入面 `git ls-files` 有時都用唔到。叫佢「改 X 檔第 N 行做 Y」就好準（兩個文檔 chore 各 <50 秒、全部啱）。
-所以：**Claude 先劃範圍、列清單（檔案:行號＋要改成點），Luna 逐項執行**；要開放式探索就派 Terra 或者自己做。
+**細工要窄，唔好叫佢探索**（2026-11-24 Luna 實測，Hydrogen 一樣照做）：叫佢「自己搵積壓」會淺——做一半收工、乜都搵唔到。
+叫佢「改 X 檔第 N 行做 Y」就好準。所以：**Claude 先劃範圍、列清單（檔案:行號＋要改成點），佢逐項執行**；
+要開放式探索就派 Terra 或者自己做。
 
 值唔值得派，問兩條：
 1. **呢舊嘢可唔可以用一份 brief 講清楚、獨立核實？** 唔得就自己做 —— 解釋背景嘅 token 會多過慳返嘅。
-2. **細過 ~5 個 tool call？** 係就自己做 —— 除非係 Luna 做得嘅唯讀查詢，平到唔使計。
+2. **細過 ~5 個 tool call？** 係就自己做 —— 除非係 Hydrogen 做得嘅唯讀查詢，平到唔使計。
 
 **一定要 review 嘅情況**（只要額度唔係 stop）：改模型嘅 KEEP 判決之前、任何 leakage-audit、回測結果好過預期。
 
@@ -105,5 +124,10 @@ python3 .agents/scripts/codex_delegate.py run grunt --cd <路徑> --prompt-file 
 
 - 寫入角色完成後腳本會印「worktree 改動：N 個檔」；0 個就睇 Codex 答覆搵原因。
 - **grunt**：自己 `git diff` 睇過、自己跑測試先信。合返自己分支用 `git cherry-pick` 或者 `git diff | git apply`；Codex 分支唔好 push 去 main。用完 `git worktree remove`。
-- **review**：逐點判斷，唔好照單全收。同意嘅改、唔同意嘅講原因。有分歧而影響重大 → 先 third（唔同家族、唔食 Codex 額度），再唔清楚先 deep。
+- **review**：逐點判斷，唔好照單全收。同意嘅改、唔同意嘅講原因。有分歧而影響重大 → deep（Astra）。
+- **sprint／chore（Hydrogen）**：佢行唔到 shell，所以「完成」只代表改咗檔 —— 你一定要自己跑測試、睇 diff。
+- **每次收貨都評分**：`python3 .agents/scripts/codex_delegate.py grade accepted|rework|redo --note "<一句>"`（預設評最近一次成功 run；
+  `--run <ts>` 評指定嗰次）。收貨 = 冇改就用；要改 = 你自己補咗少少；重做 = 要另派或者自己重寫。兩星期後睇 `status` 嘅收貨率調整分工：
+  某模型某類工作收貨率低就升級（Hydrogen → Terra → Astra）。
+- **升級路線**：同一類工作失手兩次就升一級；C 級（架構、3D、複雜）一開始就先問 design。
 - 回覆 Kelvin 嗰陣寫一行：「已交 Codex（Sol）覆核 X：<結果>」。唔使問佢准唔准派。

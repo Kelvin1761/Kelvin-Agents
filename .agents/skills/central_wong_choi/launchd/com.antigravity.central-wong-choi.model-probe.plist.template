@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- 打機時段（Kelvin 2026-11-21）：Background = M1 只用效能核，性能核留俾前景 app；結果一樣，只係慢啲 -->
+  <key>ProcessType</key><string>Background</string>
+  <key>LowPriorityIO</key><true/>
+  <key>LowPriorityBackgroundIO</key><true/>
+  <key>Nice</key><integer>10</integer>
+  <key>Label</key>
+  <string>com.antigravity.central-wong-choi.model-probe</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>__SCRIPT_DIR__/run_model_probe.sh</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>__PROJECT_ROOT__</string>
+  <!-- 每朝 07:30 悉尼：委派模型探測（唔正常先 Telegram primary）。 -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key><integer>7</integer>
+    <key>Minute</key><integer>30</integer>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>__SCRIPT_DIR__/logs/model-probe.out</string>
+  <key>StandardErrorPath</key>
+  <string>__SCRIPT_DIR__/logs/model-probe.err</string>
+</dict>
+</plist>
