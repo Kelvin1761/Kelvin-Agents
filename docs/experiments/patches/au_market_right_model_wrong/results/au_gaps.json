@@ -1,0 +1,242 @@
+{
+ "debut": {
+  "coverage": 0.0497,
+  "raw_top3_gap_pp": -2.98,
+  "model_resid_gap_pp": [
+   -2.32,
+   -4.31,
+   -0.17
+  ],
+  "market_resid_gap_pp": [
+   -1.82,
+   -3.61,
+   0.07
+  ],
+  "model_resid_gap_pp_h2": -4.4,
+  "share_in_D": 0.0808
+ },
+ "thin_evidence(neutral_leaves>=8)": {
+  "coverage": 0.1495,
+  "raw_top3_gap_pp": -3.15,
+  "model_resid_gap_pp": [
+   -0.83,
+   -2.0,
+   0.25
+  ],
+  "market_resid_gap_pp": [
+   -0.23,
+   -1.29,
+   0.77
+  ],
+  "model_resid_gap_pp_h2": -1.43,
+  "share_in_D": 0.1808
+ },
+ "no_sectional(sectional==60)": {
+  "coverage": 0.5271,
+  "raw_top3_gap_pp": -6.59,
+  "model_resid_gap_pp": [
+   -0.2,
+   -1.1,
+   0.64
+  ],
+  "market_resid_gap_pp": [
+   0.04,
+   -0.76,
+   0.71
+  ],
+  "model_resid_gap_pp_h2": 0.24,
+  "share_in_D": 0.5361
+ },
+ "wide_big_field(bar/field>0.66,field>=10)": {
+  "coverage": 0.2554,
+  "raw_top3_gap_pp": -8.59,
+  "model_resid_gap_pp": [
+   -0.04,
+   -0.86,
+   0.76
+  ],
+  "market_resid_gap_pp": [
+   -0.23,
+   -0.95,
+   0.49
+  ],
+  "model_resid_gap_pp_h2": -0.76,
+  "share_in_D": 0.2487
+ },
+ "inside_big_field(bar<=3,field>=10)": {
+  "coverage": 0.1631,
+  "raw_top3_gap_pp": -2.86,
+  "model_resid_gap_pp": [
+   -1.41,
+   -2.51,
+   -0.18
+  ],
+  "market_resid_gap_pp": [
+   -0.06,
+   -1.17,
+   1.14
+  ],
+  "model_resid_gap_pp_h2": -1.23,
+  "share_in_D": 0.1465
+ },
+ "spell>=90d": {
+  "coverage": 0.1392,
+  "raw_top3_gap_pp": -1.39,
+  "model_resid_gap_pp": [
+   -2.53,
+   -3.82,
+   -1.23
+  ],
+  "market_resid_gap_pp": [
+   0.05,
+   -1.09,
+   1.31
+  ],
+  "model_resid_gap_pp_h2": -1.52,
+  "share_in_D": 0.1233
+ },
+ "quick_backup<=14d": {
+  "coverage": 0.3331,
+  "raw_top3_gap_pp": 0.6,
+  "model_resid_gap_pp": [
+   1.55,
+   0.69,
+   2.4
+  ],
+  "market_resid_gap_pp": [
+   0.1,
+   -0.75,
+   0.93
+  ],
+  "model_resid_gap_pp_h2": 1.25,
+  "share_in_D": 0.3265
+ },
+ "top_jockey(z>=1)": {
+  "coverage": 0.1738,
+  "raw_top3_gap_pp": 15.29,
+  "model_resid_gap_pp": [
+   3.49,
+   2.0,
+   4.89
+  ],
+  "market_resid_gap_pp": [
+   -0.54,
+   -1.89,
+   0.64
+  ],
+  "model_resid_gap_pp_h2": 4.91,
+  "share_in_D": 0.2307
+ },
+ "top_trainer(z>=1)": {
+  "coverage": 0.1725,
+  "raw_top3_gap_pp": 15.14,
+  "model_resid_gap_pp": [
+   2.85,
+   1.35,
+   4.41
+  ],
+  "market_resid_gap_pp": [
+   0.23,
+   -1.14,
+   1.75
+  ],
+  "model_resid_gap_pp_h2": 2.88,
+  "share_in_D": 0.1881
+ },
+ "trial_strong(z>=1)": {
+  "coverage": 0.0942,
+  "raw_top3_gap_pp": 11.89,
+  "model_resid_gap_pp": [
+   5.05,
+   3.69,
+   6.7
+  ],
+  "market_resid_gap_pp": [
+   0.19,
+   -1.03,
+   1.66
+  ],
+  "model_resid_gap_pp_h2": 4.46,
+  "share_in_D": 0.1426
+ },
+ "prep_strong(z>=1)": {
+  "coverage": 0.1696,
+  "raw_top3_gap_pp": 10.47,
+  "model_resid_gap_pp": [
+   4.56,
+   3.49,
+   5.59
+  ],
+  "market_resid_gap_pp": [
+   -0.17,
+   -1.15,
+   0.8
+  ],
+  "model_resid_gap_pp_h2": 5.55,
+  "share_in_D": 0.2367
+ },
+ "heavy_track": {
+  "coverage": 0.0471,
+  "raw_top3_gap_pp": 2.34,
+  "model_resid_gap_pp": [
+   0.64,
+   -0.11,
+   1.6
+  ],
+  "market_resid_gap_pp": [
+   -0.61,
+   -1.04,
+   -0.09
+  ],
+  "model_resid_gap_pp_h2": -0.1,
+  "share_in_D": 0.0563
+ },
+ "style_unknown": {
+  "coverage": 0.0442,
+  "raw_top3_gap_pp": -3.98,
+  "model_resid_gap_pp": [
+   -3.85,
+   -5.71,
+   -1.94
+  ],
+  "market_resid_gap_pp": [
+   -2.16,
+   -3.7,
+   -0.28
+  ],
+  "model_resid_gap_pp_h2": -4.73,
+  "share_in_D": 0.0666
+ },
+ "leader(前置/前領)": {
+  "coverage": 0.0555,
+  "raw_top3_gap_pp": 5.47,
+  "model_resid_gap_pp": [
+   1.82,
+   0.06,
+   3.47
+  ],
+  "market_resid_gap_pp": [
+   -0.63,
+   -2.3,
+   0.98
+  ],
+  "model_resid_gap_pp_h2": 1.77,
+  "share_in_D": 0.0752
+ },
+ "backmarker(後上)": {
+  "coverage": 0.2866,
+  "raw_top3_gap_pp": -5.95,
+  "model_resid_gap_pp": [
+   -1.79,
+   -2.66,
+   -0.92
+  ],
+  "market_resid_gap_pp": [
+   -0.8,
+   -1.64,
+   -0.01
+  ],
+  "model_resid_gap_pp_h2": -1.86,
+  "share_in_D": 0.2521
+ }
+}
