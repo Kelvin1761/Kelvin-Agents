@@ -75,6 +75,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 # ── 逐場次 memo ─────────────────────────────────────────────────────────────
+MEMO_CHECKPOINT_EVERY = 100   # 每新 parse 幾多個場次存一次 memo
+
 # 點解：晚更 `ingest-results` 每次都由 2026-07-01 起重新 parse ~5,100 場 cache，
 # 2026-11-21 實測每次 ~15 分鐘 CPU，而結果係「new rows to add: 0」，夜更重試
 # 一晚仲可以行三次。cache 頁一經寫低極少再變，所以逐場次記住結果就得。
@@ -238,6 +240,11 @@ def main():
             parsed += 1
         if args.memo:
             new_memo[name] = {"sig": sig, "rows": got, "warnings": warnings}
+            # 中途分批存（2026-11-24）：冇 memo 嘅第一次要 >30 分鐘，排程 1,800 秒會截停；
+            # 以前 memo 只喺最尾寫，所以永遠寫唔落、每晚由零開始（11-22 起連續超時）。
+            # 合併舊 memo（sig 照驗，過期嘅唔會被用）令截停之後下一晚可以接住做。
+            if parsed and parsed % MEMO_CHECKPOINT_EVERY == 0:
+                save_memo(args.memo, fingerprint, {**memo, **new_memo})
         if got:
             meetings += 1
             rows += got

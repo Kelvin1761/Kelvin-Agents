@@ -125,3 +125,31 @@ def test_fingerprint_covers_parser_module():
     with patch.object(Path, 'read_bytes', return_value=b'x'):
         a = sb_results_csv.code_fingerprint()
     assert a != sb_results_csv.code_fingerprint()
+
+
+def test_checkpoint_survives_interrupted_run(tmp_path):
+    """排程 1,800 秒截停冷 run 之後，下一晚要接住做，唔係由零開始（2026-11-22 起連續超時）。"""
+    ids, fetcher = _setup(tmp_path)
+    ids['2026-08-08 Coffs'] = {'date': '2026-08-08', 'slug': 'coffs_harbour',
+                               'meetingId': 'm2', 'races': ['r1']}
+    fetcher._cache_path(f"{sb_results_csv_base()}/m2/r1/").write_text('page m2')
+    calls = []
+    real_save = sb_results_csv.save_memo
+
+    def save_then_die(*a, **k):
+        real_save(*a, **k)
+        raise KeyboardInterrupt  # 模擬 timeout 喺第一個 checkpoint 後殺咗個 process
+
+    with patch.object(sb_results_csv, 'MEMO_CHECKPOINT_EVERY', 1), \
+            patch.object(sb_results_csv, 'save_memo', side_effect=save_then_die):
+        try:
+            _run(tmp_path, ids, fetcher, calls)
+        except KeyboardInterrupt:
+            pass
+    assert len(calls) == 1
+    first = calls[0]
+    calls.clear()
+    plain = _run(tmp_path, ids, fetcher, [], memo=False)
+    resumed = _run(tmp_path, ids, fetcher, calls)
+    assert first not in calls and len(calls) == 1   # 已 checkpoint 嘅場次唔再 parse
+    assert resumed == plain
