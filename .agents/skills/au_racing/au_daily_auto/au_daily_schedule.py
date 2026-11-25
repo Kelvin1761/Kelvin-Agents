@@ -1603,9 +1603,10 @@ def step_speed_recency_shadow(runlog: RunLog) -> bool:
                 races=status.get("races_collected", 0),
                 outcomes_visible=bool(status.get("outcomes_visible")),
                 verdict=evaluation.get("verdict", ""))
-    if status.get("outcomes_visible"):
-        runlog.warn(f"速度第二盲測組（EXP-20261009-05）已揭盲：{evaluation.get('verdict')} "
-                    f"（{evaluation.get('reason')}）；live 唔會自動改，要 /approve SHA。")
+    # 揭盲之後唔再 runlog.warn（2026-11-25）：判決已記喺上面個 step，夠數 Telegram 由
+    # au_forward_tracker 推一次（winning_time_blind，已推），WinningTime 亦已喺
+    # EXP-20261124-40 上線。以前晚晚 warn 一次，令 evening 由 11-14 起每晚 partial／
+    # 退出碼 75，AU 30 日 SLO 跌到 ~60%。
     return True
 
 

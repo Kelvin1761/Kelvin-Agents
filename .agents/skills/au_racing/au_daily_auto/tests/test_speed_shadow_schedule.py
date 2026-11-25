@@ -137,3 +137,31 @@ def test_recency_arm_records_counts_only_while_blind(tmp_path):
         assert schedule.step_speed_recency_shadow(Log()) is True
     assert steps == [("speed-recency-shadow", "collecting",
                       {"races": 457, "outcomes_visible": False, "verdict": ""})]
+
+
+def test_recency_arm_after_unblinding_does_not_warn_every_night(tmp_path):
+    """揭盲之後判決只入 step；唔可以晚晚 warn 令 evening 變 partial（2026-11-14→11-24 每晚 75）。"""
+    import json as _json
+    from unittest import mock as _mock
+
+    def fake_run(cmd, timeout=None):
+        out = Path(cmd[cmd.index("--output") + 1])
+        out.write_text(_json.dumps({"state": "evaluated", "races_collected": 2044,
+                                    "outcomes_visible": True,
+                                    "evaluation": {"verdict": "PASS_CANDIDATE", "reason": "ok"}}),
+                       encoding="utf-8")
+        return 0, ""
+
+    steps = []
+
+    class Log:
+        def step(self, name, status, **kw):
+            steps.append((name, status, kw))
+
+        def warn(self, message):
+            steps.append(("warn", message, {}))
+
+    with _mock.patch.multiple(schedule, WORK_DIR=tmp_path, run_cmd=fake_run):
+        assert schedule.step_speed_recency_shadow(Log()) is True
+    assert steps == [("speed-recency-shadow", "evaluated",
+                      {"races": 2044, "outcomes_visible": True, "verdict": "PASS_CANDIDATE"})]
