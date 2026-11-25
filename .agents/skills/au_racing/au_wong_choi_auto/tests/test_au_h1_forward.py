@@ -19,6 +19,16 @@ sys.path.insert(0, str(DAILY))
 
 import au_h1_forward as F  # noqa: E402
 
+W = F.load_frozen()
+
+
+@pytest.fixture(autouse=True)
+def _verdict_lock_in_tmp(tmp_path, monkeypatch):
+    """判決鎖一律指去 tmp，測試唔准掂真正嘅 WongChoiControl。"""
+    lock = tmp_path / "lock" / f"{F.EXPERIMENT_ID}.json"
+    monkeypatch.setattr(F, "verdict_path", lambda: lock)
+    return lock
+
 
 # ---------------------------------------------------------------- 合成數據
 
@@ -27,6 +37,7 @@ def _race(day: str, k: int, rng, n: int = 8) -> dict:
     rows = [{"n": i + 1, "name": f"H{k}-{i}", "ability": float(rng.normal(60, 3)),
              "trial_score": float(rng.choice([60.0, 70.0, 85.0])), "preparation_score": float(rng.normal(60, 4)),
              "pos": int(pos[i]), "sp": float(rng.uniform(2, 30))} for i in range(n)]
+    F.score_field(rows, W)
     return {"date": day, "meeting": f"{day} Track", "race": k, "rows": rows, "source": F.SOURCE_TAG}
 
 
@@ -70,11 +81,15 @@ def test_candidate_is_ability_plus_frozen_z_shift():
         {"ability": 60.0, "trial_score": 60.0, "preparation_score": 50.0},
         {"ability": 62.0, "trial_score": 80.0, "preparation_score": 70.0}]}
     w = {"trial_score": 0.5, "preparation_score": 2.0}
-    got = F.candidate([race], w)[0]["rows"]
+    F.score_field(race["rows"], w)
+    got = F.candidate([race])[0]["rows"]
     assert got[0]["ability"] == pytest.approx(60.0 - 0.5 - 2.0) and got[1]["ability"] == pytest.approx(62.0 + 0.5 + 2.0)
     assert race["rows"][0]["ability"] == 60.0     # 原本嗰份唔郁
     flat = {**race, "rows": [dict(x, trial_score=60.0, preparation_score=60.0) for x in race["rows"]]}
-    assert [x["ability"] for x in F.candidate([flat], w)[0]["rows"]] == [60.0, 62.0]   # SD 0 → z 0
+    F.score_field(flat["rows"], w)
+    assert [x["ability"] for x in F.candidate([flat])[0]["rows"]] == [60.0, 62.0]   # SD 0 → z 0
+    with pytest.raises(ValueError):                  # 冇賽前候選分唔准用
+        F.candidate([{**race, "rows": [{"ability": 1.0}]}])
 
 
 # ---------------------------------------------------------------- 2. 盲測
@@ -140,7 +155,13 @@ def test_evaluate_scores_only_forward_days_up_to_cutoff(monkeypatch):
 
     monkeypatch.setattr(L, "evaluate", fake_rank)
     monkeypatch.setattr(M, "evaluate", fake_market)
+
+    def fake_gap(base, cand, lo, hi):
+        seen["gap_window"] = (lo, hi)
+        return {"dll_per_race": -0.001}
+    monkeypatch.setattr(F, "windowed_gap_change", fake_gap)
     ev = F.evaluate(pre + fwd, F.load_frozen())
+    assert seen["gap_window"] == (F.START_DATE, ev["cutoff_date"])
     cutoff = fwd[F.TARGET_DAYS * 40 - 1]["date"]
     assert ev["cutoff_date"] == cutoff and seen["max_date"] == cutoff
     assert (ev["forward_races"], ev["forward_days"]) == (F.TARGET_DAYS * 40, F.TARGET_DAYS)
@@ -156,11 +177,14 @@ def test_verdict_needs_gap_change_not_positive(monkeypatch):
     import market_ruler as M
 
     races = _races(F.START_DATE, F.TARGET_DAYS, 40)
+    monkeypatch.setattr(M, "evaluate", lambda *a, **k: {"paired": {}, "arms": {}})
     monkeypatch.setattr(L, "evaluate", lambda *a, **k: {"verdict": "PASS"})
-    monkeypatch.setattr(M, "evaluate", lambda *a, **k: {"paired": {"gap_change": {"dll_per_race": 0.0004}}, "arms": {}})
+    monkeypatch.setattr(F, "windowed_gap_change", lambda *a: {"dll_per_race": 0.0004})
     assert F.evaluate(races, F.load_frozen())["verdict"] == "FAIL"
+    monkeypatch.setattr(F, "windowed_gap_change", lambda *a: {"dll_per_race": 0.0})
+    assert F.evaluate(races, F.load_frozen())["verdict"] == "PASS"
     monkeypatch.setattr(L, "evaluate", lambda *a, **k: {"verdict": "REJECT"})
-    monkeypatch.setattr(M, "evaluate", lambda *a, **k: {"paired": {"gap_change": {"dll_per_race": -0.01}}, "arms": {}})
+    monkeypatch.setattr(F, "windowed_gap_change", lambda *a: {"dll_per_race": -0.01})
     assert F.evaluate(races, F.load_frozen())["verdict"] == "FAIL"
 
 
@@ -200,7 +224,7 @@ def _meeting(tmp_path):
 def test_uses_prerace_snapshot_rows(tmp_path):
     m = _meeting(tmp_path)
     cut = datetime(2026, 12, 1, 0, 30, tzinfo=timezone.utc)
-    races, info = F.collect_meeting(m, FakeCore(tmp_path / "20261201T090000+1100-x", cut - timedelta(hours=2), cut))
+    races, info = F.collect_meeting(m, FakeCore(tmp_path / "20261201T090000+1100-x", cut - timedelta(hours=2), cut), W)
     assert info["source"] == "snapshot" and len(races) == 1
     r = races[0]
     assert r["source"] == F.SOURCE_TAG and r["snapshot"].startswith("20261201")
@@ -209,14 +233,14 @@ def test_uses_prerace_snapshot_rows(tmp_path):
 
 def test_no_prerace_snapshot_means_no_rows(tmp_path):
     m = _meeting(tmp_path)
-    races, info = F.collect_meeting(m, FakeCore(None, None, None))
+    races, info = F.collect_meeting(m, FakeCore(None, None, None), W)
     assert races == [] and info["source"] == "no_snapshot"      # 唔退返去 meeting 目錄
 
 
 def test_snapshot_at_or_after_cutoff_is_rejected(tmp_path):
     m = _meeting(tmp_path)
     cut = datetime(2026, 12, 1, 0, 30, tzinfo=timezone.utc)
-    races, info = F.collect_meeting(m, FakeCore(tmp_path / "20261201T120000+1100-x", cut, cut))
+    races, info = F.collect_meeting(m, FakeCore(tmp_path / "20261201T120000+1100-x", cut, cut), W)
     assert races == [] and info["source"] == "no_snapshot"
 
 
@@ -235,13 +259,110 @@ def test_registered_in_forward_tracker():
     assert len(hit) == 1 and hit[0].kind == "status_file" and hit[0].status_file == "au-h1-forward-status.json"
 
 
-def test_tracker_follows_status_ready_flag(tmp_path):
+def test_tracker_ready_flag_only_for_marked_tests(tmp_path):
     import au_forward_tracker as T
-    test = T.ForwardTest("h1", "H1", F.EXPERIMENT_ID, "status_file", 1000, "場", "判", status_file="s.json")
-    (tmp_path / "s.json").write_text(json.dumps({"races_collected": 1500, "target_races": 1000, "ready": False}))
-    assert not T.progress(test, work_dir=tmp_path)["ready"]          # 場數夠但賽日未夠
-    (tmp_path / "s.json").write_text(json.dumps({"races_collected": 1500, "target_races": 1000, "ready": True}))
-    assert T.progress(test, work_dir=tmp_path)["ready"]
+    plain = T.ForwardTest("p", "P", "EXP-P", "status_file", 1000, "場", "判", status_file="s.json")
+    marked = T.ForwardTest("h1", "H1", F.EXPERIMENT_ID, "status_file", 1000, "場", "判", status_file="s.json",
+                           ready_from_status=True)
+
+    def w(d):
+        (tmp_path / "s.json").write_text(json.dumps(d))
+    w({"races_collected": 1500, "target_races": 1000, "ready": False})
+    assert T.progress(plain, work_dir=tmp_path)["ready"]              # 其他測試照舊睇場數
+    assert not T.progress(marked, work_dir=tmp_path)["ready"]         # 場數夠但賽日未夠
+    w({"races_collected": 10, "target_races": 1000, "ready": True})
+    assert not T.progress(plain, work_dir=tmp_path)["ready"]
+    assert T.progress(marked, work_dir=tmp_path)["ready"]
+    w({"races_collected": 1500, "target_races": 1000, "ready": "false"})   # 字串唔算
+    got = T.progress(marked, work_dir=tmp_path)
+    assert not got["ready"] and "boolean" in got["error"]
+    h1 = [t for t in T.FORWARD_TESTS if t.experiment == F.EXPERIMENT_ID][0]
+    assert h1.ready_from_status and not any(t.ready_from_status for t in T.FORWARD_TESTS if t is not h1)
+
+
+# ---------------------------------------------------------------- Sol 覆核 2026-11-25 追加
+
+class FieldCore(FakeCore):
+    """5 匹、試閘分唔同；賽果可以換（模擬一匹唔跑完）。"""
+
+    def __init__(self, results):
+        cut = datetime(2026, 12, 1, 0, 30, tzinfo=timezone.utc)
+        super().__init__(Path("/x/20261201T090000+1100-x"), cut - timedelta(hours=2), cut)
+        self.results = results
+
+    def load_structured_results(self, platform, path):
+        return {1: {"results": self.results, "scratched_horse_numbers": []}}
+
+    def load_prediction_rows(self, analysis_dir, platform):
+        return {1: [{"horse_no": i, "horse_name": f"H{i}", "ability_score": 60.0 + i,
+                     "factor_scores": {"trial_score": [60.0, 85.0, 70.0, 60.0, 90.0][i - 1],
+                                       "preparation_score": 50.0 + 3 * i}} for i in (1, 2, 3, 4, 5)]}
+
+
+def test_result_only_change_does_not_move_other_candidates(tmp_path):
+    m = _meeting(tmp_path)
+    all_finish = [{"horse_no": i, "placing": i, "odds": "5"} for i in (1, 2, 3, 4, 5)]
+    dnf5 = [dict(r, placing=0) if r["horse_no"] == 5 else r for r in all_finish]      # 5 號唔跑完
+    (a,), _ = F.collect_meeting(m, FieldCore(all_finish), W)
+    (b,), _ = F.collect_meeting(m, FieldCore(dnf5), W)
+    ca = {x["n"]: x["cand_ability"] for x in a["rows"]}
+    cb = {x["n"]: x["cand_ability"] for x in b["rows"]}
+    assert 5 in ca and 5 not in cb
+    assert all(cb[n] == ca[n] for n in cb)          # 其他馬嘅候選分一模一樣
+    wrong = [dict(x) for x in b["rows"]]             # 對照：喺有名次嘅馬入面先計 z（舊 bug）就會唔同
+    F.score_field(wrong, W)
+    assert any(abs(x["cand_ability"] - cb[x["n"]]) > 1e-9 for x in wrong)
+
+
+def test_verdict_locked_by_experiment_id(monkeypatch, _verdict_lock_in_tmp):
+    races = _races(F.START_DATE, F.TARGET_DAYS, 40)
+    monkeypatch.setattr(F, "evaluate", lambda rs, w, **k: {"verdict": "FAIL", "cutoff_date": "x"})
+    F.judge_once(races, W)
+    assert json.loads(_verdict_lock_in_tmp.read_text())["evaluation"]["verdict"] == "FAIL"
+    with pytest.raises(F.AlreadyJudged):
+        F.judge_once(races, W)
+    with pytest.raises(F.AlreadyJudged):
+        F.write_verdict_once({"verdict": "PASS"})
+    assert json.loads(_verdict_lock_in_tmp.read_text())["evaluation"]["verdict"] == "FAIL"   # 冇被覆蓋
+    assert [p.name for p in _verdict_lock_in_tmp.parent.iterdir()] == [_verdict_lock_in_tmp.name]   # 冇暫存檔
+
+
+def test_cli_cannot_rejudge_with_a_different_output_path(monkeypatch, tmp_path):
+    F.write_verdict_once({"verdict": "FAIL"})
+
+    def boom(*a, **k):
+        raise AssertionError("已判就唔准再 collect／evaluate")
+    monkeypatch.setattr(F, "collect", boom)
+    monkeypatch.setattr(F, "evaluate", boom)
+    other = tmp_path / "another" / "status.json"
+    assert F.main(["evaluate", "--output", str(other), "--data-root", str(tmp_path)]) == 0
+    st = json.loads(other.read_text())
+    assert st["evaluation"] == {"verdict": "FAIL"} and st["state"] == "evaluated" and st["ready"] is True
+
+
+def test_real_rulers_pair_races_and_score_only_forward(monkeypatch):
+    """真 au_logloss_ruler v2 同 market_ruler（細樣本）：配對、計分窗、校準只用之前賽日。"""
+    import au_logloss_ruler as L
+
+    monkeypatch.setattr(F, "TARGET_DAYS", 22)
+    monkeypatch.setattr(F, "TARGET_RACES", 100)
+    pre = _races("2026-10-20", 25, 6, seed=3)
+    fwd = _races(F.START_DATE, 24, 6, seed=4)
+    ev = F.evaluate(pre + fwd, W, nnull=5)
+    cutoff = fwd[22 * 6 - 1]["date"]
+    assert ev["cutoff_date"] == cutoff
+    assert ev["scored_days"] == [F.START_DATE, cutoff, 22]
+    rank = ev["ranking_ruler"]
+    assert rank["days"] == 22 and rank["races"] == 22 * 6            # 只計 forward
+    gap = ev["market_ruler"]["gap_change"]
+    assert gap["days"] == 22 and gap["races"] == 22 * 6
+    assert ev["market_ruler"]["common_races"] == len(pre) + 22 * 6   # 每場都配對到
+    # 校準只用之前賽日：倒轉嗰日（同之後）嘅賽果，嗰日嘅校準唔變
+    base = L.eligible(pre + fwd)
+    d = F.START_DATE
+    flipped = [dict(r, rows=[dict(x, pos=len(r["rows"]) + 1 - x["pos"]) for x in r["rows"]]) if r["date"] >= d else r
+               for r in base]
+    assert L.calibrations(base, "v2")[d] == L.calibrations(flipped, "v2")[d]
 
 
 def test_scheduler_step_wired_without_runlog_warn():

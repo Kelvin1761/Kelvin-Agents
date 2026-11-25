@@ -5,7 +5,7 @@
   power_precheck 3/3 PASS。**呢啲數字係 110 日 in-sample**，所以只可以喺凍結之後嘅新賽日確認，唔准喺同一批數據「證實」。
 - Script：`.agents/skills/au_racing/au_wong_choi_auto/scripts/au_h1_forward.py`（`status`／`evaluate`）；
   一次性 fit：`docs/experiments/patches/au_h1_forward/fit_frozen.py`；凍結參數：`docs/experiments/patches/au_h1_forward/frozen.json`
-- 測試：`.agents/skills/au_racing/au_wong_choi_auto/tests/test_au_h1_forward.py`（17 個）
+- 測試：`.agents/skills/au_racing/au_wong_choi_auto/tests/test_au_h1_forward.py`（26 個，連 tracker）
 
 ## 假設
 
@@ -49,6 +49,9 @@ fit（只做一次）：入頭三 logistic，同 `au_logloss_ruler` v2 校準同
 - 每個場次用 `unified_reflector_core.select_prerace_snapshot(meeting, "au")` —— 同覆盤、失手體檢、校準機率（`model_probability.py`，
   EXP-20261125-07）**同一個揀法**：悉尼時間賽日 **11:30 之前**最後一份已發佈快照；快照目錄經 `wongchoi_paths.prediction_snapshot_dir`
   （搬咗去外置碟都跟標記讀）。
+- **候選 z 喺成個賽前快照場計**（快照入面每一匹，未睇賽果），計好 `cand_ability` 先 join 賽果；退出／唔跑完嘅馬之後先剔走，
+  所以賽果唔會改到其他馬嘅候選分（Sol 覆核 2026-11-25；測試：一匹唔跑完，其他馬候選分逐位一樣）。快照場有任何一匹冇
+  ability／trial／prep 就成場唔要（賽前判斷）。
 - 讀快照入面 `Race_*_Auto_Scoring.csv`（`load_prediction_rows`）嘅 `ability_score`、`trial_score`、`preparation_score`。
   呢三個值係嗰日賽前 pipeline 寫低、manifest 有 sha256 嘅 append-only 快照，所以係**落注之前真係有**嘅資訊。
 - **冇賽前快照嘅場次唔用**（唔會退返去 meeting 目錄 —— 嗰份可能係賽後重評）；快照 `created_at ≥ cutoff` 亦剔走；
@@ -83,10 +86,17 @@ fit（只做一次）：入頭三 logistic，同 `au_logloss_ruler` v2 校準同
 
 1. 排名尺：`au_logloss_ruler.evaluate(base, cand, version="v2")`，只計 forward 賽日（Δlog-loss CI 上界 < 0、AUC 護欄、贏 95% null）。
 2. 市場尺：`market_ruler.evaluate(base, cand, price_key="sp", since="2026-08-05", score_window=(START_DATE, cutoff))`。
-3. **PASS = 排名尺 PASS 而且 `paired.gap_change` 點估計 ≤ 0**（唔准令同市場嘅差距變大）。
+3. **PASS = 排名尺 PASS 而且 `gap_change` 點估計 ≤ 0**（唔准令同市場嘅差距變大）。
+   ⚠️ `market_ruler.evaluate` 嘅 `score_window` 只遮咗 win／top3，**冇遮 `gap_to_market`**（2026-11-25 寫測試時發現：
+   細樣本 forward 22 日，佢嘅 gap_change 計咗 27 日 = 混埋 START_DATE 之前嘅 in-sample 場）。所以呢度用
+   `au_h1_forward.windowed_gap_change`：同一啲 ruler 函數（`prepare`／`gap_to_market`／`summarise`，同一個配對規則），
+   walk-forward 照用之前所有賽日 fit，但只計 START_DATE ≤ 日期 ≤ cutoff。ruler 原本嗰個數另存 `gap_change_ruler_unwindowed`（唔用嚟判）。
+   呢個 ruler 缺陷亦影響 HKJC dev／holdout 用 `score_window` 嘅 gap_change，要另外修（改把尺 = 獨立改動）。
 4. 另報（唔係閘）：市場尺 A（`candidate_has_info_beyond_market`，預期 false —— 市場已定價）、市場尺 B 配對判決（贏市場軌）、Gold／Good／AUC。
 
 - **PASS**：只係「值得考慮上線」。上唔上線係 Kelvin 決定；上線要另一個改動、過 `model-regression-gate`、更新 golden／data_contract／模型說明。
+- **判決鎖**：`<資料根>/WongChoiControl/forward_verdicts/EXP-20261125-11.json`，按實驗 ID、唯一位置，暫存檔 ＋ `os.link`
+  原子排他寫入。有咗就唔准再判 —— `--output` 指去第二個路徑都一樣（CLI 只會將鎖入面嘅判決抄落狀態檔）。
 - **FAIL**：照記錄（點樣失敗：邊個 check 唔過、數字），**唔准喺同一批數據換 β／換窗／換尺重試**。要再試就要新假設、新登記、新賽日。
 
 ## 接駁
@@ -95,9 +105,12 @@ fit（只做一次）：入頭三 logistic，同 `au_logloss_ruler` v2 校準同
   失敗只 `log` ＋ `runlog.step`，**唔 `runlog.warn`**（同 `step_calibration_shadow`，warning 會令 evening 變 partial）。
 - 狀態檔：`<WORK_DIR>/au-h1-forward-status.json`。盲：未判之前只有場數、賽日、快照來源、平均 |shift|（唔睇賽果），`outcomes_visible=false`。
   外置碟冇插（校準場次 offline）就 `blocked_offline`，聽晚再試，唔會用唔齊數據判。
-- 追蹤表：`au_forward_tracker.FORWARD_TESTS` 加咗 `h1_trial_prep`（`status_file`）。追蹤表而家會跟狀態檔自己嘅 `ready`
-  （要同時夠賽日同場數），第一次夠數推 Telegram，同時上 forward 總板。
+- 追蹤表：`au_forward_tracker.FORWARD_TESTS` 加咗 `h1_trial_prep`（`status_file`，`ready_from_status=True`）。只有標咗呢個 flag
+  嘅測試先跟狀態檔自己嘅 `ready`（要同時夠賽日同場數），而且一定要係真 boolean（字串 `"false"` = error、唔當夠數）；
+  其他測試照舊睇場數。第一次夠數推 Telegram，同時上 forward 總板。
 
 ## 狀態
 
 - 2026-11-25：凍結、登記。forward 0 場（未開始）。golden 不變（live 排名冇郁）。
+- 2026-11-25（Sol 覆核後，未有 forward 數據）：z 改喺賽前全場計、判決鎖按實驗 ID、配對／計分窗斷言、gap_change 自己按窗口計、
+  tracker `ready` 只限 H1。凍結 β／sha、開始日、目標、判法全部冇變。
