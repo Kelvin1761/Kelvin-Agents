@@ -414,10 +414,11 @@ def _cohorts(rows: list[dict], day: str, window: list[str], rng) -> list[dict]:
         for c in set(x["cohorts"]):
             if x["date"] == day:
                 today_c[c].append(x)
-            elif x.get("m_top3") is not None:
+            else:   # 模型殘差計晒；市場殘差只計有市場價嘅（NBA 好多腿冇雙邊去水價）
                 t = trail_c[c]
                 t["model"][x["date"]].append(x["hit3"] - x["p_top3"])
-                t["market"][x["date"]].append(x["hit3"] - x["m_top3"])
+                if x.get("m_top3") is not None:
+                    t["market"][x["date"]].append(x["hit3"] - x["m_top3"])
                 t["n"] += 1
     out = []
     for c, xs in today_c.items():
@@ -434,8 +435,10 @@ def _cohorts(rows: list[dict], day: str, window: list[str], rng) -> list[dict]:
             km = [v for d in t["market"].values() for v in d]
             entry.update(trail_model_resid_pp=round(100 * float(np.mean(mm)), 1),
                          trail_model_ci_pp=[round(100 * v, 1) for v in (_boot_ci(t["model"], rng) or [])] or None,
-                         trail_market_resid_pp=round(100 * float(np.mean(km)), 1),
-                         trail_market_ci_pp=[round(100 * v, 1) for v in (_boot_ci(t["market"], rng) or [])] or None)
+                         trail_market_n=len(km),
+                         trail_market_resid_pp=round(100 * float(np.mean(km)), 1) if km else None,
+                         trail_market_ci_pp=([round(100 * v, 1) for v in (_boot_ci(t["market"], rng) or [])] or None)
+                         if len(km) >= MIN_COHORT_N else None)
             entry["reading"] = _reading(entry)
         else:
             entry["reading"] = "跨日樣本唔夠，唔講"
@@ -452,7 +455,8 @@ def _reading(e: dict) -> str:
     if ci[0] > 0 or ci[1] < 0:
         same = (ci[0] > 0) == today_up
         mk = e.get("trail_market_ci_pp")
-        mkt = "；市場都偏差" if mk and (mk[0] > 0 or mk[1] < 0) else "；市場冇顯著偏差（市場啱、模型錯）"
+        mkt = ("；市場價樣本唔夠" if not mk else
+               "；市場都偏差" if (mk[0] > 0 or mk[1] < 0) else "；市場冇顯著偏差（市場啱、模型錯）")
         return ("跨日同方向" if same else "跨日方向相反（今晚係反常）") + mkt + "（描述，唔係判決）"
     return "今晚現象：跨日 CI 包 0"
 
@@ -558,11 +562,17 @@ def health(today: str | None = None) -> tuple[bool, list[str]]:
     today = today or Date.today().isoformat()
     cutoff = (Date.fromisoformat(today) - timedelta(days=1)).isoformat()
     ok, lines = True, []
-    for plat in ("au", "hkjc"):
+    for plat in ("au", "hkjc", "nba", "tennis"):
         files = sorted(output_dir(plat).glob("????-??-??.json"))
         last = files[-1].stem if files else None
         try:
-            days = sorted({m.name[:10] for m in M.meeting_list(plat, M.default_root(plat)) if m.name[:10] <= cutoff})
+            if plat in ("nba", "tennis"):   # NBA／網球（2026-11-26）：最近有已結算數據嘅日子
+                sys.path.insert(0, str(REPO / ".agents" / "skills" / "shared_wong_choi"))
+                import post_review_sports as S
+                latest = S.latest_settled(plat, cutoff)
+                days = [latest] if latest else []
+            else:
+                days = sorted({m.name[:10] for m in M.meeting_list(plat, M.default_root(plat)) if m.name[:10] <= cutoff})
         except Exception as exc:  # noqa: BLE001
             ok = False
             lines.append(f"{plat}：讀唔到賽日（{type(exc).__name__}）")
@@ -576,6 +586,8 @@ def health(today: str | None = None) -> tuple[bool, list[str]]:
             lines.append(f"{plat}：最近完賽 {want} 未有覆盤（最新 {last}）")
             continue
         rc = json.loads(files[-1].read_text(encoding="utf-8")).get("reconciliation") or {}
+        if plat in ("nba", "tennis"):
+            rc = {"ok": rc.get("ok", True), "missing_races": 0}
         if rc.get("ok") is False:
             ok = False
             lines.append(f"{plat}：{last} 覆盤核數有 {rc.get('missing_races')} 場用唔到")

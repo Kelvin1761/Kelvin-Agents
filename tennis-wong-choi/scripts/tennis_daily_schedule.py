@@ -274,6 +274,7 @@ def daily(today: date) -> None:
     except Exception as exc:  # noqa: BLE001
         log(f"forward 總板 skipped: {exc}")
     _dashboard_settlements(yesterday)
+    _post_review(yesterday)
     if run.results_extracted(review):
         _archive(yesterday)
     tomorrow = (today + timedelta(days=1)).isoformat()
@@ -286,6 +287,23 @@ def daily(today: date) -> None:
             log("Weekly review sent.")
         except Exception as exc:  # noqa: BLE001
             log(f"Weekly review skipped: {exc}")
+
+
+POST_REVIEW_SPORTS = PROJECT_DIR.parent / ".agents" / "skills" / "shared_wong_choi" / "post_review_sports.py"
+
+
+def _post_review(match_date: str) -> None:
+    """自動覆盤（自學循環 L1，2026-11-26）：`<WongChoiControl>/reviews/tennis/<日>.json/.md`＋content 摘要（每日一次）。
+    只描述唔改模型；失敗只寫 log。"""
+    if os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("WC_DISABLE_POST_REVIEW"):
+        return
+    try:
+        proc = subprocess.run([sys.executable, str(POST_REVIEW_SPORTS), "--domain", "tennis", "--date", match_date,
+                               "--telegram"], cwd=str(PROJECT_DIR.parent), capture_output=True, text=True,
+                              encoding="utf-8", errors="replace", timeout=600)
+        log(f"Post review: rc={proc.returncode} {((proc.stdout or '') + (proc.stderr or '')).strip()[-300:]}")
+    except Exception as exc:  # noqa: BLE001
+        log(f"WARNING: post review failed: {exc}")
 
 
 def _lowtier_corpus(match_date: str) -> None:
