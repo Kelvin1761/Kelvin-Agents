@@ -31,6 +31,8 @@ SCHEDULER_WRAPPERS = (
     ".agents/skills/hkjc_racing/hkjc_daily_auto/run_hkjc_daily_schedule.sh",
     ".agents/skills/nba/nba_daily_auto/run_nba_daily_schedule.sh",
     ".agents/skills/central_wong_choi/scripts/run_central_daily_maintenance.sh",
+    ".agents/skills/central_wong_choi/scripts/run_astra_audit.sh",
+    ".agents/skills/central_wong_choi/scripts/run_model_probe.sh",
     "tennis-wong-choi/scripts/run_tennis_daily_schedule.sh",
 )
 
