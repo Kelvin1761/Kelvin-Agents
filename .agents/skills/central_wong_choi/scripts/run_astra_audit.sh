@@ -13,5 +13,7 @@ export WONGCHOI_CONTROL_STATE_ROOT
 [ -f "$HOME/.wongchoi_notify.env" ] && source "$HOME/.wongchoi_notify.env"
 
 cd "$PROJECT_ROOT"
+# 開工前追上 origin/main（每個排程 wrapper 都要；失敗唔阻開工）
+/usr/bin/python3 "$PROJECT_ROOT/.agents/scripts/wongchoi_self_update.py" "$PROJECT_ROOT" || true
 print -r -- "== $(date '+%Y-%m-%d %H:%M:%S') Astra weekly audit"
 exec /usr/bin/python3 "$SCRIPT_DIR/astra_weekly_audit.py"
