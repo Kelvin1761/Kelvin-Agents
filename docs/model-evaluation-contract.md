@@ -35,7 +35,8 @@
 ### 方法（m1）
 - 市場機率 p_m = (1/收市價) 場內正規化。AU 有兩個價（`--price`）：`sp` = dump 每匹嘅賽果 SP（預設，任何 dump 都有）；
   `bsp` = Betfair BSP（`au_bsp.py`，記錄器＋公開 CSV；EXP-20261124-92）。BSP 較 sharp（每場獨贏 nll 低 0.018，約 8 SE），
-  配唔齊 BSP 嘅場剔走並報配對數。z = 場內標準化 ability。
+  配唔齊 BSP 嘅場剔走並報配對數。`early` = 賽日 10:30 前早更 Sportsbet 價（落注嗰刻；`au_early_prices.py`，EXP-20261125-05）。
+  z = 場內標準化 ability。
 - **獨贏（主）**：條件 logit 頭馬 s = α·log p_m + β·z，對淨市場 s = α·log p_m。
 - **入頭三（輔）**：logit P = c + α·logit q_m + β·z，q_m = Harville 由 p_m 推。
 - walk-forward：每 7 個賽日重 fit，只用之前賽日；頭 20 個賽日唔計分；AU 只用 2026-08-05 起乾淨語料。

@@ -376,7 +376,8 @@ def main(argv=None):
     ap.add_argument("--platform", required=True, choices=["au", "hkjc"])
     ap.add_argument("base")
     ap.add_argument("cand", nargs="?")
-    ap.add_argument("--price", choices=["sp", "bsp"], default="sp")
+    ap.add_argument("--price", choices=["sp", "bsp", "early"], default="sp",
+                    help="AU：sp＝收市 SP；bsp＝Betfair BSP；early＝賽日 10:30 前早更 Sportsbet 價（落注嗰刻，EXP-20261125-05）")
     ap.add_argument("--window", choices=sorted(HKJC_WINDOWS), help="HKJC：只計呢個窗（KEEP 判決用 dev；holdout 只做確認）")
     ap.add_argument("--out")
     a = ap.parse_args(argv)
@@ -384,6 +385,16 @@ def main(argv=None):
     cand = _load(a.cand, a.platform) if a.cand else None
     since = SINCE.get(a.platform)
     match = None
+    if a.price == "early":
+        if a.platform != "au":
+            ap.error("--price early 只係 AU 用")
+        base = [r for r in base if not since or r["date"] >= since]
+        cand = None if cand is None else [r for r in cand if not since or r["date"] >= since]
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "au_racing" / "au_wong_choi_auto" / "scripts"))
+        import au_early_prices
+        index = au_early_prices.odds_index()
+        match = [au_early_prices.attach(rs, index) for rs in (base, cand) if rs is not None]
+        print(f"早更價配對：{match}")
     if a.price == "bsp":
         base = [r for r in base if not since or r["date"] >= since]
         cand = None if cand is None else [r for r in cand if not since or r["date"] >= since]
