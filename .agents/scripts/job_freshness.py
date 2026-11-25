@@ -7,6 +7,10 @@
 規則（`健康.sh`「自動化排程」用）：
   * 有登記嘅 job：輸出新鮮 → ✅（退出碼非 0 就註明「已自癒」）；輸出過期 → ❌（唔理退出碼）。
   * 冇登記（冇可靠每次都寫嘅檔，例如 hkjc live、開機 job）→ 照舊睇退出碼。
+  * 從未寫過輸出、而 plist 裝咗未夠最大年齡 → ✅「新裝、未到第一次排程」（2026-11-26：astra-audit
+    11-25 裝、每週一先跑，被報 ❌）。一有輸出、或者 plist 舊過最大年齡，就照舊判。
+  * 最新 manifest 係 blocked、而 run 自己報 skipped_locked → ⚠️「撞鎖跳過」（下一轉會做返）；
+    其他 failed／partial／blocked 照舊 ❌。
 對照表由逐個 plist 追到 Python 入口查出嚟（2026-11-25），每項嘅最大年齡 = 排程最長間隔＋run 時間＋餘量。
 
     python3 job_freshness.py            # 印表
@@ -22,6 +26,7 @@ import time
 from pathlib import Path
 
 HOME = Path.home()
+PLIST_DIR = HOME / "Library" / "LaunchAgents"
 CP = HOME / "WongChoiData" / "WongChoiControl" / "runs"
 SCHED = Path(os.environ.get("WC_SCHEDULER_ROOT", "/Users/imac/wongchoi-scheduler"))
 AUD = SCHED / ".agents/skills/au_racing/au_daily_auto"
@@ -113,29 +118,66 @@ def run_state(path: str) -> str | None:
     return str(v) if v else None
 
 
-def check(label: str, now: float | None = None) -> dict:
+def skipped_locked(path: str) -> bool:
+    """control-plane manifest：有 operation（或佢嘅 source_payload）報 skipped_locked。"""
+    if not path.endswith(".json"):
+        return False
+    try:
+        d = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    ops = d.get("operations") if isinstance(d, dict) else None
+    for op in ops if isinstance(ops, list) else []:
+        if not isinstance(op, dict):
+            continue
+        payload = (op.get("detail") or {}).get("source_payload") if isinstance(op.get("detail"), dict) else None
+        if op.get("status") == "skipped_locked" or (isinstance(payload, dict) and payload.get("status") == "skipped_locked"):
+            return True
+    return False
+
+
+def plist_age_hours(label: str, now: float, plist_dir: Path | None = None) -> float | None:
+    p = Path(plist_dir or PLIST_DIR) / f"com.antigravity.{label}.plist"
+    try:
+        return (now - p.stat().st_mtime) / 3600
+    except OSError:
+        return None
+
+
+def check(label: str, now: float | None = None, plist_dir: Path | None = None) -> dict:
     now = time.time() if now is None else now
     if label not in REGISTRY:
         return {"label": label, "registered": False, "reason": UNREGISTERED_REASON.get(label, "未登記")}
     patterns, max_age = REGISTRY[label]
     hit = newest(patterns)
     age = None if hit is None else (now - hit[0]) / 3600
+    pending = False
+    if hit is None:
+        installed = plist_age_hours(label, now, plist_dir)
+        pending = installed is not None and installed <= max_age
     return {"label": label, "registered": True, "max_age_hours": max_age,
             "age_hours": None if age is None else round(age, 2),
             "fresh": age is not None and age <= max_age,
-            "state": run_state(hit[1]) if hit else None}
+            "pending_first_run": pending,
+            "state": run_state(hit[1]) if hit else None,
+            "skipped_locked": bool(hit) and skipped_locked(hit[1])}
 
 
-def classify(label: str, exit_code: int | None, now: float | None = None) -> tuple[str, str]:
+def classify(label: str, exit_code: int | None, now: float | None = None,
+             plist_dir: Path | None = None) -> tuple[str, str]:
     """→ (等級 ok|warn|bad, 訊息)。健康.sh 用。"""
-    c = check(label, now)
+    c = check(label, now, plist_dir)
     if not c["registered"]:
         if exit_code in (None, 0):
             return "ok", label
         return "warn", f"{label} 上次退出碼 {exit_code}（{c['reason']}，冇輸出可以核對）"
     age = "從未寫過" if c["age_hours"] is None else f"{c['age_hours']:.1f} 鐘前"
+    if c.get("pending_first_run"):
+        return "ok", f"{label}（新裝、未到第一次排程；退出碼 {exit_code}）"
     if not c["fresh"]:
         return "bad", f"{label} 輸出過期：最新 {age}（上限 {c['max_age_hours']:g} 鐘；退出碼 {exit_code}）"
+    if (c.get("state") or "").lower() == "blocked" and c.get("skipped_locked"):
+        return "warn", f"{label} 最新 run 撞鎖跳過（{age}；另一個 run 揸住鎖，下一轉會做返）"
     if (c.get("state") or "").lower() in FAILED_STATES:
         # 新鮮但最新一次 run 自己寫住失敗 —— 有跑唔等於有做到（例：research-review 11-21 起每日 failed）
         return "bad", f"{label} 最新 run 狀態 {c['state']}（{age}；退出碼 {exit_code}）"
@@ -162,7 +204,9 @@ def main(argv=None) -> int:
         print(json.dumps(rows, ensure_ascii=False, indent=1))
     else:
         for r in rows:
-            mark = "✅" if r["fresh"] and (r["state"] or "").lower() not in FAILED_STATES else "❌"
+            mark = ("🆕" if r.get("pending_first_run") else
+                    "⚠️" if r["fresh"] and (r["state"] or "").lower() == "blocked" and r.get("skipped_locked") else
+                    "✅" if r["fresh"] and (r["state"] or "").lower() not in FAILED_STATES else "❌")
             print(f"{mark} {r['label']:38s} {r['age_hours']} / {r['max_age_hours']} 鐘  {r['state'] or ''}")
     return 0
 

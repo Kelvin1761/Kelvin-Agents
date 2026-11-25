@@ -15,6 +15,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time as _time
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from typing import Any
@@ -2068,6 +2069,32 @@ def run_startup(log: RunLog) -> str:
     )
 
 
+# 19:00 warmup 撞正 15 分鐘 postgame 揸住鎖就即刻 skipped_locked（11-22、11-23、11-26）。
+# 淨係 warmup 有界等待；production／final_refresh／postgame 照舊一撞就跳，唔會被拖慢。
+WARMUP_LOCK_WAIT_SECONDS = 600
+WARMUP_LOCK_POLL_SECONDS = 15
+
+
+def acquire_lock(fd: int, wait_seconds: float = 0, poll_seconds: float = WARMUP_LOCK_POLL_SECONDS,
+                 *, sleep=_time.sleep, clock=_time.monotonic) -> bool:
+    """攞排他鎖；wait_seconds=0 = 試一次。等夠時限仍然攞唔到 → False。"""
+    deadline = clock() + max(0.0, wait_seconds)
+    while True:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return True
+        except BlockingIOError:
+            remaining = deadline - clock()
+            if remaining <= 0:
+                return False
+            sleep(min(poll_seconds, remaining))
+
+
+def lock_wait_seconds(mode: str, freshness_role: str) -> float:
+    """只有明寫 `--freshness-role warmup` 嘅 pregame（19:00 plist）先等。"""
+    return WARMUP_LOCK_WAIT_SECONDS if mode == "pregame" and freshness_role == "warmup" else 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="NBA Wong Choi daily automation")
     parser.add_argument(
@@ -2106,11 +2133,13 @@ def main() -> int:
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     lock_path = STATE_DIR / "nba_daily_schedule.lock"
     with lock_path.open("a", encoding="utf-8") as lock:
-        try:
-            fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError:
-            print(json.dumps({"status": "skipped_locked", "mode": args.mode, "target_date": target_date}))
+        wait = lock_wait_seconds(args.mode, args.freshness_role)
+        if not acquire_lock(lock.fileno(), wait):
+            print(json.dumps({"status": "skipped_locked", "mode": args.mode, "target_date": target_date,
+                              **({"waited_seconds": wait} if wait else {})}))
             return 0 if args.mode != "mark-no-prediction" else TEMPORARY_FAILURE
+        if wait:
+            now = now_sydney()  # 可能等咗幾分鐘；新鮮度用真正開工嗰刻
 
         if args.mode == "mark-no-prediction":
             # A manual audit action: no RunLog/Telegram, the marker is the record.

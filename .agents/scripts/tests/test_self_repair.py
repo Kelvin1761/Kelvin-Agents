@@ -353,6 +353,26 @@ class SelfRepairTests(unittest.TestCase):
             self.assertEqual(spec["ProgramArguments"], ["/bin/zsh", "/s/run_self_repair.sh", *extra])
             self.assertEqual(spec["StartInterval"], 1800)
 
+    def test_pending_first_run_is_skipped_not_unknown(self):
+        label = "central-wong-choi.astra-audit"
+        fake = FakeSystem(self.tmp, {label: loaded()})
+        self.fresh[label] = {"fresh": False, "age_hours": None, "max_age_hours": 172,
+                             "pending_first_run": True, "state": None}
+        report = self.make(fake).run()
+        self.assertFalse(report.unknown)
+        self.assertFalse(self.kinds(fake, "kickstart"))
+        self.assertIn("新裝、未到第一次排程", [s["reason"] for s in report.skipped if s["label"] == label])
+        self.assertFalse(list((self.control).rglob("*bundle*")))
+
+    def test_skipped_locked_is_skipped_not_unknown(self):
+        label = "nba-wong-choi.warmup"
+        fake = FakeSystem(self.tmp, {label: loaded()})
+        self.fresh[label] = {"fresh": True, "state": "blocked", "skipped_locked": True}
+        report = self.make(fake).run()
+        self.assertFalse(report.unknown)
+        self.fresh[label] = {"fresh": True, "state": "blocked", "skipped_locked": False}
+        self.assertEqual(self.make(fake).run().unknown[0]["label"], label)
+
     def test_freshness_registry_accepts_live_or_dryrun_latest(self):
         patterns = job_freshness.REGISTRY["central-wong-choi.self-repair"][0]
         self.assertEqual(sorted(Path(p).name for p in patterns), ["latest-dryrun.json", "latest.json"])
