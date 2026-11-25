@@ -14,6 +14,8 @@
   表由 `au_people_prize_table.py` 每晚建（`<資料根>/AU_People_Prize.json`），只用賽日之前嘅快照。`WC_AU_PEOPLE_PRIZE_LIVE=0` 回退。
   表由 `au_trainer_residual_table.py` 每晚重建（`<資料根>/AU_Trainer_Residual.json`），每個練馬師存**逐日累積**，
   引擎只攞**賽日之前**最近一筆 —— 重評分舊場次都唔會前視。冇表／冇紀錄 = 0。
+  **版本化＋自動回退（EXP-20261125-08）**：每晚重建另存一份版本檔，引擎經 `AU_Trainer_Residual.active.json`
+  （版本 id＋sha256）讀；冇指針就照舊讀 live 檔。回退 = 指針指返上一版（`au_residual_versions.py`）。
 """
 from __future__ import annotations
 
@@ -95,9 +97,45 @@ def _data_root() -> Path:
     return Path(marker.read_text().strip()) if marker.exists() else repo / "data"
 
 
-def default_table_path() -> Path:
+def live_table_path() -> Path:
+    """每晚重建直接寫嘅「live」檔（EXP-20261125-08 之前引擎只讀呢個）。"""
     override = os.environ.get("WC_AU_TRAINER_RESIDUAL_TABLE")
     return Path(override) if override else _data_root() / TABLE_NAME
+
+
+def pointer_path(live: Path | None = None) -> Path:
+    """版本指針（EXP-20261125-08）：`AU_Trainer_Residual.active.json`，同 live 檔同一個資料夾。"""
+    live = Path(live) if live else live_table_path()
+    return live.with_name(live.stem + ".active.json")
+
+
+@lru_cache(maxsize=8)
+def _resolve_pointer(pointer: str, mtime_ns: int) -> str | None:
+    """指針 → 已驗 sha256 嘅版本檔；任何唔對（壞 JSON、檔唔見、sha 唔啱）→ None（即讀返 live 檔）。
+    版本檔寫咗就唔會改，所以按指針 mtime cache 就夠。"""
+    import hashlib
+    try:
+        ptr = json.loads(Path(pointer).read_text(encoding="utf-8"))
+        target = Path(pointer).parent / str(ptr["file"])
+        if hashlib.sha256(target.read_bytes()).hexdigest() != ptr["sha256"]:
+            return None
+        return str(target)
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
+def default_table_path() -> Path:
+    """引擎讀嘅表：有 `WC_AU_TRAINER_RESIDUAL_TABLE` → 照用（測試／研究）；否則有效版本指針 → 指住嘅版本檔；
+    冇指針或者指針壞咗 → live 檔（同 EXP-20261125-08 之前一模一樣）。"""
+    if os.environ.get("WC_AU_TRAINER_RESIDUAL_TABLE"):
+        return live_table_path()
+    live = live_table_path()
+    ptr = pointer_path(live)
+    try:
+        resolved = _resolve_pointer(str(ptr), ptr.stat().st_mtime_ns)
+    except OSError:
+        return live
+    return Path(resolved) if resolved else live
 
 
 def default_prize_table_path() -> Path:

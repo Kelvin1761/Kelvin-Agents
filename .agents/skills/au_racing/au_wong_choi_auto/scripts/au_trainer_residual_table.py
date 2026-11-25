@@ -27,7 +27,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 sys.path.insert(0, str(SCRIPT_DIR.parents[2] / "shared_racing"))
 sys.path.insert(0, str(SCRIPT_DIR.parents[2] / "shared_racing" / "scripts"))
 
-from au_racing_engine.people_overlays import TRAINER_BETA, TRAINER_K, default_table_path, norm  # noqa: E402
+from au_racing_engine.people_overlays import TRAINER_BETA, TRAINER_K, live_table_path, norm  # noqa: E402
 
 
 def collect(root):
@@ -64,7 +64,10 @@ def collect(root):
                            - float(auto.get("trainer_residual_feature") or 0.0)
                            - float(auto.get("people_prize_feature") or 0.0)
                            - float(auto.get("people_prize_leaf_delta") or 0.0))
-                rows.append({"ability": ability, "pos": int(result["pos"]), "trainer": norm(horse.get("trainer"))})
+                # live／tres 只畀 shadow 比較用（au_residual_shadow，EXP-20261125-08）；build() 唔讀，表內容唔變
+                rows.append({"ability": ability, "pos": int(result["pos"]), "trainer": norm(horse.get("trainer")),
+                             "live": float(auto["ability_score"]),
+                             "tres": float(auto.get("trainer_residual_feature") or 0.0)})
             if rows:
                 races.append({"meeting": meeting_dir.name, "date": date, "race": race_no, "rows": rows})
     return races
@@ -102,18 +105,25 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--data-root", default=None)
     ap.add_argument("--output", default=None)
+    ap.add_argument("--no-version", action="store_true",
+                    help="唔另存版本、唔郁指針（預設：寫 live 檔時一齊版本化，EXP-20261125-08）")
     args = ap.parse_args(argv)
     from au_archive_calibrator import ARCHIVE_ROOT
 
     races = collect(Path(args.data_root) if args.data_root else ARCHIVE_ROOT)
     table, as_of = build(races)
-    out = Path(args.output) if args.output else default_table_path()
+    out = Path(args.output) if args.output else live_table_path()
     payload = {"experiment": "EXP-20261122-02", "built_at": datetime.now(timezone.utc).isoformat(), "as_of": as_of,
                "k": TRAINER_K, "beta": TRAINER_BETA, "races": len(races), "trainers": table}
     tmp = out.with_suffix(".tmp")
     tmp.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
     tmp.replace(out)
-    print(json.dumps({"as_of": as_of, "races": len(races), "trainers": len(table), "output": str(out)}, ensure_ascii=False))
+    summary = {"as_of": as_of, "races": len(races), "trainers": len(table), "output": str(out)}
+    if not args.no_version and not args.output:
+        # 版本化（EXP-20261125-08）：同一堆 bytes 另存一份，指針指住佢；回退由 au_residual_shadow 做。
+        import au_residual_versions as versions
+        summary["version"] = versions.commit(out, out.read_bytes(), as_of=as_of)
+    print(json.dumps(summary, ensure_ascii=False))
 
 
 if __name__ == "__main__":
