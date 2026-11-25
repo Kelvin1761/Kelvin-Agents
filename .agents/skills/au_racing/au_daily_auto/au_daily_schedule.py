@@ -115,6 +115,7 @@ AGE_UPNIL_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_age_upnil_f
 PR1_SHADOW_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_pr1_shadow_forward.py"
 FQ_FLOOR_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_fq_floor_forward.py"
 SPEED_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_speed_forward.py"
+H1_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_h1_forward.py"
 TRAINER_RESIDUAL_TABLE = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_trainer_residual_table.py"
 TRAINER_RESIDUAL_SHADOW = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_residual_shadow.py"
 PEOPLE_PRIZE_TABLE = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_people_prize_table.py"
@@ -1764,6 +1765,38 @@ def step_speed_forward(runlog: RunLog) -> bool:
         return True
     except Exception as exc:  # noqa: BLE001 — forward 監察點都唔可以截停晚更
         runlog.step("speed-forward", "failed", detail=f"{type(exc).__name__}: {exc}")
+        return False
+
+
+def step_h1_forward(runlog: RunLog) -> bool:
+    """EXP-20261125-11 預先登記 forward（shadow）：H1 試閘＋備戰分加重，w 凍結（frozen.json sha256）。
+    每晚 `status`（盲：只報數量）；第一次同時夠 30 賽日＋1,000 場就 `evaluate` 一次（m3 追市場軌）並凍結。
+    唔郁排名、永遠唔會自動改模型。失敗只 log＋runlog.step，唔 runlog.warn（warning 會令 evening 變 partial，
+    同 step_calibration_shadow 一樣）。"""
+    status_path = WORK_DIR / "au-h1-forward-status.json"
+    try:
+        status = json.loads(status_path.read_text(encoding="utf-8")) if status_path.exists() else {}
+        if status.get("evaluation"):
+            runlog.step("h1-forward", "evaluated", races=status.get("races_collected", 0),
+                        verdict=(status.get("evaluation") or {}).get("verdict"))
+            return True
+        for command in ("status", "evaluate"):
+            rc, out = run_cmd([sys.executable, str(H1_FORWARD), command, "--data-root", str(AU_RACING),
+                               "--output", str(status_path)], timeout=3600)
+            if rc != 0 or not status_path.exists():
+                detail = error_excerpt(out, rc)
+                log(f"⚠️  H1 試閘＋備戰 forward {command} 失敗（唔影響 live）：{detail}")
+                runlog.step("h1-forward", "failed", detail=detail, command=command)
+                return False
+            status = json.loads(status_path.read_text(encoding="utf-8"))
+            if not status.get("ready"):
+                break
+        runlog.step("h1-forward", status.get("state", "unknown"), races=status.get("races_collected", 0),
+                    days=status.get("race_days", 0), target=status.get("target_races"))
+        return True
+    except Exception as exc:  # noqa: BLE001 — forward 監察點都唔可以截停晚更
+        log(f"⚠️  H1 試閘＋備戰 forward 失敗（唔影響 live）：{type(exc).__name__}: {exc}")
+        runlog.step("h1-forward", "failed", detail=f"{type(exc).__name__}: {exc}")
         return False
 
 
@@ -4713,6 +4746,7 @@ def run_evening(runlog: RunLog, args, review_day: date) -> int:
         step_pr1_shadow_forward(runlog)
         step_fq_floor_forward(runlog)
         step_speed_forward(runlog)
+        step_h1_forward(runlog)
         step_sb_betfair_forward(runlog)
         step_forward_tracker(runlog)
         step_calibration_shadow(runlog)

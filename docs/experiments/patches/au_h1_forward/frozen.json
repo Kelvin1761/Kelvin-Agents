@@ -1,0 +1,35 @@
+{
+ "experiment": "EXP-20261125-11",
+ "hypothesis": "H1（EXP-20261125-06）：試閘＋備戰分喺 ability 入面份量太細",
+ "candidate": "ability + w_trial*z(trial_score) + w_prep*z(preparation_score)；z = 場內母體標準化，SD<1e-9 → 0",
+ "fit": {
+  "source": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/au-debut-trainer-20261124/BASE.json",
+  "source_sha256": "86c01ecbe46172ccbf295f8cca11b80b26399752a17073821722f2818c5b7179",
+  "since": "2026-08-05",
+  "until": "2026-11-25",
+  "races": 4260,
+  "runners": 40938,
+  "days": 110,
+  "shape": "logit P(top3) = a + α·(ability−場均) + γ·log(3/max(N−3,1e-9)) + β_t·z_t + β_p·z_p",
+  "a": -0.008906560759951953,
+  "alpha": 0.08193226734169526,
+  "gamma": 1.1264566755100243,
+  "beta_trial": 0.06502645280346561,
+  "beta_prep": 0.1102338619477519,
+  "reference_without_z": {
+   "a": -0.008907510858619785,
+   "alpha": 0.08502112591495838,
+   "gamma": 1.1243430671190993
+  },
+  "in_sample_logloss": {
+   "without_z": 0.5518930964875333,
+   "with_z": 0.5504013638693026,
+   "note": "in-sample，只供參考；唔係證據"
+  }
+ },
+ "weights": {
+  "trial_score": 0.793661092427424,
+  "preparation_score": 1.3454267228810592
+ },
+ "unit": "ability 分 / 場內 SD"
+}

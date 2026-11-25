@@ -32,6 +32,7 @@ class ForwardTest:
     unit: str            # 場 | 賽日
     action: str          # 夠數之後要做乜
     status_file: str = ""
+    ready_from_status: bool = False   # True = 跟狀態檔自己嘅 boolean `ready`（只限要同時夠賽日＋場數嘅測試）
 
 
 FORWARD_TESTS: tuple[ForwardTest, ...] = (
@@ -107,6 +108,11 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 "長開監察：每個改寫版本 3 個 7 賽日窗口；CI 下界 >0 或連續 3 個點估計 >0 = 自動回退指針並鎖定（另推 Telegram）；"
                 "睇 au-trainer-residual-shadow-status.json，鎖咗要你查成因後 `au_residual_versions.py unpin`",
                 status_file="au-trainer-residual-shadow-status.json"),
+    ForwardTest("h1_trial_prep", "H1 試閘＋備戰分加重（w 凍結 0.79／1.35 分每 SD，shadow 唔郁排名）",
+                "EXP-20261125-11", "status_file", 1000, "場",
+                "要同時夠 30 個賽日同 1,000 場；scheduler 夠數會自動判一次（m3 追市場軌：log-loss 尺 v2 PASS＋"
+                "市場尺 gap_change ≤ 0）並凍結；睇 au-h1-forward-status.json，PASS 先由你決定上唔上線（要另一個改動）",
+                status_file="au-h1-forward-status.json", ready_from_status=True),
 )
 
 _S2_DAYS = re.compile(r"forward days with snapshot \+ results:\s*(\d+)\s*/\s*(\d+)")
@@ -132,7 +138,16 @@ def progress(test: ForwardTest, *, work_dir: Path, run: Callable = _default_run)
         out["minimum"] = int((status.get("config") or {}).get("target_races")
                              or status.get("target_races") or test.minimum)
         out["done"] = bool(status.get("outcomes_visible") or status.get("evaluation"))
-        out["ready"] = out["done"] or out["count"] >= out["minimum"]
+        enough = out["count"] >= out["minimum"]
+        if test.ready_from_status:
+            # 只限明確標咗嘅測試（EXP-20261125-11：要同時夠賽日同場數），而且一定要係真 boolean
+            flag = status.get("ready")
+            if not isinstance(flag, bool):
+                out["error"] = f"{path.name}: ready 唔係 boolean（{flag!r}）"
+                out["ready"] = False
+                return out
+            enough = flag
+        out["ready"] = out["done"] or enough
         return out
     if test.kind == "s2_status":
         rc, text = run([sys.executable, str(REPO / "scratch" / "au_s2_forward_shadow_20261016.py"), "status"])
