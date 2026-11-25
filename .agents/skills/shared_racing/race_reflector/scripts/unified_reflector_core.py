@@ -524,9 +524,24 @@ def load_structured_results(platform: str, results_file: Path) -> dict[int, dict
             except (TypeError, ValueError):
                 continue
             rows = []
+            scratched_names = []
+            scratched_numbers_hk = []
             for row in race_data.get("results", []):
+                pos_text = str(row.get("pos") or "").strip()
+                # HKJC 賽果頁退出馬（賽前／入閘後著令退出）嗰行：名次空白、WV／WV-A／WX…（馬號可能空白）。
+                # 以前呢行靜靜 skip，退出咗嘅模型首選照計落「頭三」（2026-11-22 沙田 R3 滿利時入閘後退出 → 記做 Pass）。
+                # 拉停／墮馬／未完成（PU／UR／FE／DNF）有起步，照當出賽、唔入位。
+                if not pos_text or pos_text.upper().startswith("W") or pos_text in ("退出", "---"):
+                    name = re.sub(r"\s*\([A-Z]\d+\)\s*$", "", str(row.get("horse_name") or "")).strip()
+                    if name:
+                        scratched_names.append(name)
+                    if str(row.get("horse_no") or "").strip().isdigit():
+                        scratched_numbers_hk.append(int(row["horse_no"]))
+                    continue
+                # 平頭馬係「3 平頭馬」（或舊格式 3DH）：攞開頭數字。以前 int() 失敗成行丟走，平頭入位嘅馬唔計入實際頭三。
+                lead = re.match(r"\d+", pos_text)
                 try:
-                    placing = int(str(row.get("pos", "99")).replace("DH", "").strip() or 99)
+                    placing = int(lead.group()) if lead else 99
                     horse_no = int(row.get("horse_no") or 0)
                 except (TypeError, ValueError):
                     continue
@@ -551,6 +566,8 @@ def load_structured_results(platform: str, results_file: Path) -> dict[int, dict
                 },
                 "incident_report": str(race_data.get("incident_report") or "").strip(),
                 "results": rows,
+                "scratched_horse_names": scratched_names,
+                "scratched_horse_numbers": scratched_numbers_hk,
             }
         return results
 
@@ -596,6 +613,19 @@ def _to_float(value: Any) -> float | None:
         return float(value)
     except (TypeError, ValueError):
         return None
+
+
+def scratched_numbers(race_result: dict[str, Any], prediction_list: list[dict[str, Any]]) -> set[int]:
+    """退出馬嘅馬號：AU 賽果直接有；HKJC 賽果頁退出馬冇馬號，用馬名對返預測檔。"""
+    numbers = set(race_result.get("scratched_horse_numbers") or [])
+    names = set(race_result.get("scratched_horse_names") or [])
+    if names:
+        by_name: dict[str, list[int]] = defaultdict(list)
+        for row in prediction_list:
+            by_name[str(row.get("horse_name") or "").strip()].append(row["horse_no"])
+        # 只接受唯一配對（HKJC 同場唔會同名；萬一有就唔估）
+        numbers |= {nums[0] for name, nums in by_name.items() if name in names and len(nums) == 1}
+    return numbers
 
 
 def load_prediction_rows(meeting_dir: Path, platform: str) -> dict[int, list[dict[str, Any]]]:
@@ -905,9 +935,7 @@ def build_race_performances(
         actual_top3 = actual_rows[:3]
         prediction_list = prediction_rows.get(race_num, [])
         prediction_map = {row["horse_no"]: row for row in prediction_list}
-        scratched_horse_numbers = set(
-            structured_results.get(race_num, {}).get("scratched_horse_numbers", [])
-        )
+        scratched_horse_numbers = scratched_numbers(structured_results.get(race_num, {}), prediction_list)
         if scratched_horse_numbers and prediction_list:
             prediction_list = [
                 dict(row)

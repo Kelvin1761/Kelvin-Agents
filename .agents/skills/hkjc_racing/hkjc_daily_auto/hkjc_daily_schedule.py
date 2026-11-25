@@ -1344,11 +1344,21 @@ def live_results_prefix(meeting_date: date) -> dict:
         captured = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return {}
+    try:
+        progress = json.loads(path.with_name(f"{meeting_date.isoformat()}.state.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        progress = {}
     prefix = {}
     race = 1
     # A provisional top four (no running positions) is for the dashboard only.
-    while isinstance(captured, dict) and str(race) in captured and not captured[str(race)].get("provisional"):
-        prefix[str(race)] = captured[str(race)]
+    # A race the live poller gave up on (cancelled, e.g. 2026-11-14 Sha Tin R6) is skipped, not the end of the day:
+    # before, one cancelled race froze the intraday shadow for every race after it (EXP-20261120-01).
+    while isinstance(captured, dict) and race <= 14:
+        row = captured.get(str(race))
+        if row and not row.get("provisional"):
+            prefix[str(race)] = row
+        elif not (row is None and (progress.get(str(race)) or {}).get("gave_up")):
+            break
         race += 1
     return prefix
 

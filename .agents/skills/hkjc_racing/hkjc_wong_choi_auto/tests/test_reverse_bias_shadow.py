@@ -152,3 +152,11 @@ def test_settlement_uses_latest_pre_target_shadow_and_updates_ledger(tmp_path: P
     assert ledger["summary"]["candidate_gold_rate"] == 1.0
     assert ledger["summary"]["status"] == "collecting"
     assert ledger["summary"]["auto_promotion"] is False
+
+
+def test_cancelled_race_is_skipped_and_later_finished_races_are_not_targets():
+    """2026-11-14 沙田 R6 取消：已跑完嘅 R7 唔可以變返「未跑目標」，取消場唔係終點。"""
+    logic = {r: {} for r in range(1, 10)}
+    results = {r: {} for r in (1, 2, 3, 4, 5, 7)}
+    prefix = shadow.completed_prefix(results, logic)
+    assert prefix == [1, 2, 3, 4, 5, 7] and shadow.last_completed(prefix) == 7

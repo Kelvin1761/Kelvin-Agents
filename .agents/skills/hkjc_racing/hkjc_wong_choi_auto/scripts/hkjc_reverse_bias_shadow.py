@@ -126,12 +126,16 @@ def load_results(path: Path) -> dict[int, dict]:
 
 
 def completed_prefix(results: dict[int, dict], logic: dict[int, dict]) -> list[int]:
-    prefix = []
-    for race_no in range(1, max(logic, default=0) + 1):
-        if race_no not in results or race_no not in logic:
-            break
-        prefix.append(race_no)
-    return prefix
+    """已跑場次 = 最後一場有賽果嘅場次之前（含）、有賽果又有分析嘅場次。
+
+    中間冇賽果嘅場次（取消，例如 2026-11-14 沙田 R6）跳過，唔再係終點 —— 以前一停就成日冇 shadow，
+    而且如果之後嘅場次有賽果，佢哋唔可以變返「未跑目標」（賽後先做嘅賽前決定）。"""
+    last = max((race_no for race_no in results if race_no in logic), default=0)
+    return [race_no for race_no in sorted(logic) if race_no <= last and race_no in results]
+
+
+def last_completed(prefix: list[int]) -> int:
+    return max(prefix, default=0)
 
 
 def _top3_observations(race: dict) -> tuple[list[float], list[float]]:
@@ -284,7 +288,7 @@ def build_snapshot(meeting_dir: Path, results_path: Path) -> dict:
     prefix = completed_prefix(results, logic)
     targets = []
     for race_no in sorted(logic):
-        if race_no in prefix:
+        if race_no <= last_completed(prefix):      # 已跑或已取消，唔做目標
             continue
         bias = prior_bias(
             target_race=race_no,
