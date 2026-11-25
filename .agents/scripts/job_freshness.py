@@ -69,6 +69,9 @@ REGISTRY: dict[str, tuple[list[str], float]] = {
     # 每日一次；latest.json 每次探測都寫（全部正常都寫）
     "central-wong-choi.model-probe": ([f"{HOME}/WongChoiData/WongChoiControl/model_probe/latest.json"], 28),
     "central-wong-choi.astra-audit": ([f"{HOME}/WongChoiData/WongChoiControl/astra_audit/latest.json"], 172),
+    # 每 30 分鐘；live 寫 latest.json、dry-run 寫 latest-dryrun.json（任何一個新就算）。未安裝前唔會喺 LaunchAgents。
+    "central-wong-choi.self-repair": ([f"{HOME}/WongChoiData/WongChoiControl/self_repair/latest.json",
+                                       f"{HOME}/WongChoiData/WongChoiControl/self_repair/latest-dryrun.json"], 1.5),
     "central-wong-choi.offsite-backup": ([f"{HOME}/WongChoiData/WongChoiControl/offsite_backup_state.json"], 30),
 }
 # 冇可靠每次都寫嘅檔：只喺賽馬夜有輸出／淨係開機跑 → 照舊睇退出碼

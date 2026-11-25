@@ -765,6 +765,9 @@ class MorningOddsGapTests(unittest.TestCase):
                 H, local_quality_issues=lambda day: [], live_odds_issues=lambda day: [],
                 latest_step_issue=lambda step: None,
                 mirror_issue=lambda day: None,
+                # 其餘 advisory 都要 patch：佢哋會讀 AU 資料根，release gate 嘅臨時 worktree 冇 → SystemExit（2026-11-25）
+                snapshot_headroom_advisories=lambda: [],
+                mobile_sectionals_advisories=lambda day: [],
                 yesterday_odds_advisories=lambda day: ["尋日冇早更"]):
             blocking, advisories = H.quality_issues("2026-08-28")
         self.assertEqual(blocking, [])
