@@ -277,43 +277,10 @@ class OffloadModeTest(unittest.TestCase):
     def test_claude_critical_even_if_late_in_week(self):
         self.assertEqual(self.mode("normal", self.codex(50, 4), 88, 0.5), "offload-max")
 
-    def test_spend_freely_ignores_pace(self):
-        mode = cd.offload_mode("normal", self.codex(50, 4), 42, self.NOW + 6.2 * self.DAY,
-                               now=self.NOW, spend_freely=True)[0]
-        self.assertEqual(mode, "use-claude")
-
-    def test_spend_freely_still_guards_critical(self):
-        mode = cd.offload_mode("normal", self.codex(50, 4), 90, self.NOW + 1 * self.DAY,
-                               now=self.NOW, spend_freely=True)[0]
-        self.assertEqual(mode, "offload-max")
-
-    def test_spend_freely_with_codex_tight_keeps_claude(self):
-        mode = cd.offload_mode("tight", self.codex(85, 4), 60, self.NOW + 4 * self.DAY,
-                               now=self.NOW, spend_freely=True)[0]
-        self.assertEqual(mode, "keep-claude")
-
-    def test_switch_file_expires(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            p = Path(tmp) / "claude_pacing.json"
-            p.write_text(json.dumps({"spend_freely_until": "2030-01-01T00:00:00Z", "reason": "r"}))
-            self.assertIsNotNone(cd.spend_freely_until(now=self.NOW, path=p))
-            self.assertIsNone(cd.spend_freely_until(now=cd._parse_ts("2030-01-02T00:00:00Z"), path=p))
-            p.write_text("garbage")
-            self.assertIsNone(cd.spend_freely_until(now=self.NOW, path=p))
-
-    def test_pacing_cli_roundtrip(self):
-        with tempfile.TemporaryDirectory() as tmp, \
-             mock.patch.dict(os.environ, {"WONGCHOI_CONTROL_STATE_ROOT": tmp}):
-            self.assertEqual(cd.main(["pacing", "--spend-freely-until", "2099-01-01T00:00:00Z"]), 0)
-            self.assertIsNotNone(cd.spend_freely_until())
-            self.assertEqual(cd.main(["pacing", "--clear"]), 0)
-            self.assertIsNone(cd.spend_freely_until())
-
     def test_status_prints_mode(self):
         import io, contextlib
         buf = io.StringIO()
         with mock.patch.object(cd, "read_limits", return_value=self.codex(50, 4)), \
-             mock.patch.object(cd, "spend_freely_until", return_value=None), \
              mock.patch.object(cd, "gemini_catalog", return_value=[]), \
              mock.patch.object(cd, "gemini_paused_until", return_value=None), \
              mock.patch.object(cd, "ledger_summary", return_value={}), \
@@ -578,12 +545,12 @@ class RouteTest(unittest.TestCase):
         now = time.time()
         return cd.Limits(None, cd.Window(30.0, 10080, now + 5 * 86400), now)  # 5 日：唔觸發「用得慢」
 
-    def r(self, task, state="normal", gem=None, claude=40.0, spend=False, budget=None, bad=None):
+    def r(self, task, state="normal", gem=None, claude=40.0, budget=None, bad=None):
         with mock.patch.object(cd, "over_budget", side_effect=lambda fam, lim, entries=None: (budget or {}).get(fam)), \
              mock.patch.object(cd, "model_is_bad", side_effect=lambda m: (bad or {}).get(m)), \
              mock.patch.object(cd, "latest_model", side_effect=lambda f: cd.FALLBACK_MODELS[f]), \
              mock.patch.object(cd, "latest_gemini", return_value="gemini-4-hydrogen-high"):
-            return cd.route(task, self.lim(), state, gem, claude, spend)
+            return cd.route(task, self.lim(), state, gem, claude)
 
     def test_default_chain_first_choice(self):
         self.assertEqual((self.r("lookup")["role"], self.r("lookup")["provider"]), ("quick", "gemini"))
@@ -613,12 +580,6 @@ class RouteTest(unittest.TestCase):
         r = self.r("feature", state="stop", gem="x", claude=97.0)
         self.assertIsNone(r["role"])
         self.assertEqual(len(r["skipped"]), 3)
-
-    def test_spend_freely_opus_first_except_independent_checks(self):
-        self.assertEqual(self.r("lookup", spend=True)["role"], "opus")
-        self.assertEqual(self.r("heavy", spend=True)["role"], "opus")
-        self.assertEqual(self.r("review", spend=True)["role"], "review")
-        self.assertEqual(self.r("arbitrate", spend=True)["role"], "deep")
 
     def test_bad_model_is_skipped(self):
         r = self.r("review", bad={"gpt-6.2-sol": "Sol 標咗唔正常"})
@@ -679,7 +640,7 @@ class SurplusTest(unittest.TestCase):
              mock.patch.object(cd, "latest_gemini", return_value="gemini-4-hydrogen-high"), \
              mock.patch.object(cd.time, "time", return_value=self.NOW):
             resets = self.NOW + claude_days * self.DAY if claude_days else None
-            return cd.route(task, codex, "normal", gem, claude, False, resets, now=self.NOW)
+            return cd.route(task, codex, "normal", gem, claude, resets, now=self.NOW)
 
     def test_codex_surplus_goes_before_hydrogen_for_daily_work(self):
         r = self.r("feature", self.lim(30, 1))

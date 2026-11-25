@@ -423,21 +423,6 @@ SURPLUS_IDEAS = {
 }
 
 
-def pacing_file() -> Path:
-    return control_root() / "claude_pacing.json"
-
-
-def spend_freely_until(now: float | None = None, path: Path | None = None) -> tuple[float, str] | None:
-    """Kelvin 話「呢個禮拜放心用 Opus」嘅開關：返回 (到期, 原因)；冇設或者過咗期 = None。"""
-    now = time.time() if now is None else now
-    try:
-        data = json.loads((path or pacing_file()).read_text(encoding="utf-8"))
-        until = _parse_ts(data["spend_freely_until"])
-    except (OSError, ValueError, KeyError, TypeError):
-        return None
-    return (until, str(data.get("reason") or "")) if until > now else None
-
-
 def claude_pace(used: float, resets_at: float, now: float) -> tuple[float, float]:
     """返回 (已過時間 %, 用量快過時間幾多 pp)。"""
     left = max(0.0, resets_at - now)
@@ -446,15 +431,10 @@ def claude_pace(used: float, resets_at: float, now: float) -> tuple[float, float
 
 
 def offload_mode(codex_state: str, codex: Limits | None, claude_used: float,
-                 claude_resets_at: float, now: float | None = None,
-                 spend_freely: bool = False) -> tuple[str, str]:
-    """spend_freely = Kelvin 開咗「放心用 Opus」：唔理 Claude 用得幾快，只有 ≥85% 先當緊。"""
+                 claude_resets_at: float, now: float | None = None) -> tuple[str, str]:
     now = time.time() if now is None else now
     elapsed, ahead = claude_pace(claude_used, claude_resets_at, now)
     pace = f"Claude 本週 {claude_used:.0f}%（時間過咗 {elapsed:.0f}%，{ahead:+.0f}pp）"
-    if spend_freely:
-        pace += "；放心用 Opus 開關生效中"
-        ahead = min(ahead, 0.0)
     if codex_state == "stop":
         return "claude-only", pace
     codex_extra = codex_surplus(codex, now) if codex_state in ("normal", "unknown") else None
@@ -467,13 +447,11 @@ def offload_mode(codex_state: str, codex: Limits | None, claude_used: float,
     if codex_state == "tight":
         if claude_tight:
             return "offload-light", pace
-        if ahead <= CLAUDE_BEHIND_PP or spend_freely:
+        if ahead <= CLAUDE_BEHIND_PP:
             return "keep-claude", pace
         return "balanced", pace
     if claude_tight:
         return "offload-max", pace
-    if spend_freely:
-        return "use-claude", pace  # 同 route 一致：Opus 日常先做
     if codex_extra and (not claude_extra or codex_extra.per_day >= claude_extra.per_day):
         return "use-codex", pace
     if claude_extra:
@@ -666,11 +644,7 @@ def cmd_status(args) -> int:
                   f"input {row['input']:,} / output {row['output']:,} tokens")
     out = {"state": state, "reason": why}
     if args.claude_weekly is not None and args.claude_resets:
-        switch = spend_freely_until()
-        mode, pace = offload_mode(state, limits, args.claude_weekly, _parse_ts(args.claude_resets),
-                                  spend_freely=switch is not None)
-        if switch:
-            print(f"放心用 Opus：開住，{_fmt_reset(switch[0])} 自動失效（{switch[1] or '冇寫原因'}）")
+        mode, pace = offload_mode(state, limits, args.claude_weekly, _parse_ts(args.claude_resets))
         print(f"分工模式：{mode} —— {pace}")
         print(f"  {MODES[mode]}")
         extras = [x for x in (codex_surplus(limits) if state in ("normal", "unknown") else None,
@@ -955,8 +929,8 @@ ROUTES: dict[str, tuple[str, list[tuple[str, str]], str]] = {
     "design": ("C", [("design", "codex"), ("review", "codex"), ("opus", "")], "架構／實驗設計／Hydrogen、Terra 做兩次都唔掂嘅難題"),
     "arbitrate": ("C", [("deep", "codex"), ("opus", "")], "Sol 同 Opus 真分歧嘅終審"),
 }
-# 「放心用 Opus」開住嗰陣，呢幾類 Opus 自己做先（覆核／設計／終審照樣要獨立意見，唔郁）
-OPUS_FIRST_WHEN_SPENDING = frozenset({"lookup", "big-read", "edit", "feature", "heavy"})
+# 日常類：有餘嘅池可以排前；覆核／設計／終審要獨立意見，次序唔郁
+DAILY_TASKS = frozenset({"lookup", "big-read", "edit", "feature", "heavy"})
 CLAUDE_EXHAUSTED = 95.0
 
 
@@ -981,8 +955,7 @@ def _pool(role: str, provider: str) -> str:
 
 
 def route(task: str, codex: Limits | None, codex_state: str, gemini_problem: str | None,
-          claude_used: float | None = None, spend_freely: bool = False,
-          claude_resets_at: float | None = None, now: float | None = None) -> dict:
+          claude_used: float | None = None, claude_resets_at: float | None = None, now: float | None = None) -> dict:
     risk, chain, desc = ROUTES[task]
     extra = {}
     if codex_state in ("normal", "unknown") and (c := codex_surplus(codex, now)):
@@ -990,9 +963,7 @@ def route(task: str, codex: Limits | None, codex_state: str, gemini_problem: str
     if c := claude_surplus(claude_used, claude_resets_at, now):
         extra["claude"] = c
     urgency = {k: v.per_day for k, v in extra.items()}
-    if spend_freely:
-        urgency["claude"] = float("inf")
-    if task in OPUS_FIRST_WHEN_SPENDING and urgency:
+    if task in DAILY_TASKS and urgency:
         # 有餘嘅池排前，每日要燒得多嗰個先；其餘次序照舊（sorted 係穩定排序）
         chain = sorted(chain, key=lambda c: -urgency.get(_pool(*c), 0.0))
     skipped = []
@@ -1001,11 +972,11 @@ def route(task: str, codex: Limits | None, codex_state: str, gemini_problem: str
         if problem is None:
             pool = _pool(role, provider)
             return {"task": task, "risk": risk, "role": role, "provider": provider or "claude",
-                    "skipped": skipped, "spend_freely": spend_freely,
-                    "surplus": extra[pool].describe() if pool in extra and task in OPUS_FIRST_WHEN_SPENDING else None}
+                    "skipped": skipped,
+                    "surplus": extra[pool].describe() if pool in extra and task in DAILY_TASKS else None}
         skipped.append(f"{role}（{provider or 'claude'}）：{problem}")
     return {"task": task, "risk": risk, "role": None, "provider": None, "skipped": skipped,
-            "spend_freely": spend_freely, "surplus": None}
+            "surplus": None}
 
 
 def _route_label(r: dict) -> str:
@@ -1017,7 +988,7 @@ def _route_who(r: dict) -> str:
     if r["role"] is None:
         return "⛔ 全部都緊：只做必要嘅嘢、拆細，或者等重置；同 Kelvin 講"
     if r["role"] == "opus":
-        return "Opus 自己做" + ("（放心用 Opus 開住）" if r["spend_freely"] and not r["skipped"] else "")
+        return "Opus 自己做"
     if r["provider"] == "gemini":
         return f"Gemini {r['role']}（{latest_gemini(GEMINI_ROLES[r['role']][0])}）"
     return f"Codex {r['role']}（{latest_model(ROLES[r['role']][0])}）"
@@ -1027,11 +998,10 @@ def cmd_route(args) -> int:
     limits = read_limits()
     state, _ = budget_state(limits)
     gem = gemini_unavailable()
-    spend = spend_freely_until() is not None
     tasks = [args.task] if args.task else list(ROUTES)
     out = []
     for task in tasks:
-        r = route(task, limits, state, gem, args.claude_weekly, spend,
+        r = route(task, limits, state, gem, args.claude_weekly,
                   _parse_ts(args.claude_resets) if args.claude_resets else None)
         out.append(r)
         risk, _, desc = ROUTES[task]
@@ -1040,28 +1010,6 @@ def cmd_route(args) -> int:
             print(f"{'':<14}跳過 {why}")
     if args.json:
         print(json.dumps(out if not args.task else out[0], ensure_ascii=False))
-    return 0
-
-
-def cmd_pacing(args) -> int:
-    path = pacing_file()
-    if args.clear:
-        path.unlink(missing_ok=True)
-        print("放心用 Opus：已閂，返去按速度平衡")
-        return 0
-    if args.spend_freely_until:
-        until = _parse_ts(args.spend_freely_until)
-        if until <= time.time():
-            print("到期時間要喺未來", file=sys.stderr)
-            return 2
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps({"spend_freely_until": args.spend_freely_until,
-                                    "reason": args.reason or "", "set_at": time.time()},
-                                   ensure_ascii=False, indent=2), encoding="utf-8")
-        print(f"放心用 Opus：開咗，{_fmt_reset(until)} 自動失效")
-        return 0
-    switch = spend_freely_until()
-    print(f"放心用 Opus：開住，{_fmt_reset(switch[0])} 失效（{switch[1]}）" if switch else "放心用 Opus：閂咗")
     return 0
 
 
@@ -1403,11 +1351,6 @@ def main(argv: list[str] | None = None) -> int:
     st.add_argument("--claude-weekly", type=float, help="Claude 每週已用 %%（get_usage 嘅 Weekly · all models）")
     st.add_argument("--claude-resets", help="Claude 每週重置時間（ISO，例如 2026-11-30T07:59:59Z）")
     st.set_defaults(func=cmd_status)
-    pc = sub.add_parser("pacing", help="「放心用 Opus」開關（有到期日，過期自動失效）")
-    pc.add_argument("--spend-freely-until", help="ISO 時間，通常係 Claude 每週重置時間")
-    pc.add_argument("--reason")
-    pc.add_argument("--clear", action="store_true")
-    pc.set_defaults(func=cmd_pacing)
     rn = sub.add_parser("run")
     rn.add_argument("role", choices=sorted(set(ROLES) | set(GEMINI_ROLES)))
     rn.add_argument("--provider", choices=["auto", "gemini", "codex"], default="auto",
