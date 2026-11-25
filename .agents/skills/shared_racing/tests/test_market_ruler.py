@@ -178,3 +178,15 @@ class HkjcLoaderTest(unittest.TestCase):
         rows = races[0]["rows"]
         self.assertEqual([r["name"] for r in rows], ["3", "7", "9"])          # pos 0（冇完成）剔走
         self.assertEqual([r["sp"] for r in rows], [2.5, 4.0, None])            # 配唔到 = None → prepare 剔成場
+
+
+class ScoreWindowTest(unittest.TestCase):
+    def test_only_window_days_are_scored_but_training_uses_earlier_days(self):
+        races = synth(days=60, per_day=3)
+        days = sorted({r["date"] for r in races})
+        lo, hi = days[30], days[45]
+        res = mr.evaluate(races, score_window=(lo, hi))
+        blocks = res["arms"]["baseline"]["win"]["blocks"]
+        self.assertTrue(blocks)
+        self.assertTrue(all(lo <= b["from"] and b["to"] <= hi for b in blocks))
+        self.assertEqual(res["arms"]["baseline"]["win"]["days"], 16)

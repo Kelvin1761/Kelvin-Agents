@@ -344,8 +344,10 @@ assert 緊兩個冇 merge 過嘅嘢 —— `rating_series` 只存在於
 **改動嗰份文件 = 改動判決規則**，要當一個獨立改動先論證，唔可以同候選一齊改。
 
 - **冇跑過評估，唔准講「改善」。** 「code 睇落合理啲」「理論上應該好啲」唔係證據。
-- **排名改善 ≠ 投注改善。** AU／HKJC 候選一律照報市場尺（`shared_racing/scripts/market_ruler.py`，SP＋BSP／HKJC 最終賠率；
-  合約「市場尺 m1」）。現行兩個模型都冇市場以外資訊（EXP-20261124-90／-92、EXP-20261125-01）；任何真錢規則一定要過市場尺。
+- **AU／HKJC 模型 KEEP 要過市場尺**（Kelvin 2026-11-25；合約「市場尺 m2」）：`shared_racing/scripts/market_ruler.py`
+  市場尺 B PASS（AU：SP PASS＋BSP 唔反方向；HKJC：`--window dev` PASS、holdout 確認）**而且**排名尺唔顯著變差、護欄過。
+  排名改善但市場尺 FAIL = REJECT，除非 Kelvin 明確話「分析用途上線」（要寫入記錄、唔准用嚟支持落注）。
+  正確性修正、數據管線、純顯示照舊用排名尺。現行兩個模型都冇市場以外資訊（EXP-20261124-90／-92、EXP-20261125-01）。
 - **開實驗之前先跑功效預估**（`shared_racing/scripts/power_precheck.py`，合約 §6）：理想訊號都量唔到（PASS < 50%）就唔好開。
 - **改之前先量 baseline。** baseline 同 candidate 要行同一份語料、同一個時間窗。
   跨 harness 攞數字互相比 = 錯結論。

@@ -44,7 +44,9 @@ BOOTSTRAP = 2000
 BLOCKS = 3
 MIN_DAYS = 30        # 配對判決最少計分賽日（Sol 覆核：太少日 bootstrap CI 會退化）
 TOP3_MIN_FIELD = 4   # 入頭三：≤3 匹嘅場個個入三甲，冇資訊，唔計
-VERSION = "m1"
+VERSION = "m2"   # m2（2026-11-25）：KEEP 條件（合約「市場尺 m2」）；計法同 m1 一樣，加 HKJC 窗
+HKJC_WINDOWS = {"dev": ("2020-09-01", "2024-07-31"), "holdout": ("2024-09-01", "2026-07-31"),
+                "terminal": ("2026-08-01", "2099-12-31")}   # 同 hkjc_replay_compare_v5.WIN
 SINCE = {"au": "2026-08-05"}   # 同 au_logloss_ruler.CLEAN_SINCE：之前嘅場次唔係乾淨 point-in-time
 
 
@@ -250,13 +252,19 @@ def judge_pair(pair):
             "win_positive_blocks": positive_blocks}
 
 
-def evaluate(base_races, cand_races=None, *, price_key="sp", since=None):
+def evaluate(base_races, cand_races=None, *, price_key="sp", since=None, score_window=None):
+    """score_window=(lo, hi)：walk-forward 照用之前所有賽日訓練，但只計 [lo, hi] 入面嘅場（HKJC dev／holdout）。"""
     FIT_FAILURES.clear()
+    if score_window:
+        hi = score_window[1]
+        base_races = [r for r in base_races if str(r.get("date") or "") <= hi]
+        cand_races = None if cand_races is None else [r for r in cand_races if str(r.get("date") or "") <= hi]
     if since:
         base_races = [r for r in base_races if str(r.get("date") or "") >= since]
         cand_races = None if cand_races is None else [r for r in cand_races if str(r.get("date") or "") >= since]
     RB, skip_b = prepare(base_races, price_key=price_key)
-    result = {"version": VERSION, "price": price_key, "since": since, "skipped": {"baseline": skip_b}}
+    result = {"version": VERSION, "price": price_key, "since": since, "score_window": score_window,
+              "skipped": {"baseline": skip_b}}
     arms = {"baseline": RB}
     if cand_races is not None:
         RC, skip_c = prepare(cand_races, price_key=price_key)
@@ -281,6 +289,8 @@ def evaluate(base_races, cand_races=None, *, price_key="sp", since=None):
         per[name] = {"_vals": {}}
         for mk in MARKETS:
             vals, theta = walk_forward(R, mk)
+            if score_window:
+                vals = [v if score_window[0] <= r["date"] <= score_window[1] else None for r, v in zip(R, vals)]
             per[name]["_vals"][mk] = vals
             per[name][mk] = summarise(R, vals) | {"theta_last": theta}
         per[name]["has_info_beyond_market"] = judge_arm(per[name])
@@ -367,6 +377,7 @@ def main(argv=None):
     ap.add_argument("base")
     ap.add_argument("cand", nargs="?")
     ap.add_argument("--price", choices=["sp", "bsp"], default="sp")
+    ap.add_argument("--window", choices=sorted(HKJC_WINDOWS), help="HKJC：只計呢個窗（KEEP 判決用 dev；holdout 只做確認）")
     ap.add_argument("--out")
     a = ap.parse_args(argv)
     base = _load(a.base, a.platform)
@@ -378,7 +389,10 @@ def main(argv=None):
         cand = None if cand is None else [r for r in cand if not since or r["date"] >= since]
         match = attach_bsp(base, cand)
         print(f"BSP 配對：{match}")
-    res = evaluate(base, cand, price_key=a.price, since=since)
+    if a.window and a.platform != "hkjc":
+        ap.error("--window 只係 HKJC 用")
+    res = evaluate(base, cand, price_key=a.price, since=since,
+                   score_window=HKJC_WINDOWS[a.window] if a.window else None)
     if match:
         res["bsp_match"] = match
     for name, arm in res["arms"].items():
