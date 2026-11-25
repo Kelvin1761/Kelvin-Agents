@@ -328,6 +328,32 @@ class AuParityTests(unittest.TestCase):
         self.assertEqual(loaded[1]["scratched_horse_numbers"], [7])
         self.assertEqual([row["horse_no"] for row in loaded[1]["results"]], [4])
 
+    def test_hkjc_scratched_row_has_no_number_and_is_matched_by_name(self) -> None:
+        """2026-11-22 沙田 R3：模型首選滿利時入閘後著令退出，賽果頁嗰行名次、馬號都係空白；以前照計落頭三。"""
+        from unified_reflector_core import load_structured_results, scratched_numbers
+
+        payload = {"3": {"results": [
+            {"pos": "1", "horse_no": "3", "horse_name": "包裝醒目(L536)", "win_odds": "4.1"},
+            {"pos": "2", "horse_no": "8", "horse_name": "盈俊天下(L346)", "win_odds": "6"},
+            {"pos": "3 平頭馬", "horse_no": "4", "horse_name": "赤雲武士(L502)", "win_odds": "20"},
+            {"pos": "3 平頭馬", "horse_no": "5", "horse_name": "平頭甲(L501)", "win_odds": "30"},
+            {"pos": "WV-A", "horse_no": "11", "horse_name": "獸醫退出(L111)", "win_odds": ""},
+            {"pos": "PU", "horse_no": "9", "horse_name": "拉停馬(L100)", "win_odds": "50"},
+            {"pos": "", "horse_no": "", "horse_name": "滿利時(L347)", "win_odds": ""},
+        ]}}
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            results_path = Path(tmp_dir) / "2026-11-22_ShaTin_全日賽果.json"
+            results_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+            loaded = load_structured_results("hkjc", results_path)
+
+        self.assertEqual(loaded[3]["scratched_horse_names"], ["獸醫退出", "滿利時"])   # 拉停（有起步）唔當退出
+        self.assertEqual(loaded[3]["scratched_horse_numbers"], [11])
+        # 平頭第三兩匹都要喺實際名次度（以前「3 平頭馬」int() 失敗成行丟走）
+        self.assertEqual([(r["placing"], r["horse_no"]) for r in loaded[3]["results"][:4]], [(1, 3), (2, 8), (3, 4), (3, 5)])
+        predictions = [{"horse_no": 1, "horse_name": "滿利時"}, {"horse_no": 3, "horse_name": "包裝醒目"},
+                       {"horse_no": 9, "horse_name": "拉停馬"}]
+        self.assertEqual(scratched_numbers(loaded[3], predictions), {1, 11})
+
 
 class CompetitivenessTests(unittest.TestCase):
     """The top-3 KPIs are binary and score a top pick beaten a length into 4th

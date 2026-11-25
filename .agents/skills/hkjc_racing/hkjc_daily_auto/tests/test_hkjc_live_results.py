@@ -87,6 +87,20 @@ def test_intraday_shadow_reads_live_capture_instead_of_refetching(tmp_path):
     assert list(prefix) == ["1", "2"]                          # contiguous from R1 only
 
 
+def test_intraday_prefix_skips_a_race_the_poller_gave_up_on(tmp_path):
+    """2026-11-14 沙田 R6 取消：之後 R7–R11 照跑，intraday 唔可以喺 R6 停低。"""
+    live_dir = tmp_path / "HKJC_Race_Results_Database" / "_live"
+    live_dir.mkdir(parents=True)
+    (live_dir / "2026-11-14.json").write_text(json.dumps({str(r): _official(r) for r in (1, 2, 3, 4, 5, 7, 8)}))
+    (live_dir / "2026-11-14.state.json").write_text(json.dumps({"6": {"gave_up": "2026-11-14T16:30:00+11:00"}}))
+    with mock.patch.object(schedule, "HK_RACING", tmp_path):
+        assert list(schedule.live_results_prefix(datetime(2026, 11, 14).date())) == ["1", "2", "3", "4", "5", "7", "8"]
+    # 仲等緊（未放棄）嘅場次照舊係終點
+    (live_dir / "2026-11-14.state.json").write_text(json.dumps({"6": {"attempts": 2}}))
+    with mock.patch.object(schedule, "HK_RACING", tmp_path):
+        assert list(schedule.live_results_prefix(datetime(2026, 11, 14).date())) == ["1", "2", "3", "4", "5"]
+
+
 # HKJC 2026-11-04 R1 about ten minutes after the race: only the top four, four columns.
 PROVISIONAL_HTML = """<table><tr><td>第 1 場 (158)</td></tr><tr><td>第五班 - 1000米 - (40-0)</td><td>場地狀況 :</td><td>好地</td></tr>
 <tr><td>加寧讓賽</td><td>賽道 :</td><td>草地 - "A" 賽道</td></tr></table>

@@ -338,7 +338,7 @@ def autopsy_meeting(platform: str, meeting_dir: Path) -> dict:
         prediction_list = predictions.get(race_num) or []
         if not actual_rows or not prediction_list:
             continue
-        scratched = set(results[race_num].get("scratched_horse_numbers") or [])
+        scratched = core.scratched_numbers(results[race_num], prediction_list)
         active = _active_predictions(prediction_list, scratched)
         label = core.performance_label_from_rows(active[:4], actual_rows[:3])
         labels[label] += 1
