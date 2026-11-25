@@ -117,6 +117,9 @@ Kelvin 唔再自己開 Codex；**Claude Code 做主導**（計劃、判斷、拍
 **grunt = Terra**（粗重重複嘅工作，喺自己 worktree 寫），**review = Sol**（同 Opus 獨立第二意見，唯讀），
 **Luna = 最平嘅勞工**（quick 唯讀查詢／摘要；chore 寫入簡單機械式改動），機械式嘢**先試 Luna**，做唔掂先升 Terra；
 deep = Astra（Sol 同 Opus 意見唔同先用）。模型目錄每次 run 都經 `codex debug models` 即時讀，Codex 一出新版即刻跟。
+**Gemini（Kelvin 嘅 Google 訂閱，2026-11-25 加）**：經 Antigravity CLI `agy`（舊 Gemini CLI 已唔支援個人用戶），同一個 `codex_delegate.py run`：
+**scan = 最新 Gemini Flash**（唯讀、~1M context，一次過讀成堆 log／語料／實驗記錄）；**third = 最新 Gemini 非 flash（而家 Hydrogen）**
+（唯讀，第三家獨立意見 —— Sol 同 Opus 唔同意見先問佢，再唔夠先 deep）。模型經 `agy models` 即時讀；冇得讀額度，撞 429 自動停派 5 個鐘。
 
 - 判 KEEP／REJECT、用 holdout、`./保存.sh`、Telegram、release **永遠係 Claude 嘅工作**，唔准委派。
 - **Codex 被委派嗰陣**：唔准 commit／push／保存、唔准發 Telegram、唔准再委派、唔准郁排程。佢報嘅「改善」照樣要過 `model-regression-gate`。

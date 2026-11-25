@@ -43,11 +43,17 @@ Codex 狀態本身：normal 照派；tight 只派 review／quick／chore（`--fo
 | **review** | Sol 最新 | leakage 審計（逐欄問「落注嗰刻拎唔拎到」）、實驗結論覆核、`./保存.sh` 之前覆核 diff、一個好得出奇嘅回測結果 | 叫佢代你判 KEEP／REJECT |
 | **quick** | Luna 最新（唯讀） | 搵 code／pattern、睇 log 搵錯、摘要長檔、列出受影響嘅檔、核對兩份輸出差異 | 要判斷好壞嘅嘢 |
 | **chore** | Luna 最新（寫入） | 改名、改格式、補 docstring／type hint、照樣板加測試、改文檔字眼、update 路徑 | 要理解模型邏輯嘅嘢 —— 升 Terra |
-| **deep** | Astra 最新 | Sol 同你意見唔同、而結論影響上唔上線 | 日常覆核 |
+| **deep** | Astra 最新 | Sol 同你意見唔同、而結論影響上唔上線，而且 third 都講唔清 | 日常覆核 |
+| **scan** | Gemini Flash 最新（唯讀，經 `agy`） | 要一次過讀好多嘢：成堆 log、成份語料摘要、全部實驗記錄搵舊假設、長 diff 摘要。~1M context，用 Kelvin Google 訂閱，唔食 Codex／Claude 額度 | 要判斷好壞、要寫檔 |
+| **third** | Gemini 非 flash 最新（而家 Hydrogen） | 第三家獨立意見：Sol 同 Opus 唔同意見時先問佢；Codex tight／stop 時頂替 Sol 做 review | 代你判 KEEP／REJECT |
 
 **Luna 先行（Kelvin 2026-11-24：當免費勞工用）**：機械式、答案易核實嘅嘢一律先派 Luna（quick／chore）；
 Luna 答錯或者冇改到，先升 Terra。Luna 都係食同一個 Codex 額度，只係每次食得好少，所以收緊（tight）都照派。
 同一時間可以派幾個 Luna 去做互不相干嘅細嘢（各自 worktree／唯讀）。
+
+**Gemini（scan／third）**：同一個 `run`，例如 `codex_delegate.py run third --cd <worktree> --prompt-file brief.md --out r.md`。
+一律唯讀（agy `--mode plan`）；agy 唔讀 stdin，腳本自動將 brief 寫入臨時檔叫佢讀。冇得睇額度：撞 429 會自動停派 5 個鐘，`status` 會顯示。
+2026-11-25 實測：third（Hydrogen high）覆核一個 diff 63 秒、input 4.5 萬 tokens，搵到 5 類真 bug；scan（Flash）摘要一節文件 27 秒。
 
 **Luna 要窄，唔好叫佢探索**（2026-11-24 實測）：叫佢「自己搵積壓」會淺——一個做一半收工、一個 log 掃描乜都搵唔到，
 唯讀 sandbox 入面 `git ls-files` 有時都用唔到。叫佢「改 X 檔第 N 行做 Y」就好準（兩個文檔 chore 各 <50 秒、全部啱）。
@@ -99,5 +105,5 @@ python3 .agents/scripts/codex_delegate.py run grunt --cd <路徑> --prompt-file 
 
 - 寫入角色完成後腳本會印「worktree 改動：N 個檔」；0 個就睇 Codex 答覆搵原因。
 - **grunt**：自己 `git diff` 睇過、自己跑測試先信。合返自己分支用 `git cherry-pick` 或者 `git diff | git apply`；Codex 分支唔好 push 去 main。用完 `git worktree remove`。
-- **review**：逐點判斷，唔好照單全收。同意嘅改、唔同意嘅講原因。有分歧而影響重大 → deep。
+- **review**：逐點判斷，唔好照單全收。同意嘅改、唔同意嘅講原因。有分歧而影響重大 → 先 third（唔同家族、唔食 Codex 額度），再唔清楚先 deep。
 - 回覆 Kelvin 嗰陣寫一行：「已交 Codex（Sol）覆核 X：<結果>」。唔使問佢准唔准派。

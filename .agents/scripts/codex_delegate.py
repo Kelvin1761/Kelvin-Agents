@@ -11,6 +11,11 @@ Kelvin 2026-11-24：佢自己唔再點用 Codex，全部交畀 Claude 決定幾�
   quick   Luna   —— 唯讀：查詢、摘要、搵 code、睇 log
   chore   Luna   —— 寫入：簡單機械式改動（改名、格式、補 docstring、小測試）；做唔掂先升 Terra
   deep    Astra  —— 只喺 Sol 同 Opus 意見唔同、又值得再判嗰陣先用
+  scan    Gemini Flash    —— 唯讀，超大 context（~1M）：一次過讀成堆 log／語料／實驗記錄再摘要
+  third   Gemini Hydrogen —— 唯讀，第三家嘅獨立意見：Sol 同 Opus 唔同意見時先問佢（再唔夠先 deep）
+
+Gemini 經 Antigravity CLI（`agy`，Kelvin 嘅 Google 訂閱；舊 Gemini CLI 2026-11-25 已唔再支援個人用戶）。
+agy 冇得讀額度：撞到 429／RESOURCE_EXHAUSTED 就自動停派 5 個鐘（`gemini_quota.json`）。
 
 用法：
   python3 codex_delegate.py status                       # 兩個窗嘅用量、節奏、建議
@@ -49,6 +54,17 @@ ROLES: dict[str, tuple[str, str, str]] = {
 # 冇 models_cache.json 嗰陣嘅後備（2026-11-24 嘅最新）
 FALLBACK_MODELS = {"terra": "gpt-6.1-terra", "sol": "gpt-6.2-sol",
                    "luna": "gpt-6-luna", "astra": "gpt-6.2-astra"}
+
+# Gemini（Antigravity CLI）：role -> (kind, effort)。kind：flash = 平、快；pro = 最強嘅非 flash 系列（而家 Hydrogen）
+GEMINI_ROLES: dict[str, tuple[str, str]] = {
+    "scan": ("flash", "medium"),
+    "third": ("pro", "high"),
+}
+GEMINI_FALLBACK = {"flash": "gemini-3.8-flash", "pro": "gemini-4-hydrogen"}
+GEMINI_EFFORTS = ("low", "medium", "high", "xhigh")
+GEMINI_COOLDOWN = 5 * 3600
+_GEMINI_SLUG = re.compile(r"^gemini-(\d+(?:\.\d+)*)-([a-z]+)-(low|medium|high|xhigh)$")
+_GEMINI_CATALOG: list[str] | None = None
 
 # 節流門檻（Kelvin 唔再自己用 Codex，所以唔使留額度畀佢）
 STOP_WEEKLY = 95.0      # 7 日窗 ≥ 呢個 = 停派
@@ -128,6 +144,59 @@ def latest_model(family: str, models: list[dict] | None = None) -> str:
         if best is None or key > best:
             best = key
     return best[1] if best else FALLBACK_MODELS[family]
+
+
+def gemini_catalog() -> list[str]:
+    """`agy models` 即時讀（每行「slug<TAB>名」）；讀唔到就空 list（用後備）。"""
+    global _GEMINI_CATALOG
+    if _GEMINI_CATALOG is None:
+        try:
+            out = subprocess.run(["agy", "models"], capture_output=True, text=True, timeout=60).stdout
+        except (OSError, subprocess.SubprocessError):
+            out = ""
+        _GEMINI_CATALOG = [line.split("\t", 1)[0].strip() for line in out.splitlines()
+                           if line.startswith("gemini-")]
+    return _GEMINI_CATALOG
+
+
+def latest_gemini(kind: str, effort: str, slugs: list[str] | None = None) -> str:
+    """kind=flash：最新 flash；kind=pro：最新非 flash／lite 系列。effort 冇就揀最近嘅。"""
+    slugs = gemini_catalog() if slugs is None else slugs
+    by_base: dict[tuple, dict[str, str]] = {}
+    for slug in slugs:
+        m = _GEMINI_SLUG.match(slug)
+        if not m:
+            continue
+        name = m.group(2)
+        if (kind == "flash") != (name == "flash") or name == "lite":
+            continue
+        by_base.setdefault((_version(m.group(1)), name), {})[m.group(3)] = slug
+    if not by_base:
+        return f"{GEMINI_FALLBACK[kind]}-{effort}"
+    efforts = by_base[max(by_base)]
+    if effort in efforts:
+        return efforts[effort]
+    want = GEMINI_EFFORTS.index(effort) if effort in GEMINI_EFFORTS else 1
+    return min(efforts.items(), key=lambda kv: abs(GEMINI_EFFORTS.index(kv[0]) - want))[1]
+
+
+def gemini_quota_file() -> Path:
+    return control_root() / "gemini_quota.json"
+
+
+def gemini_paused_until(now: float | None = None, path: Path | None = None) -> float | None:
+    now = time.time() if now is None else now
+    try:
+        until = float(json.loads((path or gemini_quota_file()).read_text())["exhausted_until"])
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+    return until if until > now else None
+
+
+def _gemini_quota_error(text: str) -> bool:
+    t = text.lower()
+    return bool(re.search(r"\b429\b", t)) or any(k in t for k in (
+        "resource_exhausted", "resource has been exhausted", "quota exceeded", "exceeded your", "rate limit"))
 
 
 # ── 額度 ────────────────────────────────────────────────────────────────
@@ -369,6 +438,11 @@ def cmd_status(args) -> int:
     for role, (family, effort, sandbox) in ROLES.items():
         mark = "✓" if role_allowed(role, state) else "✗"
         print(f"  {mark} {role:<6} {latest_model(family):<16} effort={effort:<6} {sandbox}")
+    paused = gemini_paused_until()
+    print("Gemini（agy）：" + (f"⛔ 額度用完，{_fmt_reset(paused)} 之後再試" if paused else "✓ 可派（冇得讀額度，撞 429 先自動停 5 個鐘）"))
+    for role, (kind, effort) in GEMINI_ROLES.items():
+        mark = "✗" if paused else "✓"
+        print(f"  {mark} {role:<6} {latest_gemini(kind, effort):<26} 唯讀")
     summary = ledger_summary()
     if summary:
         print("近 7 日委派：")
@@ -475,8 +549,110 @@ def changed_files(cwd: Path) -> list[str]:
     return [line[3:] for line in out.splitlines()] if out else []
 
 
+def cmd_run_gemini(args) -> int:
+    role = args.role
+    paused = gemini_paused_until()
+    if paused:
+        print(f"⛔ 唔派：Gemini 額度用完，{_fmt_reset(paused)} 之後先再試。", file=sys.stderr)
+        return 3
+    try:
+        task = Path(args.prompt_file).read_text(encoding="utf-8") if args.prompt_file else sys.stdin.read()
+    except OSError as exc:
+        print(f"⛔ 讀唔到 brief：{exc}", file=sys.stderr)
+        return 2
+    if not task.strip():
+        print("⛔ 冇任務內容。", file=sys.stderr)
+        return 2
+    cwd = _resolved(Path(args.cd or os.getcwd()))
+    if not cwd.is_dir():
+        print(f"⛔ --cd 唔存在：{cwd}", file=sys.stderr)
+        return 2
+    kind, default_effort = GEMINI_ROLES[role]
+    effort = "xhigh" if args.effort == "max" else (args.effort if args.effort in GEMINI_EFFORTS else default_effort)
+    model = args.model or latest_gemini(kind, effort)
+    out_file = Path(args.out) if args.out else Path(
+        os.environ.get("TMPDIR", "/tmp")) / f"gemini_{role}_{int(time.time())}.md"
+    try:
+        out_file.unlink()
+    except FileNotFoundError:
+        pass
+    # agy -p 唔讀 stdin（2026-11-25 實測），長 brief 寫入檔再叫佢讀
+    import shutil
+    import tempfile
+    brief_dir = Path(tempfile.mkdtemp(prefix="gemini_brief_"))
+    brief = brief_dir / "brief.md"
+    cmd = ["agy", "-p", f"讀 {brief}，嚴格照入面嘅規則同任務做，最後只輸出答覆。",
+           "--model", model, "--mode", "plan", "--output-format", "json",
+           "--disable-slash-commands", "--add-dir", str(brief_dir),
+           "--print-timeout", f"{args.timeout}s"]
+    started = time.time()
+    data: dict = {}
+    error = None
+    raw_error = ""
+    try:
+        brief.write_text(BRIEF_PREAMBLE.format(limit=args.reply_limit) + task.strip() + "\n", encoding="utf-8")
+        proc = subprocess.run(cmd, cwd=cwd, stdin=subprocess.DEVNULL, capture_output=True,
+                              text=True, timeout=args.timeout + 60)
+        for line in reversed(proc.stdout.strip().splitlines()):
+            try:
+                parsed = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(parsed, dict):
+                data = parsed
+                break
+        if data.get("status") != "SUCCESS" or proc.returncode != 0:
+            raw_error = " | ".join(x for x in (str(data.get("error") or ""), proc.stderr.strip()) if x)
+            error = (raw_error or f"冇輸出（returncode {proc.returncode}）")[-300:]
+    except subprocess.TimeoutExpired:
+        error = f"timeout after {args.timeout}s"
+    except FileNotFoundError:
+        error = "agy 唔喺 PATH（brew install --cask antigravity-cli）"
+    except OSError as exc:
+        error = f"OSError：{exc}"
+    finally:
+        shutil.rmtree(brief_dir, ignore_errors=True)
+    reply = str(data.get("response") or "").strip()
+    ok = error is None and bool(reply)
+    if reply:
+        try:
+            out_file.parent.mkdir(parents=True, exist_ok=True)
+            out_file.write_text(reply + "\n", encoding="utf-8")
+        except OSError as exc:
+            print(f"⚠️ 寫唔到輸出檔：{exc}", file=sys.stderr)
+    if error and _gemini_quota_error(raw_error or error):
+        until = time.time() + GEMINI_COOLDOWN
+        try:
+            gemini_quota_file().parent.mkdir(parents=True, exist_ok=True)
+            gemini_quota_file().write_text(json.dumps({"exhausted_until": until, "error": error}, ensure_ascii=False))
+            error += f"（已停派 Gemini 到 {_fmt_reset(until)}）"
+        except OSError:
+            error += "（⚠️ 停派狀態寫唔到）"
+    usage = data.get("usage") or {}
+    entry = {
+        "ts": started, "provider": "gemini", "role": role, "model": model, "effort": effort,
+        "cwd": str(cwd), "ok": ok, "seconds": round(time.time() - started, 1),
+        "thread_id": data.get("conversation_id"), "budget_state": "n/a", "forced": False,
+        "input_tokens": usage.get("input_tokens"), "cached_input_tokens": usage.get("cache_read_tokens"),
+        "output_tokens": usage.get("output_tokens"), "changed_files": 0,
+        "title": args.title, "error": None if ok else (error or "冇輸出"),
+    }
+    if append_ledger(entry) is None:
+        print("⚠️ 記帳失敗（codex_delegations.jsonl 寫唔到）", file=sys.stderr)
+    print(f"Gemini {role}（{model}）{'完成' if ok else '失敗'}，{entry['seconds']}s，"
+          f"input {usage.get('input_tokens', '?')} / output {usage.get('output_tokens', '?')} tokens → {out_file}")
+    if not ok:
+        print(f"錯誤：{entry['error']}", file=sys.stderr)
+    if reply:
+        print("-----")
+        print(reply)
+    return 0 if ok else 1
+
+
 def cmd_run(args) -> int:
     role = args.role
+    if role in GEMINI_ROLES:
+        return cmd_run_gemini(args)
     state, why = budget_state(read_limits())
     if state == "stop":
         # --force 都唔可以越過停派線（AGENTS.md）
@@ -591,7 +767,7 @@ def main(argv: list[str] | None = None) -> int:
     pc.add_argument("--clear", action="store_true")
     pc.set_defaults(func=cmd_pacing)
     rn = sub.add_parser("run")
-    rn.add_argument("role", choices=sorted(ROLES))
+    rn.add_argument("role", choices=sorted(ROLES) + sorted(GEMINI_ROLES))
     rn.add_argument("--prompt-file")
     rn.add_argument("--cd")
     rn.add_argument("--out")

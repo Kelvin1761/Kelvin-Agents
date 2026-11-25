@@ -299,12 +299,91 @@ class OffloadModeTest(unittest.TestCase):
         buf = io.StringIO()
         with mock.patch.object(cd, "read_limits", return_value=self.codex(50, 4)), \
              mock.patch.object(cd, "spend_freely_until", return_value=None), \
+             mock.patch.object(cd, "gemini_catalog", return_value=[]), \
+             mock.patch.object(cd, "gemini_paused_until", return_value=None), \
              mock.patch.object(cd, "ledger_summary", return_value={}), \
              mock.patch.object(cd, "latest_model", return_value="m"), \
              contextlib.redirect_stdout(buf):
             cd.main(["status", "--claude-weekly", "42", "--claude-resets", "2099-01-01T00:00:00Z", "--json"])
         self.assertIn("分工模式：", buf.getvalue())
         self.assertIn('"mode"', buf.getvalue())
+
+
+AGY = ["gemini-4-hydrogen-high", "gemini-4-hydrogen-xhigh", "gemini-4-hydrogen-medium", "gemini-4-hydrogen-low",
+       "gemini-3.8-flash-high", "gemini-3.8-flash-medium", "gemini-3.8-flash-low", "claude-sonnet-4-6",
+       "gpt-oss-120b-medium"]
+
+
+class GeminiModelTest(unittest.TestCase):
+    def test_picks_latest_pro_and_flash(self):
+        self.assertEqual(cd.latest_gemini("pro", "high", AGY), "gemini-4-hydrogen-high")
+        self.assertEqual(cd.latest_gemini("flash", "medium", AGY), "gemini-3.8-flash-medium")
+
+    def test_follows_new_release(self):
+        slugs = AGY + ["gemini-4.1-helium-high", "gemini-4-flash-medium"]
+        self.assertEqual(cd.latest_gemini("pro", "high", slugs), "gemini-4.1-helium-high")
+        self.assertEqual(cd.latest_gemini("flash", "medium", slugs), "gemini-4-flash-medium")
+
+    def test_nearest_effort_when_missing(self):
+        self.assertEqual(cd.latest_gemini("flash", "xhigh", AGY), "gemini-3.8-flash-high")
+
+    def test_fallback_when_catalog_empty(self):
+        self.assertEqual(cd.latest_gemini("pro", "high", []), "gemini-4-hydrogen-high")
+
+    def test_quota_error_detection(self):
+        self.assertTrue(cd._gemini_quota_error("Resource has been exhausted (e.g. check quota). (Status: 429)"))
+        self.assertTrue(cd._gemini_quota_error("RESOURCE_EXHAUSTED"))
+        self.assertFalse(cd._gemini_quota_error("timeout after 1429s"))
+        self.assertFalse(cd._gemini_quota_error("empty prompt"))
+
+
+class GeminiRunTest(unittest.TestCase):
+    def run_with(self, stdout, returncode=0):
+        with tempfile.TemporaryDirectory() as tmp:
+            brief = Path(tmp) / "b.md"
+            brief.write_text("做嘢")
+            out = Path(tmp) / "out" / "r.md"
+            fake = mock.Mock(stdout=stdout, stderr="", returncode=returncode)
+            with mock.patch.dict(os.environ, {"WONGCHOI_CONTROL_STATE_ROOT": tmp}), \
+                 mock.patch.object(cd, "latest_gemini", return_value="gemini-4-hydrogen-high"), \
+                 mock.patch.object(cd.subprocess, "run", return_value=fake) as run:
+                rc = cd.main(["run", "third", "--cd", tmp, "--prompt-file", str(brief), "--out", str(out)])
+                ledger = (Path(tmp) / cd.LEDGER_NAME).read_text().strip().splitlines()
+                paused = cd.gemini_paused_until()
+                reply = out.read_text() if out.exists() else ""
+            cmd = run.call_args[0][0]
+            brief_dir = Path(cmd[cmd.index("--add-dir") + 1])
+            return rc, json.loads(ledger[-1]), paused, reply, cmd, brief_dir
+
+    def test_success_writes_reply_and_ledger(self):
+        rc, entry, paused, reply, cmd, brief_dir = self.run_with(json.dumps(
+            {"status": "SUCCESS", "response": "冇問題", "usage": {"input_tokens": 10, "output_tokens": 2}}))
+        self.assertEqual(rc, 0)
+        self.assertEqual(reply.strip(), "冇問題")
+        self.assertEqual(entry["provider"], "gemini")
+        self.assertTrue(entry["ok"])
+        self.assertIsNone(paused)
+        self.assertIn("plan", cmd)            # 唯讀
+        self.assertFalse(brief_dir.exists())  # 臨時 brief 清走
+
+    def test_quota_error_pauses(self):
+        rc, entry, paused, reply, _, brief_dir = self.run_with(json.dumps(
+            {"status": "ERROR", "response": "", "error": "Resource has been exhausted (Status: 429)"}))
+        self.assertEqual(rc, 1)
+        self.assertFalse(entry["ok"])
+        self.assertIsNotNone(paused)
+        self.assertFalse(brief_dir.exists())
+
+    def test_paused_refuses(self):
+        with tempfile.TemporaryDirectory() as tmp, \
+             mock.patch.dict(os.environ, {"WONGCHOI_CONTROL_STATE_ROOT": tmp}):
+            cd.gemini_quota_file().write_text(json.dumps({"exhausted_until": time.time() + 99}))
+            self.assertEqual(cd.main(["run", "scan", "--prompt-file", __file__]), 3)
+
+    def test_garbage_output_is_failure(self):
+        rc, entry, *_ = self.run_with("not json\n[1,2]")
+        self.assertEqual(rc, 1)
+        self.assertFalse(entry["ok"])
 
 if __name__ == "__main__":
     unittest.main()
