@@ -938,7 +938,10 @@ def evaluate(
     include_preseason: bool = False,
     assumed_mean: float = ASSUMED_BRIER_IMPROVEMENT,
     assumed_sd: float = ASSUMED_PAIRED_SD,
+    return_legs: bool = False,
 ) -> dict:
+    """`return_legs=True`：另外交返逐腿明細（`legs`，key 係 tuple，唔好直接 json.dump）——
+    自動覆盤（shared_wong_choi/post_review_sports.py）用，令佢同評估同一套揀快照／收盤價／去水，唔另寫。"""
     root = root or ledger_root()
     rows = [row for day in _iter_dates(since, until, root) for row in read_rows(root, day)]
     exclusions = no_prediction_exclusions(rows)
@@ -999,6 +1002,7 @@ def evaluate(
         devig_close = two_way[-1] if two_way else (close if close and close.get("complement_price") else None)
         legs.append({
             "key": key, "market": key[3], "picked": bool(model.get("picked")), "y": y,
+            "minutes": settlement.get("minutes") if settlement else None,
             "probability_model_id": probability_model_id(model),
             **{name: model.get(name) for name in MODEL_VARIANTS},
             "price_at_model": model.get("price_at_model"),
@@ -1132,7 +1136,9 @@ def evaluate(
     else:
         verdict = "n_adequate_pending_review"
     import nba_prop_training
+    extra = {"legs": legs} if return_legs else {}
     return {
+        **extra,
         "schema": SCHEMA,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "window": {"since": since, "until": until, "include_preseason": include_preseason},

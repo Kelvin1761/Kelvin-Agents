@@ -124,6 +124,9 @@ def test_health_flags_missing_review(tmp_path, monkeypatch):
             self.name = name
     monkeypatch.setattr(P.M, "default_root", lambda plat: tmp_path)
     monkeypatch.setattr(P.M, "meeting_list", lambda plat, root: [Mt("2026-11-24 X"), Mt("2026-11-25 Y")])
+    sys.path.insert(0, str(SKILLS / "shared_wong_choi"))
+    import post_review_sports as SP
+    monkeypatch.setattr(SP, "latest_settled", lambda plat, cutoff: "2026-11-25")
     ok, lines = P.health("2026-11-26")
     assert ok and all("未有覆盤" in x for x in lines)          # 未開始 = 提示
     d = tmp_path / "reviews" / "au"

@@ -104,7 +104,7 @@ AU 通用 forward 引擎（`au_hypothesis_forward.py`）喺今次同 H2／H3 一
 | P0 ✅ | 已上線（EXP-20261126-01/02，Sol 覆核修咗 5 點） | |
 | P1 ✅（2026-11-26） | L1 覆盤報告 AU＋HKJC（含每日核數）：`shared_racing/scripts/post_review.py`，AU 晚更 `step_post_review`、HKJC 賽後背景，content 摘要，`健康.sh`「自動覆盤」；dashboard 頁未做（重用 miss_autopsy）、cohort 庫、跨日核實；Telegram content 摘要；dashboard「覆盤」頁 | 對 11-18 跑馬地重現人手覆盤嘅主要結論（穩定性反例、模型獨家睇好冇 edge） |
 | P2 | L3 假設帳＋每晚重驗＋learning_board＋健康.sh | 用 08-05→11-25 回放模擬：出世／rejected 數目合理（純噪音 cohort 唔會 supported） |
-| P3 | NBA＋Tennis 嘅 L1／L3 | 同上 |
+| P3（L1 ✅ 2026-11-26） | NBA＋Tennis 嘅 L1（`shared_wong_choi/post_review_sports.py`，NBA postgame／網球 18:00）／L3 | 同上 |
 | P4 | L2 LLM 解讀＋提案（Sonnet）、L4 arm 提案自動 fit | 一個提案走完全程到 Telegram（Astra：LLM 最後先做）|
 
 ## 6. 未決
@@ -129,3 +129,11 @@ AU 通用 forward 引擎（`au_hypothesis_forward.py`）喺今次同 H2／H3 一
   `hkjc_history_replay_build._incident_by_horse`、分類用 `incident_history.flags`（同入分同一份 regex）。賽後資訊，唔入組別、唔入模型。
   已知：標準 regex 漏「碰撞／收慢避開／出閘僅屬一般」等講法；嗰份 regex 用緊喺 forward shadow（EXP-20261117-05），
   今次唔郁，原文照顯示；要擴闊要另開一個改動（會改 shadow 輸入）。AU（Sportsbet）冇事件報告，見 H5 來源盤點。
+
+## 9. NBA／網球 L1 第一次跑（2026-11-25 數據）
+
+- 網球 200 注：模型（`model_prob_raw`）log-loss 0.6542 vs 去水市場 0.5549；精選 3/10、−4.17u。
+  跨日（之前 29 日）：「模型高過市場 ≥10pp」−21.7pp [−24.8, −18.5]、市場殘差 −1.0 —— 同 EXP-20261125-10 `max_disagree20` 同一個方向（描述）。
+  注意：`prop_tracker.model_prob` 係向市場收縮後，有啲盤口完全等於市場，唔可以當模型。
+- NBA 624 條腿：實際中 38.1%、模型平均 35.0%；得 73 條有雙邊去水收盤價（模型 0.6721 vs 市場 0.6766）。
+  跨日：「助攻」+2.0pp [+0.8, +3.1]、「模型 ≥80%」−3.1pp [−4.0, −2.0]（描述）。單邊 1/價含抽水，唔拎嚟比 log-loss。

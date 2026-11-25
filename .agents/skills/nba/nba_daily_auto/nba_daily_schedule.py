@@ -1799,6 +1799,25 @@ def run_results_refresh(target_date: str, log: RunLog) -> str:
     return "unchanged"
 
 
+POST_REVIEW_SPORTS = PROJECT_ROOT / ".agents" / "skills" / "shared_wong_choi" / "post_review_sports.py"
+
+
+def _post_review(target_date: str, log: RunLog) -> None:
+    """自動覆盤（自學循環 L1，2026-11-26）：`<WongChoiControl>/reviews/nba/<日>.json/.md`＋content 摘要（每日一次）。
+    只描述唔改模型；失敗只記 step，唔影響覆盤／部署。"""
+    if os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("WC_DISABLE_POST_REVIEW"):
+        log.step("post_review", "skipped", reason="test_or_disabled")
+        return
+    try:
+        proc = subprocess.run([sys.executable, str(POST_REVIEW_SPORTS), "--domain", "nba", "--date", target_date,
+                               "--telegram"], cwd=str(PROJECT_ROOT), capture_output=True, text=True,
+                              encoding="utf-8", errors="replace", timeout=900)
+        log.step("post_review", "ok" if proc.returncode == 0 else "failed",
+                 detail=((proc.stdout or "") + (proc.stderr or "")).strip()[-300:])
+    except Exception as exc:  # noqa: BLE001 —— 覆盤報告唔可以令 postgame 失敗
+        log.step("post_review", "failed", error=f"{type(exc).__name__}: {exc}")
+
+
 def run_postgame(target_date: str, log: RunLog) -> str:
     folder = live_dir(target_date)
     if not is_live(folder):
@@ -1860,6 +1879,7 @@ def run_postgame(target_date: str, log: RunLog) -> str:
         _record_no_prediction_ledger(written_off, target_date, log)
         _settle_market_ledger(archive if archive.is_dir() else folder, target_date, log)
         _forward_tracker(log)
+        _post_review(target_date, log)
     deploy_target = archive if archive.is_dir() else folder
     deploy = _deploy("NBA Wong Choi scheduled postgame", deploy_target)
     log.step("dashboard", deploy)
