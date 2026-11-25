@@ -490,6 +490,37 @@ class NbaDailyScheduleTests(unittest.TestCase):
             writer.assert_not_called()
             self.assertIn("blocked", [state for name, state, _ in log.steps if name == "settlement_evidence"])
 
+    def test_track_only_sgm_postgame_still_refreshes_reliability(self) -> None:
+        """reliability_latest.json froze at 2026-11-16: it was only built inside `if SGM_TELEGRAM`."""
+        self.assertFalse(schedule.SGM_TELEGRAM)
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp) / "live"
+            archive = Path(tmp) / "archive"
+            folder.mkdir()
+            archive.mkdir()
+            result = subprocess.CompletedProcess(
+                args=[], returncode=0,
+                stdout=json.dumps({"status": "archived", "archive_path": str(archive)}) + "\n", stderr="")
+            with mock.patch.object(schedule, "live_dir", return_value=folder), mock.patch.object(
+                schedule, "latest_snapshot", return_value=folder / "snapshot"
+            ), mock.patch.object(schedule, "_run", return_value=result), mock.patch.object(
+                schedule, "_deploy", return_value="ok"
+            ), mock.patch.object(schedule, "_record_settlement_evidence"), mock.patch.object(
+                schedule, "_record_no_prediction_ledger"
+            ), mock.patch.object(schedule, "_settle_market_ledger"), mock.patch.object(
+                schedule, "_forward_tracker"
+            ), mock.patch.object(schedule, "_record_roi_board", return_value=False), mock.patch.object(
+                schedule, "_steady_stop_text", return_value="STEADY"
+            ), mock.patch.object(schedule, "_featured_postgame_text", return_value="FEATURED"), mock.patch.object(
+                schedule, "_reliability_text", return_value="RELIABILITY"
+            ) as reliability, mock.patch.object(
+                schedule, "notify_once", return_value={"status": "sent"}
+            ) as notify:
+                self.assertEqual(schedule.run_postgame("2026-11-24", _Log()), "archived")
+        reliability.assert_called_once()
+        content = [c.args[1] for c in notify.call_args_list if c.kwargs.get("audience") == "content"]
+        self.assertEqual(content, ["FEATURED"])  # the calibration line stays out of the 精選-only push
+
     def test_archived_day_retries_exact_frozen_settlement_without_deploy(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             missing_live = Path(tmp) / "missing"

@@ -1884,11 +1884,14 @@ def run_postgame(target_date: str, log: RunLog) -> str:
             # The stop-loss check runs either way (it can pause the policy); its line is SGM-only.
             steady_text = _steady_stop_text(target_date, log)
             featured_text = _featured_postgame_text(target_date, log)
+            # Always refresh reliability_latest.json; only its Telegram line is SGM-only.  It used to be
+            # computed inside `if SGM_TELEGRAM`, so the file froze at 2026-11-16 when SGM went track-only.
+            reliability_text = _reliability_text(target_date, log)
             if SGM_TELEGRAM:
                 performance_message += "\n\n" + steady_text
                 if featured_text:
                     performance_message += "\n\n" + featured_text
-                performance_message += "\n\n" + _reliability_text(target_date, log)
+                performance_message += "\n\n" + reliability_text
             else:
                 performance_message = featured_text
         except ValueError as exc:
