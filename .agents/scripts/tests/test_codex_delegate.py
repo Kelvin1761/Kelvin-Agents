@@ -524,6 +524,8 @@ class TeamSplitTest(unittest.TestCase):
 
             def run(cmd, **kw):
                 seen["cmd"] = cmd
+                tool = Path(json.loads(cmd[cmd.index("--settings") + 1])["permissions"]["allow"][0][8:-1])
+                seen.update(tool_name=tool.name, tool_dir=str(tool.parent), tool_src=tool.read_text())
                 bf = Path(cmd[cmd.index("--add-dir") + 1]) / "brief.md"
                 seen["brief"] = bf.read_text()
                 return fake
@@ -538,7 +540,13 @@ class TeamSplitTest(unittest.TestCase):
                 entry = json.loads((Path(tmp) / cd.LEDGER_NAME).read_text().splitlines()[-1])
         self.assertEqual(rc, 0)
         self.assertIn("accept-edits", seen["cmd"])
-        self.assertIn("冇權行任何 shell 命令", seen["brief"])
+        self.assertIn("改檔只可以用改檔工具", seen["brief"])
+        self.assertIn("hydrogen_ro.py grep", seen["brief"])
+        allow = json.loads(seen["cmd"][seen["cmd"].index("--settings") + 1])["permissions"]["allow"]
+        self.assertEqual(len(allow), 1)  # 淨係 wrapper，冇 rg／git／cat
+        self.assertEqual(seen["tool_name"], "hydrogen_ro.py")
+        self.assertNotIn(str(Path(tmp).resolve()), seen["tool_dir"])  # 抄咗去 workspace 以外
+        self.assertIn(str(Path(tmp).resolve()), seen["tool_src"])     # 允許路徑寫死入去
         self.assertEqual(entry["changed_files"], 1)
 
     def test_gemini_write_refuses_primary_checkout(self):
