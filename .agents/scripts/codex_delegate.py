@@ -729,12 +729,25 @@ def alert(text: str) -> bool:
         return False
 
 
-def note_run_health(model: str, ok: bool, error: str | None, entries: list[dict] | None = None) -> None:
-    """每次委派之後：同一個模型連續 HEALTH_FAIL_STREAK 次失敗 → 報一次；之後成功 → 報恢復。"""
+_CALLER_FAULT = ("headless mode cannot prompt", "被拒動作", "auto-denied")
+
+
+def caller_fault(error: str | None) -> bool:
+    """brief 叫模型做佢冇權做嘅嘢（讀 workspace 以外、行命令）＝ 派工嗰邊錯，唔係模型壞（2026-11-26 誤報）。"""
+    return bool(error) and any(k in error for k in _CALLER_FAULT)
+
+
+def note_run_health(model: str, ok: bool, error: str | None, entries: list[dict] | None = None,
+                    fault: bool | None = None) -> None:
+    """每次委派之後：同一個模型連續 HEALTH_FAIL_STREAK 次失敗 → 報一次；之後成功 → 報恢復。
+    權限被拒（caller_fault）唔計：唔當失敗、亦唔打斷連續失敗。"""
     if os.environ.get("WC_SKIP_RUN_HEALTH") == "1":  # 健康探測自己處理結果
         return
+    if not ok and (caller_fault(error) if fault is None else fault):
+        return
     entries = _ledger_entries() if entries is None else entries
-    runs = [e for e in entries if e.get("type") != "grade" and e.get("model") == model]
+    runs = [e for e in entries if e.get("type") != "grade" and e.get("model") == model
+            and not (not e.get("ok") and e.get("caller_fault", caller_fault(e.get("error"))))]
     state = _load_health()
     models = state.setdefault("models", {})
     was_bad = models.get(model, {}).get("status") == "bad"
@@ -1100,6 +1113,10 @@ def cmd_run_gemini(args) -> int:
         print(f"⛔ --cd 唔存在：{cwd}", file=sys.stderr)
         return 2
     default_effort, write = GEMINI_ROLES[role]
+    extras = getattr(args, "add_dir", None) or []
+    if extras and write:  # 寫入角色加額外資料夾 = 可以寫出 worktree 以外（Sol 2026-11-26）
+        print("⛔ --add-dir 只限唯讀角色（scan／quick／third）", file=sys.stderr)
+        return 2
     if write:
         problem = write_target_problem(cwd)
         if problem:
@@ -1126,10 +1143,13 @@ def cmd_run_gemini(args) -> int:
            "--model", model, "--mode", "accept-edits" if write else "plan", "--output-format", "json",
            "--disable-slash-commands", "--add-dir", str(brief_dir),
            "--print-timeout", f"{args.timeout}s"]
+    for extra in extras:  # 要讀 --cd 以外嘅資料夾（log、資料根）就逐個加入 workspace
+        cmd += ["--add-dir", str(_resolved(Path(extra)))]
     started = time.time()
     data: dict = {}
     error = None
     raw_error = ""
+    denied: list = []
     try:
         preamble = BRIEF_PREAMBLE.format(limit=args.reply_limit)
         if write:
@@ -1148,7 +1168,8 @@ def cmd_run_gemini(args) -> int:
         denied = [d.get("display_name") or d.get("action") for d in (data.get("denied_actions") or [])
                   if isinstance(d, dict)]
         if data.get("status") == "SUCCESS" and not str(data.get("response") or "").strip() and denied:
-            data["error"] = f"冇輸出：被拒動作 {denied}（brief 要講明只改檔、唔行命令）"
+            data["error"] = (f"冇輸出：被拒動作 {denied}（brief 要講明只改檔、唔行命令；"
+                             "要讀 --cd 以外嘅檔就加 --add-dir；要行命令就 --provider codex）")
             data["status"] = "ERROR"
         if data.get("status") != "SUCCESS" or proc.returncode != 0:
             raw_error = " | ".join(x for x in (str(data.get("error") or ""), proc.stderr.strip()) if x)
@@ -1187,10 +1208,11 @@ def cmd_run_gemini(args) -> int:
         "input_tokens": usage.get("input_tokens"), "cached_input_tokens": usage.get("cache_read_tokens"),
         "output_tokens": usage.get("output_tokens"), "changed_files": len(changes),
         "title": args.title, "error": None if ok else (error or "冇輸出"),
+        "caller_fault": (not ok) and (bool(denied) or caller_fault(raw_error)),
     }
     if append_ledger(entry) is None:
         print("⚠️ 記帳失敗（codex_delegations.jsonl 寫唔到）", file=sys.stderr)
-    note_run_health(model, ok, entry["error"])
+    note_run_health(model, ok, entry["error"], fault=entry["caller_fault"])
     print(f"Gemini {role}（{model}）{'完成' if ok else '失敗'}，{entry['seconds']}s，"
           f"input {usage.get('input_tokens', '?')} / output {usage.get('output_tokens', '?')} tokens → {out_file}")
     if write:
@@ -1369,6 +1391,7 @@ def main(argv: list[str] | None = None) -> int:
     rn.add_argument("--provider", choices=["auto", "gemini", "codex"], default="auto",
                     help="scan／quick／chore／sprint 預設 Gemini Hydrogen（用唔到退返 Luna／Terra）；codex = 指定用 Codex 版")
     rn.add_argument("--prompt-file")
+    rn.add_argument("--add-dir", action="append", help="Gemini 唯讀角色：額外可讀嘅資料夾（可重覆）；寫入角色唔准用")
     rn.add_argument("--cd")
     rn.add_argument("--out")
     rn.add_argument("--title", help="一句講呢個委派做咩（記帳用）")

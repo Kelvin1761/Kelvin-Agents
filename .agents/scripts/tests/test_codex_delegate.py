@@ -17,6 +17,8 @@ import codex_delegate as cd  # noqa: E402
 # 派工開頭嘅型號檢查會真係叫 codex／agy —— 測試一律關咗，個別測試用 REAL_CHECK_VERSIONS 自己測
 REAL_CHECK_VERSIONS = cd.check_model_versions
 cd.check_model_versions = lambda *a, **k: []
+REAL_NUDGE = cd.nudge_codex_surplus
+cd.nudge_codex_surplus = lambda *a, **k: False  # 唔好讀真 Codex 額度（11-26 真窗觸發令 probe 測試紅）
 
 MODELS = [
     {"slug": "gpt-6.2-sol", "visibility": "list"},
@@ -686,9 +688,9 @@ class SurplusTest(unittest.TestCase):
              mock.patch.dict(os.environ, {"WONGCHOI_CONTROL_STATE_ROOT": tmp}), \
              mock.patch.object(cd, "alert", side_effect=lambda t: sent.append(t) or True):
             lim = self.lim(30, 1)
-            self.assertTrue(cd.nudge_codex_surplus(lim, self.NOW))
-            self.assertFalse(cd.nudge_codex_surplus(lim, self.NOW))
-            self.assertFalse(cd.nudge_codex_surplus(self.lim(30, 5), self.NOW))
+            self.assertTrue(REAL_NUDGE(lim, self.NOW))
+            self.assertFalse(REAL_NUDGE(lim, self.NOW))
+            self.assertFalse(REAL_NUDGE(self.lim(30, 5), self.NOW))
         self.assertEqual(len(sent), 1)
         self.assertIn("唔用就嘥", sent[0])
 
@@ -722,6 +724,37 @@ class HealthTest(unittest.TestCase):
         cd.note_run_health(m, True, None, entries)
         self.assertEqual(len(self.sent), 2)
         self.assertIn("已恢復", self.sent[1])
+
+    def test_permission_denials_are_not_model_failures(self):
+        m = "gemini-4-hydrogen-low"
+        deny = 'no output produced — a tool required the "read_file" permission that headless mode cannot prompt for, so it was auto-denied'
+        entries = [{"ts": 1, "model": m, "ok": False, "error": deny}, {"ts": 2, "model": m, "ok": False, "error": deny}]
+        cd.note_run_health(m, False, deny, entries)
+        self.assertEqual(self.sent, [])
+        self.assertIsNone(cd.model_is_bad(m))
+        # 一次真失敗＋一次被拒：唔夠連續 2 次真失敗
+        entries = [{"ts": 1, "model": m, "ok": False, "error": "timeout"}, {"ts": 2, "model": m, "ok": False, "error": deny}]
+        cd.note_run_health(m, False, deny, entries)
+        self.assertEqual(self.sent, [])
+
+    def test_real_fail_denial_real_fail_still_alerts(self):
+        m = "gemini-4-hydrogen-low"
+        entries = [{"ts": 1, "model": m, "ok": False, "error": "timeout"},
+                   {"ts": 2, "model": m, "ok": False, "error": "x", "caller_fault": True},
+                   {"ts": 3, "model": m, "ok": False, "error": "timeout"}]
+        cd.note_run_health(m, False, "timeout", entries, fault=False)
+        self.assertEqual(len(self.sent), 1)
+
+    def test_add_dir_refused_for_write_roles(self):
+        args = cd.argparse.Namespace(role="chore", provider="gemini", prompt_file=None, cd=None, out=None, title="t",
+                                     model=None, effort=None, reply_limit=10, timeout=5, force=False, add_dir=["/tmp"])
+        with mock.patch.object(cd, "gemini_unavailable", return_value=None), \
+             mock.patch.object(cd, "write_target_problem", return_value=None), \
+             mock.patch.object(cd.sys, "stdin") as stdin, \
+             mock.patch.object(cd.subprocess, "run") as run:
+            stdin.read.return_value = "task"
+            self.assertEqual(cd.cmd_run_gemini(args), 2)
+            run.assert_not_called()
 
     def test_other_model_failures_do_not_count(self):
         entries = [{"ts": 1, "model": "gpt-6.1-terra", "ok": False}, {"ts": 2, "model": "gpt-6.2-sol", "ok": False}]
