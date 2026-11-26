@@ -73,10 +73,12 @@ SONNET_TASK = """你係 Wong Choi 研究覆核員。下面係 AI 由 {date} {dom
 """
 
 OPUS_WEEKLY = """你係 Wong Choi 首席研究員。讀 {reviews_dir} 入面過去 7 日（{since} 至 {until}）四個 domain（au／hkjc／nba／tennis）
-嘅 `<日>.json`（Python 覆盤）同 `<日>.ai.json`（AI 解讀），同埋假設帳 {ledger}。
+嘅 `<日>.json`（Python 覆盤）同 `<日>.ai.json`（AI 解讀）、假設帳 {ledger}，同埋本週健康巡查
+{sweep_dir}（最新一份 `<日>.json`：原文抽查確認對唔上、欄位趨勢異常）。
 用港式中文寫一份 ≤ 400 字嘅每週總結俾老闆（Kelvin）：
 - 每個 domain 一句：本週表現同市場比點。
 - 本週重複出現、跨日都成立嘅 pattern（引用 JSON 數字）。
+- 健康巡查有確認問題就排第一講（數據錯比模型差更貴）。
 - 揀**最多 2 個**最值得開預先登記 forward 測試嘅假設，講點解、預計要幾耐有答案；冇就講冇。
 - 唔准建議即刻改模型；只可以建議開測試。
 最後只輸出純文字（唔使 JSON）。
@@ -431,8 +433,10 @@ def weekly(telegram: bool = False, today: str | None = None) -> dict:
     until = today or Date.today().isoformat()
     since = (Date.fromisoformat(until) - timedelta(days=7)).isoformat()
     reviews_dir = PR.output_dir("au").parent
-    text, err = _claude(OPUS_WEEKLY.format(reviews_dir=reviews_dir, since=since, until=until, ledger=ledger_path()),
-                        "opus", timeout=1200, read_dirs=(reviews_dir, ledger_path().parent))
+    sweep_dir = reviews_dir.parent / "health_sweep"
+    text, err = _claude(OPUS_WEEKLY.format(reviews_dir=reviews_dir, since=since, until=until, ledger=ledger_path(),
+                                           sweep_dir=sweep_dir),
+                        "opus", timeout=1200, read_dirs=(reviews_dir, ledger_path().parent, sweep_dir))
     result = {"version": VERSION, "kind": "weekly", "since": since, "until": until, "text": text, "error": err or None,
               "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
     # 失敗唔寫 .json（job_freshness 睇 weekly/*.json；失敗都寫就會當咗新鮮）

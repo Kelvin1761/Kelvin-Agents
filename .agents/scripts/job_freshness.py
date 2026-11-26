@@ -76,6 +76,8 @@ REGISTRY: dict[str, tuple[list[str], float]] = {
     "central-wong-choi.astra-audit": ([f"{HOME}/WongChoiData/WongChoiControl/astra_audit/latest.json"], 172),
     # 每週 AI 覆盤總結（2026-11-26）：review_ai.py weekly 寫 reviews/weekly/<日>.json
     "central-wong-choi.review-weekly": ([f"{HOME}/WongChoiData/WongChoiControl/reviews/weekly/*.json"], 172),
+    # 每週健康巡查（2026-11-26）：health_sweep.py 寫 health_sweep/<日>.json（AI 失敗唔寫 .json）
+    "central-wong-choi.health-sweep": ([f"{HOME}/WongChoiData/WongChoiControl/health_sweep/*.json"], 172),
     # 每 30 分鐘；live 寫 latest.json、dry-run 寫 latest-dryrun.json（任何一個新就算）。未安裝前唔會喺 LaunchAgents。
     "central-wong-choi.self-repair": ([f"{HOME}/WongChoiData/WongChoiControl/self_repair/latest.json",
                                        f"{HOME}/WongChoiData/WongChoiControl/self_repair/latest-dryrun.json"], 1.5),

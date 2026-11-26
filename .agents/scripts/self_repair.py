@@ -21,8 +21,8 @@
   * state 檔讀唔到／壞咗 → 拒絕動手（只診斷 + 通知），唔會當空白重新開始。
   * release／activation 進行中（auto-release flock 有人開住、holder pid 仲生、或者 activation-recovery
     啱啱有新 snapshot）→ 一樣都唔郁。
-  * `--allow-llm-diagnosis`（預設關，只喺 --live）：detached worktree、`claude -p --permission-mode plan`、
-    只准 Read／Grep／Glob；輸出只係一份 diagnosis markdown，唔會改檔、唔會跑命令。
+  * `--allow-llm-diagnosis`（預設關，只喺 --live）：detached worktree 入面開 `self_repair_triage.py` ——
+    Hydrogen（唯讀）診斷、Python 核證據、分流去「Opus 收貨」或者「升 Opus 處理」；輸出 diagnosis markdown，唔會改檔、唔會跑命令。
 
 永遠唔會：改 code、merge、部署、改 plist 內容、掂 secrets、刪資料。
 
@@ -487,13 +487,11 @@ class SelfRepair:
         self.report.unknown.append({"label": label, "reason": reason, "bundle": str(bundle)})
 
     # ── 通知 + 可選 LLM（唯讀） ──
-    def diagnosis_command(self, label: str, bundle: str) -> list[str]:
-        prompt = (f"Wong Choi 排程 job {PREFIX}{label} 出事。診斷包：{bundle}。讀 AGENTS.md 同相關 code／log，"
-                  "搵根本原因。你只有唯讀工具：唔好嘗試改檔或者跑命令。用 markdown 輸出：成因、證據（檔案:行）、"
-                  "建議修法（可以附 diff 草稿，但唔好套用）。")
-        return ["claude", "-p", prompt, "--permission-mode", "plan",
-                "--allowedTools", "Read", "Grep", "Glob",
-                "--disallowedTools", "Bash", "Edit", "Write", "NotebookEdit", "WebFetch", "WebSearch"]
+    def diagnosis_command(self, label: str, bundle: str, worktree: Path | None = None) -> list[str]:
+        """第二層（Kelvin 2026-11-26）：Hydrogen 先診斷（唯讀，Gemini 停派退 Luna），Python 核證據，
+        細修補＋高信心 → Opus 收貨；其他 → 升 Opus 處理。AI 唔改檔（`self_repair_triage.py`）。"""
+        return [sys.executable, str(REPO / ".agents" / "scripts" / "self_repair_triage.py"), "--bundle", str(bundle),
+                "--label", f"{PREFIX}{label}", "--worktree", str(worktree or self.worktree_for(label))]
 
     def worktree_for(self, label: str) -> Path:
         name = f"self-repair-{label.replace('.', '-')}-{self.today.replace('-', '')}"
@@ -512,10 +510,10 @@ class SelfRepair:
         if first:
             wt = self.worktree_for(first["label"])
             lines.append(f"診斷包：{Path(first['bundle']).parent}")
-            lines.append("Claude 診斷（唯讀）：\n"
-                         f"git -C {MAIN_REPO} fetch origin && git -C {MAIN_REPO} worktree add --detach {wt} origin/main"
-                         f" && cd {wt} && claude -p --permission-mode plan --allowedTools Read Grep Glob"
-                         f" \"讀 {first['bundle']} 診斷 {PREFIX}{first['label']}\"")
+            if self.allow_llm:
+                lines.append("Hydrogen 會先診斷（唯讀），結果另一條 Telegram；搞唔掂會講明要 Opus 處理。")
+            else:
+                lines.append("手動診斷：開 Claude Code，叫佢讀上面嘅診斷包。")
         text = "\n".join(lines)
         if self.dry_run:
             self.report.notes.append("dry-run：唔發 Telegram。會發：\n" + text)
@@ -540,8 +538,8 @@ class SelfRepair:
                 return
         self._reserve("llm", "all")
         out = Path(item["bundle"]).with_suffix(".diagnosis.md")
-        pid = self.sys.spawn_llm(self.diagnosis_command(item["label"], item["bundle"]), wt, out)
-        self.report.notes.append(f"已開唯讀 Claude 診斷 pid {pid} → {out}（detached worktree {wt}）")
+        pid = self.sys.spawn_llm(self.diagnosis_command(item["label"], item["bundle"], wt), wt, out.with_suffix(".log"))
+        self.report.notes.append(f"已開 Hydrogen 診斷 pid {pid} → {out}（detached worktree {wt}）")
 
     # ── 主流程 ──
     def run(self) -> Report:

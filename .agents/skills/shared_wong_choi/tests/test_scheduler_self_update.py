@@ -33,6 +33,7 @@ SCHEDULER_WRAPPERS = (
     ".agents/skills/central_wong_choi/scripts/run_central_daily_maintenance.sh",
     ".agents/skills/central_wong_choi/scripts/run_astra_audit.sh",
     ".agents/skills/central_wong_choi/scripts/run_review_weekly.sh",
+    ".agents/skills/central_wong_choi/scripts/run_health_sweep.sh",
     ".agents/skills/central_wong_choi/scripts/run_model_probe.sh",
     "tennis-wong-choi/scripts/run_tennis_daily_schedule.sh",
 )

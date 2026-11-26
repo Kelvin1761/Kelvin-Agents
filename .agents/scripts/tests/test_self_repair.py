@@ -217,7 +217,7 @@ class SelfRepairTests(unittest.TestCase):
         self.assertFalse(self.kinds(fake, "kickstart"))
         bundle = Path(report.unknown[0]["bundle"])
         self.assertEqual(json.loads(bundle.read_text())["label"], SLOT)
-        self.assertIn("--permission-mode plan", fake.telegrams[0])
+        self.assertIn("診斷包", fake.telegrams[0])   # 2026-11-26：手動指引改做「叫 Claude Code 讀診斷包」
 
     def test_running_job_or_busy_production_lock_waits(self):
         fake = FakeSystem(self.tmp, {"au-wong-choi.bot": loaded(running=True), TICK: loaded()},
@@ -329,11 +329,10 @@ class SelfRepairTests(unittest.TestCase):
         llm = self.kinds(fake, "llm")
         self.assertEqual(len(llm), 1)
         cmd = list(llm[0][1])
-        allowed = cmd[cmd.index("--allowedTools") + 1:cmd.index("--disallowedTools")]
-        self.assertEqual(allowed, ["Read", "Grep", "Glob"])
-        for tool in ("Bash", "Edit", "Write", "NotebookEdit", "WebFetch", "WebSearch"):
-            self.assertIn(tool, cmd[cmd.index("--disallowedTools") + 1:])
-        self.assertEqual(cmd[cmd.index("--permission-mode") + 1], "plan")
+        # 第二層（2026-11-26）：交 self_repair_triage.py（Hydrogen 唯讀診斷 → Python 核證據 → 分流 Opus）
+        self.assertTrue(cmd[1].endswith("self_repair_triage.py"))
+        self.assertIn("--bundle", cmd)
+        self.assertIn("self-repair-", cmd[cmd.index("--worktree") + 1])
         worktree_cmds = [c[1] for c in fake.calls if c[0] == "run" and "worktree" in c[1]]
         self.assertIn("--detach", worktree_cmds[0])
 
