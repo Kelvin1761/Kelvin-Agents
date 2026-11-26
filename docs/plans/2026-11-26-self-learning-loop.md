@@ -149,3 +149,20 @@ Claude 一定要喺 repo 以外嘅目錄跑：project Stop hook 會將「未保�
 
 第一次（HKJC 11-25）：解讀分清賽中意外（引事件報告）、市場都錯、模型判錯；Sonnet 認出「內檔優勢高估」＝EXP-20261115-18、
 「近績好高估」＝EXP-20261122-28（covered），「騎師此程弱被低估」入帳（watching）。
+
+## 11. 每週健康巡查＋排程維修第二層（Kelvin 2026-11-26：「hydrogen 每一個欄位每一個分數都做一次健康檢查」「自動化有問題俾 hydrogen 試吓解決或者話俾 opus」）
+
+**分工**：逐欄計數繼續 Python（field_health／data_contract／golden）。Hydrogen 做 Python 做唔到嘅大量人手對照：
+- `shared_wong_choi/health_sweep.py`（每星期一 07:30，`central-wong-choi.health-sweep`）：抽上週 AU／HKJC 各 20 匹，「抓返嚟嘅原文」
+  對「入分用欄位」；讀 8 週欄位健康表搵異常。Python 核實（引文要喺原文、值要係我哋嘅值、欄位存在、≥2 位小數嘅數字要喺數據入面）先報。
+  Gemini 停派退 Luna。結果 Telegram primary，Opus 每週總結會排第一講。
+- `.agents/scripts/self_repair_triage.py`（`self_repair --live --allow-llm-diagnosis`）：未知問題 → Hydrogen 唯讀診斷（detached worktree）
+  → Python 核「檔案:行」（要全部對得上）→ 細修補＋高信心 =「Opus 收貨」，其他 =「升 Opus 處理」。AI 唔改檔、唔 merge。
+
+**第一次試跑**：
+- 原文抽查第一輪報咗 10 項「對唔上」，全部有合理解釋：AU 檔位係刻意密集排位（`data_prep`，退出馬後重排）、AU `age` 11-22 先開始寫入 Logic。
+  已寫入巡查指示；第二輪 30 匹 0 項誤報。
+- 欄位趨勢（要 Opus／Kelvin 判斷）：AU `Time`（賽果 CSV）連續 8 週 fill 0.0；`proven_class_feature` W46 由 100% 跌到 8%；
+  `trial_score` 弱證據率 W42 由 0.19 升到 ~0.72；`jockey_horse_fit_score` 弱證據率慢升；`Margin` fill 1.0→0.93；
+  HKJC `騎練組合` fill 0.93→0.80；`trackwork_trend_score` W44 起冇 leaf（EXP-20261029-02 刻意）。
+- 維修診斷：拎 11-25 NBA warmup 撞鎖包試，Hydrogen 搵到同 e98f0fc3 一樣嘅成因同修法（有界等鎖），11 條證據全部核實 → opus_review。
