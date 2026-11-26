@@ -1,0 +1,165 @@
+{
+ "experiment": "EXP-20261127-01",
+ "items": 4420,
+ "summary": {
+  "bet": {
+   "players": 1976,
+   "table": {
+    "espn=dtd|official=dtd": {
+     "bad": 44,
+     "n": 92,
+     "rate": 0.4783,
+     "ci": [
+      0.3791,
+      0.5791
+     ]
+    },
+    "espn=dtd|official=ok": {
+     "bad": 6,
+     "n": 32,
+     "rate": 0.1875,
+     "ci": [
+      0.0889,
+      0.3531
+     ]
+    },
+    "espn=ok|official=ok": {
+     "bad": 112,
+     "n": 1849,
+     "rate": 0.0606,
+     "ci": [
+      0.0506,
+      0.0724
+     ]
+    },
+    "espn=out|official=ok": {
+     "bad": 0,
+     "n": 3,
+     "rate": 0.0,
+     "ci": [
+      0.0,
+      0.5615
+     ]
+    }
+   },
+   "official_only": 0,
+   "official_only_bad_rate": null,
+   "both_ok_bad_rate": 0.0606,
+   "diff_ci": null,
+   "official_only_leg_share": 0.0,
+   "official_only_examples": [],
+   "reports_found": 1976
+  },
+  "late": {
+   "players": 2444,
+   "table": {
+    "espn=dtd|official=dtd": {
+     "bad": 21,
+     "n": 41,
+     "rate": 0.5122,
+     "ci": [
+      0.3648,
+      0.6575
+     ]
+    },
+    "espn=dtd|official=ok": {
+     "bad": 1,
+     "n": 27,
+     "rate": 0.037,
+     "ci": [
+      0.0066,
+      0.1828
+     ]
+    },
+    "espn=dtd|official=out": {
+     "bad": 4,
+     "n": 4,
+     "rate": 1.0,
+     "ci": [
+      0.5101,
+      1.0
+     ]
+    },
+    "espn=ok|official=dtd": {
+     "bad": 1,
+     "n": 4,
+     "rate": 0.25,
+     "ci": [
+      0.0456,
+      0.6994
+     ]
+    },
+    "espn=ok|official=ok": {
+     "bad": 144,
+     "n": 2367,
+     "rate": 0.0608,
+     "ci": [
+      0.0519,
+      0.0712
+     ]
+    },
+    "espn=ok|official=out": {
+     "bad": 1,
+     "n": 1,
+     "rate": 1.0,
+     "ci": [
+      0.2065,
+      1.0
+     ]
+    }
+   },
+   "official_only": 5,
+   "official_only_bad_rate": 0.4,
+   "both_ok_bad_rate": 0.0608,
+   "diff_ci": [
+    -0.0904,
+    0.7687
+   ],
+   "official_only_leg_share": 0.0023,
+   "official_only_examples": [
+    {
+     "day": "2026-11-16",
+     "game": "OKC_SAC",
+     "player": "De'Andre Hunter",
+     "official_status": "questionable",
+     "dnp": true,
+     "minutes": 0
+    },
+    {
+     "day": "2026-11-17",
+     "game": "CHI_CLE",
+     "player": "Jalen Smith",
+     "official_status": "questionable",
+     "dnp": false,
+     "minutes": 28.0
+    },
+    {
+     "day": "2026-11-19",
+     "game": "HOU_IND",
+     "player": "Amen Thompson",
+     "official_status": "questionable",
+     "dnp": false,
+     "minutes": 31.0
+    },
+    {
+     "day": "2026-11-22",
+     "game": "NOP_SAS",
+     "player": "Zion Williamson",
+     "official_status": "out",
+     "dnp": true,
+     "minutes": 0
+    },
+    {
+     "day": "2026-11-24",
+     "game": "OKC_IND",
+     "player": "Pascal Siakam",
+     "official_status": "questionable",
+     "dnp": false,
+     "minutes": 35.0
+    }
+   ],
+   "reports_found": 2444
+  }
+ },
+ "featured": []
+}

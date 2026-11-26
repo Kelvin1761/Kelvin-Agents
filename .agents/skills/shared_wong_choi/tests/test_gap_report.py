@@ -29,7 +29,8 @@ def test_field_gaps_classifies():
 
 def test_known_list_wildcard_and_file():
     assert G._is_known("season_rate_v2_prob_S", [{"field": "season_rate_*"}])
-    assert not G._is_known("availability.official_level", G.known_retired("nba"))
+    assert not G._is_known("availability.espn_level", G.known_retired("nba"))
+    assert G._is_known("availability.official_level", G.known_retired("nba"))   # EXP-20261127-01 量度後確認停用
     known = G.known_retired("nba")
     assert len(known) >= 5 and all(k.get("reason") and k.get("exp") for k in known)   # 讀唔到唔可以 all([]) 過關
 
