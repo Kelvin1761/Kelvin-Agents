@@ -55,3 +55,15 @@ def test_failure_message_escalates(tmp_path):
     msg = T.message("x.job", {"cause": "c", "confidence": "high", "fix_size": "small"}, "", "Hydrogen", ["e"], [],
                     "opus_review", tmp_path / "d.md")
     assert "Opus 收貨" in msg and "Sol" in msg
+
+
+def test_luna_fallback_uses_codex_provider(monkeypatch, tmp_path):
+    calls = []
+
+    class P:
+        returncode, stdout, stderr = 1, "", "fail"
+    monkeypatch.setattr(T.subprocess, "run", lambda cmd, **k: calls.append(cmd) or P())
+    b = tmp_path / "b.json"
+    b.write_text("{}")
+    T.ask_ai("x", b, tmp_path)
+    assert calls[1][calls[1].index("--provider") + 1] == "codex" and "--provider" not in calls[0]

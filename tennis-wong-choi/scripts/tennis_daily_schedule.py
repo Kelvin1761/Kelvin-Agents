@@ -290,6 +290,7 @@ def daily(today: date) -> None:
 
 
 POST_REVIEW_SPORTS = PROJECT_DIR.parent / ".agents" / "skills" / "shared_wong_choi" / "post_review_sports.py"
+FIELD_HEALTH_SPORTS = PROJECT_DIR.parent / ".agents" / "skills" / "shared_wong_choi" / "field_health_sports.py"
 
 
 def _post_review(match_date: str) -> None:
@@ -297,6 +298,13 @@ def _post_review(match_date: str) -> None:
     只描述唔改模型；失敗只寫 log。"""
     if os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("WC_DISABLE_POST_REVIEW"):
         return
+    try:   # 欄位健康（2026-11-26）：每日記錄所有輸入欄、捉「死咗／變常數／成批少咗」→ primary
+        fh = subprocess.run([sys.executable, str(FIELD_HEALTH_SPORTS), "--domain", "tennis", "--date", match_date,
+                             "--telegram"], cwd=str(PROJECT_DIR.parent), capture_output=True, text=True,
+                            encoding="utf-8", errors="replace", timeout=600)
+        log(f"Field health: rc={fh.returncode} {((fh.stdout or '') + (fh.stderr or '')).strip()[-300:]}")
+    except Exception as exc:  # noqa: BLE001
+        log(f"WARNING: field health failed: {exc}")
     try:
         proc = subprocess.run([sys.executable, str(POST_REVIEW_SPORTS), "--domain", "tennis", "--date", match_date,
                                "--telegram"], cwd=str(PROJECT_DIR.parent), capture_output=True, text=True,

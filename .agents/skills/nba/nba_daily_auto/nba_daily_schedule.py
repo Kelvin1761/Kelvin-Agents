@@ -1800,6 +1800,7 @@ def run_results_refresh(target_date: str, log: RunLog) -> str:
 
 
 POST_REVIEW_SPORTS = PROJECT_ROOT / ".agents" / "skills" / "shared_wong_choi" / "post_review_sports.py"
+FIELD_HEALTH_SPORTS = PROJECT_ROOT / ".agents" / "skills" / "shared_wong_choi" / "field_health_sports.py"
 
 
 def _post_review(target_date: str, log: RunLog) -> None:
@@ -1808,6 +1809,14 @@ def _post_review(target_date: str, log: RunLog) -> None:
     if os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("WC_DISABLE_POST_REVIEW"):
         log.step("post_review", "skipped", reason="test_or_disabled")
         return
+    try:   # 欄位健康（2026-11-26）：每日記錄所有輸入欄、捉「死咗／變常數／成批少咗」→ primary
+        fh = subprocess.run([sys.executable, str(FIELD_HEALTH_SPORTS), "--domain", "nba", "--date", target_date,
+                             "--telegram"], cwd=str(PROJECT_ROOT), capture_output=True, text=True,
+                            encoding="utf-8", errors="replace", timeout=600)
+        log.step("field_health", "ok" if fh.returncode == 0 else "failed",
+                 detail=((fh.stdout or "") + (fh.stderr or "")).strip()[-300:])
+    except Exception as exc:  # noqa: BLE001
+        log.step("field_health", "failed", error=f"{type(exc).__name__}: {exc}")
     try:
         proc = subprocess.run([sys.executable, str(POST_REVIEW_SPORTS), "--domain", "nba", "--date", target_date,
                                "--telegram"], cwd=str(PROJECT_ROOT), capture_output=True, text=True,

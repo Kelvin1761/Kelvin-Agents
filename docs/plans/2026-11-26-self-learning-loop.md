@@ -166,3 +166,18 @@ Claude 一定要喺 repo 以外嘅目錄跑：project Stop hook 會將「未保�
   `trial_score` 弱證據率 W42 由 0.19 升到 ~0.72；`jockey_horse_fit_score` 弱證據率慢升；`Margin` fill 1.0→0.93；
   HKJC `騎練組合` fill 0.93→0.80；`trackwork_trend_score` W44 起冇 leaf（EXP-20261029-02 刻意）。
 - 維修診斷：拎 11-25 NBA warmup 撞鎖包試，Hydrogen 搵到同 e98f0fc3 一樣嘅成因同修法（有界等鎖），11 條證據全部核實 → opus_review。
+
+## 12. NBA／網球欄位健康（Kelvin 2026-11-26：NBA 同網球完全冇欄位級別監察）
+
+`shared_wong_choi/field_health_sports.py`：每晚（NBA postgame、網球 18:00 daily）攤平所有輸入欄（NBA ledger 賽前 model_obs／settlement／
+availability；網球 prop_tracker＋pricing_evidence），記 n／填充率／唔同值／平均／SD 入 `<WongChoiControl>/field_health/<domain>.jsonl`；
+同之前 14 日比捉「死咗／變常數（數值欄）／成批少咗／成日冇數據」，每個 domain 7 日冷卻、發送成功先記，Telegram primary。
+每週健康巡查（Hydrogen）讀埋 NBA／網球按週彙總。Python 統計每日跑（幾秒、冇 AI 成本），AI 每週。
+
+40 日回補：警報只喺 11 月頭兩次大改（NBA 引擎重寫 EXP-20261103-15、網球重建 11-06）同 NBA ledger 冇數據嘅 10-30／31、11-04；
+11-13 之後兩邊零誤報。
+
+**網球場地／資料質素（Kelvin 問點解 65、surface 空）**：唔係壞咗。場地唯一可靠來源 tennis-data.co.uk 只有 ATP／WTA，11 月下旬巡迴賽季完 →
+0%；Challenger／ITF 一直冇場地來源（10–20%）。冇場地＋冇輪次令警告扣分頂到上限 35 → 低級別全部 65，啱啱過 `MIN_DATA_QUALITY` 0.65（門檻冇作用）。
+改善方向：用往屆同一賽事／地點（`tennismylife_history`、`jeff_sackmann` 嘅 tournament_levels）補場地 —— 粗對應已可有把握補 42% 場次。
+**會改定價**（場地 Elo），要重播＋model-regression-gate＋新數據驗證；未做。
