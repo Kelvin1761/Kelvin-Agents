@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- 打機時段（Kelvin 2026-11-21）：Background = M1 只用效能核，性能核留俾前景 app；結果一樣，只係慢啲 -->
+  <key>ProcessType</key><string>Background</string>
+  <key>LowPriorityIO</key><true/>
+  <key>LowPriorityBackgroundIO</key><true/>
+  <key>Nice</key><integer>10</integer>
+  <key>Label</key>
+  <string>com.antigravity.central-wong-choi.review-weekly</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>__SCRIPT_DIR__/run_review_weekly.sh</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>__PROJECT_ROOT__</string>
+  <!-- 每星期一 09:30 悉尼：每週 AI 覆盤總結（Opus，Telegram primary；只建議開測試，唔改模型）。 -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Weekday</key><integer>1</integer>
+    <key>Hour</key><integer>9</integer>
+    <key>Minute</key><integer>30</integer>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>__SCRIPT_DIR__/logs/review-weekly.out</string>
+  <key>StandardErrorPath</key>
+  <string>__SCRIPT_DIR__/logs/review-weekly.err</string>
+</dict>
+</plist>

@@ -624,6 +624,10 @@ def main(argv=None) -> int:
         res = T.send_message(telegram_text(rv), audience="content")
         if isinstance(res, dict) and res.get("ok"):
             _atomic(marker, datetime.now(timezone.utc).isoformat())
+    if a.telegram and rv["summary"]["races"]:   # 排程先開 AI 解讀（L2，背景；人手跑唔開）
+        sys.path.insert(0, str(REPO / ".agents" / "skills" / "shared_wong_choi"))
+        import review_ai
+        review_ai.spawn_daily(a.platform, a.date)
     return 0
 
 

@@ -105,7 +105,7 @@ AU 通用 forward 引擎（`au_hypothesis_forward.py`）喺今次同 H2／H3 一
 | P1 ✅（2026-11-26） | L1 覆盤報告 AU＋HKJC（含每日核數）：`shared_racing/scripts/post_review.py`，AU 晚更 `step_post_review`、HKJC 賽後背景，content 摘要，`健康.sh`「自動覆盤」；dashboard 頁未做（重用 miss_autopsy）、cohort 庫、跨日核實；Telegram content 摘要；dashboard「覆盤」頁 | 對 11-18 跑馬地重現人手覆盤嘅主要結論（穩定性反例、模型獨家睇好冇 edge） |
 | P2 | L3 假設帳＋每晚重驗＋learning_board＋健康.sh | 用 08-05→11-25 回放模擬：出世／rejected 數目合理（純噪音 cohort 唔會 supported） |
 | P3（L1 ✅ 2026-11-26） | NBA＋Tennis 嘅 L1（`shared_wong_choi/post_review_sports.py`，NBA postgame／網球 18:00）／L3 | 同上 |
-| P4 | L2 LLM 解讀＋提案（Sonnet）、L4 arm 提案自動 fit | 一個提案走完全程到 Telegram（Astra：LLM 最後先做）|
+| P4（L2 ✅ 2026-11-26） | L2 AI 解讀（`shared_wong_choi/review_ai.py`：Gemini 寫、Python 核數字／名、Sonnet 審假設、假設帳；每週一 09:30 Opus 總結）、L4 arm 提案自動 fit（未做） | 一個提案走完全程到 Telegram（Astra：LLM 最後先做）|
 
 ## 6. 未決
 
@@ -137,3 +137,15 @@ AU 通用 forward 引擎（`au_hypothesis_forward.py`）喺今次同 H2／H3 一
   注意：`prop_tracker.model_prob` 係向市場收縮後，有啲盤口完全等於市場，唔可以當模型。
 - NBA 624 條腿：實際中 38.1%、模型平均 35.0%；得 73 條有雙邊去水收盤價（模型 0.6721 vs 市場 0.6766）。
   跨日：「助攻」+2.0pp [+0.8, +3.1]、「模型 ≥80%」−3.1pp [−4.0, −2.0]（描述）。單邊 1/價含抽水，唔拎嚟比 log-loss。
+
+## 10. AI 解讀（L2，Kelvin 2026-11-26「覆盤 there should be ai involved」）
+
+分工（Kelvin 揀）：**Gemini 寫**（`codex_delegate.py run third`，唯讀、Google 訂閱、撞 429 自動停派、記帳）→
+**Python 核事實**（每個小數／分數／≥10 嘅數字、每個「」名要喺當日覆盤 JSON 搵到，唔係就刪句）→
+**Sonnet 審假設**（`claude -p --model sonnet`，空臨時目錄、只 `--add-dir docs/experiments`、plan mode、唯讀；
+問洩漏、做過未、值唔值得）→ 假設帳 `<WongChoiControl>/learning/hypotheses.jsonl`（watching／covered）。
+每週一 09:30 `central-wong-choi.review-weekly`：Opus 讀 7 日覆盤＋解讀＋帳，Telegram primary。冇用 Terra（Codex 預算留俾改模型）。
+Claude 一定要喺 repo 以外嘅目錄跑：project Stop hook 會將「未保存」提醒蓋過答覆（第一次試就中）。
+
+第一次（HKJC 11-25）：解讀分清賽中意外（引事件報告）、市場都錯、模型判錯；Sonnet 認出「內檔優勢高估」＝EXP-20261115-18、
+「近績好高估」＝EXP-20261122-28（covered），「騎師此程弱被低估」入帳（watching）。

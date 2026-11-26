@@ -43,6 +43,14 @@ NBA 歸檔用 `shutil.move` 令 research-review 壞咗一個月。`.agents/scrip
 GitHub 只有 code；資料（`~/WongChoiData`、外置碟 Betfair 記錄同舊快照、網球 DB）靠呢個先有屋企以外嘅副本。
 鑰匙 `~/.wongchoi_offsite.key` **一定要另外抄落密碼管理器**，唔係部 Mac 冇咗就解唔返。`健康.sh` 會報新鮮度同上次還原演練。
 
+### 自動覆盤＋自學循環（Kelvin 2026-11-26 主目標）
+
+每個賽日／比賽日賽後自動覆盤（AU、HKJC、NBA、網球）：Python 出數（`shared_racing/scripts/post_review.py`、
+`shared_wong_choi/post_review_sports.py`，`<WongChoiControl>/reviews/<domain>/<日>`），AI 解讀（`shared_wong_choi/review_ai.py`：
+Gemini 寫 → Python 核數字 → Sonnet 審假設 → 假設帳 `learning/hypotheses.jsonl`），每週一 Opus 總結。設計同門檻：
+`docs/plans/2026-11-26-self-learning-loop.md`。**AI 同覆盤永遠唔改模型**：假設只可以用出世之後嘅新數據驗證、經預先登記 forward
+（AU：`au_hypothesis_forward.ARMS` 加一行）判，上唔上線係 Kelvin。新開 domain 要喺同一個改動接覆盤。
+
 ### 欄位健康趨勢同失手體檢（只做診斷）
 
 - `shared_racing/scripts/field_health.py`：逐週記錄 leaf 分、evidence state、

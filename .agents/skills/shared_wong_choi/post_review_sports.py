@@ -468,6 +468,9 @@ def main(argv=None) -> int:
         res = T.send_message(telegram_text(rv), audience="content")
         if isinstance(res, dict) and res.get("ok"):
             PR._atomic(marker, datetime.now(timezone.utc).isoformat())
+    if a.telegram and n:   # 排程先開 AI 解讀（L2，背景）
+        import review_ai
+        review_ai.spawn_daily(a.domain, a.date)
     return 0
 
 
