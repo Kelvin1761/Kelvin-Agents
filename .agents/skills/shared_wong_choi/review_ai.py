@@ -79,6 +79,8 @@ OPUS_WEEKLY = """你係 Wong Choi 首席研究員。讀 {reviews_dir} 入面過�
 - 每個 domain 一句：本週表現同市場比點。
 - 本週重複出現、跨日都成立嘅 pattern（引用 JSON 數字）。
 - 健康巡查有確認問題就排第一講（數據錯比模型差更貴）。
+- **「改善空間」最少 3 項**：讀改善空間清單 {gap_report}（填唔滿嘅輸入欄、觀察中假設、可以重評嘅舊 REJECT），揀最值得做嘅 3 項，
+  每項講：係咩、點解可能有用、下一步點做（新資料來源？新登記嘅 forward？）。**唔准寫「已經做晒／冇得再改善」**（Kelvin 2026-11-26）。
 - 揀**最多 2 個**最值得開預先登記 forward 測試嘅假設，講點解、預計要幾耐有答案；冇就講冇。
 - 唔准建議即刻改模型；只可以建議開測試。
 最後只輸出純文字（唔使 JSON）。
@@ -434,8 +436,14 @@ def weekly(telegram: bool = False, today: str | None = None) -> dict:
     since = (Date.fromisoformat(until) - timedelta(days=7)).isoformat()
     reviews_dir = PR.output_dir("au").parent
     sweep_dir = reviews_dir.parent / "health_sweep"
+    try:                                   # 改善空間清單（Kelvin 2026-11-26：唔准假設已經做晒）
+        import gap_report
+        gap_path = gap_report.write(gap_report.build(until))
+    except Exception as exc:  # noqa: BLE001 —— 清單失敗：明講，唔好叫 Opus 讀舊檔（Sol）
+        gap_path = f"（今週改善空間清單產生失敗：{type(exc).__name__}；唔好讀舊檔，改為由覆盤／假設帳自己揀 3 項並註明清單失敗）"
+        print(f"gap_report 失敗：{exc}", file=sys.stderr)
     text, err = _claude(OPUS_WEEKLY.format(reviews_dir=reviews_dir, since=since, until=until, ledger=ledger_path(),
-                                           sweep_dir=sweep_dir),
+                                           sweep_dir=sweep_dir, gap_report=gap_path),
                         "opus", timeout=1200, read_dirs=(reviews_dir, ledger_path().parent, sweep_dir))
     result = {"version": VERSION, "kind": "weekly", "since": since, "until": until, "text": text, "error": err or None,
               "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}

@@ -43,6 +43,14 @@ NBA 歸檔用 `shutil.move` 令 research-review 壞咗一個月。`.agents/scrip
 GitHub 只有 code；資料（`~/WongChoiData`、外置碟 Betfair 記錄同舊快照、網球 DB）靠呢個先有屋企以外嘅副本。
 鑰匙 `~/.wongchoi_offsite.key` **一定要另外抄落密碼管理器**，唔係部 Mac 冇咗就解唔返。`健康.sh` 會報新鮮度同上次還原演練。
 
+### 唔准講「已經做晒」（Kelvin 2026-11-26）
+
+答「仲有冇得改善／仲有咩可以做」之前，**一定要**先睇改善空間清單（`shared_wong_choi/gap_report.py`，每週一自動跑，
+`<WongChoiControl>/learning/gap_report.json`；dashboard Portfolio「🔍 改善空間」）、欄位健康（賽馬 `*_Field_Health.jsonl`、
+NBA／網球 `field_health_sports`）同假設帳，回覆要列「查過咩＋證據、未查咩、下一步」。**唔准講「試晒／冇得再優化」**：
+舊 REJECT 只係嗰個做法喺嗰批數據唔得；填唔滿嘅輸入欄、未試嘅資料來源、樣本多咗嘅舊判決全部係改善空間。
+原因：Kelvin 幾次被講「已經做晒」，跟住自己搵到簡單改善（網球輪次填充率 40%→3%、WTA 發球數據 6 月起 0%）。
+
 ### 自動覆盤＋自學循環（Kelvin 2026-11-26 主目標）
 
 每個賽日／比賽日賽後自動覆盤（AU、HKJC、NBA、網球）：Python 出數（`shared_racing/scripts/post_review.py`、

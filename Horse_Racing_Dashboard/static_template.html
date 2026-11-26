@@ -268,6 +268,20 @@
     .calib-card__meta { font-size: 0.7rem; color: var(--color-text-muted); margin: 0 0 8px; }
     .calib-card svg { width: 100%; height: auto; display: block; }
     .calib-card__ll { font-size: 0.72rem; color: var(--color-text-secondary); margin-top: 6px; }
+    .lb-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0 12px; }
+    .lb-day { border: 1px solid var(--pf-line); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: var(--pf-paper); }
+    .lb-day > summary { cursor: pointer; font-weight: 700; font-size: 0.88rem; list-style: none; }
+    .lb-day > summary::-webkit-details-marker { display: none; }
+    .lb-kpis { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.76rem; color: var(--color-text-secondary); margin: 8px 0; }
+    .lb-kpis b { color: var(--color-text); }
+    .lb-ai { font-size: 0.82rem; line-height: 1.6; background: var(--color-surface-alt, #F1F5F9); border-radius: 10px; padding: 10px 12px; margin: 8px 0; white-space: pre-wrap; }
+    .lb-list { font-size: 0.76rem; margin: 6px 0 0; padding-left: 18px; }
+    .lb-list li { margin: 3px 0; }
+    .lb-tag { display: inline-block; font-size: 0.68rem; padding: 0 6px; border-radius: 999px; background: var(--color-surface-alt, #F1F5F9); margin-left: 4px; }
+    .lb-tag--good { background: #DCFCE7; color: #166534; } .lb-tag--warn { background: #FEF3C7; color: #92400E; } .lb-tag--bad { background: #FEE2E2; color: #991B1B; }
+    .lb-table { width: 100%; border-collapse: collapse; font-size: 0.74rem; }
+    .lb-table th, .lb-table td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--pf-line); vertical-align: top; }
+    .lb-wrap { overflow-x: auto; }
     .horse-card__body { word-break: break-word; box-sizing: border-box; overflow: hidden; min-width: 0; }
     .horse-card__details { overflow-wrap: break-word; word-break: break-word; min-width: 0; }
 
@@ -4253,6 +4267,93 @@ function renderCalibrationBoard() {
     </section>`;
 }
 
+// ── 🧠 自學（每日覆盤＋AI 解讀＋假設帳＋健康巡查，2026-11-26）：只抄 WongChoiControl 已寫好嘅檔 ──
+let lbDomain = null;
+function lbSetDomain(key) { lbDomain = key; render(); }
+function lbN(v) { return esc(String(v ?? '—')); }   // 所有插入 HTML 嘅值都 esc（Sol：數字欄都唔例外）
+function lbPct(v) { return v == null ? '—' : `${(100 * Number(v)).toFixed(1)}%`; }
+function lbPp(v) { return v == null ? '—' : `${v > 0 ? '+' : ''}${Number(v).toFixed(1)}pp`; }
+
+function lbDayHtml(key, d, open) {
+  const s = d.summary || {};
+  let kpis = '';
+  if (key === 'au' || key === 'hkjc') {
+    const lab = Object.entries(d.labels || {}).map(([k, v]) => `${esc(k)} ${v}`).join('、') || '—';
+    kpis = `<span>場數 <b>${lbN(s.races)}</b></span><span>頭三入前三 模型 <b>${lbN(s.model_top3_hits)}/${lbN(s.slots)}</b>・市場 <b>${lbN(s.market_top3_hits)}/${lbN(s.slots)}</b></span>`
+      + `<span>首選贏 <b>${lbN(s.model_top1_wins)}</b>・大熱贏 <b>${lbN(s.fav_wins)}</b></span><span>標籤：${lab}</span>`;
+  } else {
+    const fs = d.featured_summary || {};
+    const n = key === 'nba' ? s.legs : s.props;
+    const cm = Object.entries(d.confident_miss_classes || {}).map(([k, v]) => `${esc(k)} ${v}`).join('、') || '—';
+    kpis = `<span>${key === 'nba' ? '腿' : '注'} <b>${lbN(n)}</b></span><span>實際中 <b>${lbPct(s.hit_rate)}</b>・模型平均 <b>${lbPct(s.mean_p)}</b></span>`
+      + `<span>精選 <b>${lbN(fs.won ?? 0)}/${lbN(fs.settled ?? 0)}</b>（${fs.pnl_units != null ? esc((fs.pnl_units > 0 ? '+' : '') + fs.pnl_units + 'u') : '—'}）</span>`
+      + `<span>模型 ≥70% 唔中 <b>${Object.values(d.confident_miss_classes || {}).reduce((a, b) => a + b, 0)}/${lbN(d.confident_total ?? 0)}</b>（${cm}）</span>`;
+  }
+  const ai = d.ai ? `<div class="lb-ai">🤖 ${esc(d.ai.narrative || '')}${d.ai.dropped ? `\n（核實刪咗 ${d.ai.dropped} 句數字／名對唔上）` : ''}</div>` : '<p class="calib-card__meta">AI 解讀未有</p>';
+  const misses = (d.misses || []).map(m => {
+    const o = (m.over || [])[0], u = (m.under || [])[0];
+    const inc = o && o.incident && o.incident.length ? `<span class="lb-tag lb-tag--warn">${esc(o.incident.join('、'))}</span>` : '';
+    return `<li><b>${esc((m.meeting || '').replace(/^\d{4}-\d{2}-\d{2}[ _]/, ''))} R${lbN(m.race)}</b> ${esc(m.label || '')}`
+      + (o ? `：高估 ${esc(o.name)}（模型${lbN(o.rank)}→第${lbN(o.pos)}）${inc}${o.why && o.why.length ? ' ' + esc(o.why.join('／')) : ''}` : '')
+      + (u ? `；低估 ${esc(u.name)}（模型${lbN(u.rank)}→第${lbN(u.pos)}）` : '') + '</li>';
+  }).join('');
+  const cohorts = (d.cohorts || []).map(c => {
+    const ci = c.trail_model_ci_pp;
+    const tone = String(c.reading || '').includes('跨日同方向') ? 'lb-tag--warn' : '';
+    return `<tr><td>${esc(c.label)}</td><td>${lbN(c.today_hits)}/${lbN(c.today_n)}（${lbPp(c.today_resid_pp)}）</td>`
+      + `<td>${lbPp(c.trail_model_resid_pp)}${ci ? ` [${lbPp(ci[0])}, ${lbPp(ci[1])}]` : ''}</td><td><span class="lb-tag ${tone}">${esc(c.reading || '')}</span></td></tr>`;
+  }).join('');
+  const hyps = d.ai && d.ai.hypotheses && d.ai.hypotheses.length ? `<ul class="lb-list">${d.ai.hypotheses.map(h =>
+    `<li>${esc(h.title)} <span class="lb-tag ${h.verdict === '值得驗證' ? 'lb-tag--good' : h.verdict === '洩漏' ? 'lb-tag--bad' : ''}">${esc(h.verdict)}</span></li>`).join('')}</ul>` : '';
+  return `<details class="lb-day"${open ? ' open' : ''}><summary>${esc(d.date)}${d.reconciliation_ok === false ? ' <span class="lb-tag lb-tag--bad">核數有缺</span>' : ''}</summary>
+    <div class="lb-kpis">${kpis}</div>${ai}
+    ${misses ? `<h4 class="pf-h2" style="font-size:.8rem;margin:10px 0 2px">失手場（每場一匹高估／低估）</h4><ul class="lb-list">${misses}</ul>` : ''}
+    ${cohorts ? `<h4 class="pf-h2" style="font-size:.8rem;margin:10px 0 2px">今日組別 vs 之前 live 日（描述，唔係判決）</h4><div class="lb-wrap"><table class="lb-table"><thead><tr><th>組別</th><th>今日</th><th>跨日模型殘差</th><th>讀法</th></tr></thead><tbody>${cohorts}</tbody></table></div>` : ''}
+    ${hyps ? `<h4 class="pf-h2" style="font-size:.8rem;margin:10px 0 2px">AI 提出嘅假設（Sonnet 審）</h4>${hyps}` : ''}
+  </details>`;
+}
+
+function renderLearningBoard() {
+  const lb = DASHBOARD_DATA.learning_board;
+  if (!lb || !lb.domains) return '';
+  const keys = Object.keys(lb.domains);
+  if (!lbDomain || !lb.domains[lbDomain]) lbDomain = keys.find(k => (lb.domains[k].days || []).length) || keys[0];
+  const tabs = keys.map(k => `<button type="button" class="pf-seg${k === lbDomain ? ' is-active' : ''}" aria-pressed="${k === lbDomain}" onclick="lbSetDomain('${k}')">${esc(lb.domains[k].label)} <small>${Number((lb.domains[k].days || []).length)}</small></button>`).join('');
+  const days = lb.domains[lbDomain].days || [];
+  const dayHtml = days.length ? days.map((d, i) => lbDayHtml(lbDomain, d, i === 0)).join('') : '<p class="calib-card__meta">未有覆盤（每日排程賽後先出）</p>';
+  const weekly = lb.weekly && lb.weekly.text ? `<div class="lb-ai">🧠 每週總結（${esc(lb.weekly.since)} → ${esc(lb.weekly.until)}，Opus）\n${esc(lb.weekly.text)}</div>` : '';
+  const sw = lb.health_sweep;
+  const sweep = sw ? `<p class="calib-card__meta" style="font-size:.78rem">🩺 健康巡查 ${esc(sw.date)}（${esc(sw.checked_by || '—')} 抽查、Python 核實）：原文抽查 ${lbN(sw.samples ?? 0)} 匹、確認對唔上 <b>${(sw.confirmed_mismatches || []).length}</b>、欄位趨勢異常 <b>${(sw.trend_flags || []).length}</b></p>`
+    + ((sw.trend_flags || []).length ? `<ul class="lb-list">${sw.trend_flags.slice(0, 8).map(t => `<li>${esc(t.platform)}／${esc(t.field)}：${esc(t.issue || '')}</li>`).join('')}</ul>` : '') : '';
+  const hyps = (lb.hypotheses || []).slice(0, 15);
+  const hypTable = hyps.length ? `<div class="lb-wrap"><table class="lb-table"><thead><tr><th>假設</th><th>範疇</th><th>出世</th><th>狀態</th></tr></thead><tbody>${hyps.map(h =>
+    `<tr><td>${esc(h.title || '')}<br><small>${esc((h.cohort || []).join(' ＋ '))}・${h.direction === 'model_under' ? '模型低估' : '模型高估'}</small></td><td>${esc(h.domain)}</td><td>${esc(h.born || '')}</td>`
+    + `<td><span class="lb-tag ${h.state === 'watching' ? 'lb-tag--warn' : h.state === 'supported' ? 'lb-tag--good' : ''}">${esc({watching: '觀察中', covered: '已有測試', supported: '支持', rejected: '否決', undecided: '未定'}[h.state] || h.state || '')}</span>${h.done_before ? `<br><small>${esc(h.done_before)}</small>` : ''}</td></tr>`).join('')}</tbody></table></div>`
+    : '<p class="calib-card__meta">假設帳暫時冇嘢</p>';
+  const gr = lb.gap_report;
+  const zhDom = { au: 'AU 賽馬', hkjc: '香港賽馬', nba: 'NBA', tennis: '網球' };
+  const gapHtml = gr && gr.domains ? Object.entries(gr.domains).map(([k, d]) => {
+    const items = (d.gaps || []).map(g => `<li><b>${esc(g.field)}</b>：${esc(g.why)}</li>`).join('');
+    const rej = (d.old_rejects || []).map(r => `<li><small>${esc(r.id)}（${esc(r.date)}）可以重評</small></li>`).join('');
+    const extra = d.known_retired_total ? `確認停用 ${Number(d.known_retired_total)} 欄（已隱藏）` : '';
+    if (d.error) return `<article class="calib-card"><h3>${esc(zhDom[k] || k)}</h3><p class="calib-card__meta">⚠️ 讀唔到：${esc(d.error)}（唔代表冇缺口）</p></article>`;
+    return `<article class="calib-card"><h3>${esc(zhDom[k] || k)} <small>缺口 ${lbN(d.gaps_total ?? 0)}${extra ? '・' + esc(extra) : ''}</small></h3>${items || rej ? `<ul class="lb-list">${items}${rej}</ul>` : '<p class="calib-card__meta">冇明顯缺口</p>'}</article>`;
+  }).join('') : '';
+  const gapPanel = gapHtml ? `<section class="pf-panel"><h2 class="pf-h2">🔍 改善空間 <small>${esc(gr.date || '')}・填唔滿嘅輸入欄＋可以重評嘅舊 REJECT；唔准假設已經做晒</small></h2><div class="calib-grid">${gapHtml}</div></section>` : '';
+  return `<section class="pf-panel">
+      <h2 class="pf-h2">🧠 自學：每日覆盤 <small>Python 出數、Gemini 解讀、Python 核數字、Sonnet 審假設；只描述，唔改模型</small></h2>
+      ${weekly}
+      <div class="lb-tabs" role="group" aria-label="範疇">${tabs}</div>
+      ${dayHtml}
+    </section>
+    <section class="pf-panel">
+      <h2 class="pf-h2">📒 假設帳 <small>只用出世之後嘅新數據驗證；上唔上線係 Kelvin 決定</small></h2>
+      ${hypTable}
+      ${sweep}
+    </section>
+    ${gapPanel}`;
+}
+
 function renderPortfolioWorkspace() {
   const anchor = pfAnchor();
   const period = pfPeriod(pfGranularity, anchor, pfOffset);
@@ -4320,6 +4421,7 @@ function renderPortfolioWorkspace() {
       <h2 class="pf-h2">${tableTitle} <small>ROI% · 盈虧 · 注數</small></h2>
       <div class="pf-table-wrap"><table class="pf-table"><thead><tr><th scope="col">時段</th>${PF_SPORTS.map(s => `<th scope="col"><span class="pf-dot" style="background:${s.color}"></span>${esc(s.label)}</th>`).join('')}<th scope="col">合計</th></tr></thead><tbody>${tableRows}</tbody></table></div>
     </section>
+    ${renderLearningBoard()}
     ${renderCalibrationBoard()}
     <div class="scope-note">
       <span>📋</span>
