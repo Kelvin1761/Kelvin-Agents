@@ -61,7 +61,8 @@ class OffsiteBackupTests(unittest.TestCase):
     def test_tampered_object_fails_drill(self) -> None:
         self.run_backup()
         obj = next(p for p in (self.remote / "objects").rglob("*") if p.is_file())
-        obj.write_bytes(obj.read_bytes()[:-1] + b"\x00")
+        data = obj.read_bytes()
+        obj.write_bytes(data[:-1] + bytes([data[-1] ^ 0xFF]))   # 反轉最後一 byte：一定改到（原本寫 \x00 有 1/256 等於冇改，flaky）
         with self.assertRaises(ob.BackupError):
             ob.cmd_drill(3, cfg=self.cfg, seed=0, sources=self.sources)
 
@@ -71,6 +72,16 @@ class OffsiteBackupTests(unittest.TestCase):
         bad.write_text("nope\n")
         with self.assertRaises(ob.BackupError):
             ob.cmd_drill(1, cfg=self.cfg | {"key_file": str(bad)}, sources=self.sources)
+
+    def test_garbage_decrypt_is_backup_error(self) -> None:
+        """錯鑰匙碰啱過到 padding（~1/256）：openssl rc=0 但出亂碼 → 一定係 BackupError（確定性重現 flaky）。"""
+        import subprocess
+        from unittest import mock
+        for junk in (b"\xec\x01\x99garbage", b"[1, 2]", b"not json"):
+            fake = subprocess.CompletedProcess([], 0, stdout=junk, stderr=b"")
+            with mock.patch.object(ob.subprocess, "run", return_value=fake):
+                with self.assertRaises(ob.BackupError):
+                    ob._decrypt_json(Path("x"), "k")
 
     def test_retention_deletes_unreferenced(self) -> None:
         old = ob.KEEP_GENERATIONS

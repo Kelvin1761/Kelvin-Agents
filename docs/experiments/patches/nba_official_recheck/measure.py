@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""EXP-20261127-01：重新量度 NBA 官方傷停報告（11-02 EXP-20261101-60 剷走）對大細盤精選有冇用。只量度，唔改模型。
+"""EXP-20261127-02：重新量度 NBA 官方傷停報告（11-02 EXP-20261101-60 剷走）對大細盤精選有冇用。只量度，唔改模型。
 
 預先登記（結果出之前寫死）：
   * 日子：target_date 2026-11-03 → 2026-11-26（剷走之後、精選開始前後都包埋）。
@@ -265,7 +265,7 @@ def main(argv=None) -> int:
         items += got
         print(d, len(got), flush=True)
         d += timedelta(days=1)
-    res = {"experiment": "EXP-20261127-01", "items": len(items), "summary": summarise(items),
+    res = {"experiment": "EXP-20261127-02", "items": len(items), "summary": summarise(items),
            "featured": featured_effect(items)}
     Path(a.out).write_text(json.dumps(res, ensure_ascii=False, indent=1))
     Path(a.out).with_suffix(".items.json").write_text(json.dumps(items, ensure_ascii=False))

@@ -58,8 +58,8 @@
   {
    "domain": "nba",
    "field": "availability.official_level",
-   "reason": "官方傷停報告 EXP-20261101-60 剷走（Kelvin 決定）；EXP-20261127-01 重新量度：精選凍結嗰刻 0 個 ESPN 漏咗嘅開盤球員 → 確認停用",
-   "exp": "EXP-20261127-01"
+   "reason": "官方傷停報告 EXP-20261101-60 剷走（Kelvin 決定）；EXP-20261127-02 重新量度：精選凍結嗰刻 0 個 ESPN 漏咗嘅開盤球員 → 確認停用",
+   "exp": "EXP-20261127-02"
   }
  ]
 }

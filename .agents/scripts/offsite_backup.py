@@ -408,7 +408,15 @@ def _decrypt_json(path: Path, key_file: str) -> dict:
                            "-pass", f"file:{key_file}", "-in", str(path)], capture_output=True)
     if proc.returncode != 0:
         raise BackupError("manifest 解唔到（鑰匙錯？）")
-    return json.loads(proc.stdout)
+    # 錯鑰匙大約 1/256 機會過到 CBC padding 檢查、openssl 照 rc=0 出亂碼 → 一定要當解唔到，唔好拋
+    # UnicodeDecodeError／JSONDecodeError（2026-11-27 Tennis session 撞到 flaky 測試）。
+    try:
+        out = json.loads(proc.stdout.decode("utf-8"))
+    except ValueError as exc:      # 包埋 UnicodeDecodeError 同 JSONDecodeError
+        raise BackupError("manifest 解唔到（鑰匙錯？解出嚟唔係 JSON）") from exc
+    if not isinstance(out, dict):
+        raise BackupError("manifest 解唔到（鑰匙錯？內容唔係 manifest）")
+    return out
 
 
 # ---------------------------------------------------------------- 狀態
