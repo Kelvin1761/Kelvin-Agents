@@ -114,7 +114,7 @@ def export_learning_board(root: Path | None = None) -> dict:
             except ValueError:
                 continue
             hyps.append({k: h.get(k) for k in ("id", "domain", "born", "title", "cohort", "direction", "state",
-                                               "done_before", "verdict")})
+                                               "done_before", "progress", "result", "judged_at")})
     sweeps = sorted((root / "health_sweep").glob("????-??-??.json")) if (root / "health_sweep").is_dir() else []
     sweep = _read(sweeps[-1]) if sweeps else None
     if isinstance(sweep, dict):

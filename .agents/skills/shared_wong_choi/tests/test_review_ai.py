@@ -157,3 +157,16 @@ def test_spawn_launches_when_scheduled(monkeypatch, tmp_path):
     R.spawn_daily("nba", "2026-11-25")
     (cmd, detached), = called
     assert cmd[-6:] == ["daily", "--domain", "nba", "--date", "2026-11-25", "--telegram"] and detached
+
+
+def test_weekly_runs_judge_then_gap_report(monkeypatch, tmp_path):
+    order = []
+    import hypothesis_judge as HJ
+    import gap_report as GR
+    monkeypatch.setattr(R.PR, "output_dir", lambda d: tmp_path / "reviews" / d)
+    monkeypatch.setattr(HJ, "run", lambda today, telegram=False: order.append(("judge", today)) or {"judged": []})
+    monkeypatch.setattr(GR, "build", lambda today: order.append(("gap", today)) or {})
+    monkeypatch.setattr(GR, "write", lambda r: tmp_path / "gap.json")
+    monkeypatch.setattr(R, "_claude", lambda prompt, *a, **k: (order.append(("opus", "改善空間" in prompt)) or ("總結", "")))
+    R.weekly(today="2026-11-30")
+    assert order == [("judge", "2026-11-30"), ("gap", "2026-11-30"), ("opus", True)]

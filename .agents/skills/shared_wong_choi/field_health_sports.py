@@ -13,6 +13,7 @@
   * dead：之前填充率中位數 ≥ 0.8，今日 < 0.5
   * constant：（數值欄）之前唔同值中位數 ≥ 5，今日 n ≥ 30 但得 1 個值；日期／時間類欄唔計（一日得一場波就自然得一個值）
   * shrunk：之前 n 中位數 ≥ 50，今日 n < 中位數嘅 30%（成批冇咗）
+  * stale：（網球歷史來源）落後 ≥7 日而且比之前 14 日中位數多 ≥3 日 = 來源停咗更新
 一直都空／一直都常數嘅欄位唔報（佢哋係「預期空」，例如已中止 shadow 留低嘅欄）。同一個 (domain, 欄位, 類型) 7 日內只推一次 primary。
 
     python3 field_health_sports.py --domain nba|tennis --date YYYY-MM-DD [--telegram]
@@ -41,6 +42,7 @@ RACING = REPO / ".agents" / "skills" / "shared_racing" / "scripts"
 VERSION = "field-health-sports-v1"
 BASELINE_DAYS, MIN_BASE_DAYS = 14, 5
 ALERT_COOLDOWN_DAYS = 7
+STALE_MIN_DAYS, STALE_EXTRA_DAYS = 7, 3      # 來源落後 ≥7 日而且比平時多 ≥3 日 = 停咗更新
 SKIP_SUFFIX = ("_at", "_id", "sha256", "snapshot_id", "recorded_at", "captured_at", "tip_off", "start_time_utc",
                "target_date", "match_date", "as_of_date", "data_season", "requested_season")
 
@@ -145,6 +147,28 @@ def tennis_rows(day: str, db: Path | None = None) -> list[dict]:
     return out
 
 
+def source_lags(domain: str, day: str, db: Path | None = None) -> list[dict]:
+    """來源新鮮度（Tennis session 2026-11-26：TML 由 10-28 起每次 run 都 PlayerIdentityConflict 中止，一個月冇新歷史，
+    log 只寫 WARNING）：每個歷史來源最新 match_date 落後 day 幾多日 → `source_lag.<provider>`（mean = 日數）。"""
+    if domain != "tennis":
+        return []
+    con = sqlite3.connect(f"file:{db or tennis_db()}?mode=ro", uri=True)
+    try:
+        rows = con.execute("SELECT source_provider, MAX(match_date) FROM player_match_history "
+                           "WHERE match_date <= ? GROUP BY source_provider", (day,)).fetchall()
+    finally:
+        con.close()
+    d0 = Date.fromisoformat(day)
+    out = []
+    for prov, last in rows:
+        if not prov or not last or prov == "mock":
+            continue
+        lag = (d0 - Date.fromisoformat(str(last)[:10])).days
+        out.append({"field": f"source_lag.{prov}", "n": 1, "fill_rate": 1.0, "distinct": 1, "mean": float(lag), "sd": None,
+                    "last_date": str(last)[:10]})
+    return out
+
+
 # ---------------------------------------------------------------- 帳同警報
 
 def load(domain: str) -> list[dict]:
@@ -188,6 +212,15 @@ def alerts(domain: str, day: str, history: list[dict] | None = None) -> list[dic
         out.append({"field": "（全部欄位）", "kind": "empty", "detail": "今日完全冇數據，但之前 14 日有 ≥10 日有"})
         return out
     for field, hist in base.items():
+        if field.startswith("source_lag."):
+            t = today.get(field)
+            lags = [h["mean"] for h in hist if h.get("mean") is not None]
+            if t and t.get("mean") is not None and len(lags) >= MIN_BASE_DAYS:
+                med = statistics.median(lags)
+                if t["mean"] >= STALE_MIN_DAYS and t["mean"] >= med + STALE_EXTRA_DAYS:
+                    out.append({"field": field, "kind": "stale",
+                                "detail": f"最新資料 {t.get('last_date')}，落後 {t['mean']:.0f} 日（平時 {med:.0f} 日）"})
+            continue
         if len({h["date"] for h in hist}) < MIN_BASE_DAYS:
             continue
         fill = statistics.median(h["fill_rate"] for h in hist)
@@ -242,7 +275,7 @@ def mark_sent(domain: str, day: str, sent: list[dict]) -> None:
 
 
 def telegram_text(domain: str, day: str, due: list[dict]) -> str:
-    zh = {"dead": "死咗", "constant": "變常數", "shrunk": "成批少咗", "empty": "成日冇數據"}
+    zh = {"dead": "死咗", "constant": "變常數", "shrunk": "成批少咗", "empty": "成日冇數據", "stale": "來源停咗更新"}
     lines = [f"🩺 {'NBA' if domain == 'nba' else '網球'} 欄位健康 {day}：{len(due)} 個欄位突然唔妥（同之前 {BASELINE_DAYS} 日比）"]
     lines += [f"・{a['field']}：{zh[a['kind']]}（{a['detail']}）" for a in due[:10]]
     if len(due) > 10:
@@ -261,15 +294,22 @@ def weekly_table(domain: str, weeks: int = 8) -> list[dict]:
     out = []
     for (wk, field), xs in sorted(agg.items()):
         if wk in keep:
+            means = [x["mean"] for x in xs if x.get("mean") is not None]
             out.append({"week": wk, "source": "daily", "field": field, "n": round(statistics.fmean(x["n"] for x in xs)),
                         "fill_rate": round(statistics.fmean(x["fill_rate"] for x in xs), 4),
-                        "distinct": round(statistics.fmean(x["distinct"] for x in xs), 1)})
+                        "distinct": round(statistics.fmean(x["distinct"] for x in xs), 1),
+                        **({"mean": round(max(means), 2)} if field.startswith("source_lag.") and means else {})})
     return out
 
 
 def run_day(domain: str, day: str, telegram: bool = False) -> dict:
     rows = nba_rows(day) if domain == "nba" else tennis_rows(day)
     prof = profile(rows)
+    if prof:
+        try:
+            prof += source_lags(domain, day)
+        except Exception:  # noqa: BLE001 —— 新鮮度讀唔到唔阻欄位記錄
+            pass
     lock = _lock(domain)
     try:
         if prof:
