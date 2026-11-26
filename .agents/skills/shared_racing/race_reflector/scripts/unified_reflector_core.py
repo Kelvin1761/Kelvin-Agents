@@ -615,6 +615,15 @@ def _to_float(value: Any) -> float | None:
         return None
 
 
+def placed_rows(actual_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """實際入位（名次 1–3）嘅馬，平頭全部計：並列第三有兩匹就係四匹。
+
+    以前用 `actual_rows[:3]`，平頭第三會被任意截走一匹（2026-06-24 跑馬地 R8 由 Good 變 Pass 先發現）。
+    冇有效名次（全部 99）就退返頭三行。"""
+    placed = [row for row in actual_rows if 1 <= int(row.get("placing") or 99) <= 3]
+    return placed if placed else actual_rows[:3]
+
+
 def scratched_numbers(race_result: dict[str, Any], prediction_list: list[dict[str, Any]]) -> set[int]:
     """退出馬嘅馬號：AU 賽果直接有；HKJC 賽果頁退出馬冇馬號，用馬名對返預測檔。"""
     numbers = set(race_result.get("scratched_horse_numbers") or [])
@@ -932,7 +941,7 @@ def build_race_performances(
             # 冇賽果（腰斬、抽唔到）唔係失手：以前會當 Miss 兼寫「clean model failure」，
             # 2026-10-23 Ballarat 得 2 場有賽果，報告就話 7 場 Miss。
             continue
-        actual_top3 = actual_rows[:3]
+        actual_top3 = placed_rows(actual_rows)
         prediction_list = prediction_rows.get(race_num, [])
         prediction_map = {row["horse_no"]: row for row in prediction_list}
         scratched_horse_numbers = scratched_numbers(structured_results.get(race_num, {}), prediction_list)
