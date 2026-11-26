@@ -249,7 +249,28 @@ class OffloadModeTest(unittest.TestCase):
         self.assertEqual(self.mode("normal", self.codex(50, 4), 42, 6.2), "offload-max")
 
     def test_on_pace_is_balanced(self):
-        self.assertEqual(self.mode("normal", self.codex(50, 4), 30, 5), "balanced")
+        # Codex 每日剩 ~6pp（唔算大把）、Claude 跟住速度
+        self.assertEqual(self.mode("normal", self.codex(70, 4), 30, 5), "balanced")
+
+    def test_codex_ample_offloads_even_if_claude_on_pace(self):
+        # Kelvin 2026-11-26：Codex 啱啱重置（每日 ~13pp）就要多 offload，Opus 慳返
+        self.assertEqual(self.mode("normal", self.codex(2, 6.9), 5, 6.5), "offload-max")
+        self.assertEqual(self.mode("normal", self.codex(50, 4), 30, 5), "offload-max")
+
+    def test_ample_edges(self):
+        week = lambda used, resets: cd.Limits(None, cd.Window(used, 10080, resets), self.NOW)
+        # 讀到嘅窗已經重置 = 新窗 → 大把
+        self.assertEqual(cd.offload_mode("normal", week(90, self.NOW - 60), 30,
+                                         self.NOW + 5 * self.DAY, now=self.NOW)[0], "offload-max")
+        # resets_at 冇值 = 唔知 → 唔當大把
+        self.assertEqual(cd.offload_mode("normal", week(94, 0), 30,
+                                         self.NOW + 5 * self.DAY, now=self.NOW)[0], "balanced")
+        # tight 唔觸發
+        self.assertEqual(self.mode("tight", self.codex(50, 4), 30, 5), "balanced")
+
+    def test_claude_rich_does_not_force_offload(self):
+        # Claude 慢過時間 ≥15pp（有大把）就唔使硬推俾 Codex
+        self.assertEqual(self.mode("normal", self.codex(20, 5), 5, 4), "balanced")
 
     def test_codex_stop_means_claude_only(self):
         self.assertEqual(self.mode("stop", self.codex(96, 4), 90, 1), "claude-only")

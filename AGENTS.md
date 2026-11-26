@@ -158,7 +158,7 @@ Kelvin 唔再自己開 Codex；**Claude Code 做主導**（計劃、判斷、拍
 - 寫入角色唔准喺主 checkout 行（腳本會攔）。同一批檔唔准 Claude 同 Codex 同時改。
 - 額度：Codex 本週 ≥95% 或 5 小時窗 ≥85% = 停派（`--force` 都越唔過）；剩低唔夠每日 4pp 撐到重置 = 只派 review／quick／chore。每次委派記入 `<WongChoiControl>/codex_delegations.jsonl`。
 - **按兩邊額度揀分工模式**（Kelvin 2026-11-24，怕 Opus 唔夠用）：開工先用 `get_usage` 攞 Claude 每週用量，跑
-  `codex_delegate.py status --claude-weekly <%> --claude-resets <ISO>`。Claude 用得快過時間（≥10pp）
+  `codex_delegate.py status --claude-weekly <%> --claude-resets <ISO>`。Claude 用得快過時間（≥10pp），或者 Codex 平均每日仲有 ≥8pp 而 Claude 唔係有大把（慢過時間 <15pp；Kelvin 2026-11-26：Codex 有額度就多 offload）
   = `offload-max`：實作同重活派 Terra、覆核派 Sol 唔開 Opus subagent、讀檔摘要派 Hydrogen，Opus 只做計劃同判決。其他模式見 skill。
   派工以 `route` 為準；分工模式只係背景。
   Claude 自己嘅搜尋／讀 log subagent 用 `model: "sonnet"`／`"haiku"`；Sol review 要貼 diff、限定檔案，細改動用 `--effort medium`。
