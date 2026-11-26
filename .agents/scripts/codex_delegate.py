@@ -345,9 +345,13 @@ CLAUDE_AHEAD_PP = 10.0     # Claude 用得快過時間 ≥ 呢個 pp = 盡量 of
 CLAUDE_BEHIND_PP = -20.0   # Claude 慢過時間 ≥ 20pp 而 Codex 又緊 = Claude 自己做多啲
 CLAUDE_CRITICAL = 85.0     # Claude 本週 ≥ 呢個 = 連 grunt 都可以 --force（Codex 未 stop 嘅話）
 USE_IT_DAYS = 2.0          # Codex 就嚟重置（< 2 日）而剩好多 = 用盡佢
+# Kelvin 2026-11-26：Codex 有額度就要多 offload，Opus 慳返做判斷（Codex 得返好少嗰幾日 Opus 燒得好快）。
+# Codex 平均每日仲有 ≥ 呢個 pp 可用，而 Claude 唔係明顯有大把（慢過時間 < CLAUDE_SLACK_PP）= offload-max。
+CODEX_AMPLE_PER_DAY = 8.0
+CLAUDE_SLACK_PP = 15.0
 
 MODES = {
-    "offload-max": "Claude 額度緊：實作同重活派 Terra、覆核派 Sol（唔開 Opus subagent）、讀檔／摘要派 Hydrogen；Opus 只做計劃、判決、保存",
+    "offload-max": "Claude 額度緊，或者 Codex 有大把：實作同重活派 Terra、覆核派 Sol（唔開 Opus subagent）、讀檔／摘要派 Hydrogen；Opus 只做計劃、判決、保存",
     "offload-light": "Claude 緊但 Codex 都緊：只派 review／quick／chore；Claude 本週 ≥85% 先可以 --force 派 grunt",
     "balanced": "兩邊都正常：照常規分工（機械式先試 Hydrogen，重活 Terra，結論要第二意見就 Sol）",
     "keep-claude": "Codex 緊而 Claude 有大把：Opus 自己做多啲，Codex 留畀 review",
@@ -456,6 +460,15 @@ def offload_mode(codex_state: str, codex: Limits | None, claude_used: float,
         return "use-codex", pace
     if claude_extra:
         return "use-claude", pace
+    if (codex_state == "normal" and codex and codex.weekly and codex.weekly.resets_at > 0
+            and -ahead < CLAUDE_SLACK_PP):  # resets_at 冇值 = 唔知，唔好估有大把（Sol 2026-11-26）
+        if codex.weekly.resets_at <= now:
+            per_day = STOP_WEEKLY / 7  # 讀到嘅窗已重置 = 新窗
+        else:  # 下限 6 個鐘：就嚟重置嘅零頭唔當大把（嗰段由 use-codex 處理）
+            days_left = max(0.25, (codex.weekly.resets_at - now) / 86400)
+            per_day = (STOP_WEEKLY - codex.weekly.effective_used(now)) / days_left
+        if per_day >= CODEX_AMPLE_PER_DAY:
+            return "offload-max", pace + f"；Codex 平均每日仲有 {per_day:.0f}pp，Opus 慳返做判斷"
     return "balanced", pace
 
 
