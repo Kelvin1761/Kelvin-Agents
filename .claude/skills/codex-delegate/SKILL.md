@@ -20,7 +20,7 @@ python3 .agents/scripts/codex_delegate.py status --claude-weekly <percentUsed> -
 
 | 分工模式 | 幾時 | 做法 |
 |---|---|---|
-| offload-max | Claude 用得快過時間 ≥10pp、或本週 ≥85% | 實作同重活一律派 Terra（我寫 brief、睇 diff）；覆核派 Sol，**唔開 Opus subagent**；讀 log／grep／摘要派 Hydrogen（quick／scan）；Opus 只做計劃、判決、保存、Telegram |
+| offload-max | Claude 用得快過時間 ≥10pp、或本週 ≥85%；**或者 Codex normal、平均每日仲有 ≥8pp，而 Claude 唔係慢過時間 ≥15pp**（Kelvin 2026-11-26：Codex 有額度就多 offload，Opus 慳返做判斷） | 實作同重活一律派 Terra（我寫 brief、睇 diff）；覆核派 Sol，**唔開 Opus subagent**；讀 log／grep／摘要派 Hydrogen（quick／scan）；Opus 只做計劃、判決、保存、Telegram |
 | balanced | 兩邊都正常 | 照下面第 2 節常規分工 |
 | offload-light | Claude 緊但 Codex 都 tight | 只派 review／quick／chore；Claude 本週 ≥85% 先 `--force` 派 grunt，喺 `--title` 寫原因 |
 | keep-claude | Codex tight、Claude 慢過時間 ≥20pp | Opus 自己做多啲，Codex 留畀 review |
