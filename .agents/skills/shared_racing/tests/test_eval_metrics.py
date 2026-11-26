@@ -350,6 +350,8 @@ class AuParityTests(unittest.TestCase):
         self.assertEqual(loaded[3]["scratched_horse_numbers"], [11])
         # 平頭第三兩匹都要喺實際名次度（以前「3 平頭馬」int() 失敗成行丟走）
         self.assertEqual([(r["placing"], r["horse_no"]) for r in loaded[3]["results"][:4]], [(1, 3), (2, 8), (3, 4), (3, 5)])
+        from unified_reflector_core import placed_rows
+        self.assertEqual([r["horse_no"] for r in placed_rows(loaded[3]["results"])], [3, 8, 4, 5])   # 平頭第三兩匹都入位
         predictions = [{"horse_no": 1, "horse_name": "滿利時"}, {"horse_no": 3, "horse_name": "包裝醒目"},
                        {"horse_no": 9, "horse_name": "拉停馬"}]
         self.assertEqual(scratched_numbers(loaded[3], predictions), {1, 11})

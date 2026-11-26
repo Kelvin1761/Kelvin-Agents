@@ -250,7 +250,7 @@ def classify_race(race_num: int, logic: dict, predictions: list[dict], actual_ro
     context = crowd_context(verdict, platform)
     horses = logic.get("horses") or {}
     model_top2 = [row["horse_no"] for row in predictions[:2]]
-    actual_top3 = [row["horse_no"] for row in actual_rows[:3]]
+    actual_top3 = [row["horse_no"] for row in core.placed_rows(actual_rows)]
     rank_of = {row["horse_no"]: row.get("derived_rank") for row in predictions}
 
     triggers: list[dict] = []
@@ -340,7 +340,7 @@ def autopsy_meeting(platform: str, meeting_dir: Path) -> dict:
             continue
         scratched = core.scratched_numbers(results[race_num], prediction_list)
         active = _active_predictions(prediction_list, scratched)
-        label = core.performance_label_from_rows(active[:4], actual_rows[:3])
+        label = core.performance_label_from_rows(active[:4], core.placed_rows(actual_rows))
         labels[label] += 1
         if label in SUCCESS_LABELS:
             continue
