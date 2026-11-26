@@ -14,7 +14,12 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from tennis_wc.store.db import get_connection
-from tennis_wc.sources.entity_mapping import get_or_create_player, upsert_tournament, valid_player_identity
+from tennis_wc.sources.entity_mapping import (
+    PlayerIdentityConflict,
+    get_or_create_player,
+    upsert_tournament,
+    valid_player_identity,
+)
 from tennis_wc.sources.raw_response_store import store_raw_response, utc_now
 
 
@@ -74,6 +79,7 @@ def ingest_tml_low_tier_history(start_year: int, end_year: int, include_quali: b
         "ranking_rows": 0,
         "skipped_duplicates": 0,
         "skipped_invalid_identities": 0,
+        "held_identity_conflicts": 0,
         "errors": [],
     }
     for kind in kinds:
@@ -109,6 +115,9 @@ def ingest_tml_low_tier_history(start_year: int, end_year: int, include_quali: b
             imported["ranking_rows"] += stats["ranking_rows"]
             imported["skipped_duplicates"] += stats.get("skipped_duplicates", 0)
             imported["skipped_invalid_identities"] += stats["skipped_invalid_identities"]
+            imported["held_identity_conflicts"] += stats["held_identity_conflicts"]
+            for held in stats["held"][:20]:
+                imported["errors"].append({"kind": kind, "year": year, "error": "identity_conflict_held", **held})
     return imported
 
 
@@ -126,50 +135,64 @@ def _ingest_rows(
         "ranking_rows": 0,
         "skipped_duplicates": 0,
         "skipped_invalid_identities": 0,
+        "held_identity_conflicts": 0,
+        "held": [],
     }
     for row in rows:
-        if not _has_valid_player_identities(row):
-            stats["skipped_invalid_identities"] += 1
-            continue
-        match_date = _parse_tourney_date(row.get("tourney_date"))
-        if not match_date:
-            continue
-        tournament_id = upsert_tournament(
-            provider,
-            row["tourney_id"],
-            row.get("tourney_name") or row["tourney_id"],
-            tour,
-            raw_id,
-            _normalise_level(tour, row.get("tourney_level")),
-            _normalise_surface(row.get("surface")),
-            None,
-        )
-        winner_id = get_or_create_player(
-            provider,
-            str(row["winner_id"]),
-            row.get("winner_name") or f"Player {row['winner_id']}",
-            tour,
-            raw_id,
-            current_rank=_int_or_none(row.get("winner_rank")),
-        )
-        loser_id = get_or_create_player(
-            provider,
-            str(row["loser_id"]),
-            row.get("loser_name") or f"Player {row['loser_id']}",
-            tour,
-            raw_id,
-            current_rank=_int_or_none(row.get("loser_rank")),
-        )
-        stats["ranking_rows"] += _upsert_rank(winner_id, match_date, tour, row.get("winner_rank"), row.get("winner_rank_points"), raw_id, now, provider)
-        stats["ranking_rows"] += _upsert_rank(loser_id, match_date, tour, row.get("loser_rank"), row.get("loser_rank_points"), raw_id, now, provider)
-        if dedup_against_provider and _history_pair_exists(dedup_against_provider, winner_id, loser_id, match_date, tour=tour, event=row):
-            stats["skipped_duplicates"] += 1
-            continue
-        _insert_history_pair(tour, row, raw_id, winner_id, loser_id, match_date, now, provider)
-        stats["matches"] += 1
-        stats["player_rows"] += 2
+        try:
+            _ingest_row(tour, row, raw_id, provider, dedup_against_provider, now, stats)
+        except PlayerIdentityConflict as exc:
+            # One provider ID whose name changed (2026-10-28: TML KE64 'Toby Samuel' -> 'Stefan Kozlov')
+            # used to abort the whole season file, so no Challenger / ATP history arrived for a month.
+            # Hold that match, keep the rest -- the same policy as ranking identity holds.
+            stats["held_identity_conflicts"] += 1
+            stats["held"].append({"tourney_id": row.get("tourney_id"), "winner_id": row.get("winner_id"),
+                                  "loser_id": row.get("loser_id"), "detail": str(exc)})
     return stats
 
+
+def _ingest_row(tour, row, raw_id, provider, dedup_against_provider, now, stats) -> None:
+    """One season-file row; a PlayerIdentityConflict propagates to the caller, which holds it."""
+    if not _has_valid_player_identities(row):
+        stats["skipped_invalid_identities"] += 1
+        return
+    match_date = _parse_tourney_date(row.get("tourney_date"))
+    if not match_date:
+        return
+    tournament_id = upsert_tournament(
+        provider,
+        row["tourney_id"],
+        row.get("tourney_name") or row["tourney_id"],
+        tour,
+        raw_id,
+        _normalise_level(tour, row.get("tourney_level")),
+        _normalise_surface(row.get("surface")),
+        None,
+    )
+    winner_id = get_or_create_player(
+        provider,
+        str(row["winner_id"]),
+        row.get("winner_name") or f"Player {row['winner_id']}",
+        tour,
+        raw_id,
+        current_rank=_int_or_none(row.get("winner_rank")),
+    )
+    loser_id = get_or_create_player(
+        provider,
+        str(row["loser_id"]),
+        row.get("loser_name") or f"Player {row['loser_id']}",
+        tour,
+        raw_id,
+        current_rank=_int_or_none(row.get("loser_rank")),
+    )
+    stats["ranking_rows"] += _upsert_rank(winner_id, match_date, tour, row.get("winner_rank"), row.get("winner_rank_points"), raw_id, now, provider)
+    stats["ranking_rows"] += _upsert_rank(loser_id, match_date, tour, row.get("loser_rank"), row.get("loser_rank_points"), raw_id, now, provider)
+    if dedup_against_provider and _history_pair_exists(dedup_against_provider, winner_id, loser_id, match_date, tour=tour, event=row):
+        stats["skipped_duplicates"] += 1
+        return
+    _insert_history_pair(tour, row, raw_id, winner_id, loser_id, match_date, now, provider)
+    stats["matches"] += 1
+    stats["player_rows"] += 2
 
 def _has_valid_player_identities(row: dict) -> bool:
     """Reject malformed history rows without aborting the whole provider file."""
