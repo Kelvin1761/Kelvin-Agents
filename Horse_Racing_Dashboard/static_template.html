@@ -240,6 +240,8 @@
     .verdict--plus .verdict__label { color: var(--color-up); }
     .verdict--minus .verdict__label { color: #B45309; }
     .verdict__items { display: flex; flex-wrap: wrap; gap: 5px; }
+    .ai-summary { margin: 6px 0 8px; padding: 7px 10px; border-radius: 8px; background: var(--color-surface-alt); border: 1px dashed var(--color-border); font-size: .8rem; line-height: 1.6; color: var(--color-text-primary, inherit); cursor: help; }
+    .ai-summary__label { display: block; font-size: .68rem; font-weight: 700; color: var(--color-text-secondary); margin-bottom: 2px; }
     .verdict__chip { display: inline-block; padding: 3px 9px; border-radius: 999px; font-weight: 600; line-height: 1.5; color: var(--color-text-secondary); background: var(--color-surface-alt); border: 1px solid var(--color-border); }
     .verdict--plus .verdict__chip { background: var(--color-up-soft); border-color: #A7F3D0; color: #065F46; }
     .verdict--minus .verdict__chip { background: #FFFBEB; border-color: #FDE68A; color: #92400E; }
@@ -7334,6 +7336,16 @@ async function loadAnalysisBundle(slug) {
   return promise;
 }
 
+// HKJC AI 摘要（Hydrogen 改寫引擎報告、Python 逐匹核實；唔入分）。引文放 tooltip，畀人對返原文。
+function renderAiSummary(horse) {
+  const ai = horse && horse.ai_summary;
+  if (!ai || !ai.text) return '';
+  const tip = ['AI 只係將引擎報告改寫成白話，唔影響分數同排名。', '報告原文依據：']
+    .concat((ai.evidence || []).map(e => '・' + e)).join('\n');
+  return `<div class="ai-summary" title="${esc(tip)}"><span class="ai-summary__label">🤖 ${esc(ai.label || 'AI 摘要（未入分）')}</span>`
+    + `<span class="ai-summary__text">${esc(ai.text)}</span></div>`;
+}
+
 function renderHorseCard(horse, topPickRank, marketRanks, analysisRef) {
   // With raw_text lifted into a side bundle the sections cannot be built yet;
   // the button is offered on the promise of the bundle and the document is
@@ -7413,6 +7425,7 @@ function renderHorseCard(horse, topPickRank, marketRanks, analysisRef) {
     html += `<div style="font-size:.75rem;line-height:1.6;color:var(--color-text-secondary);padding:8px 0">⏱️ ${esc(timeLabel)}</div>`;
   }
   html += renderTrackworkTimeline(horse);
+  html += renderAiSummary(horse);
   html += renderVerdictChips(horse);
   // 數據判讀 used to live here. It restated what the ranking matrix now shows
   // -- 主要支柱 / 最弱環節 / 數據信心 are the strip's top bar, bottom bar and
