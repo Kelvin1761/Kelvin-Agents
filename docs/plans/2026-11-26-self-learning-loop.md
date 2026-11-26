@@ -179,5 +179,16 @@ availability；網球 prop_tracker＋pricing_evidence），記 n／填充率／�
 
 **網球場地／資料質素（Kelvin 問點解 65、surface 空）**：唔係壞咗。場地唯一可靠來源 tennis-data.co.uk 只有 ATP／WTA，11 月下旬巡迴賽季完 →
 0%；Challenger／ITF 一直冇場地來源（10–20%）。冇場地＋冇輪次令警告扣分頂到上限 35 → 低級別全部 65，啱啱過 `MIN_DATA_QUALITY` 0.65（門檻冇作用）。
-改善方向：用往屆同一賽事／地點（`tennismylife_history`、`jeff_sackmann` 嘅 tournament_levels）補場地 —— 粗對應已可有把握補 42% 場次。
-**會改定價**（場地 Elo），要重播＋model-regression-gate＋新數據驗證；未做。
+補場地已經喺 EXP-20261113-50 試過（94% 覆蓋，但 Challenger 分場地 Elo 令模型變差 → REJECT）。之後由 Kelvin 開嘅「Tennis」session 跟，
+呢條線唔再郁。（今日粗量：用往屆同一地點可有把握補 42% 場次 —— 已轉交嗰邊。）
+
+## 13. Dashboard 自學面板＋改善空間清單（Kelvin 2026-11-26）
+
+- Portfolio 頁「🧠 自學」：四個 domain 最近 7 日覆盤（對市場、失手場、組別跨日、AI 解讀、AI 假設＋Sonnet 判）、每週 Opus 總結、
+  假設帳、健康巡查（`backend/services/learning_board_export.py`，只抄檔）。
+- **改善空間清單**（Kelvin：「唔好假設已經係最好」）：`shared_wong_choi/gap_report.py`，每週 Opus 總結前自動跑；
+  填唔滿／變差嘅輸入欄（四個 domain）、觀察中假設、60 日以上嘅舊 REJECT。0% 欄一律當缺口，**只有** `resources/known_retired_fields.json`
+  列明原因＋實驗嘅刻意停用欄先隱藏（第一版用「連續 3 週 0% 當停用」，即刻收埋咗 AU `Time` 同 NBA 官方傷停級別兩個真缺口 → 改走）。
+  Opus 每週一定要揀最少 3 項；dashboard「🔍 改善空間」。AGENTS.md 加「唔准講『已經做晒』」。
+- 第一份清單：AU `Time`（賽果 CSV，W27 起 0%）、`trial_score` 證據弱 72%；HKJC 人馬歷史 53%、換騎 57%；NBA 官方傷停級別 0%；
+  網球選手發球／接發 63–64%、場地 1%。

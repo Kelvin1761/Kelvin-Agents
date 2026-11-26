@@ -1,0 +1,13 @@
+{
+ "_doc": "改善空間清單（gap_report.py）只會隱藏呢度列明「確認刻意停用」嘅欄；其他填充率 0% 嘅欄一律當缺口列出（Kelvin 2026-11-26：唔好假設）。加一項要寫原因同實驗編號。field 可以用 * 做結尾萬用字。",
+ "fields": [
+  {"domain": "nba", "field": "mc_model_version", "reason": "引擎重寫剷走 Monte Carlo", "exp": "EXP-20261103-15"},
+  {"domain": "nba", "field": "p_monte_carlo", "reason": "引擎重寫剷走 Monte Carlo", "exp": "EXP-20261103-15"},
+  {"domain": "nba", "field": "p_ml", "reason": "引擎重寫剷走 ML", "exp": "EXP-20261103-15"},
+  {"domain": "nba", "field": "p_hit_rate_10f", "reason": "引擎重寫剷走 10 因子", "exp": "EXP-20261103-15"},
+  {"domain": "nba", "field": "season_rate_*", "reason": "shadow 測試中止", "exp": "EXP-20261103-16"},
+  {"domain": "nba", "field": "shadow_fit_*", "reason": "shadow 測試中止", "exp": "EXP-20261103-16"},
+  {"domain": "nba", "field": "early_season_guard", "reason": "舊引擎欄位，新引擎冇", "exp": "EXP-20261103-15"},
+  {"domain": "hkjc", "field": "trackwork_trend_score", "reason": "晨操退出排名", "exp": "EXP-20261029-02"}
+ ]
+}
