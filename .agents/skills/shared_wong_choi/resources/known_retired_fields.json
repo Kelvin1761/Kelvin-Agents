@@ -54,6 +54,12 @@
    "field": "source_lag.jeff_sackmann",
    "reason": "上游 JeffSackmann/tennis_atp、tennis_wta GitHub 404，2026-10-14 起凍結（tennis README）",
    "exp": "README 2026-10-14"
+  },
+  {
+   "domain": "nba",
+   "field": "availability.official_level",
+   "reason": "官方傷停報告 EXP-20261101-60 剷走（Kelvin 決定）；EXP-20261127-01 重新量度：精選凍結嗰刻 0 個 ESPN 漏咗嘅開盤球員 → 確認停用",
+   "exp": "EXP-20261127-01"
   }
  ]
 }

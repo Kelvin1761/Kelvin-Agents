@@ -667,3 +667,4 @@
 - [EXP-20261126-22](EXP-20261126-22-hkjc-three-followups.md) — HKJC 三項跟進：退出馬唔再當模型揀咗（計分修正）、intraday 取消場跳過；快照時間冇缺口；穩定性／評分頂尖被高估（兩窗）但 T1 dev、T2 holdout REJECT
 - [EXP-20261126-23](EXP-20261126-23-hkjc-pace-pressure-and-rail-draw.md) — HKJC 各賽道欄位檔位：模型已分欄位、冇殘差（C+3 1650 米近 3 季中檔 29% vs 內 27% 屬噪音）；同場放頭馬多寡：獨放 +／多放頭 − 兩窗單調，但 P1／P2／P3 dev 全 REJECT
 - [EXP-20261126-70](EXP-20261126-70-tennis-data-source-audit.md) — 網球數據源審計：TML 歷史 10-28 起因一個 ID 衝突每日成檔中止（已修，擱置衝突行，Challenger 補到 11-16、ATP 11-22）；UTR／Challenger／雙打被 tennis-data 城市名配成巡迴賽約 413 場（已修＋清理）；ITF 發球數據冇來源
+- [EXP-20261127-01](EXP-20261127-01-nba-official-injury-recheck.md) — NBA 官方傷停報告重新量度（大細盤精選時代）：精選凍結嗰刻官方 0 個 ESPN 漏咗嘅開盤球員、受影響精選 0 → 唔達標、確認停用；旁證 ESPN DTD 可能標得太緊（只係假設）
