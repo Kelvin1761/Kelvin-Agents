@@ -76,3 +76,27 @@ def test_empty_day_alerts_when_usually_full():
     got = F.alerts("nba", day, h)
     assert [a["kind"] for a in got] == ["empty"]
     assert F.alerts("nba", day, _hist("x", 6)) == [] or all(a["kind"] != "empty" for a in F.alerts("nba", day, _hist("x", 6)))
+
+
+def test_source_lag_stale_alert():
+    day = "2026-11-26"
+    hist = [{"date": (date(2026, 11, 12) + timedelta(days=i)).isoformat(), "field": "source_lag.tml", "n": 1,
+             "fill_rate": 1.0, "distinct": 1, "mean": 2.0} for i in range(14)]
+    ok = hist + [{"date": day, "field": "source_lag.tml", "n": 1, "fill_rate": 1, "distinct": 1, "mean": 4.0, "last_date": "x"}]
+    assert F.alerts("tennis", day, ok) == []
+    bad = hist + [{"date": day, "field": "source_lag.tml", "n": 1, "fill_rate": 1, "distinct": 1, "mean": 31.0, "last_date": "2026-10-26"}]
+    (a,) = F.alerts("tennis", day, bad)
+    assert a["kind"] == "stale" and "2026-10-26" in a["detail"] and "來源停咗更新" in F.telegram_text("tennis", day, [a])
+
+
+def test_source_lags_reads_history(tmp_path):
+    import sqlite3
+    db = tmp_path / "t.db"
+    con = sqlite3.connect(db)
+    con.execute("CREATE TABLE player_match_history (source_provider TEXT, match_date TEXT)")
+    con.executemany("INSERT INTO player_match_history VALUES (?, ?)",
+                    [("tml", "2026-10-26"), ("tennisexplorer", "2026-11-25"), ("mock", "2026-11-01"), ("tml", "2026-12-30")])
+    con.commit()
+    con.close()
+    got = {r["field"]: r["mean"] for r in F.source_lags("tennis", "2026-11-26", db)}
+    assert got == {"source_lag.tml": 31.0, "source_lag.tennisexplorer": 1.0}     # 未來日子唔計、mock 唔計

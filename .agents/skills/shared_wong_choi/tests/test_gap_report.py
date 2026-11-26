@@ -64,3 +64,10 @@ def test_build_handles_domain_errors(monkeypatch, tmp_path):
     assert "error" in r["domains"]["au"] and r["domains"]["nba"]["gaps_total"] == 1
     assert [h["id"] for h in r["watching_hypotheses"]] == ["H1"]
     assert "唔准講" in r["rule"]
+
+
+def test_source_lag_is_gap():
+    rows = [{"week": "2026-W48", "source": "daily", "field": "source_lag.tml", "n": 1, "fill_rate": 1.0, "mean": 31.0},
+            {"week": "2026-W48", "source": "daily", "field": "source_lag.te", "n": 1, "fill_rate": 1.0, "mean": 1.0}]
+    g = G.field_gaps(rows)
+    assert [x["field"] for x in g["gaps"]] == ["source_lag.tml"] and "31 日" in g["gaps"][0]["why"]

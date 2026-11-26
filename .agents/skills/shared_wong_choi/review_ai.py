@@ -73,7 +73,8 @@ SONNET_TASK = """你係 Wong Choi 研究覆核員。下面係 AI 由 {date} {dom
 """
 
 OPUS_WEEKLY = """你係 Wong Choi 首席研究員。讀 {reviews_dir} 入面過去 7 日（{since} 至 {until}）四個 domain（au／hkjc／nba／tennis）
-嘅 `<日>.json`（Python 覆盤）同 `<日>.ai.json`（AI 解讀）、假設帳 {ledger}，同埋本週健康巡查
+嘅 `<日>.json`（Python 覆盤）同 `<日>.ai.json`（AI 解讀）、假設帳 {ledger}（state：watching 觀察中＋progress 進度、
+supported／rejected／undecided 已判，result 有 CI），同埋本週健康巡查
 {sweep_dir}（最新一份 `<日>.json`：原文抽查確認對唔上、欄位趨勢異常）。
 用港式中文寫一份 ≤ 400 字嘅每週總結俾老闆（Kelvin）：
 - 每個 domain 一句：本週表現同市場比點。
@@ -81,6 +82,7 @@ OPUS_WEEKLY = """你係 Wong Choi 首席研究員。讀 {reviews_dir} 入面過�
 - 健康巡查有確認問題就排第一講（數據錯比模型差更貴）。
 - **「改善空間」最少 3 項**：讀改善空間清單 {gap_report}（填唔滿嘅輸入欄、觀察中假設、可以重評嘅舊 REJECT），揀最值得做嘅 3 項，
   每項講：係咩、點解可能有用、下一步點做（新資料來源？新登記嘅 forward？）。**唔准寫「已經做晒／冇得再改善」**（Kelvin 2026-11-26）。
+- 本週有假設判咗 supported 就排前講，建議開預先登記 forward（AU：`au_hypothesis_forward.ARMS` 加一行）。
 - 揀**最多 2 個**最值得開預先登記 forward 測試嘅假設，講點解、預計要幾耐有答案；冇就講冇。
 - 唔准建議即刻改模型；只可以建議開測試。
 最後只輸出純文字（唔使 JSON）。
@@ -436,6 +438,11 @@ def weekly(telegram: bool = False, today: str | None = None) -> dict:
     since = (Date.fromisoformat(until) - timedelta(days=7)).isoformat()
     reviews_dir = PR.output_dir("au").parent
     sweep_dir = reviews_dir.parent / "health_sweep"
+    try:                                   # L3 假設驗證：只用出世之後嘅新數據，夠數判一次就鎖（結果寫返假設帳，Opus 會讀）
+        import hypothesis_judge
+        hypothesis_judge.run(until, telegram=telegram)
+    except Exception as exc:  # noqa: BLE001
+        print(f"hypothesis_judge 失敗：{exc}", file=sys.stderr)
     try:                                   # 改善空間清單（Kelvin 2026-11-26：唔准假設已經做晒）
         import gap_report
         gap_path = gap_report.write(gap_report.build(until))

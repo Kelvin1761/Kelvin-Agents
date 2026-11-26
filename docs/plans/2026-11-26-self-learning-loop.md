@@ -103,7 +103,7 @@ AU 通用 forward 引擎（`au_hypothesis_forward.py`）喺今次同 H2／H3 一
 |---|---|---|
 | P0 ✅ | 已上線（EXP-20261126-01/02，Sol 覆核修咗 5 點） | |
 | P1 ✅（2026-11-26） | L1 覆盤報告 AU＋HKJC（含每日核數）：`shared_racing/scripts/post_review.py`，AU 晚更 `step_post_review`、HKJC 賽後背景，content 摘要，`健康.sh`「自動覆盤」；dashboard 頁未做（重用 miss_autopsy）、cohort 庫、跨日核實；Telegram content 摘要；dashboard「覆盤」頁 | 對 11-18 跑馬地重現人手覆盤嘅主要結論（穩定性反例、模型獨家睇好冇 edge） |
-| P2 | L3 假設帳＋每晚重驗＋learning_board＋健康.sh | 用 08-05→11-25 回放模擬：出世／rejected 數目合理（純噪音 cohort 唔會 supported） |
+| P2（✅ 2026-11-26） | L3 假設帳＋自動判（`shared_wong_choi/hypothesis_judge.py`，每週一喺 Opus 總結前）＋learning_board | 用 08-05→11-25 回放模擬：出世／rejected 數目合理（純噪音 cohort 唔會 supported） |
 | P3（L1 ✅ 2026-11-26） | NBA＋Tennis 嘅 L1（`shared_wong_choi/post_review_sports.py`，NBA postgame／網球 18:00）／L3 | 同上 |
 | P4（L2 ✅ 2026-11-26） | L2 AI 解讀（`shared_wong_choi/review_ai.py`：Gemini 寫、Python 核數字／名、Sonnet 審假設、假設帳；每週一 09:30 Opus 總結）、L4 arm 提案自動 fit（未做） | 一個提案走完全程到 Telegram（Astra：LLM 最後先做）|
 
@@ -192,3 +192,14 @@ availability；網球 prop_tracker＋pricing_evidence），記 n／填充率／�
   Opus 每週一定要揀最少 3 項；dashboard「🔍 改善空間」。AGENTS.md 加「唔准講『已經做晒』」。
 - 第一份清單：AU `Time`（賽果 CSV，W27 起 0%）、`trial_score` 證據弱 72%；HKJC 人馬歷史 53%、換騎 57%；NBA 官方傷停級別 0%；
   網球選手發球／接發 63–64%、場地 1%。
+
+## 14. L3 假設驗證＋來源新鮮度（2026-11-26）
+
+- `hypothesis_judge.py`：watching 假設只用 born（登記當日）之後嘅數據；≥30 日、n ≥ max(MIN_N, 1.5·p̄(1−p̄)·(2.8/0.03)²)
+  （真效應 6pp ≈80% 判支持、0 ≈80% 判否決；1.5 = 同場相關；p̄ 只用預測）；按日 bootstrap CI：全部 >3pp 支持、全部 <3pp 否決、
+  跨 3pp 未定，**判一次就鎖**。喺鎖外計、攞鎖重讀帳只更新仲係 watching 嘅。supported → Telegram primary 建議開 forward。
+  實際量：網球一個組別要 ~2,200 注／30 日；HKJC ~1,800 匹（幾個月）。
+- 來源新鮮度（Tennis session 搵到 TML 由 10-28 起每次 run 都 PlayerIdentityConflict 中止、一個月冇新歷史、log 只係 WARNING）：
+  `field_health_sports` 每日記 `source_lag.<provider>`（player_match_history 最新 match_date 落後幾多日），落後 ≥7 日而且比之前
+  14 日中位數多 ≥3 日 = stale 警報；gap_report 列 ≥7 日做缺口。回補會計埋後入庫嘅舊賽（基準偏低 → 更易報，唔會漏報）。
+  今日：TML 落後 31 日（最新 10-26）、Sackmann 192 日（10-14 已知凍結）。

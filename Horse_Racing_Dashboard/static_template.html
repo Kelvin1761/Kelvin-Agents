@@ -4328,7 +4328,10 @@ function renderLearningBoard() {
   const hyps = (lb.hypotheses || []).slice(0, 15);
   const hypTable = hyps.length ? `<div class="lb-wrap"><table class="lb-table"><thead><tr><th>假設</th><th>範疇</th><th>出世</th><th>狀態</th></tr></thead><tbody>${hyps.map(h =>
     `<tr><td>${esc(h.title || '')}<br><small>${esc((h.cohort || []).join(' ＋ '))}・${h.direction === 'model_under' ? '模型低估' : '模型高估'}</small></td><td>${esc(h.domain)}</td><td>${esc(h.born || '')}</td>`
-    + `<td><span class="lb-tag ${h.state === 'watching' ? 'lb-tag--warn' : h.state === 'supported' ? 'lb-tag--good' : ''}">${esc({watching: '觀察中', covered: '已有測試', supported: '支持', rejected: '否決', undecided: '未定'}[h.state] || h.state || '')}</span>${h.done_before ? `<br><small>${esc(h.done_before)}</small>` : ''}</td></tr>`).join('')}</tbody></table></div>`
+    + `<td><span class="lb-tag ${h.state === 'watching' ? 'lb-tag--warn' : h.state === 'supported' ? 'lb-tag--good' : h.state === 'rejected' ? 'lb-tag--bad' : ''}">${esc({watching: '觀察中', covered: '已有測試', supported: '支持', rejected: '否決', undecided: '未定'}[h.state] || h.state || '')}</span>${h.done_before ? `<br><small>${esc(h.done_before)}</small>` : ''}`
+    + (h.state === 'watching' && h.progress ? `<br><small>進度 ${lbN(h.progress.days)}/${lbN(h.progress.need_days)} 日、${lbN(h.progress.n)}/${lbN(h.progress.need_n)}</small>` : '')
+    + (h.result ? `<br><small>${lbN(h.result.directional_resid_pp)}pp [${lbN((h.result.ci_pp || [])[0])}, ${lbN((h.result.ci_pp || [])[1])}]（${lbN(h.judged_at)} 判）</small>` : '')
+    + `</td></tr>`).join('')}</tbody></table></div>`
     : '<p class="calib-card__meta">假設帳暫時冇嘢</p>';
   const gr = lb.gap_report;
   const zhDom = { au: 'AU 賽馬', hkjc: '香港賽馬', nba: 'NBA', tennis: '網球' };

@@ -96,6 +96,12 @@ def field_gaps(rows: list[dict], known: list[dict] | None = None) -> dict:
             hidden.append(field)
             continue
         fills = [w.get("fill_rate") for w in wk.values() if w.get("fill_rate") is not None]
+        if str(field).startswith("source_lag."):          # 來源新鮮度（網球歷史源）：落後 ≥7 日 = 缺口
+            lag = now.get("mean")
+            if lag is not None and lag >= 7:
+                gaps.append({"field": field, "source": src, "fill_rate": None, "weak_rate": None, "n": now.get("n"),
+                             "why": f"來源最新資料落後 {lag:.0f} 日"})
+            continue
         reasons = []
         fill, weak = now.get("fill_rate"), now.get("weak_rate")
         old = wk.get(first) or {}
