@@ -33,6 +33,11 @@ def tennisdata_competition_meta(competition: str | None, tour: str | None) -> di
     tour_norm = (tour or "").upper()
     if not competition or tour_norm not in {"ATP", "WTA"}:
         return None
+    if has_circuit_marker(competition):
+        # "UTR Men Miami USA" location-matched Miami (ATP_1000 / WTA_1000), "ATP Challenger 75 Sydney"
+        # matched Sydney (ATP_250), "ATP 250 Stockholm Doubles" matched the singles event: the index
+        # holds tour-level singles only, so a name that says otherwise is never one of its entries.
+        return None
     comp_tokens = set(_tokens(competition))
     if not comp_tokens:
         return None
@@ -271,6 +276,16 @@ _NAME_LEVEL_RULES: tuple[tuple[str, str], ...] = (
 )
 
 
+def has_circuit_marker(competition: str | None) -> bool:
+    """True when the name itself says it is not a tour-level singles event: doubles, or a low-tier
+    marker from `_NAME_LEVEL_RULES` (team events are left alone -- the index may hold them)."""
+    if not competition:
+        return False
+    lowered = competition.lower()
+    return is_doubles_competition(competition) or any(
+        re.search(pattern, lowered) for pattern, level in _NAME_LEVEL_RULES if level != "TEAM_EVENT")
+
+
 def is_doubles_competition(competition: str | None) -> bool:
     """Doubles events must never enter the singles pipeline — the 'players' are
     pair labels with no Elo/history, so every model read is junk."""
@@ -410,6 +425,7 @@ def backfill_confirmed_metadata_for_date(match_date: str) -> dict:
         ).fetchall()
         for row in qualifier_rows:
             conn.execute("UPDATE matches SET round = 'QUALIFYING' WHERE id = ?", (int(row["id"]),))
+        purged = purge_mismatched_tennisdata_levels(conn)
 
     audit = metadata_audit_for_date(match_date)
     return {
@@ -418,7 +434,33 @@ def backfill_confirmed_metadata_for_date(match_date: str) -> dict:
         "raw_response_id": raw_id,
         "remaining_gaps": audit["summary"],
         "rounds_from_qualifier_label": len(qualifier_rows) if "qualifier_rows" in locals() else 0,
+        "purged_tennisdata_levels": purged,
     }
+
+
+def purge_mismatched_tennisdata_levels(conn) -> int:
+    """Delete tennis-data index level rows written for names that carry a circuit marker.
+
+    Before 2026-11-26 the index location-matched e.g. "UTR Men Miami USA" to Miami (ATP_1000), and
+    both readers (feature_builder prefers a row with a surface; props takes the newest row) picked
+    that row over the correct name-heuristic one. Idempotent; the right row is rewritten by the
+    same backfill from the name heuristic.
+    """
+    rows = conn.execute(
+        """
+        SELECT tl.id, t.name FROM tournament_levels tl JOIN tournaments t ON t.id = tl.tournament_id
+        WHERE tl.source_provider = ?
+          -- never leave a tournament/tour without any level row (feature_builder raises on none)
+          AND EXISTS (SELECT 1 FROM tournament_levels o WHERE o.tournament_id = tl.tournament_id
+                      AND o.tour = tl.tour AND o.source_provider != tl.source_provider)
+        """,
+        (TENNISDATA_METADATA_PROVIDER,),
+    ).fetchall()
+    stale = [int(r[0]) for r in rows if has_circuit_marker(r[1])]
+    for start in range(0, len(stale), 500):
+        chunk = stale[start:start + 500]
+        conn.execute(f"DELETE FROM tournament_levels WHERE id IN ({','.join('?' * len(chunk))})", chunk)
+    return len(stale)
 
 
 def metadata_audit_for_date(match_date: str) -> dict:

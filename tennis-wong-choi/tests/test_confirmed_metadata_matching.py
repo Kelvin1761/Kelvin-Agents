@@ -108,3 +108,34 @@ def test_name_heuristic_never_resolves_doubles_or_tour_events():
     # Main-tour names carry no circuit marker -> defer to curated/index tiers.
     assert sportsbet_name_competition_meta("Nordea Open", "WTA") is None
     assert sportsbet_name_competition_meta("Wimbledon", "ATP") is None
+
+
+def test_marked_low_tier_or_doubles_names_never_location_match_a_tour_event():
+    """2026-11: these location-matched Miami ATP_1000 / WTA_1000, Sydney ATP_250 and Stockholm singles,
+    and both readers then priced them as tour-level."""
+    for name, tour in (("UTR Men Miami USA", "ATP"), ("UTR Women Miami USA", "WTA"),
+                       ("ATP Challenger 75 Sydney", "ATP"), ("ATP 250 Stockholm Doubles", "ATP"),
+                       ("WTA 125 Colina", "WTA")):
+        assert tennisdata_competition_meta(name, tour) is None, name
+    # unmarked tour events still resolve
+    assert tennisdata_competition_meta("Adelaide International", "ATP")["level"] == "ATP_250"
+
+
+def test_purge_removes_only_marked_tennisdata_rows():
+    import sqlite3
+    from tennis_wc.sources.confirmed_metadata import TENNISDATA_METADATA_PROVIDER, purge_mismatched_tennisdata_levels
+
+    conn = sqlite3.connect(":memory:")
+    conn.executescript("""
+        CREATE TABLE tournaments (id INTEGER PRIMARY KEY, name TEXT);
+        CREATE TABLE tournament_levels (id INTEGER PRIMARY KEY, tournament_id INT, tour TEXT, level TEXT, source_provider TEXT);
+        INSERT INTO tournaments VALUES (1, 'UTR Men Miami USA'), (2, 'Adelaide International'), (3, 'UTR Men Oxford USA');
+    """)
+    conn.executemany("INSERT INTO tournament_levels (tournament_id, tour, level, source_provider) VALUES (?, 'ATP', ?, ?)", [
+        (1, "ATP_1000", TENNISDATA_METADATA_PROVIDER), (1, "UTR", "competition_name_heuristic"),
+        (2, "ATP_250", TENNISDATA_METADATA_PROVIDER),
+        (3, "ATP_250", TENNISDATA_METADATA_PROVIDER)])   # only row: kept, never leave a tournament bare
+    assert purge_mismatched_tennisdata_levels(conn) == 1
+    left = conn.execute("SELECT tournament_id, level FROM tournament_levels ORDER BY id").fetchall()
+    assert left == [(1, "UTR"), (2, "ATP_250"), (3, "ATP_250")]
+    assert purge_mismatched_tennisdata_levels(conn) == 0
