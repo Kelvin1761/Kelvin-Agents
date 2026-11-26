@@ -598,6 +598,7 @@
 - [EXP-20261118-04](EXP-20261118-04-hkjc-form-merge-refit.md) — 近績＋上名／大敗＋輸頭馬合併 refit：F1 dev −0.00048 但 Holm 3 唔過；M1 剷段速輸頭馬 holdout 跨零 → 全部 REJECT，live 唔改
 - [EXP-20261118-05](EXP-20261118-05-hkjc-same-distance-rate-and-layoff.md) — 同程上名率 >2/3 殘差 +3.5pp（dev＋holdout）但入分 S1／S2 dev REJECT（Good 護欄）；1/5 冇被高估；長休冇額外訊號
 - [EXP-20261119-01](EXP-20261119-01-hkjc-same-distance-venue-and-age.md) — 同程上名全喺另一場地被高估（dev −2.7／holdout −4.6pp）→ V2 β −1.27 上線；馬齡 A2（6 歲後 −0.37／歲）上線；一仗馬收縮 K1／K2 REJECT
+- [EXP-20261127-01](EXP-20261127-01-au-s2-forward-result.md) — S2 forward（EXP-20261016-03）唯一一次評估：**ship_eligible**，B1 vs B0 Gold +1.27pp [+0.34, +2.16]、頭五 AUC +0.0047 CI 全正（1,812 場未睇過）；凍結 commit 實為 3903102b、評估前要 --restore 176 場次快照；同 10-16 引擎比，移植現行 live 要重量
 - [EXP-20261121-60](EXP-20261121-60-nba-depth-chart-starters.md) — NBA depth chart 估正選冇贏「上一場正選」（86.0% 對 85.2%），REJECT。
 - [EXP-20261120-60](EXP-20261120-60-nba-featured-v2-shadow-protocol.md) — NBA 精選 v2 紙上 arm：修正模型低估「大」、剔低線、3pp；v1 照舊。
 - [EXP-20261120-01](EXP-20261120-01-hkjc-1114-shatin-review-going.md) — 11-14 沙田覆盤：R6 取消令 R7–R11 賽果漏抓（抽取 break，已修）；黏地唔利後追（6 季：前 34.3%／後 12.3%）、黏地往績市場已計入 → 唔開
