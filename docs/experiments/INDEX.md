@@ -664,3 +664,4 @@
 - [EXP-20261126-02](EXP-20261126-02-h3-spell-backup-forward.md) — AU H3 休後狀態曲線（休 ≥90 日 −1.72、隔 ≤14 日 +1.15 分）forward shadow（11-27 起，60 日＋2,000 場判；預先登記）
 - [EXP-20261126-21](EXP-20261126-21-hkjc-upswing-and-backed-fail.md) — HKJC 天下寵兒：熱門而輸／回落馬冇被高估；上升馬 U1 dev Δll +0.00000 REJECT（功效 33%，披露）；狀態標籤改印 6 仗＋回落／回升（純顯示）
 - [EXP-20261126-22](EXP-20261126-22-hkjc-three-followups.md) — HKJC 三項跟進：退出馬唔再當模型揀咗（計分修正）、intraday 取消場跳過；快照時間冇缺口；穩定性／評分頂尖被高估（兩窗）但 T1 dev、T2 holdout REJECT
+- [EXP-20261126-23](EXP-20261126-23-hkjc-pace-pressure-and-rail-draw.md) — HKJC 各賽道欄位檔位：模型已分欄位、冇殘差（C+3 1650 米近 3 季中檔 29% vs 內 27% 屬噪音）；同場放頭馬多寡：獨放 +／多放頭 − 兩窗單調，但 P1／P2／P3 dev 全 REJECT
