@@ -100,3 +100,11 @@ def test_source_lags_reads_history(tmp_path):
     con.close()
     got = {r["field"]: r["mean"] for r in F.source_lags("tennis", "2026-11-26", db)}
     assert got == {"source_lag.tml": 31.0, "source_lag.tennisexplorer": 1.0}     # 未來日子唔計、mock 唔計
+
+
+def test_known_frozen_source_not_alerted():
+    day = "2026-11-26"
+    hist = [{"date": (date(2026, 11, 12) + timedelta(days=i)).isoformat(), "field": "source_lag.jeff_sackmann", "n": 1,
+             "fill_rate": 1.0, "distinct": 1, "mean": 178.0 + i} for i in range(14)]
+    hist.append({"date": day, "field": "source_lag.jeff_sackmann", "n": 1, "fill_rate": 1, "distinct": 1, "mean": 192.0, "last_date": "x"})
+    assert F.alerts("tennis", day, hist) == []

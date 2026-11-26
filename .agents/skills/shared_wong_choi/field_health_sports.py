@@ -199,6 +199,23 @@ def write_day(domain: str, day: str, prof: list[dict]) -> None:
     os.replace(tmp, p)
 
 
+def _known(domain: str) -> list[dict]:
+    """確認刻意停用／已知凍結嘅欄（`resources/known_retired_fields.json`，同 gap_report 同一份）：唔報警。"""
+    try:
+        return [f for f in json.loads((HERE / "resources" / "known_retired_fields.json").read_text(encoding="utf-8"))["fields"]
+                if f.get("domain") == domain]
+    except (OSError, ValueError, KeyError):
+        return []
+
+
+def _is_known(field: str, known: list[dict]) -> bool:
+    for k in known:
+        pat = str(k.get("field") or "")
+        if field == pat or (pat.endswith("*") and field.startswith(pat[:-1])):
+            return True
+    return False
+
+
 def alerts(domain: str, day: str, history: list[dict] | None = None) -> list[dict]:
     rows = history if history is not None else load(domain)
     lo = (Date.fromisoformat(day) - timedelta(days=BASELINE_DAYS)).isoformat()
@@ -237,6 +254,8 @@ def alerts(domain: str, day: str, history: list[dict] | None = None) -> list[dic
             out.append({"field": field, "kind": "constant", "detail": f"唔同值 {dist:g} → 1（n={t['n']}）"})
         elif n >= 50 and t["n"] < 0.3 * n:
             out.append({"field": field, "kind": "shrunk", "detail": f"n {n:g} → {t['n']}"})
+    known = _known(domain)
+    out = [a for a in out if not _is_known(a["field"], known)]
     return sorted(out, key=lambda a: (a["kind"], a["field"]))
 
 
