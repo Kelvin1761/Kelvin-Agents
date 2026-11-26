@@ -1208,6 +1208,34 @@ def _parse_race_header(text: str) -> dict:
     return info
 
 
+def _attach_ai_summaries(analysis_path: Path, horses) -> None:
+    """掛 `Race_<n>_AI_Summary.json`（shared_racing/scripts/ai_horse_summary.py 寫）。
+
+    只有 sidecar 嘅 source_sha256 == 而家份報告先掛（報告重跑過 = 摘要過期，唔顯示）；
+    sidecar 入面只有 Python 核實過嘅馬。純顯示，唔入分。"""
+    import hashlib
+    sidecar = analysis_path.with_name(analysis_path.name.replace("_Auto_Analysis.md", "_AI_Summary.json"))
+    if sidecar == analysis_path or not sidecar.exists():
+        return
+    try:
+        data = json.loads(sidecar.read_text(encoding="utf-8"))
+        if data.get("source_sha256") != hashlib.sha256(analysis_path.read_bytes()).hexdigest():
+            return
+        entries = data.get("horses") or {}
+    except (OSError, ValueError, AttributeError):
+        return
+    if not isinstance(entries, dict):
+        return
+    label = data.get("label") or "AI 摘要（未入分）"
+    for horse in horses:
+        entry = entries.get(str(horse.horse_number))
+        if isinstance(entry, dict) and isinstance(entry.get("summary"), str) and entry["summary"].strip():
+            evidence = entry.get("evidence")
+            horse.ai_summary = {"text": entry["summary"].strip(),
+                                "evidence": [str(e) for e in evidence][:4] if isinstance(evidence, list) else [],
+                                "label": str(label)}
+
+
 def parse_hkjc_analysis(filepath: str) -> Optional[RaceAnalysis]:
     """Parse a complete HKJC Analysis.txt file into structured data.
 
@@ -1380,6 +1408,9 @@ def parse_hkjc_analysis(filepath: str) -> Optional[RaceAnalysis]:
 
     # Monte Carlo simulation table (HKJC format uses #### 📊 Monte Carlo 概率模擬)
     monte_carlo = _parse_monte_carlo_table(text)
+
+    if is_auto:
+        _attach_ai_summaries(path, horses)
 
     return RaceAnalysis(
         race_number=race_number,
