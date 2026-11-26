@@ -78,8 +78,35 @@ GEMINI_ROLES: dict[str, tuple[str, bool]] = {
 }
 # Gemini 用唔到嗰陣退返邊個 Codex 角色
 GEMINI_FALLBACK_ROLE = {"scan": "quick", "quick": "quick", "chore": "chore", "sprint": "grunt"}
-GEMINI_WRITE_RULES = """- 你冇權行任何 shell 命令（會被拒絕，唔好試），只可以讀檔同改檔。測試同 git 由 Claude 做。
+GEMINI_WRITE_RULES = """- 改檔只可以用改檔工具；測試同 git commit 由 Claude 做。
 """
+# Hydrogen 唯一准行嘅命令：純 Python 唯讀搜尋 wrapper（Kelvin 2026-11-26：冇得 grep 就搵唔到 code）。
+# 唔直接批 rg／git（Sol 覆核：rg --pre 開子程序、git --output 寫檔、絕對路徑讀秘密檔）；wrapper 收固定子命令、
+# 限死路徑喺 WC_HYDROGEN_ROOTS 入面。agy 按程式路徑批，串命令（&& | ;）會被佢嘅安全監察拒。
+HYDROGEN_RO = Path(__file__).resolve().parent / "hydrogen_ro.py"
+GEMINI_COMMAND_RULES = """- 搜尋 code 可以行（每次一個，唔好串 && | ; 或者 > 重定向）：
+  `{tool} grep <regex> [路徑…]`、`{tool} ls [路徑]`、`{tool} wc <路徑…>`。其他命令（包括 rg、git、cat）會被拒絕。
+- 只可以睇 workspace 入面嘅檔；讀檔用你自己嘅讀檔工具。
+"""
+
+
+def gemini_settings(tool: Path) -> str:
+    return json.dumps({"permissions": {"allow": [f"command({tool})"]}})
+
+
+def stage_hydrogen_ro(dest_dir: Path, ro_roots: list[Path]) -> Path:
+    """將 wrapper 抄去 workspace 以外（寫入角色改唔到），允許路徑寫死入去（環境變數改唔到）。Sol 2026-11-26。"""
+    src = HYDROGEN_RO.read_text(encoding="utf-8")
+    marker = "EMBEDDED_ROOTS: list[str] = []"
+    if marker not in src:
+        raise RuntimeError("hydrogen_ro.py 冇 EMBEDDED_ROOTS 行")
+    tool = dest_dir / "hydrogen_ro.py"
+    tool.write_text(src.replace(marker, f"EMBEDDED_ROOTS: list[str] = {json.dumps([str(r) for r in ro_roots])}"),
+                    encoding="utf-8")
+    tool.chmod(0o555)
+    return tool
+
+
 GEMINI_FALLBACK = "gemini-4-hydrogen"  # 讀唔到 `agy models` 嘅後備（2026-11-25 最新）
 GEMINI_EXCLUDED = frozenset({"flash", "lite"})
 GEMINI_EFFORTS = ("low", "medium", "high", "xhigh")
@@ -1145,6 +1172,15 @@ def cmd_run_gemini(args) -> int:
            "--print-timeout", f"{args.timeout}s"]
     for extra in extras:  # 要讀 --cd 以外嘅資料夾（log、資料根）就逐個加入 workspace
         cmd += ["--add-dir", str(_resolved(Path(extra)))]
+    ro_roots = [cwd, brief_dir] + [_resolved(Path(x)) for x in extras]
+    ro_dir = _resolved(Path(tempfile.mkdtemp(prefix="hydrogen_ro_")))
+    if any(ro_dir == r or r in ro_dir.parents for r in ro_roots):  # TMPDIR 指咗入 workspace
+        shutil.rmtree(ro_dir, ignore_errors=True)
+        shutil.rmtree(brief_dir, ignore_errors=True)
+        print(f"⛔ 暫存資料夾 {ro_dir} 喺 workspace 入面（TMPDIR？），唔派", file=sys.stderr)
+        return 2
+    tool = stage_hydrogen_ro(ro_dir, ro_roots)
+    cmd += ["--settings", gemini_settings(tool)]
     started = time.time()
     data: dict = {}
     error = None
@@ -1152,8 +1188,10 @@ def cmd_run_gemini(args) -> int:
     denied: list = []
     try:
         preamble = BRIEF_PREAMBLE.format(limit=args.reply_limit)
+        rules = GEMINI_COMMAND_RULES.format(tool=tool)
         if write:
-            preamble = preamble.replace("任務：\n", GEMINI_WRITE_RULES + "\n任務：\n")
+            rules += GEMINI_WRITE_RULES
+        preamble = preamble.replace("任務：\n", rules + "\n任務：\n")
         brief.write_text(preamble + task.strip() + "\n", encoding="utf-8")
         proc = subprocess.run(cmd, cwd=cwd, stdin=subprocess.DEVNULL, capture_output=True,
                               text=True, timeout=args.timeout + 60)
@@ -1168,8 +1206,8 @@ def cmd_run_gemini(args) -> int:
         denied = [d.get("display_name") or d.get("action") for d in (data.get("denied_actions") or [])
                   if isinstance(d, dict)]
         if data.get("status") == "SUCCESS" and not str(data.get("response") or "").strip() and denied:
-            data["error"] = (f"冇輸出：被拒動作 {denied}（brief 要講明只改檔、唔行命令；"
-                             "要讀 --cd 以外嘅檔就加 --add-dir；要行命令就 --provider codex）")
+            data["error"] = (f"冇輸出：被拒動作 {denied}（只准 hydrogen_ro.py grep／ls／wc，唔准串命令；"
+                             "要讀 --cd 以外嘅檔就加 --add-dir；要行其他命令就 --provider codex）")
             data["status"] = "ERROR"
         if data.get("status") != "SUCCESS" or proc.returncode != 0:
             raw_error = " | ".join(x for x in (str(data.get("error") or ""), proc.stderr.strip()) if x)
@@ -1182,6 +1220,7 @@ def cmd_run_gemini(args) -> int:
         error = f"OSError：{exc}"
     finally:
         shutil.rmtree(brief_dir, ignore_errors=True)
+        shutil.rmtree(ro_dir, ignore_errors=True)
     reply = str(data.get("response") or "").strip()
     ok = error is None and bool(reply)
     changes = changed_files(cwd) if write else []
