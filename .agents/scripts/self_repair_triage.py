@@ -75,9 +75,10 @@ def ask_ai(label: str, bundle: Path, worktree: Path, timeout: int = 900) -> tupl
         brief = work / "brief.md"
         brief.write_text(TASK.format(label=label, bundle=text, worktree=worktree), encoding="utf-8")
         err = ""
-        for role, who in (("third", "Hydrogen"), ("quick", "Luna")):
+        # Luna 後備一定要 `--provider codex`：`run quick` 預設行 Gemini Hydrogen low（另一個 session 2026-11-26 指出）
+        for role, who, extra in (("third", "Hydrogen", []), ("quick", "Luna", ["--provider", "codex"])):
             out = work / f"out_{role}.md"
-            proc = subprocess.run([sys.executable, str(DELEGATE), "run", role, "--cd", str(worktree),
+            proc = subprocess.run([sys.executable, str(DELEGATE), "run", role, *extra, "--cd", str(worktree),
                                    "--prompt-file", str(brief), "--out", str(out),
                                    "--title", f"排程維修診斷 {label}（{who}）", "--reply-limit", "2000",
                                    "--timeout", str(timeout)],

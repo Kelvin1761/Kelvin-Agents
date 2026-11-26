@@ -53,13 +53,13 @@ A. `spot_checks`：每個樣本有 `raw`（我哋抓返嚟嘅原文）同 `ours`
    - AU barrier：有退出馬時入分用「密集排位」（剩低嘅馬按原檔位重新排 1..N，`data_prep` 刻意修正），所以
      入分檔位 ≤ 原文檔位、而且同場次序一樣 = match。只有入分檔位 > 原文、或者次序調轉先算 mismatch。
    - AU age：2026-11-22 之前嘅 Logic 冇 age（欄位係嗰日先加），ours 係 None = unclear，唔係 mismatch。
-B. `field_health`：每個平台最近 8 週每個欄位嘅 fill_rate／weak_rate／n。搵：突然跌（例如由 >0.9 跌到 <0.5）、
+B. `field_health`：每個平台（au／hkjc／nba／tennis）最近 8 週每個欄位嘅 fill_rate／weak_rate／distinct／n。搵：突然跌（例如由 >0.9 跌到 <0.5）、
    連續幾週慢慢變差、變咗常數、n 突然少咗好多。正常波動唔好報。
    **最新一週可能未完**：佢 n 細係正常，唔好報。field 要照抄表入面嘅欄位名（唔使加來源）。
 
 只輸出一個 JSON：
 {{"spot_checks": [{{"id": "…", "field": "…", "ours": "…", "raw": "原文入面嘅字（照抄）", "verdict": "match|mismatch|unclear"}}],
-  "field_health": [{{"platform": "au|hkjc", "field": "…", "issue": "一句", "weeks": "例：W45→W48"}}]}}
+  "field_health": [{{"platform": "au|hkjc|nba|tennis", "field": "…", "issue": "一句", "weeks": "例：W45→W48"}}]}}
 spot_checks 只需要列 mismatch 同 unclear（match 唔使列）。唔肯定就 unclear，唔好作。
 """
 
@@ -196,9 +196,10 @@ def run_ai(packet: dict, timeout: int = 900) -> tuple[dict | None, str, str]:
         brief = work / "brief.md"
         brief.write_text(TASK.format(packet=work / "packet.json"), encoding="utf-8")
         err = ""
-        for role, who in (("third", "Hydrogen"), ("quick", "Luna")):
+        # Luna 後備一定要 `--provider codex`：`run quick` 預設行 Gemini Hydrogen low（另一個 session 2026-11-26 指出）
+        for role, who, extra in (("third", "Hydrogen", []), ("quick", "Luna", ["--provider", "codex"])):
             out = work / f"out_{role}.md"
-            proc = subprocess.run([sys.executable, str(DELEGATE), "run", role, "--cd", str(work), "--prompt-file", str(brief),
+            proc = subprocess.run([sys.executable, str(DELEGATE), "run", role, *extra, "--cd", str(work), "--prompt-file", str(brief),
                                    "--out", str(out), "--title", f"每週健康巡查（{who}）", "--reply-limit", "3000",
                                    "--timeout", str(timeout)],
                                   capture_output=True, text=True, encoding="utf-8", errors="replace",
@@ -245,7 +246,7 @@ def verify(result: dict, samples: list[dict], health: dict[str, list[dict]]) -> 
     for p, rows in health.items():
         for r in rows:
             vs = values.setdefault((p, r["field"]), set())
-            for k in ("fill_rate", "weak_rate", "n"):
+            for k in ("fill_rate", "weak_rate", "distinct", "n"):
                 v = r.get(k)
                 if isinstance(v, (int, float)):
                     vs.update({f"{v:g}", f"{v:.1f}", f"{v:.2f}", f"{v:.3f}", f"{v:.4f}", f"{100 * v:.1f}", f"{100 * v:.0f}"})
@@ -280,6 +281,8 @@ def build(n: int = 20, seed: int | None = None, today: str | None = None) -> dic
         got, meta[plat] = sample_platform(plat, since, today, n, rng)
         samples += got
     health = {p: field_health_table(p) for p in ("au", "hkjc")}
+    import field_health_sports as FHS          # NBA／網球（2026-11-26）：每日欄位健康按週彙總
+    health.update({p: FHS.weekly_table(p) for p in ("nba", "tennis")})
     out = {"version": VERSION, "date": today, "window": [since, today], "sampling": meta,
            "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "checked_by": None}
     if not samples:          # 冇樣本就唔叫 AI、唔當新鮮

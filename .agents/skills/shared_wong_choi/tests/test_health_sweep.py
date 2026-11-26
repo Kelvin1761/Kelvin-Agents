@@ -66,3 +66,15 @@ def test_telegram_strips_urls():
     bad = {"status": "ok", "samples": 2, "checked_by": "Hydrogen", "trend_flags": [],
            "confirmed_mismatches": [{"id": "x", "field": "weight", "ours_actual": 1, "raw": "see https://evil.example/x"}]}
     assert "https" not in H.telegram_text(bad) and "網址已刪" in H.telegram_text(bad)
+
+
+def test_luna_fallback_uses_codex_provider(monkeypatch, tmp_path):
+    """Gemini 失敗退 Luna 一定要 `--provider codex`（`run quick` 預設係 Hydrogen low）。"""
+    calls = []
+
+    class P:
+        returncode, stdout, stderr = 1, "", "fail"
+    monkeypatch.setattr(H.subprocess, "run", lambda cmd, **k: calls.append(cmd) or P())
+    H.run_ai({"spot_checks": [], "field_health": {}})
+    assert [c[c.index("run") + 1] for c in calls] == ["third", "quick"]
+    assert "--provider" not in calls[0] and calls[1][calls[1].index("--provider") + 1] == "codex"
