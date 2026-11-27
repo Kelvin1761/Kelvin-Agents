@@ -206,6 +206,18 @@ def _scored_row(python_auto: dict, platform: str | None) -> dict:
     return row
 
 
+# 只喺大場次先有分嘅 AU 欄位（門檻嚟自引擎 `draw.MIN_FIELD`，唔另抄一個數）。
+BIG_FIELD_ONLY_FIELDS = frozenset({"pace_map_score"})
+
+
+def _au_draw_min_field() -> int:
+    scripts = Path(__file__).resolve().parents[2] / "au_racing" / "au_wong_choi_auto" / "scripts"
+    if str(scripts) not in sys.path:
+        sys.path.insert(0, str(scripts))
+    from au_racing_engine.draw import MIN_FIELD  # noqa: PLC0415
+    return int(MIN_FIELD)
+
+
 def observe(paths, platform: str | None = None,
             context: dict | None = None) -> tuple[dict, int, int, list]:
     """Collect per-field statistics from scored races.
@@ -215,6 +227,8 @@ def observe(paths, platform: str | None = None,
     fields: dict[str, Observation] = {}
     if context is not None:
         context.setdefault("wet_races", 0)
+        context.setdefault("big_field_races", 0)
+    big_field_min = _au_draw_min_field() if platform == "au" else None
     races = 0
     unreadable = []
     horses_total = 0
@@ -248,6 +262,9 @@ def observe(paths, platform: str | None = None,
         wet_applicable = ("soft" in going.lower() or "heavy" in going.lower())
         if context is not None and wet_applicable and len(rows) >= 3:
             context["wet_races"] += 1
+        # AU 檔位分（`pace_map_score`，EXP-20261102-08）只喺 ≥ draw.MIN_FIELD 匹先計分；細場全場中性係設計，唔係死欄位。
+        if context is not None and big_field_min is not None and len(rows) >= big_field_min:
+            context["big_field_races"] += 1
         if rows:
             for row, h in zip(rows, [h for h in horses
                                      if _scored_row(h.get("python_auto") or {}, platform)]):
@@ -335,6 +352,14 @@ def check(baseline: dict, paths, platform: str) -> tuple[list, dict]:
             if name == "wet_form_feature" and not context.get("wet_races"):
                 continue
             violations.append(Violation(name, "presence", "欄位完全消失（改名？抽取失敗？）"))
+            continue
+        # 成個場次冇一場夠大場次門檻（例：2026-11-27 Cairns 7 場全部 4–7 匹）→ 檔位分全部中性係正確行為。
+        if (platform == "au" and name in BIG_FIELD_ONLY_FIELDS and not context.get("big_field_races")):
+            violations.append(Violation(
+                name, "small-fields",
+                f"成個場次冇一場 ≥{_au_draw_min_field()} 匹 —— 檔位分設計上唔計分（EXP-20261102-08），唔當死欄位",
+                "warning",
+            ))
             continue
         actual = obs.summarise()
         dead_severity = "warning" if name in ADVISORY_DEAD_FIELDS[platform] else "error"

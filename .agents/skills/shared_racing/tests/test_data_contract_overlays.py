@@ -122,5 +122,26 @@ class DryMeetingPresenceTests(unittest.TestCase):
                          ["wet_form_feature"])
 
 
+class SmallFieldDrawTests(unittest.TestCase):
+    """2026-11-27 Cairns：7 場全部 4–7 匹，檔位分全場中性 60 被當死欄位攔住發佈。"""
+    BASELINE = {"fields": {"pace_map_score": {"neutral_rate": 0.092, "mean_within_race_spread": 1.25,
+                                              "min": 40, "max": 80}}}
+
+    def _check(self, n_horses):
+        from data_contract import check
+        horses = {str(i): {"python_auto": {"feature_scores": {"pace_map_score": 60.0},
+                                           "race_context": {"going": "Good 4"}}} for i in range(1, n_horses + 1)}
+        with tempfile.TemporaryDirectory() as t:
+            path = _write(Path(t), "Race_1_Logic.json", {"horses": horses})
+            violations, _ = check(self.BASELINE, [path], "au")
+        return {(v.check, v.severity) for v in violations if v.field_name == "pace_map_score"}
+
+    def test_all_small_fields_is_a_warning_not_dead(self):
+        self.assertEqual(self._check(6), {("small-fields", "warning")})
+
+    def test_big_field_with_all_neutral_is_still_dead(self):
+        self.assertIn(("dead-field", "error"), self._check(10))
+
+
 if __name__ == "__main__":
     unittest.main()
