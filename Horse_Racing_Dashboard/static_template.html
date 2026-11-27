@@ -4477,7 +4477,7 @@ function lbDayHtml(key, d, open) {
     <div class="lb-kpis">${kpis}</div>${ai}
     ${misses ? `<h4 class="pf-h2" style="font-size:.8rem;margin:10px 0 2px">失手場（每場一匹高估／低估）</h4><ul class="lb-list">${misses}</ul>` : ''}
     ${cohorts ? `<h4 class="pf-h2" style="font-size:.8rem;margin:10px 0 2px">今日組別 vs 之前 live 日（描述，唔係判決）</h4><p class="calib-card__meta lb-coh-help">「今日」= 入前三數同模型預期嘅差（+ 即模型低估）；「之前 live 日」= 同一組別跨日偏差同 95% 區間。</p>${cohorts}` : ''}
-    ${hyps ? `<h4 class="pf-h2" style="font-size:.8rem;margin:10px 0 2px">AI 提出嘅假設（Sonnet 審）</h4>${hyps}` : ''}
+    ${hyps ? `<h4 class="pf-h2" style="font-size:.8rem;margin:10px 0 2px">AI 提出嘅假設（${esc(d.ai.reviewer ? (d.ai.reviewer === 'sol' ? 'Sol 審' : d.ai.reviewer === 'sonnet' ? 'Sonnet 審' : d.ai.reviewer) : '未審')}）</h4>${hyps}` : ''}
   </details>`;
 }
 
@@ -4496,7 +4496,7 @@ function renderLearningBoard() {
   const hyps = (lb.hypotheses || []).slice(0, 15);
   const hypTable = hyps.length ? `<div class="lb-wrap"><table class="lb-table"><thead><tr><th>假設</th><th>範疇</th><th>出世</th><th>狀態</th></tr></thead><tbody>${hyps.map(h =>
     `<tr><td>${esc(h.title || '')}<br><small>${esc((h.cohort || []).join(' ＋ '))}・${h.direction === 'model_under' ? '模型低估' : '模型高估'}</small></td><td>${esc(h.domain)}</td><td>${esc(h.born || '')}</td>`
-    + `<td><span class="lb-tag ${h.state === 'watching' ? 'lb-tag--warn' : h.state === 'supported' ? 'lb-tag--good' : h.state === 'rejected' ? 'lb-tag--bad' : ''}">${esc({watching: '觀察中', covered: '已有測試', supported: '支持', rejected: '否決', undecided: '未定'}[h.state] || h.state || '')}</span>${h.done_before ? `<br><small>${esc(h.done_before)}</small>` : ''}`
+    + `<td><span class="lb-tag ${h.state === 'watching' ? 'lb-tag--warn' : h.state === 'supported' ? 'lb-tag--good' : (h.state === 'rejected' || h.state === 'void') ? 'lb-tag--bad' : ''}">${esc({watching: '觀察中', covered: '已有測試', supported: '支持', rejected: '否決', undecided: '未定', void: '作廢（洩漏）'}[h.state] || h.state || '')}</span>${h.done_before ? `<br><small>${esc(h.done_before)}</small>` : ''}`
     + (h.state === 'watching' && h.progress ? `<br><small>進度 ${lbN(h.progress.days)}/${lbN(h.progress.need_days)} 日、${lbN(h.progress.n)}/${lbN(h.progress.need_n)}</small>` : '')
     + (h.result ? `<br><small>${lbN(h.result.directional_resid_pp)}pp [${lbN((h.result.ci_pp || [])[0])}, ${lbN((h.result.ci_pp || [])[1])}]（${lbN(h.judged_at)} 判）</small>` : '')
     + `</td></tr>`).join('')}</tbody></table></div>`
@@ -4512,7 +4512,7 @@ function renderLearningBoard() {
   }).join('') : '';
   const gapPanel = gapHtml ? `<section class="pf-panel"><h2 class="pf-h2">🔍 改善空間 <small>${esc(gr.date || '')}・填唔滿嘅輸入欄＋可以重評嘅舊 REJECT；唔准假設已經做晒</small></h2><div class="calib-grid">${gapHtml}</div></section>` : '';
   return `<section class="pf-panel">
-      <h2 class="pf-h2">🧠 自學：每日覆盤 <small>Python 出數、Gemini 解讀、Python 核數字、Sonnet 審假設；只描述，唔改模型</small></h2>
+      <h2 class="pf-h2">🧠 自學：每日覆盤 <small>Python 出數、Gemini 解讀、Python 核數字、AI 審假設（Sol／Sonnet）；只描述，唔改模型</small></h2>
       ${weekly}
       <div class="lb-tabs" role="group" aria-label="範疇">${tabs}</div>
       ${dayHtml}

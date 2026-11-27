@@ -105,7 +105,7 @@ AU 通用 forward 引擎（`au_hypothesis_forward.py`）喺今次同 H2／H3 一
 | P1 ✅（2026-11-26） | L1 覆盤報告 AU＋HKJC（含每日核數）：`shared_racing/scripts/post_review.py`，AU 晚更 `step_post_review`、HKJC 賽後背景，content 摘要，`健康.sh`「自動覆盤」；dashboard 頁未做（重用 miss_autopsy）、cohort 庫、跨日核實；Telegram content 摘要；dashboard「覆盤」頁 | 對 11-18 跑馬地重現人手覆盤嘅主要結論（穩定性反例、模型獨家睇好冇 edge） |
 | P2（✅ 2026-11-26） | L3 假設帳＋自動判（`shared_wong_choi/hypothesis_judge.py`，每週一喺 Opus 總結前）＋learning_board | 用 08-05→11-25 回放模擬：出世／rejected 數目合理（純噪音 cohort 唔會 supported） |
 | P3（L1 ✅ 2026-11-26） | NBA＋Tennis 嘅 L1（`shared_wong_choi/post_review_sports.py`，NBA postgame／網球 18:00）／L3 | 同上 |
-| P4（L2 ✅ 2026-11-26） | L2 AI 解讀（`shared_wong_choi/review_ai.py`：Gemini 寫、Python 核數字／名、Sonnet 審假設、假設帳；每週一 09:30 Opus 總結）、L4 arm 提案自動 fit（未做） | 一個提案走完全程到 Telegram（Astra：LLM 最後先做）|
+| P4（L2 ✅ 2026-11-26） | L2 AI 解讀（`shared_wong_choi/review_ai.py`：Gemini 寫、Python 核數字／名、Sol 審假設（Sonnet 後備）、假設帳；每週一 09:30 Opus 總結）、L4 arm 提案自動 fit（未做） | 一個提案走完全程到 Telegram（Astra：LLM 最後先做）|
 
 ## 6. 未決
 
@@ -142,8 +142,8 @@ AU 通用 forward 引擎（`au_hypothesis_forward.py`）喺今次同 H2／H3 一
 
 分工（Kelvin 揀）：**Gemini 寫**（`codex_delegate.py run third`，唯讀、Google 訂閱、撞 429 自動停派、記帳）→
 **Python 核事實**（每個小數／分數／≥10 嘅數字、每個「」名要喺當日覆盤 JSON 搵到，唔係就刪句）→
-**Sonnet 審假設**（`claude -p --model sonnet`，空臨時目錄、只 `--add-dir docs/experiments`、plan mode、唯讀；
-問洩漏、做過未、值唔值得）→ 假設帳 `<WongChoiControl>/learning/hypotheses.jsonl`（watching／covered）。
+**Sol 審假設**（唯讀；審洩漏、做過未、值唔值得），失敗退 Sonnet；兩者失敗保留假設待補審 → 假設帳 `<WongChoiControl>/learning/hypotheses.jsonl`（watching／covered）。
+2026-11-27 因 Sonnet 用量上限令假設未入帳，改為 Sol 優先；每日開始先 best effort 補審近 14 日 pending（包括舊 partial），唔重跑 Gemini。
 每週一 09:30 `central-wong-choi.review-weekly`：Opus 讀 7 日覆盤＋解讀＋帳，Telegram primary。冇用 Terra（Codex 預算留俾改模型）。
 Claude 一定要喺 repo 以外嘅目錄跑：project Stop hook 會將「未保存」提醒蓋過答覆（第一次試就中）。
 

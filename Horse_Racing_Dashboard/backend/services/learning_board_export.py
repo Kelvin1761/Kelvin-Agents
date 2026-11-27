@@ -73,7 +73,7 @@ def _day(domain: str, rv: dict, ai: dict | None) -> dict:
         out["confident_miss_classes"] = rv.get("confident_miss_classes")
         out["confident_total"] = rv.get("confident_total")
     if ai and ai.get("status") in ("ok", "partial"):
-        out["ai"] = {"narrative": str(ai.get("narrative") or "")[:2000], "dropped": len(ai.get("dropped_sentences") or []),
+        out["ai"] = {"reviewer": ai.get("reviewer") if "reviewer" in ai else "sonnet", "narrative": str(ai.get("narrative") or "")[:2000], "dropped": len(ai.get("dropped_sentences") or []),
                      "hypotheses": [{"title": h.get("title"), "cohort": h.get("cohort"), "direction": h.get("direction"),
                                      "verdict": _verdict(h.get("review"))} for h in (ai.get("hypotheses") or [])[:5]
                                     if isinstance(h, dict)]}

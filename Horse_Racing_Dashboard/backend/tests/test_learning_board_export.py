@@ -34,3 +34,11 @@ def test_export(tmp_path):
     assert day["ai"]["hypotheses"][0]["verdict"] == "值得驗證" and day["ai"]["dropped"] == 1
     assert b["domains"]["au"]["days"] == [] and b["hypotheses"][0]["id"] == "H"
     assert len(b["gap_report"]["domains"]["au"]["gaps"]) == 8 and b["health_sweep"] is None
+
+
+def test_reviewer_export_and_old_fallback():
+    from services.learning_board_export import _day
+    review = {"date": "2026-11-25"}
+    assert _day("nba", review, {"status": "ok", "reviewer": "sol"})["ai"]["reviewer"] == "sol"
+    assert _day("nba", review, {"status": "ok"})["ai"]["reviewer"] == "sonnet"
+    assert _day("nba", review, {"status": "partial", "reviewer": None})["ai"]["reviewer"] is None

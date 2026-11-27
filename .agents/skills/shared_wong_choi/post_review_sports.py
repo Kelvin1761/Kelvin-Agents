@@ -76,6 +76,10 @@ def _gap_band(d: float) -> str:
         "模型低過市場 ≥5pp" if d <= -0.05 else "同市場 ±5pp"
 
 
+def _gap_band_open(d: float) -> str:
+    return _gap_band(d).replace("市場", "模型時隱含")
+
+
 def _row(day, key, p, m, y, cohorts, **extra):
     """同 post_review._cohorts 嘅欄位對齊：hit3 = 中／唔中、p_top3 = 模型、m_top3 = 市場（冇就 None）。"""
     return {"date": day, "key": key, "p_top3": float(p), "m_top3": None if m is None else float(m), "hit3": int(y),
@@ -113,8 +117,12 @@ def nba_rows(day: str, trail: int, root: Path | None = None) -> tuple[list[dict]
         p, m = float(leg["p_final"]), leg.get("market_devig_close")
         mk = MARKET_ZH.get(market, market)
         coh = [f"market:{mk}", f"side:{'大' if side == 'over' else '細'}", f"band:模型 {_band(p)}"]
-        if m is not None:
-            coh.append(f"gap:{_gap_band(p - m)}")
+        try:
+            decision_price = float(leg.get("price_at_model"))
+        except (TypeError, ValueError):
+            decision_price = 0
+        if math.isfinite(decision_price) and decision_price > 1:
+            coh.append(f"gap:{_gap_band_open(p - 1 / decision_price)}")
         if leg.get("picked"):
             coh.append("picked:SGM 揀中嘅腿")
         rows.append(_row(d, f"{tag}|{player}|{market}|{line}|{side}", p, m, leg["y"], coh, game=tag, player=player,
@@ -230,7 +238,7 @@ FAMILY_ZH = {"total_games": "全場總局數", "player_set_handicap": "盤數讓
              "total_aces_ladder": "Ace 數", "match_winner": "勝負"}
 
 
-def tennis_rows(day: str, trail: int, db: Path | None = None) -> list[dict]:
+def tennis_rows(day: str, trail: int, db: Path | None = None, meta: dict | None = None) -> list[dict]:
     if str(TENNIS_SRC) not in sys.path:
         sys.path.insert(0, str(TENNIS_SRC))
     from tennis_wc.pricing.props import tier_of
@@ -239,7 +247,7 @@ def tennis_rows(day: str, trail: int, db: Path | None = None) -> list[dict]:
     con.row_factory = sqlite3.Row
     q = """SELECT p.id, p.match_date, p.match_label, p.market_key, p.line, p.selection, p.decimal_odds,
                   p.model_prob_raw AS model_prob, fp.model_prob AS featured_prob, fp.odds AS featured_odds,
-                  p.market_prob_fair, p.result_status, p.profit_loss_units, p.pricing_evidence_json,
+                  p.market_prob_fair, p.is_point_in_time, p.result_status, p.profit_loss_units, p.pricing_evidence_json,
                   t.name AS tournament, fp.id AS featured_id
            FROM prop_tracker p
            LEFT JOIN matches m ON m.id = p.match_id
@@ -250,7 +258,11 @@ def tennis_rows(day: str, trail: int, db: Path | None = None) -> list[dict]:
     # 冇 model_prob_raw 嘅注唔計（Sol 2026-11-26：唔准退返收縮後嘅 model_prob，嗰個可能等於市場）；
     # 精選一個 prop 多過一行都只計一次（MIN id），賠率用凍結嗰刻嘅 featured_picks.odds。
     rows = []
+    excluded = 0
     for r in con.execute(q, (lo, hi)):
+        if r["is_point_in_time"] != 1:
+            excluded += 1
+            continue
         p, m, y = float(r["model_prob"]), r["market_prob_fair"], int(r["result_status"] == "WON")
         try:
             dq = (json.loads(r["pricing_evidence_json"] or "{}") or {}).get("data_quality_score")
@@ -259,7 +271,7 @@ def tennis_rows(day: str, trail: int, db: Path | None = None) -> list[dict]:
         fam = _family(r["market_key"])
         tier = tier_of(r["tournament"])
         coh = [f"family:{FAMILY_ZH.get(fam, fam)}", f"tier:{tier}"]
-        if m is not None:
+        if m is not None and r["is_point_in_time"] == 1:
             coh += [f"fav:{'市場熱門（≥50%）' if m >= 0.5 else '市場冷門（<50%）'}", f"gap:{_gap_band(p - float(m))}"]
         if dq is not None:
             coh.append(f"dq:資料質素 {'<50' if dq < 50 else '50–69' if dq < 70 else '≥70'}")
@@ -270,6 +282,8 @@ def tennis_rows(day: str, trail: int, db: Path | None = None) -> list[dict]:
                          featured=bool(r["featured_id"]), featured_prob=r["featured_prob"],
                          featured_odds=r["featured_odds"], pnl=r["profit_loss_units"]))
     con.close()
+    if meta is not None:
+        meta["excluded_non_point_in_time"] = excluded
     return rows
 
 
@@ -282,7 +296,8 @@ def tennis_classify(p: float, m: float | None, dq) -> str:
 
 
 def tennis_review(day: str, trail: int = TRAIL_DAYS, db: Path | None = None) -> dict:
-    rows = tennis_rows(day, trail, db)
+    meta = {}
+    rows = tennis_rows(day, trail, db, meta=meta)
     today = [x for x in rows if x["date"] == day]
     window = sorted({x["date"] for x in rows if x["date"] < day})
     mk = [x for x in today if x["m_top3"] is not None]
@@ -307,7 +322,7 @@ def tennis_review(day: str, trail: int = TRAIL_DAYS, db: Path | None = None) -> 
                            for k, v in _group(today, "tier").items()}}
     return {"version": VERSION, "domain": "tennis", "date": day,
             "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-            "summary": summary, "featured": feat_rows, "featured_summary": _feat_summary(feat_rows),
+            "summary": summary, "meta": meta, "featured": feat_rows, "featured_summary": _feat_summary(feat_rows),
             "confident_misses": sorted(misses, key=lambda x: -x["p"])[:25],
             "confident_miss_classes": dict(Counter(m["miss"] for m in misses)),
             "confident_total": sum(1 for x in today if x["p_top3"] >= CONFIDENT),

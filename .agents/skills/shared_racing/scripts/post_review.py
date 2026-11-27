@@ -148,6 +148,9 @@ def meeting_detail(platform: str, meeting_dir: Path, core) -> tuple[dict, dict]:
     except SnapshotArchiveOffline:
         recon["reason"] = "offline"
         return {}, recon
+    if _cut is None:
+        recon["reason"] = "缺開跑時間"
+        return {}, recon
     if snapshot is None:
         recon["reason"] = "no_snapshot"
         return {}, recon
@@ -230,7 +233,10 @@ def build(platform: str, day: str, root: Path | None = None, trail_days: int | N
     races, sources = M.collect(platform, root, until=_next_day(day))
     # 只計有賽前快照嘅場（Sol 2026-11-26）：model_probability 冇快照會退返讀場次目錄（可能係賽後重評）
     no_snapshot = Counter(r["meeting"] for r in races if not r.get("published_at"))
-    races = [r for r in races if r.get("published_at")]
+    meeting_paths = {m.name: m for m in M.meeting_list(platform, root)}
+    missing_cutoff = {name for name, meeting in meeting_paths.items()
+                      if (core.first_post_time(meeting) if platform == "hkjc" else core.au_prerace_cutoff(meeting)) is None}
+    races = [r for r in races if r.get("published_at") and r["meeting"] in meeting_paths and r["meeting"] not in missing_cutoff]
     wf = M.walk_forward(races, platform)
     live_days = sorted(d for d in wf if d <= day)
     window = live_days[-(trail_days + 1):]            # 今日 + 之前 N 日

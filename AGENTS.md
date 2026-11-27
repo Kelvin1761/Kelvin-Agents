@@ -55,7 +55,7 @@ NBA／網球 `field_health_sports`）同假設帳，回覆要列「查過咩＋�
 
 每個賽日／比賽日賽後自動覆盤（AU、HKJC、NBA、網球）：Python 出數（`shared_racing/scripts/post_review.py`、
 `shared_wong_choi/post_review_sports.py`，`<WongChoiControl>/reviews/<domain>/<日>`），AI 解讀（`shared_wong_choi/review_ai.py`：
-Gemini 寫 → Python 核數字 → Sonnet 審假設 → 假設帳 `learning/hypotheses.jsonl`），每週一 Opus 總結。設計同門檻：
+Gemini 寫 → Python 核數字 → Sol 審假設（Sonnet 後備） → 假設帳 `learning/hypotheses.jsonl`），每週一 Opus 總結。設計同門檻：
 `docs/plans/2026-11-26-self-learning-loop.md`。**AI 同覆盤永遠唔改模型**：假設只可以用出世之後嘅新數據驗證、經預先登記 forward
 （AU：`au_hypothesis_forward.ARMS` 加一行）判，上唔上線係 Kelvin。新開 domain 要喺同一個改動接覆盤。
 

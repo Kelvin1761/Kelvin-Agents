@@ -39,7 +39,7 @@ def _tennis_db(path: Path):
     con.executescript("""
     CREATE TABLE prop_tracker (id INTEGER, match_id INTEGER, match_date TEXT, match_label TEXT, market_key TEXT, line REAL,
       selection TEXT, decimal_odds REAL, model_prob REAL, model_prob_raw REAL, market_prob_fair REAL, result_status TEXT,
-      profit_loss_units REAL, pricing_evidence_json TEXT);
+      profit_loss_units REAL, pricing_evidence_json TEXT, is_point_in_time INTEGER);
     CREATE TABLE matches (id INTEGER, tournament_id INTEGER);
     CREATE TABLE tournaments (id INTEGER, name TEXT);
     CREATE TABLE featured_picks (id INTEGER, prop_id INTEGER, model_prob REAL, odds REAL);
@@ -50,7 +50,7 @@ def _tennis_db(path: Path):
             (2, 11, "2026-11-25", "C vs D", "player_game_handicap_3.5", 3.5, "C (+3.5)", 1.9, 0.55, 0.55, 0.55, "WON", 0.9, "{}"),
             (3, 11, "2026-11-24", "E vs F", "total_games", 22.5, "Over", 1.9, 0.5, 0.6, 0.5, "WON", 0.9, "{}"),
             (4, 11, "2026-11-25", "G vs H", "total_games", 22.5, "Over", 1.9, 0.5, 0.6, 0.5, "PENDING", 0, "{}")]
-    con.executemany("INSERT INTO prop_tracker VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)", rows)
+    con.executemany("INSERT INTO prop_tracker VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", [(*r, 1) for r in rows])
     con.executemany("INSERT INTO featured_picks VALUES (?, ?, ?, ?)", [(1, 1, 0.75, 2.2), (2, 1, 0.70, 2.1)])
     con.commit()
     con.close()
@@ -115,3 +115,30 @@ def test_nba_featured_joins_ledger_leg_with_int_line(monkeypatch):
     rv = S.nba_review(day, 30)
     assert rv["featured"][0]["minutes"] == 8.0 and rv["featured"][0]["miss"].startswith("上陣時間")   # 真配對到
     assert rv["featured"][1]["minutes"] == 33.0                                                       # 5 對 5.0
+
+
+def test_nba_gap_uses_decision_price(monkeypatch):
+    sys.path.insert(0, str(S.NBA_AUTO))
+    import nba_market_ledger as ledger
+    legs = [{"key": ("2026-11-25", "A", "P", "pts", 10, "over"), "p_final": 0.7,
+             "market_devig_close": 0.68, "y": 1},
+            {"key": ("2026-11-25", "A", "Q", "pts", 10, "over"), "p_final": 0.7,
+             "market_devig_close": 0.68, "price_at_model": 2.0, "y": 0}]
+    monkeypatch.setattr(ledger, "evaluate", lambda **kwargs: {"legs": legs})
+    rows, _ = S.nba_rows("2026-11-25", 30)
+    assert not any(c.startswith("gap:") for c in rows[0]["cohorts"])
+    assert "gap:模型高過模型時隱含 ≥10pp" in rows[1]["cohorts"]
+    assert rows[1]["m_top3"] == 0.68
+
+
+def test_tennis_post_start_price_not_used_for_cohort(tmp_path):
+    db = tmp_path / "t.db"
+    _tennis_db(db)
+    con = sqlite3.connect(db)
+    con.execute("UPDATE prop_tracker SET is_point_in_time = 0 WHERE id = 1")
+    con.commit()
+    con.close()
+    meta = {}
+    rows = S.tennis_rows("2026-11-25", 30, db, meta=meta)
+    assert all(r["key"] != 1 for r in rows)
+    assert meta["excluded_non_point_in_time"] == 1

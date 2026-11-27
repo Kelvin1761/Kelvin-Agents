@@ -3,12 +3,17 @@ from __future__ import annotations
 
 import json
 import sys
+import pytest
 from pathlib import Path
 
 HERE = Path(__file__).resolve()
 sys.path.insert(0, str(HERE.parents[1]))
 
 import review_ai as R  # noqa: E402
+
+@pytest.fixture(autouse=True)
+def isolate_control_state(tmp_path, monkeypatch):
+    monkeypatch.setenv("WONGCHOI_CONTROL_STATE_ROOT", str(tmp_path / "control"))
 
 REVIEW = {"summary": {"races": 9, "slots": 27, "model_top3_hits": 12, "market_top3_hits": 13, "model_top1_wins": 1,
                       "fav_wins": 2, "winner_in_model_top5": 4, "model_logloss_top3": 0.5478},
@@ -170,3 +175,122 @@ def test_weekly_runs_judge_then_gap_report(monkeypatch, tmp_path):
     monkeypatch.setattr(R, "_claude", lambda prompt, *a, **k: (order.append(("opus", "改善空間" in prompt)) or ("總結", "")))
     R.weekly(today="2026-11-30")
     assert order == [("judge", "2026-11-30"), ("gap", "2026-11-30"), ("opus", True)]
+
+
+def test_sol_and_fallback_subprocess(monkeypatch):
+    h = {"cohort": ["tag:x"], "direction": "model_under"}
+    answer = json.dumps({"reviews": [{"i": 0, "leak": False, "worth": True}]})
+    calls = []
+    class P:
+        returncode, stdout, stderr = 0, "", ""
+    def run(cmd, **kwargs):
+        calls.append(cmd)
+        Path(cmd[cmd.index("--out") + 1]).write_text(answer)
+        assert "不可信資料" in Path(cmd[cmd.index("--prompt-file") + 1]).read_text()
+        return P()
+    monkeypatch.setattr(R.subprocess, "run", run)
+    reviewed, reviewer, err = R.review_hypotheses("au", "2026-11-26", [h])
+    assert reviewer == "sol" and not err and reviewed[0]["review"]["worth"]
+    assert calls[0][calls[0].index("--cd") + 1] != str(R.REPO)
+    monkeypatch.setattr(R, "sol_review", lambda *a: ([], "quota"))
+    monkeypatch.setattr(R, "_claude", lambda *a, **k: (answer, ""))
+    reviewed, reviewer, err = R.review_hypotheses("au", "2026-11-26", [h])
+    assert reviewer == "sonnet" and not err and reviewed[0]["review"]["worth"]
+
+
+def test_daily_pending_and_retry_old_file(tmp_path, monkeypatch):
+    root = tmp_path / "reviews"
+    monkeypatch.setattr(R.PR, "output_dir", lambda domain: root / domain)
+    monkeypatch.setattr(R, "ledger_path", lambda: tmp_path / "hypotheses.jsonl")
+    out = root / "hkjc"
+    out.mkdir(parents=True)
+    (out / "2026-11-25.json").write_text(json.dumps(REVIEW))
+    hyp = {"title": "x", "cohort": ["tag:騎師此程弱"], "direction": "model_under"}
+    monkeypatch.setattr(R, "run_gemini", lambda *a: ({"hypotheses": [hyp]}, ""))
+    monkeypatch.setattr(R, "sol_review", lambda *a: ([], "sol failed"))
+    monkeypatch.setattr(R, "sonnet_review", lambda *a: ([], "sonnet failed"))
+    result = R.daily("hkjc", "2026-11-25", out_dir=out)
+    assert result["status"] == "partial" and result["review_pending"] and result["hypotheses"] == [hyp]
+    path = out / "2026-11-25.ai.json"
+    old = json.loads(path.read_text())
+    old.pop("review_pending")
+    old["sonnet_error"] = "usage_limit_reached"
+    path.write_text(json.dumps(old))
+    monkeypatch.setattr(R, "sol_review", lambda d, day, hs: ([dict(h, review={"leak": False, "worth": True}) for h in hs], ""))
+    assert R.retry_pending(today="2026-11-27", root=out)["healed"] == 1
+    assert R.retry_pending(today="2026-11-27", root=out)["retried"] == 0
+    assert json.loads(path.read_text())["reviewer"] == "sol"
+    entries = [json.loads(x) for x in (tmp_path / "hypotheses.jsonl").read_text().splitlines()]
+    assert len(entries) == 1 and entries[0]["source"] == "gemini+sol"
+
+
+def test_void_locked_and_judge_skips(tmp_path, monkeypatch):
+    import hypothesis_judge as J
+    path = tmp_path / "hypotheses.jsonl"
+    path.write_text(json.dumps({"id": "H-nba-2026-11-26-1", "state": "watching", "domain": "nba", "born": "2026-11-26"}) + "\n")
+    monkeypatch.setattr(R, "ledger_path", lambda: path)
+    monkeypatch.setattr(J, "ledger_path", lambda: path)
+    assert R.void_hypothesis("H-nba-2026-11-26-1", "收盤價洩漏")
+    assert json.loads(path.read_text())["void_reason"] == "收盤價洩漏"
+    assert J.run("2026-11-27", rows_fn=lambda *a: (_ for _ in ()).throw(AssertionError()))["watching"] == 0
+
+
+def test_pending_persisted_before_reviewer_and_force_failure(tmp_path, monkeypatch):
+    day = "2026-11-25"
+    (tmp_path / f"{day}.json").write_text(json.dumps(REVIEW))
+    hyp = {"cohort": ["tag:騎師此程弱"], "direction": "model_under"}
+    monkeypatch.setattr(R, "run_gemini", lambda *a: ({"hypotheses": [hyp]}, ""))
+    def interrupt(*args):
+        assert json.loads((tmp_path / f"{day}.ai.json").read_text())["review_pending"]
+        raise RuntimeError("interrupted")
+    monkeypatch.setattr(R, "review_hypotheses", interrupt)
+    import pytest
+    with pytest.raises(RuntimeError):
+        R.daily("hkjc", day, out_dir=tmp_path)
+    monkeypatch.setattr(R, "retry_pending", lambda **kwargs: {})
+    monkeypatch.setattr(R, "run_gemini", lambda *a: (None, "failed"))
+    assert R.daily("hkjc", day, out_dir=tmp_path, force=True)["status"] == "partial"
+
+
+def test_retry_legacy_isolation_and_limits(tmp_path, monkeypatch):
+    monkeypatch.setenv("WONGCHOI_CONTROL_STATE_ROOT", str(tmp_path))
+    monkeypatch.setattr(R.PR, "output_dir", lambda d: (_ for _ in ()).throw(AssertionError("production path")))
+    monkeypatch.setattr(R, "ledger_path", lambda: tmp_path / "ledger.jsonl")
+    calls = []
+    monkeypatch.setattr(R, "sol_review", lambda d, day, hs: (calls.extend(hs) or [], "failed"))
+    monkeypatch.setattr(R, "sonnet_review", lambda *a: ([], "failed"))
+    for day, cohort in [("2026-11-20", "fav:old"), ("2026-11-21", "family:x"), ("2026-11-22", "family:y"), ("2026-10-01", "family:z")]:
+        (tmp_path / f"{day}.ai.json").write_text(json.dumps({"domain": "tennis", "status": "partial", "hypotheses": [{"cohort": [cohort], "direction": "model_under"}]}))
+    counts = R.retry_pending(today="2026-11-27", root=tmp_path, max_files=2)
+    assert counts["retried"] == 2 and len(calls) == 1 and counts["too_old"]
+    assert json.loads((tmp_path / "2026-11-20.ai.json").read_text())["rejected_hypotheses"][0]["rejected"] == "舊版組別可能用咗賽後價"
+    assert R.retry_pending(today="2026-11-27")["retried"] == 0
+
+
+def test_register_dedupes_cohort_elements(tmp_path, monkeypatch):
+    monkeypatch.setattr(R, "ledger_path", lambda: tmp_path / "ledger")
+    h = {"cohort": ["tag:a", "tag:a"], "direction": "model_under", "review": {"leak": False, "worth": True}}
+    assert R.register("au", "2026-11-25", [h]) == 1
+    assert R.register("au", "2026-11-25", [dict(h, cohort=["tag:a"])]) == 0
+    assert json.loads((tmp_path / "ledger").read_text())["cohort"] == ["tag:a"]
+
+
+def test_sol_receives_only_sanitized_fields(monkeypatch):
+    class P:
+        returncode, stdout, stderr = 0, "", ""
+    def run(cmd, **kwargs):
+        work = Path(cmd[cmd.index("--cd") + 1])
+        assert work != R.REPO and (work / "docs/experiments/INDEX.md").is_file()
+        prompt = Path(cmd[cmd.index("--prompt-file") + 1]).read_text()
+        assert "SECRET_EXTRA" not in prompt and "X" * 81 not in prompt and "Y" * 301 not in prompt
+        Path(cmd[cmd.index("--out") + 1]).write_text(json.dumps({"reviews": [{"i": 0, "leak": False, "worth": True}]}))
+        return P()
+    monkeypatch.setattr(R.subprocess, "run", run)
+    hyp = {"cohort": ["tag:a"], "direction": "model_under", "title": "X" * 100, "why": "Y" * 400, "extra": "SECRET_EXTRA"}
+    assert not R.sol_review("au", "2026-11-25", [hyp])[1]
+
+
+def test_unknown_cohort_cannot_reach_reviewer(monkeypatch):
+    monkeypatch.setattr(R, "sol_review", lambda *a: (_ for _ in ()).throw(AssertionError("leak")))
+    reviewed, _, error = R.review_hypotheses("tennis", "2026-11-25", [{"cohort": ["close:price"]}])
+    assert not error and reviewed[0]["review"]["leak"] is True

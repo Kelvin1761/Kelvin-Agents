@@ -155,7 +155,7 @@ def test_build_joins_and_window(monkeypatch, tmp_path):
         def __init__(self, name):
             self.name = name
     monkeypatch.setattr(P.M, "meeting_list", lambda plat, root: [Mt("2026-11-24 Old"), Mt("2026-11-25 Today")])
-    monkeypatch.setattr(P, "_core", lambda: None)
+    monkeypatch.setattr(P, "_core", lambda: type("Core", (), {"au_prerace_cutoff": staticmethod(lambda m: True)})())
 
     def detail(plat, m, core):
         ranks = {1: 4, 2: 1, 3: 2, 4: 3} if m.name == "2026-11-25 Today" else {i: i for i in (1, 2, 3, 4, 5)}  # 5 號冇排名
@@ -201,3 +201,17 @@ def test_render_shows_incident_column():
     md = P.render_md(rv)
     assert "賽後報告（模型頭三）" in md and "〔受阻〕" in md and "1 匹有賽中事件" in md
     assert "賽後報告：被高估 1 匹入面 1 匹有賽中事件" in P.telegram_text(rv)
+
+
+def test_missing_cutoff_excludes_snapshot(monkeypatch, tmp_path):
+    meeting = tmp_path / "2026-11-25 Test"
+    meeting.mkdir()
+    (meeting / "全日賽果.json").write_text("{}")
+    class Core:
+        def load_structured_results(self, *args): return {1: {}}
+        def select_prerace_snapshot(self, *args): return (tmp_path, "published", None)
+        def load_prediction_rows(self, *args): raise AssertionError("must not load")
+    detail, recon = P.meeting_detail("hkjc", meeting, Core())
+    assert detail == {} and recon["reason"] == "缺開跑時間"
+    result = P._reconcile([recon], [], "2026-11-25")
+    assert result["missing_races"] == 1 and not result["ok"]
