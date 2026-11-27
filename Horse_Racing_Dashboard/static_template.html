@@ -6496,7 +6496,9 @@ function hkjcInraceBias(bf, kind) {
 function hkjcScenarioRows(horses, analysis) {
   const bf = analysis && analysis.race_summary && analysis.race_summary.battlefield;
   const sc = bf && bf.scenario;
-  const stylePP = !sc ? {} : HKJC_SCENARIO.style === 'inrace' ? hkjcInraceBias(bf, 'style') : (sc.style[HKJC_SCENARIO.style] || {});
+  // 全天候場：引擎 scenario.awt 覆蓋咗嘅情境用全天候幅度（EXP-20261127-80：利放頭 ±6pp），其餘同草地
+  const awtStyle = sc && sc.awt && hkjcSurfaceKey(bf) === 'awt' ? (sc.awt.style || {}) : {};
+  const stylePP = !sc ? {} : HKJC_SCENARIO.style === 'inrace' ? hkjcInraceBias(bf, 'style') : (awtStyle[HKJC_SCENARIO.style] || sc.style[HKJC_SCENARIO.style] || {});
   const drawPP = !sc ? {} : HKJC_SCENARIO.draw === 'inrace' ? hkjcInraceBias(bf, 'draw') : (sc.draw[HKJC_SCENARIO.draw] || {});
   const k = sc ? sc.pp_to_display : 0;
   const rows = horses.filter(h => Number.isFinite(Number(h.ability_score))).map(h => {
@@ -6532,7 +6534,9 @@ function renderHkjcRanking(raceKey) {
     html += `<div class="hkr__banner">情境排名（假設${HKJC_SCENARIO.style !== 'default' ? '跑法「' + esc(name(HKJC_STYLE_OPTIONS, HKJC_SCENARIO.style)) + '」' : ''}${HKJC_SCENARIO.draw !== 'default' ? '檔位「' + esc(name(HKJC_DRAW_OPTIONS, HKJC_SCENARIO.draw)) + '」' : ''}）：只係睇排名會點變，正式排名同 ROI 頭兩選唔郁。`
       + (() => { const sc = bf && bf.scenario, fp = (sc && sc.full_pp) || { style: 10, draw: 10 }, k = sc ? sc.pp_to_display : null;
           const part = (lab, pp) => `${lab}約 ±${pp}pp（約 ${k ? (pp * k).toFixed(1) : '?'} 分）`;
-          return `幅度 = 實測：歷史上真係強偏差嘅日子，被利嗰類實際只多咗 ${part('跑法', fp.style)}、${part('檔位', fp.draw)}（按慣性跑法；EXP-20261119-10）。`; })()
+          const awt = sc && sc.awt && hkjcSurfaceKey(bf) === 'awt' && (sc.awt.style || {})[HKJC_SCENARIO.style];
+          return `幅度 = 實測：歷史上真係強偏差嘅日子，被利嗰類實際只多咗 ${part('跑法', fp.style)}、${part('檔位', fp.draw)}（按慣性跑法；EXP-20261119-10）。`
+            + (awt ? `今場係全天候：「${esc(HKJC_SCENARIO.style)}」改用 ${part('全天候跑法', sc.awt.full_pp.style)}（全天候放頭日慣性放頭馬實際多約 +10pp，取保守值；樣本少、未過 holdout 驗證，EXP-20261127-80）。` : ''); })()
       + (live ? (() => { const day = bf && hkjcInraceDay(bf), key = hkjcSurfaceKey(bf), split = day && day.bias_by_surface;
           if (!split) return '';
           const part = split[key], mixed = Object.keys(split).length > 1 || key === 'awt';
