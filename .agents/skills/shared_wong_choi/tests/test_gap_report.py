@@ -54,6 +54,21 @@ def test_old_rejects_dedupe_and_domain(tmp_path):
     assert "hkjc" not in r
 
 
+def test_old_rejects_hides_recently_reevaluated(tmp_path):
+    idx = tmp_path / "INDEX.md"
+    idx.write_text("\n".join([
+        "| [EXP-20261127-30](a.md) | 2026-11-27 | AU | 重評 EXP-20260801-01、EXP-20260801-02 | **REJECT 維持**：交 EXP-20260801-03 forward |",
+        "| [EXP-20260801-01](x.md) | 2026-08-01 | AU | 甲 | **REJECT** |",
+        "| [EXP-20260801-02](y.md) | 2026-08-01 | AU | 乙 | **REJECT** |",
+        "| [EXP-20260801-03](z.md) | 2026-08-01 | AU | 丙 | **REJECT** |",
+        "| [EXP-20260701-09](o.md) | 2026-07-01 | AU | 重評 EXP-20260601-05 | **REJECT** |",
+        "| [EXP-20260601-05](p.md) | 2026-06-01 | AU | 丁 | **REJECT** |"]), encoding="utf-8")
+    ids = [x["id"] for x in G.old_rejects("2026-11-27", idx)["au"]]
+    assert "EXP-20260801-01" not in ids and "EXP-20260801-02" not in ids    # 60 日內重評過
+    assert "EXP-20260801-03" in ids                                         # 只係判決欄提到，唔算重評
+    assert "EXP-20260601-05" in ids and "EXP-20260701-09" in ids             # 重評本身都舊咗 = 照列
+
+
 def test_build_handles_domain_errors(monkeypatch, tmp_path):
     monkeypatch.setenv("WONGCHOI_CONTROL_STATE_ROOT", str(tmp_path))
     monkeypatch.setattr(G, "_racing_rows", lambda p: (_ for _ in ()).throw(OSError("no disk")))

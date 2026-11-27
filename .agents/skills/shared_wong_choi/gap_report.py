@@ -7,7 +7,8 @@
      0% 嘅欄照當缺口；只有 `resources/known_retired_fields.json` 列明（原因＋實驗）嘅刻意停用欄先隱藏。
   2. **觀察中嘅假設**（`learning/hypotheses.jsonl` state = watching）。
   3. **舊 REJECT**：`docs/experiments/INDEX.md` 入面 60 日以前判 REJECT 嘅記錄（按 domain 分）—— 只係嗰個做法喺嗰批數據唔得，
-     樣本多咗／資料來源變咗就值得重評（重評要新登記、新數據，唔准用舊數據救）。
+     樣本多咗／資料來源變咗就值得重評（重評要新登記、新數據，唔准用舊數據救）。60 日內 INDEX 有一行假設欄寫
+     「重評 EXP-…」，嗰啲 EXP 就唔再列（重評記錄本身 60 日後如果仍係 REJECT 會再出現）。
 輸出 `<WongChoiControl>/learning/gap_report.json`。每週 Opus 總結一定要由呢度揀最少 3 項「下一步可以做」。
 
     python3 gap_report.py [--today YYYY-MM-DD]
@@ -133,6 +134,13 @@ def old_rejects(today: str, index: Path | None = None) -> dict[str, list[dict]]:
         lines = index.read_text(encoding="utf-8").splitlines()
     except OSError:
         return {}
+    reevaluated = set()                     # 60 日內有新記錄寫明「重評 EXP-…」就當已重評（Kelvin 2026-11-27）
+    for line in lines:
+        m = re.search(r"EXP-(\d{4})(\d{2})(\d{2})-[\w-]+", line)
+        if not m or f"{m.group(1)}-{m.group(2)}-{m.group(3)}" <= cutoff or "重評" not in line:
+            continue
+        span = line.split("重評", 1)[1].split("|", 1)[0]   # 只睇「重評」後面同一格，唔計判決欄提到嘅其他實驗
+        reevaluated.update(re.findall(r"EXP-\d{8}-[\w]+", span))
     for line in lines:
         if "REJECT" not in line:          # INDEX 判決一律大楷；細楷「reject」可能係描述
             continue
@@ -141,6 +149,8 @@ def old_rejects(today: str, index: Path | None = None) -> dict[str, list[dict]]:
             continue
         d = f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
         if d > cutoff:
+            continue
+        if m.group(0) in reevaluated:
             continue
         if any(x["id"] == m.group(0) for v in out.values() for x in v):
             continue                        # INDEX 有兩種格式重複記同一個 EXP
