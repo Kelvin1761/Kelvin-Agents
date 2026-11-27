@@ -11,6 +11,7 @@ leaves nothing to price is caught by ``readiness``.
 from __future__ import annotations
 
 import json
+import os
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -111,16 +112,37 @@ def refresh_sources(match_date: str, stages: Stages) -> None:
 
 def merge_identities() -> dict:
     """Apply only the merges the identity planner is confident about."""
-    from tennis_wc.sources.identity import apply_merges, ensure_identity_schema, plan_merges
+    from tennis_wc.sources.identity import (
+        ABBREVIATED_MERGE_REASON,
+        apply_abbreviated_merges,
+        apply_merges,
+        ensure_identity_schema,
+        plan_abbreviated_merges,
+        plan_merges,
+    )
 
     with get_connection() as conn:
         ensure_identity_schema(conn)
         plans = plan_merges(conn)
         confident = [plan for plan in plans if plan.reason == "merge"]
-        if not confident:
-            return {"groups": 0, "refused": len(plans)}
-        summary = apply_merges(conn, confident)
+        abbreviated = []
+        # EXP-20261127-71: "Amarilla R." scoreboard rows -> full-name rows. Off until the
+        # pre-registered evaluation passes and Kelvin switches it on.
+        if os.environ.get("TENNIS_ABBREV_LINK", "0") == "1":
+            claimed = {pid for plan in confident for pid in [plan.canonical_id, *plan.duplicate_ids]}
+            abbreviated = [plan for plan in plan_abbreviated_merges(conn)
+                           if plan.reason == ABBREVIATED_MERGE_REASON
+                           and not claimed & {plan.canonical_id, *plan.duplicate_ids}]
+        if not confident and not abbreviated:
+            return {"groups": 0, "refused": len(plans), "abbreviated_groups": 0}
+        summary = apply_merges(conn, confident) if confident else {}
+        if abbreviated:
+            linked = apply_abbreviated_merges(conn, abbreviated)
+            for key, value in linked.items():
+                if isinstance(value, int):
+                    summary[key] = summary.get(key, 0) + value
         summary["refused"] = len(plans) - len(confident)
+        summary["abbreviated_groups"] = len(abbreviated)
         return summary
 
 

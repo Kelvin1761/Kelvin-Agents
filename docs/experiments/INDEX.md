@@ -672,3 +672,4 @@
 - [EXP-20261127-02](EXP-20261127-02-nba-official-injury-recheck.md) — NBA 官方傷停報告重新量度（原誤用 -01，同 AU S2 撞號，2026-11-27 改）（大細盤精選時代）：精選凍結嗰刻官方 0 個 ESPN 漏咗嘅開盤球員、受影響精選 0 → 唔達標、確認停用；旁證 ESPN DTD 可能標得太緊（只係假設）
 - [EXP-20261127-70](EXP-20261127-70-tennis-deep-data-check.md) — 網球數據深入檢查：TE 往績一直有入庫但掛喺「姓 + 縮寫」player，從冇連到 Sportsbet 全名 player（plan_merges 只合併完全同名）；連結後 ITF 46%→~84%、UTR 23%→~80%，價值未知要凍結 DB 重定價先知；composite 排名 10-30 停；分析時間 11-21 起 ×3
 - [EXP-20261127-40](EXP-20261127-40-nba-s2-forward-verdict.md) — NBA S2 forward 判決 PASS（Δ −0.0018 CI 唔跨零），但新上場時間冇貢獻（MS2≈MSR），改善嚟自重擬合；精選會大換血；交 Kelvin 揀 MS2／MSR／定期重擬合。
+- [EXP-20261127-71](EXP-20261127-71-tennis-te-identity-link-results.md) — 網球 TE 縮寫名連結：受影響 2,340 場 log-loss −0.0249 [−0.0302,−0.0199] KEEP 候選；ITF −0.022、UTR −0.079、Challenger 0；剔重播日期洩漏（TE 記早一日）後仍 −0.022；模型仍輸市場；開關 TENNIS_ABBREV_LINK 預設關等 Kelvin
