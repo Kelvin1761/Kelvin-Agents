@@ -668,3 +668,4 @@
 - [EXP-20261126-23](EXP-20261126-23-hkjc-pace-pressure-and-rail-draw.md) — HKJC 各賽道欄位檔位：模型已分欄位、冇殘差（C+3 1650 米近 3 季中檔 29% vs 內 27% 屬噪音）；同場放頭馬多寡：獨放 +／多放頭 − 兩窗單調，但 P1／P2／P3 dev 全 REJECT
 - [EXP-20261126-70](EXP-20261126-70-tennis-data-source-audit.md) — 網球數據源審計：TML 歷史 10-28 起因一個 ID 衝突每日成檔中止（已修，擱置衝突行，Challenger 補到 11-16、ATP 11-22）；UTR／Challenger／雙打被 tennis-data 城市名配成巡迴賽約 413 場（已修＋清理）；ITF 發球數據冇來源
 - [EXP-20261127-02](EXP-20261127-02-nba-official-injury-recheck.md) — NBA 官方傷停報告重新量度（原誤用 -01，同 AU S2 撞號，2026-11-27 改）（大細盤精選時代）：精選凍結嗰刻官方 0 個 ESPN 漏咗嘅開盤球員、受影響精選 0 → 唔達標、確認停用；旁證 ESPN DTD 可能標得太緊（只係假設）
+- [EXP-20261127-70](EXP-20261127-70-tennis-deep-data-check.md) — 網球數據深入檢查：TE 往績一直有入庫但掛喺「姓 + 縮寫」player，從冇連到 Sportsbet 全名 player（plan_merges 只合併完全同名）；連結後 ITF 46%→~84%、UTR 23%→~80%，價值未知要凍結 DB 重定價先知；composite 排名 10-30 停；分析時間 11-21 起 ×3
