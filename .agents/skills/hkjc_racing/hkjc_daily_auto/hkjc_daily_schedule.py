@@ -79,7 +79,6 @@ SHARED_SCRIPTS = PROJECT_ROOT / ".agents" / "skills" / "shared_racing" / "script
 MISS_AUTOPSY = SHARED_SCRIPTS / "miss_autopsy.py"
 CALIBRATION_BOARD = SHARED_SCRIPTS / "calibration_board.py"
 POST_REVIEW = SHARED_SCRIPTS / "post_review.py"
-AI_SUMMARY = SHARED_SCRIPTS / "ai_horse_summary.py"
 REFLECTOR = (
     PROJECT_ROOT
     / ".agents/skills/hkjc_racing/hkjc_reflector/scripts/hkjc_reflector_orchestrator.py"
@@ -1242,7 +1241,6 @@ def run_prerace(
         remind_foreign_horses(state, state_path, key, meeting_dir)
     else:
         log(f"HKJC unchanged rerun: reuse snapshot {snapshot.name}; Telegram skipped")
-    publish_ai_summaries(meeting_dir)
     set_control_outcome(
         "succeeded",
         meeting=key,
@@ -1502,36 +1500,9 @@ def venue_from_meeting_dir(path: Path) -> str:
     raise ValueError(f"cannot infer HKJC venue from meeting folder: {path.name}")
 
 
-def publish_ai_summaries(meeting_dir: Path) -> bool:
-    """分析上咗板之後：Hydrogen 將每場引擎報告改寫成每匹馬白話摘要（Kelvin 2026-11-26），有新嘅就再上板一次。
-
-    純顯示、唔入分；Python 逐匹核實，唔過嘅馬唔顯示（`ai_horse_summary.py`）。報告冇變嘅場次用 cache 唔再叫 AI。
-    任何失敗只係冇摘要：分析已經上咗板，唔影響今次 run 嘅結果。`WC_HKJC_AI_SUMMARY=0` 閂。"""
-    if os.environ.get("WC_HKJC_AI_SUMMARY") == "0":
-        return False
-    try:
-        code, output = run_cmd([sys.executable, str(AI_SUMMARY), "--platform", "hkjc",
-                                "--meeting", str(meeting_dir), "--workers", "4"], timeout=1200)
-        log(f"HKJC AI 摘要：exit {code}\n{output[-1500:]}")
-        if '"status": "ok"' not in output:
-            return False  # 冇新摘要（全部 cache／失敗），唔使再上板
-        deploy_code, deploy_output = publish_dashboard_meetings(meeting_dir, require_snapshot=True)
-        if deploy_code != 0:
-            notify(f"⚠️ HKJC AI 摘要已生成但再上板失敗（分析本身已上板）：{deploy_output[-600:]}")
-            return False
-        return True
-    except Exception as exc:  # noqa: BLE001 —— 摘要唔可以令賽前 run 失敗
-        log(f"HKJC AI 摘要出錯（略過）：{exc}")
-        notify(f"⚠️ HKJC AI 摘要／再上板出錯（分析本身已上板）：{exc}")
-        return False
-
-
 @serialized_publication
-def publish_dashboard_meetings(*meeting_dirs: Path, require_snapshot: bool = False) -> tuple[int, str]:
+def publish_dashboard_meetings(*meeting_dirs: Path) -> tuple[int, str]:
     snapshot = build_dashboard_snapshot(*meeting_dirs)
-    if snapshot is None and require_snapshot:
-        # 後備路徑（deploy.sh 重發 live）會回 0 但冇今次改動 = 假成功；再上板 AI 摘要唔接受
-        return 1, "dashboard snapshot 建唔到（冇今次改動，唔重發）"
     env = {"WC_DASHBOARD_BASE_SNAPSHOT": str(snapshot)} if snapshot else None
     return run_cmd([str(DASHBOARD_DEPLOY)], timeout=1800, env_overlay=env)
 
