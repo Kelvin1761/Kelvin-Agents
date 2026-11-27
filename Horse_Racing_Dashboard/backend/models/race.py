@@ -179,8 +179,6 @@ class HorseAnalysis(BaseModel):
     trackwork_timeline: Optional[dict] = None
     # HKJC 白話重點（engine summary.py）：headline／plus／minus／watch／gaps。純顯示。
     analysis_summary: Optional[dict] = None
-    # HKJC AI 摘要（Hydrogen 改寫引擎報告，Python 逐匹核實；未入分）：{text, evidence, label}。純顯示。
-    ai_summary: Optional[dict] = None
 
     # Conclusion
     conclusion: Optional[str] = None  # 💡 結論
