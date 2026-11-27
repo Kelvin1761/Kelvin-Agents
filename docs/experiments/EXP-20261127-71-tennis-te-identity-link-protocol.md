@@ -37,3 +37,8 @@ Sol 覆核搵到實作同協議唔一致或者有漏洞，已修，A1 由未改�
 - 排名巡迴大細楷合併計數。
 - 合併後刪走縮寫拼法嘅全域別名（`apply_abbreviated_merges`），避免將來另一個同縮寫嘅人靠名錯入；同一個 TE 球員仍經 provider id 對返。
 - 人手 30 個樣本核對（0 錯）係用第一版規則做；修訂後會再抽 30 個。
+
+## 修訂 2（2026-11-27，任何 A1 結果之前；只係記低限制，規則同判決不變）
+- 修訂後規則：1,404 個連結、搬 38,388 行往績；再抽 30 個（seed 202611272）人手核對 **0 錯**（全部同日同對手）。
+- **已知限制**：`player_match_history` 只喺同一來源內去重（`canonical_event_key`），tennisexplorer 同 TML／Sackmann 之間冇。連結名單包括有 TML／Sackmann 往績嘅巡迴賽／Challenger 球員（例如 Taylor Fritz、Carreno Busta），佢哋同一場比賽會計兩次。ITF／UTR 球員本身冇 TML／Sackmann，唔受影響。
+  判決規則不變；次要指標按級別報告，Challenger／其他級別嘅結果要當「連結＋重複計算」嘅混合效果解讀。如果主指標過而 Challenger 變差，跟進係另開協議加跨來源去重，唔係喺呢次改規則。
