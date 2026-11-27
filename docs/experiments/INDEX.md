@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261127-41](EXP-20261127-41-nba-ms2-golive-profit-forward-protocol.md) | 2026-11-27 | NBA | MS2 上線後盈利有冇改善（live MS2 對 shadow 舊 MS，同一張盤） | **協議（上線前 commit）**：p_final 改 MS2、舊 MS 做 `p_legacy` shadow；現有 forward 改讀 `p_legacy` 樣本唔斷；主指標全部 edge≥5pp 大細盤 ROI 差，28 日＋600 注判一次 |
 | [EXP-20261127-40](EXP-20261127-40-nba-s2-forward-verdict.md) | 2026-11-27 | NBA | S2 forward（EXP-20261111-05）判決：MS2（市場＋S2，S 份額 0.35）勝過現行發佈機率 | **PASS（主指標）**：14 日／15,787 腿，Δ log-loss −0.00183 [−0.00313, −0.00065]；Brier −0.00064 [−0.00111, −0.00022]。但 MS2 − MSR +0.00017 跨零 = 改善嚟自重擬合，唔係新上場時間；精選重揀換走約七成注（ROI 差係噪音）。冇改 code，上唔上線交 Kelvin |
 | [EXP-20261127-30](EXP-20261127-30-au-reeval-weights-and-draw-ladder.md) | 2026-11-27 | AU | 重評 EXP-20260826-02（pace_perf 權重）、EXP-20260821-02（gain＋權重重 fit）、EXP-20260821-03（檔位階梯×馬匹數），語料 5,102 場 | **REJECT 維持，冇改 live**：調低 pace_perf dev NDCG CI 全負；refit 而家 19–26/400 過 fold 閘、方向穩定（pace_perf↑≈0.19），但 08-05+ walk-forward 2,400 場 Gold +0.25、Good −0.12、OBJ 2/6；gain 機制已退役；檔位階梯已由 draw.py 解決，馬匹數倍數由 6.7× 跌到約 1.8×、細場次內檔 +2.6pp 顯著，交 EXP-20261102-08 forward（793/1,000） |
 | [EXP-20261127-31](EXP-20261127-31-hkjc-reeval-surface-shape-course.md) | 2026-11-27 | HKJC | 重評 EXP-20260927-04、EXP-20260928-01、EXP-20260928-03，489 場（09-28 後新賽事 169 場） | **冇候選升級，冇改 live**：rail 連續 shadow 新賽事 Good −3.55 → 建議收；draw 再確認（新賽事 Good +8.28 CI 正）、fit／trip 仍無用、surface_quality OOS 減弱；28-03 dev Gold −0.73 鎖定規則 REJECT；harness baseline 同 live 唔一致（跑馬地 V3）、27-04 有 9 場重複 |
@@ -674,3 +675,4 @@
 - [EXP-20261127-02](EXP-20261127-02-nba-official-injury-recheck.md) — NBA 官方傷停報告重新量度（原誤用 -01，同 AU S2 撞號，2026-11-27 改）（大細盤精選時代）：精選凍結嗰刻官方 0 個 ESPN 漏咗嘅開盤球員、受影響精選 0 → 唔達標、確認停用；旁證 ESPN DTD 可能標得太緊（只係假設）
 - [EXP-20261127-70](EXP-20261127-70-tennis-deep-data-check.md) — 網球數據深入檢查：TE 往績一直有入庫但掛喺「姓 + 縮寫」player，從冇連到 Sportsbet 全名 player（plan_merges 只合併完全同名）；連結後 ITF 46%→~84%、UTR 23%→~80%，價值未知要凍結 DB 重定價先知；composite 排名 10-30 停；分析時間 11-21 起 ×3
 - [EXP-20261127-40](EXP-20261127-40-nba-s2-forward-verdict.md) — NBA S2 forward 判決 PASS（Δ −0.0018 CI 唔跨零），但新上場時間冇貢獻（MS2≈MSR），改善嚟自重擬合；精選會大換血；交 Kelvin 揀 MS2／MSR／定期重擬合。
+- [EXP-20261127-41](EXP-20261127-41-nba-ms2-golive-profit-forward-protocol.md) — NBA MS2 上線協議＋盈利 forward（live MS2 vs shadow 舊 MS，ROI 差，28 日／600 注）。
