@@ -139,6 +139,8 @@ def main():
             ctx["field_jockeys"] = [h.get("jockey") for h in horses.values() if isinstance(h, dict) and h.get("jockey")]
             from au_racing_engine import winning_time_speed as _wts
             ctx["field_speeds"] = _wts.prepare_field(logic, meeting_dir, int(race_no), date)   # 同 orchestrator 一致（EXP-20261124-40）
+            from au_racing_engine import sb_full_time as _s2
+            _s2.prepare_field(logic, meeting_dir, int(race_no), date, ctx.get("distance"), ctx.get("going"))   # S2（EXP-20261127-02）
 
             out_rows = []
             for hnum, horse in horses.items():
@@ -173,6 +175,7 @@ def main():
                     "trainer_residual": float(res.get("trainer_residual_feature") or 0.0),
                     "people_prize": float(res.get("people_prize_feature") or 0.0),
                     "speed": float(res.get("winning_time_speed_feature") or 0.0),
+                    "pf_original": ((res.get("s2_full_time_detail") or {}).get("original")),   # S2 前嘅 pace_figure（退回監察用）
                     "ability": float(res.get("ability_score") or 0.0),
                     # 分層用（唔入分）：初出／休後實驗要喺同一份 dump 切 cohort。
                     "career_starts": hd.get("career_race_starts"),

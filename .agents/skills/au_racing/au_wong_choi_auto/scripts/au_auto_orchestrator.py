@@ -38,6 +38,7 @@ from au_racing_engine.renderer import ensure_verdict, render_meeting_csv, valida
 from au_racing_engine.validation import validate_engine_scripts, validate_logic_data
 from au_racing_engine.full_time_speed import prepare_field
 from au_racing_engine import winning_time_speed as _wts
+from au_racing_engine import sb_full_time as _s2
 
 
 def _condition_family(condition: str) -> str:
@@ -165,6 +166,10 @@ def score_logic_data(
     race_context["field_speeds"] = _wts.prepare_field(
         logic_data, logic_path.parent, int(_race_digits.group(0)) if _race_digits else 0,
         _meeting_date.group(1) if (_meeting_date and _race_digits) else "")   # 冇日期／場號 = 冇速度分（中性）
+    # S2（EXP-20261127-02）：全場 Sportsbet 全程速度 z；dump 工具用同一個函數
+    _s2.prepare_field(logic_data, logic_path.parent, int(_race_digits.group(0)) if _race_digits else 0,
+                      _meeting_date.group(1) if (_meeting_date and _race_digits) else "",
+                      race_context.get("distance"), race_context.get("going"))
     for horse_num, horse in logic_data.get("horses", {}).items():
         # Inject the saddlecloth number (it is the dict key, not a field) so the
         # engine can match the horse to its speed-map pace role / settling pattern.

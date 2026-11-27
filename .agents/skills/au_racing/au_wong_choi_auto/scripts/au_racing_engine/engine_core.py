@@ -16,6 +16,7 @@ from .full_time_speed import contribution as full_time_contribution
 from . import pit as _pit
 from . import speed as _speed
 from . import winning_time_speed as _wts
+from . import sb_full_time as _s2
 from . import class_rating as _class
 from . import draw as _draw
 from . import stability as _stab
@@ -903,6 +904,7 @@ class RacingEngine(NarrativeMixin):
             "people_prize_leaf_delta": people_prize_leaf_delta,
             "winning_time_speed_feature": speed_feature,
             "winning_time_speed_detail": speed_detail,
+            "s2_full_time_detail": getattr(self, "s2_detail", None),
             # EXP-20261009-04 回退影子：class_score 入 class_weight 對綜合分嘅貢獻。
             # 舊公式分數 = 綜合分 − 呢個數（矩陣冇 clip 嗰陣逐位一樣）。
             "class_score_live_delta": round(
@@ -1010,6 +1012,18 @@ class RacingEngine(NarrativeMixin):
                 feature_scores[name] = clip_score(new)
                 feature_notes[name] = (feature_notes.get(name, "") + f"；過去 12 個月總獎金分 {prize_score:.1f}，"
                                        f"同勝率分各半 → {feature_scores[name]:.1f}（實驗性上線 2026-11-22）")
+        # S2（EXP-20261127-02，Kelvin 2026-11-27）：pace_figure 同 Sportsbet 全程速度（情境標準）各半。
+        self.s2_detail = None
+        if "pace_figure_score" in feature_scores:
+            new, detail = _s2.blend(feature_scores["pace_figure_score"], self.horse_data)
+            if detail is not None:
+                self.s2_detail = detail
+                feature_scores["pace_figure_score"] = clip_score(new)
+                sb = (f"Sportsbet 全程速度 z {float(detail.get('z') or 0):+.2f}" if detail.get("status") == "ok"
+                      else "冇 Sportsbet 全程速度（當 60）")
+                feature_notes["pace_figure_score"] = (feature_notes.get("pace_figure_score", "")
+                                                      + f"；{sb}，同 L600 分各半 → {feature_scores['pace_figure_score']:.1f}"
+                                                      "（S2，2026-11-27 上線）")
         return feature_scores, feature_notes
 
     # Ability-feeding features (per matrix_mapper). formline is weight-0 so it is

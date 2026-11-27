@@ -115,12 +115,14 @@ AGE_UPNIL_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_age_upnil_f
 PR1_SHADOW_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_pr1_shadow_forward.py"
 FQ_FLOOR_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_fq_floor_forward.py"
 SPEED_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_speed_forward.py"
+S2_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_s2_forward.py"
 H1_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_h1_forward.py"
 HYP_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_hypothesis_forward.py"
 TRAINER_RESIDUAL_TABLE = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_trainer_residual_table.py"
 TRAINER_RESIDUAL_SHADOW = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_residual_shadow.py"
 PEOPLE_PRIZE_TABLE = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_people_prize_table.py"
 SPEED_REFERENCE_TABLE = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_speed_reference_table.py"
+SB_FULLTIME_TABLE = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_sb_full_time_table.py"
 CALIBRATION_BOARD = SHARED_RACING_SCRIPTS / "calibration_board.py"
 POST_REVIEW = SHARED_RACING_SCRIPTS / "post_review.py"
 GENERATE_STATIC = DASHBOARD_DIR / "generate_static.py"
@@ -1779,6 +1781,27 @@ def step_speed_forward(runlog: RunLog) -> bool:
         return False
 
 
+def step_s2_forward(runlog: RunLog) -> bool:
+    """EXP-20261127-03 S2（2026-11-27 上線）退回監察：上線版 vs 冇 S2。
+    11-28 起夠 1,000 場用 log-loss 尺 v2 判一次並凍結；失敗唔阻 live，永遠唔會自動改模型。"""
+    try:
+        status_path = WORK_DIR / "au-s2-forward-status.json"
+        rc, out = run_cmd([sys.executable, str(S2_FORWARD), "--data-root", str(AU_RACING),
+                           "--output", str(status_path)], timeout=1800)
+        if rc != 0 or not status_path.exists():
+            detail = error_excerpt(out, rc)
+            runlog.warn(f"S2 forward 更新失敗（唔影響 live）：{detail}")
+            runlog.step("s2-forward", "failed", detail=detail)
+            return False
+        status = json.loads(status_path.read_text(encoding="utf-8"))
+        runlog.step("s2-forward", status.get("state", "unknown"), races=status.get("races_collected", 0),
+                    target=status.get("target_races"))
+        return True
+    except Exception as exc:  # noqa: BLE001 — forward 監察點都唔可以截停晚更
+        runlog.step("s2-forward", "failed", detail=f"{type(exc).__name__}: {exc}")
+        return False
+
+
 def step_h1_forward(runlog: RunLog) -> bool:
     """EXP-20261125-11 預先登記 forward（shadow）：H1 試閘＋備戰分加重，w 凍結（frozen.json sha256）。
     每晚 `status`（盲：只報數量）；第一次同時夠 30 賽日＋1,000 場就 `evaluate` 一次（m3 追市場軌）並凍結。
@@ -1899,6 +1922,13 @@ def step_trainer_residual_table(runlog: RunLog) -> bool:
         runlog.step("speed-reference-table", "failed", detail=error_excerpt(out_s, rc_s))
     else:
         runlog.step("speed-reference-table", "ok", detail=(out_s or "").strip().splitlines()[-1:])
+    # S2 Sportsbet 全程速度事件表（EXP-20261127-02，同一個時間點、獨立；失敗沿用舊表，冇表 = 唔混合）
+    rc_e, out_e = run_cmd([sys.executable, str(SB_FULLTIME_TABLE), "--data-root", str(AU_RACING)], timeout=600)
+    if rc_e != 0:
+        runlog.warn(f"S2 全程速度事件表重建失敗（沿用舊表）：{error_excerpt(out_e, rc_e)}")
+        runlog.step("sb-fulltime-table", "failed", detail=error_excerpt(out_e, rc_e))
+    else:
+        runlog.step("sb-fulltime-table", "ok", detail=(out_e or "").strip().splitlines()[-1:])
     rc, out = run_cmd([sys.executable, str(TRAINER_RESIDUAL_TABLE), "--data-root", str(AU_RACING)], timeout=1800)
     if rc != 0:
         detail = error_excerpt(out, rc)
@@ -4802,6 +4832,7 @@ def run_evening(runlog: RunLog, args, review_day: date) -> int:
         step_pr1_shadow_forward(runlog)
         step_fq_floor_forward(runlog)
         step_speed_forward(runlog)
+        step_s2_forward(runlog)
         step_h1_forward(runlog)
         step_hyp_forward(runlog)
         step_sb_betfair_forward(runlog)

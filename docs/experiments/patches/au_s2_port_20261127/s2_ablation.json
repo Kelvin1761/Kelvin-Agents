@@ -1,0 +1,174 @@
+{
+ "baseline_mismatch": 0,
+ "asb_coverage": 0.8859494845864478,
+ "E_vs_base（淨權重，保留速度分）": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "version": "v2",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "auc_guardrail": false,
+   "beats_null": true
+  },
+  "races": 3542,
+  "days": 90,
+  "dlogloss": [
+   0.0004168641039743582,
+   1.9390082283467545e-05,
+   0.0007958938076933275
+  ],
+  "beats_null_share": 1.0,
+  "gold_pp": [
+   -0.3105590062111801,
+   -0.944563161765416
+  ],
+  "good_pp": [
+   -0.4234895539243365,
+   -0.991257238840223
+  ],
+  "auc_delta": [
+   -0.0006200595627473094,
+   -0.0020228109554276175,
+   0.0007287575299852861
+  ],
+  "capture5_pp": -0.14822134387351785,
+  "top2_any_hit_pp": -0.0564652738565782,
+  "p": 0.9735
+ },
+ "F_vs_base（淨權重，剷速度分）": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "version": "v2",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "auc_guardrail": false,
+   "beats_null": false
+  },
+  "races": 3542,
+  "days": 90,
+  "dlogloss": [
+   0.0006334924933866814,
+   0.0002486510528137997,
+   0.0009919415744614746
+  ],
+  "beats_null_share": 0.8,
+  "gold_pp": [
+   -0.2258610954263128,
+   -0.9396116857194702
+  ],
+  "good_pp": [
+   -0.5081874647092038,
+   -0.9973940459593729
+  ],
+  "auc_delta": [
+   -0.0008636718228756612,
+   -0.0023928471974586406,
+   0.0007211627173944415
+  ],
+  "capture5_pp": -0.13175230566534918,
+  "top2_any_hit_pp": 0.1129305477131564,
+  "p": 0.998
+ },
+ "C_vs_E（S2 leaf 邊際，保留速度分）": {
+  "verdict": "PASS",
+  "reason": "logloss_supported_gain",
+  "version": "v2",
+  "checks": {
+   "logloss_ci_upper_below_0": true,
+   "auc_guardrail": true,
+   "beats_null": true
+  },
+  "races": 3542,
+  "days": 90,
+  "dlogloss": [
+   -0.001218322941144496,
+   -0.0017045776630413311,
+   -0.000723597018360283
+  ],
+  "beats_null_share": 1.0,
+  "gold_pp": [
+   0.36702428006775834,
+   -0.34431940433531744
+  ],
+  "good_pp": [
+   0.818746470920384,
+   0.20778049924674039
+  ],
+  "auc_delta": [
+   0.0026895574736400807,
+   0.0009526006835032595,
+   0.004477736068292737
+  ],
+  "capture5_pp": 0.16939582156973457,
+  "top2_any_hit_pp": 0.0,
+  "p": 0.0
+ },
+ "D_vs_F（S2 leaf 邊際，剷速度分）": {
+  "verdict": "PASS",
+  "reason": "logloss_supported_gain",
+  "version": "v2",
+  "checks": {
+   "logloss_ci_upper_below_0": true,
+   "auc_guardrail": true,
+   "beats_null": true
+  },
+  "races": 3542,
+  "days": 90,
+  "dlogloss": [
+   -0.0012304914686223157,
+   -0.0017260816126017417,
+   -0.0007312692297986806
+  ],
+  "beats_null_share": 1.0,
+  "gold_pp": [
+   0.2258610954263128,
+   -0.5235869138941068
+  ],
+  "good_pp": [
+   0.9881422924901186,
+   0.2954821692604566
+  ],
+  "auc_delta": [
+   0.0030738691121866136,
+   0.0014192673236914032,
+   0.004767235932329699
+  ],
+  "capture5_pp": 0.27526821005081875,
+  "top2_any_hit_pp": -0.1411631846414455,
+  "p": 0.0
+ },
+ "D_vs_C（剷速度分嘅邊際，有 S2）": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "version": "v2",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "auc_guardrail": true,
+   "beats_null": false
+  },
+  "races": 3542,
+  "days": 90,
+  "dlogloss": [
+   0.00020445986193450382,
+   1.9009540659929225e-05,
+   0.00039785457545082366
+  ],
+  "beats_null_share": 0.22,
+  "gold_pp": [
+   -0.0564652738565782,
+   -0.3589400766573495
+  ],
+  "good_pp": [
+   0.08469791078486731,
+   -0.2996758772547581
+  ],
+  "auc_delta": [
+   0.00014069937841818152,
+   -0.0008478878823146662,
+   0.0010779736161610665
+  ],
+  "capture5_pp": 0.1223414266892528,
+  "top2_any_hit_pp": 0.0282326369282891,
+  "p": 0.982
+ }
+}

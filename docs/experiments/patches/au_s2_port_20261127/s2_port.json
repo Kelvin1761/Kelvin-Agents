@@ -1,0 +1,144 @@
+{
+ "baseline_mismatch": 0,
+ "asb_coverage": 0.8859494845864478,
+ "A": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "version": "v2",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "auc_guardrail": true,
+   "beats_null": true
+  },
+  "races": 3542,
+  "days": 90,
+  "dlogloss": [
+   -0.0002315224510914337,
+   -0.0005585816760787785,
+   0.0001029191548889008
+  ],
+  "beats_null_share": 1.0,
+  "gold_pp": [
+   -0.0564652738565782,
+   -0.5533409131846104
+  ],
+  "good_pp": [
+   0.5364201016374929,
+   -0.030997028906322204
+  ],
+  "auc_delta": [
+   0.001243474826964548,
+   -5.478986041836849e-05,
+   0.002583538492573482
+  ],
+  "capture5_pp": -0.17880670054583095,
+  "top2_any_hit_pp": -0.08469791078486731,
+  "p": 0.0935,
+  "holm_p": 0.187
+ },
+ "B": {
+  "verdict": "REJECT",
+  "reason": "logloss_ci_upper_below_0",
+  "version": "v2",
+  "checks": {
+   "logloss_ci_upper_below_0": false,
+   "auc_guardrail": true,
+   "beats_null": true
+  },
+  "races": 3542,
+  "days": 90,
+  "dlogloss": [
+   5.824397087124828e-05,
+   -0.00036955892974273254,
+   0.0004933210148761511
+  ],
+  "beats_null_share": 0.99,
+  "gold_pp": [
+   -0.282326369282891,
+   -0.8099687902055498
+  ],
+  "good_pp": [
+   0.2540937323546019,
+   -0.40173162152540765
+  ],
+  "auc_delta": [
+   0.00034902870383406615,
+   -0.0009585257957952671,
+   0.0016751486100725487
+  ],
+  "capture5_pp": -0.11998870694522874,
+  "top2_any_hit_pp": -0.0282326369282891,
+  "p": 0.5985,
+  "holm_p": 0.5985
+ },
+ "C": {
+  "verdict": "PASS",
+  "reason": "logloss_supported_gain",
+  "version": "v2",
+  "checks": {
+   "logloss_ci_upper_below_0": true,
+   "auc_guardrail": true,
+   "beats_null": true
+  },
+  "races": 3542,
+  "days": 90,
+  "dlogloss": [
+   -0.0008013425912903534,
+   -0.001034473699729643,
+   -0.0005997826585934549
+  ],
+  "beats_null_share": 1.0,
+  "gold_pp": [
+   0.0564652738565782,
+   -0.3625405033785912
+  ],
+  "good_pp": [
+   0.4234895539243365,
+   -0.09095400709161418
+  ],
+  "auc_delta": [
+   0.0020960126889603414,
+   0.0011213075127184818,
+   0.003160740552464193
+  ],
+  "capture5_pp": 0.02117447769621682,
+  "top2_any_hit_pp": -0.0564652738565782,
+  "p": 0.0,
+  "holm_p": 0.0
+ },
+ "D": {
+  "verdict": "PASS",
+  "reason": "logloss_supported_gain",
+  "version": "v2",
+  "checks": {
+   "logloss_ci_upper_below_0": true,
+   "auc_guardrail": true,
+   "beats_null": true
+  },
+  "races": 3542,
+  "days": 90,
+  "dlogloss": [
+   -0.0005968426339502763,
+   -0.0009133289935149046,
+   -0.000326878551729211
+  ],
+  "beats_null_share": 1.0,
+  "gold_pp": [
+   0.0,
+   -0.4021515149880517
+  ],
+  "good_pp": [
+   0.4799548277809147,
+   -0.20389033726279754
+  ],
+  "auc_delta": [
+   0.0022196081682870445,
+   0.0011769685706227414,
+   0.00338429289432853
+  ],
+  "capture5_pp": 0.14351590438546954,
+  "top2_any_hit_pp": -0.0282326369282891,
+  "p": 0.0,
+  "holm_p": 0.0
+ }
+}

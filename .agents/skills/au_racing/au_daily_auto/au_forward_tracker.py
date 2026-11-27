@@ -103,6 +103,11 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 "scheduler 夠數會用 log-loss 尺 v2 判一次並凍結；睇 au-speed-forward-status.json："
                 "SPEED rollback_recommended=true（機率變差、AUC 護欄唔過、或者 Gold／Good 都跌）就建議 WC_AU_SPEED_LIVE=0（要你決定）",
                 status_file="au-speed-forward-status.json"),
+    ForwardTest("s2_live", "S2（pace_figure 混 Sportsbet 全程速度＋pace_perf 權重 ×1.64）上線退回監察：上線版 vs 冇 S2",
+                "EXP-20261127-03", "status_file", 1000, "場",
+                "scheduler 夠數會用 log-loss 尺 v2 判一次並凍結；睇 au-s2-forward-status.json："
+                "S2 rollback_recommended=true 就建議 WC_AU_S2_LIVE=0（要你決定）",
+                status_file="au-s2-forward-status.json"),
     ForwardTest("trainer_residual_autorollback", "練馬師剩餘表現表版本 shadow＋自動回退（只比改寫咗舊歷史嘅重建）",
                 "EXP-20261125-08", "status_file", 7, "賽日",
                 "長開監察：每個改寫版本 3 個 7 賽日窗口；CI 下界 >0 或連續 3 個點估計 >0 = 自動回退指針並鎖定（另推 Telegram）；"
