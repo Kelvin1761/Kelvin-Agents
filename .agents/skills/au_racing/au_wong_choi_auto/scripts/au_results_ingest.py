@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import fcntl
 import hashlib
 import json
 import math
@@ -45,6 +46,7 @@ import re
 import shutil
 import sys
 from collections import defaultdict
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -208,6 +210,21 @@ def load_sb_csv(path: Path, stats: dict) -> list[dict]:
     return out
 
 
+@contextmanager
+def results_csv_lock(results_csv: Path):
+    """所有寫 results CSV 嘅路徑共用嘅跨進程鎖（ingest、`au_result_times` 補時間）。
+
+    冇呢個，兩邊各自「讀 → 改 → 原子換檔」會互相蓋走對方新寫嘅行（Sol 2026-11-27）。
+    """
+    lock_path = Path(results_csv).with_suffix(".csv.lock")
+    with lock_path.open("a") as handle:
+        fcntl.flock(handle, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(handle, fcntl.LOCK_UN)
+
+
 def result_identity(row: dict) -> tuple[str, str, str, str]:
     """A result belongs to one venue; date/race/horse alone can cross entries."""
     return (str(row.get("Date") or "").strip(),
@@ -333,22 +350,8 @@ def collect(archive_root: Path, min_finishers: int) -> tuple[list[dict], dict]:
                         # the string rather than the number.
                         "Margin": f"{f['margin']}L" if f["margin"] else "—",
                         "SP": f"${f['sp']}" if f["sp"] else "",
-                        # ⚠️ 2026-08-26：呢個硬寫嘅空字串殺死咗成條 `Time` 欄。
-                        # 舊行（2025-08 → 2026-06）由 `au_statistics_aggregator`
-                        # 寫入，係**逐匹馬個別時間**，覆蓋 99–100%。當呢個 ingest
-                        # 變成主路徑（約 2026-07），覆蓋跌到 2026-07 29%、
-                        # 2026-08 **0%**。
-                        #
-                        # 點解未修：呢度個來源係 reflector markdown，而
-                        # `parse_reflector` 只攞到 pos/num/horse/margin/sp ——
-                        # 賽果 markdown 本身冇時間。要真正補返就要由 Sportsbet
-                        # 賽果頁抽（`claw_sportsbet_form.parse_race` 個 run dict
-                        # 有 `winning_time`），再確認嗰個係頭馬時間定個別時間，
-                        # 然後經 `--sb-csv` 路徑帶入嚟。
-                        #
-                        # 影響：任何「絕對時間 / 速度評分」研究都冇咗 2026-07 之後
-                        # 嘅數據（見 EXP-20260826-05）。合併唔會蓋走舊行，所以
-                        # 歷史時間仲喺度。
+                        # Reflector 冇逐駒時間；夜間 au_result_times.fill_times
+                        # 只補空值，優先官方時間，否則按頭馬時間推算。
                         "Time": "",
                     })
     return rows, stats
@@ -667,26 +670,27 @@ def main() -> int:
         print("\nnothing to add.")
         return 0
 
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    backup = args.results_csv.with_suffix(f".csv.bak_{stamp}")
-    if args.results_csv.exists():
-        shutil.copy2(args.results_csv, backup)
-        print(f"\nbackup: {backup.name}")
+    with results_csv_lock(args.results_csv):
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        backup = args.results_csv.with_suffix(f".csv.bak_{stamp}")
+        if args.results_csv.exists():
+            shutil.copy2(args.results_csv, backup)
+            print(f"\nbackup: {backup.name}")
 
-    existing_rows = []
-    if args.results_csv.exists():
-        with args.results_csv.open(encoding="utf-8-sig", newline="") as handle:
-            existing_rows = list(csv.DictReader(handle))
+        existing_rows = []
+        if args.results_csv.exists():
+            with args.results_csv.open(encoding="utf-8-sig", newline="") as handle:
+                existing_rows = list(csv.DictReader(handle))
 
-    tmp = args.results_csv.with_suffix(".csv.tmp")
-    with tmp.open("w", encoding="utf-8-sig", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=FIELDNAMES)
-        writer.writeheader()
-        for row in existing_rows:
-            writer.writerow({k: row.get(k, "") for k in FIELDNAMES})
-        for row in deduped:
-            writer.writerow(row)
-    tmp.replace(args.results_csv)
+        tmp = args.results_csv.with_suffix(".csv.tmp")
+        with tmp.open("w", encoding="utf-8-sig", newline="") as handle:
+            writer = csv.DictWriter(handle, fieldnames=FIELDNAMES)
+            writer.writeheader()
+            for row in existing_rows:
+                writer.writerow({k: row.get(k, "") for k in FIELDNAMES})
+            for row in deduped:
+                writer.writerow(row)
+        tmp.replace(args.results_csv)
     print(f"wrote {len(existing_rows) + len(deduped)} rows to {args.results_csv.name}")
     return 0
 

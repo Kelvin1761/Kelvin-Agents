@@ -44,7 +44,8 @@ def test_full_schema_uses_dated_metadata(tmp_path):
     assert set(row) == set(sb_results_csv.FIELDS)
     assert (row['Barrier'], row['Weight'], row['Jockey'], row['Distance']) == ('12', '58.5', 'D Rider', '1200')
     assert row['Margin'] == '0'
-    assert row['Trainer'] == row['Time'] == ''
+    assert row['Trainer'] == ''
+    assert row['Time'] == '01:11.500'
     assert row['Condition'] == 'Soft 5'
 
 

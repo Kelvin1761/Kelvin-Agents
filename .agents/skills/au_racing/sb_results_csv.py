@@ -28,6 +28,9 @@ from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent / "au_wong_choi_auto" / "scripts"))
+
+from au_result_times import derive_time, format_time, identity, load_official_times
 
 FIELDS = ("Date", "Track", "Race", "Distance", "Condition", "Pos", "Horse",
           "Barrier", "Weight", "Jockey", "Trainer", "Margin", "SP", "Time")
@@ -82,7 +85,7 @@ MEMO_CHECKPOINT_EVERY = 100   # 每新 parse 幾多個場次存一次 memo
 # 一晚仲可以行三次。cache 頁一經寫低極少再變，所以逐場次記住結果就得。
 #
 # 失效條件（任何一樣變咗就重新 parse 嗰個場次）：
-#   * 解析 code：本檔 + `claw_sportsbet_form.py` 嘅內容、bs4 版本、Python 版本
+#   * 解析 code：本檔、`claw_sportsbet_form.py`、時間推算 code、bs4 同 Python 版本
 #     （`parse_race`／`parse_runner_blocks`／`run_date` 只依賴呢幾樣，2026-11-21
 #     用 AST 追過）；
 #   * 場次 meta（meetingId、日期、slug、races 列表）；
@@ -95,7 +98,8 @@ def code_fingerprint() -> str:
     import hashlib
     here = Path(__file__).resolve().parent
     h = hashlib.sha256(f"v{MEMO_VERSION}|{sys.version_info[:2]}".encode())
-    for name in ("sb_results_csv.py", "claw_sportsbet_form.py"):
+    for name in ("sb_results_csv.py", "claw_sportsbet_form.py",
+                 "au_wong_choi_auto/scripts/au_result_times.py"):
         h.update(name.encode())
         h.update((here / name).read_bytes())
     try:
@@ -194,6 +198,7 @@ def rows_for_meeting(meta, fetcher, warn=_warn_stderr):
                     pos = int(run["pos"])
                 except (TypeError, ValueError, KeyError):
                     break
+                elapsed = derive_time(run.get("winning_time"), run.get("margin"), h.get("dist"), pos)
                 out.append({"Date": meta["date"], "Track": track, "Race": rno,
                             "Horse": blk["name"], "Pos": pos,
                             "Distance": h.get("dist") or "",
@@ -202,7 +207,7 @@ def rows_for_meeting(meta, fetcher, warn=_warn_stderr):
                             "Jockey": (run.get("jockey") or "").strip(),
                             "Trainer": "",  # Dated run has no trainer; never use current overview.
                             "Margin": "0" if pos == 1 else (run.get("margin") or ""),
-                            "Time": "",  # WinningTime is not this runner's Time.
+                            "Time": format_time(elapsed) if elapsed is not None else "",  # WT plus estimated margin time.
                             "SP": run.get("sp") or "", "Condition": cond})
                 break
     return out
@@ -254,6 +259,22 @@ def main():
     if not rows:
         print("❌ cache 冇任何賽果 —— 先跑抽取")
         return 1
+    # 官方逐駒時間（QLD bundle）優先過推算（EXP-20261127-10，Sol 覆核）。喺輸出嗰刻先套，
+    # 唔入 memo：bundle 每日更新，memo 嘅行照用推算，呢度每次重新覆蓋。
+    from au_racing_engine.full_time_speed import default_bundle_path
+    from au_result_times import format_time as _fmt
+    try:
+        official = load_official_times(default_bundle_path())
+    except Exception as exc:  # 壞 bundle 唔准拖死全場賽果匯出（Sol）；推算值照出。
+        print(f"⚠️ 官方時間 bundle 讀唔到，只用推算：{exc}", file=sys.stderr)
+        official = {}
+    replaced = 0
+    for row in rows:
+        value = official.get(identity(row["Date"], row["Track"], row["Race"], row["Horse"]))
+        if value is not None:
+            row["Time"] = _fmt(value)
+            replaced += 1
+    print(f"官方時間覆蓋：{replaced} 個跑手")
     args.out.parent.mkdir(parents=True, exist_ok=True)
     with args.out.open("w", encoding="utf-8", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=FIELDS)

@@ -135,14 +135,11 @@ class TrendTests(unittest.TestCase):
         self.assertEqual(margin[0]["status"], "dead")
         self.assertEqual(margin[0]["since"], "2026-W34")
 
-    def test_acknowledged_dead_column_is_known_not_alarm(self):
-        """`Time` 冇逐駒來源 —— 每週嗌同一句會令人唔再睇，所以縮做一行 ℹ️。"""
+    def test_time_column_dying_is_reported(self):
+        """Time has sources now, so a dead column must raise an alarm."""
         _week, findings = self._findings(csv={"dead_from": "2026-08-17", "column": "Time"})
         time = [f for f in findings if f["field"] == "Time"]
-        self.assertEqual([f["status"] for f in time], ["known"])
-        text = fh.format_findings("au", "2026-W35", findings)
-        self.assertIn("✅ 冇欄位變差", text)
-        self.assertIn("已知死欄：結果 CSV Time（2026-W34 起）", text)
+        self.assertEqual([f["status"] for f in time], ["dead"])
 
     def test_current_partial_week_is_not_the_default_target(self):
         """今個星期未完、CSV 樣本未夠，判咗只會漏報 —— 預設要揀上一個完整週。"""

@@ -66,10 +66,7 @@ DEAD_HEALTHY_FLOOR = 0.50                  # 曾經 ≥50% 有值先叫得「死
 # 已知死咗、而且講得出點解嘅欄位。仍然照報，但狀態係 `known`、縮成一行，唔再
 # 用 💀 —— 一個每週都嗌同一句嘅警報好快冇人睇，咁真嘅新問題就會被淹沒。
 # 修好咗就要由呢度剷走，否則佢復活亦睇唔到。
-ACKNOWLEDGED = {
-    ("results_csv", "Time"): "冇逐駒時間來源：Sportsbet 頁面只有頭馬時間（WinningTime），"
-                             "au_results_ingest 刻意寫空（EXP-20261012-01 限制）",
-}
+ACKNOWLEDGED = {}
 
 WEAK_STATES = frozenset({"fallback", "missing"})
 EMPTY_CELLS = frozenset({"", "—", "-", "nan", "None"})
