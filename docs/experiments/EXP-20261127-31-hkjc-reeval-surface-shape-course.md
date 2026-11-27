@@ -25,7 +25,11 @@
    draw + 0.45×PIT 谷草）。即係跑馬地嗰行 `draw_surface` 其實大致等於「V3 對舊版」，唔係新候選。沙田嘅 `current_live` 同而家 live 接近（沙田 race-shape 冇改過，只有 draw70 shadow）。
    dataset 嘅能力分係用今日引擎重算，唔係當時發出嘅預測。
 2. **27-04 harness 有 9 場重複**（2026-05-13 跑馬地 R1–R9 各出兩次）：427 行 = 418 場唯一。全樣本數會輕微偏；新賽事 169 場冇呢個問題。
-3. **同場同程覆蓋**而家報 64.09%，當時 16.54%，可能係來源／定義改咗，未查清，所以 `same_venue_distance` arm 唔作結論。
+3. **同場同程覆蓋**而家報 64.09%，當時 16.54%。**已查清（同日補記）**：兩個數據修正疊埋 ——
+   EXP-20260927-04 修好 AWT 場地名（之前 456 匹同場同程全部計零），同 [EXP-20261007-03](EXP-20261007-03-hkjc-full-history-distance-records.md)
+   由完整 horse-profile 歷史補返同程／同場同程（之前 4,517 匹入面 2,378 匹少計舊賽績）。補數有日期閘（archive replay 先用賽日過濾，
+   當日同之後嘅 row 入唔到），leakage audit PASS。即係 64% 先係正確覆蓋，今次 `same_venue_distance` arm 係有效量度：
+   新賽事 Gold 0.00、Good −1.18 [−3.55,+1.18]，用啱數據都冇用。
 
 ## 結果
 
@@ -82,7 +86,7 @@
 - **27-04 rail 連續版**：建議收咗（新數據 Good −3.55，而且同現行 PIT rail 調整重疊）。
 - **28-01**：draw 再確認；fit／trip 仍然冇用；surface_quality 喺新數據減弱 → 跑馬地 V3 要繼續靠 rollback 對照監察，唔好當佢已證實。
 - **28-03**：鎖定規則下 REJECT 維持；沙田方向交返 draw70 forward（53/80）判。
-- **改善空間（唔准講做晒）**：(1) 用凍結版本做真正 replay，令 baseline 對齊而家 live（今次未做到）；(2) 查清同場同程覆蓋 16.54%→64.09% 嘅原因；
+- **改善空間（唔准講做晒）**：(1) 用凍結版本做真正 replay，令 baseline 對齊而家 live（今次未做到）；(2) ~~查清同場同程覆蓋 16.54%→64.09%~~（已查清：數據修正，見上）；
   (3) 27-04 harness 嘅 2026-05-13 重複行要修；(4) 市場尺等夠 30 個計分日再跑一次 `draw_surface`。
 
 ## 重跑
@@ -96,3 +100,29 @@ python3 docs/experiments/patches/hkjc_race_shape_v2_ab.py --dataset $TMPDIR/data
 python3 .agents/skills/shared_racing/scripts/market_ruler.py --platform hkjc $TMPDIR/market_current_live.jsonl $TMPDIR/market_draw_surface.jsonl --out $TMPDIR/market_draw_surface.json
 ```
 新賽事分組同 cohort 擴充用 out 目錄入面嘅 `v2_oos.py`、`surface_ml_oos.py`、`course_detail.py`、`course_continuous.py`（只加評估分組，訓練仍用全部歷史）。
+
+## 跟進（同日）：引擎層對齊 replay
+
+改善空間第 1 項。harness 用線性替換 race-shape 重建唔到 live（最大差 4.94），所以改用
+[`patches/hkjc_race_shape_engine_arms.py`](patches/hkjc_race_shape_engine_arms.py)：直接經 `RacingEngine.analyze_horse()` replay，
+逐個 arm monkeypatch `hkjc_racing_engine/_leaves.py:516` 嘅 `_race_shape_context_score`（沙田 526–529，跑馬地 V3 538–541），其餘引擎原封不動。
+**live baseline 逐匹 max|Δ| = 0.00**（2,766 匹）。Terra 做，證據喺 `/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/followups-20261127/evidence/hkjc-engine/`。
+
+**只評 2026/27 季**（09-06 至 11-25，225 場）：合約將 2024/25–2025/26 列做 HKJC replay holdout（`model-evaluation-contract.md:144`）。
+⚠️ 上面原 harness 嘅「全部 489 場」包括 2025/26 季尾（04-12 至 07 月）。冇用嚟揀候選或調參，但係掂咗 holdout 範圍，喺度記明。
+
+沙田草地（arm 減 live，pp [95% CI]；跑馬地／AWT 全部 arm 維持 live，零差係 sanity check）：
+
+| arm | 2026/27 104 場 Gold | Good | NDCG@5 | 09-28 後 76 場 Gold | Good | capture@5 |
+|---|---|---|---|---|---|---|
+| st_no_trip | 0.00 [−2.9,+2.9] | 0.00 | +0.06 | 0.00 | 0.00 | +0.88 [0.00,+2.19] |
+| st_surface_replaces_trip | +0.96 [0.00,+2.9] | −0.96 [−2.9,0.00] | +0.45 | +1.32 | −1.32 | +0.88 [0.00,+2.19] |
+| st_draw_only | +0.96 | −0.96 | +0.53 | +1.32 | −1.32 | +0.44 |
+| st_draw_surface | **+1.92 [−1.9,+5.8]** | **+1.92 [−2.9,+6.7]** | +0.36 | +1.32 | +2.63 | +0.88 |
+
+**判讀**：對齊 live 之後，沙田冇一個 arm 有顯著差。`st_draw_surface`（同跑馬地 V3 一樣用檔位＋PIT 場地性能）係唯一 Gold、Good 都唔負嘅 arm，
+但 104 場、CI 闊。冇嘢升級；沙田方向繼續交 draw70 forward（53/80）。如果 Kelvin 想試沙田版 V3，要另開預先登記嘅 forward shadow。
+
+**另一個發現（對齊檢查）**：今日引擎重算排名對比當時發佈嘅 immutable 快照（10-01 後 135 場），頭一一致率沙田 33%、跑馬地 49%，
+平均分差約 5.4。原因係 10 月之後引擎改咗好多（騎練先驗修洩漏、上仗賠率、級數等），加埋快照用 `official_ranking_score`。
+即係所有 HKJC 回放實驗量緊嘅都係「今日引擎」，唔係當時發出嘅預測 —— 判模型改動冇問題（兩邊同一個引擎），但唔可以拎回放數同 live 戰績直接比。
