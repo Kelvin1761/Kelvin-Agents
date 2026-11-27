@@ -1166,6 +1166,9 @@ def _parse_race_header(text: str) -> dict:
     track_m = re.search(r'(草地|全天候|泥地)\s*(?:-\s*)?[「"]?([A-C])[」"]?\s*賽道', header_slice)
     if track_m:
         info['track'] = f"{track_m.group(1)} {track_m.group(2)} 賽道"
+    elif re.search(r'全天候跑道|\bAWT\b', header_slice):
+        # 全天候冇 A/B/C 賽道字母（報告寫「沙田全天候跑道」），以前對唔到就留空（Kelvin 2026-11-27）
+        info['track'] = "全天候跑道"
 
     # Race name — try explicit 賽事名稱 first
     name_m = re.search(r'賽事名稱[：:]\s*\*{0,2}(.+?)\*{0,2}\s*(?:\n|$)', header_slice)

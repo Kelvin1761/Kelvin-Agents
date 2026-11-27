@@ -13,12 +13,13 @@ def runner(pos, jockey, trainer, draw, running):
             'draw': str(draw), 'running_positions': running}
 
 
-def meeting(root, day, venue, races):
+def meeting(root, day, venue, races, awt=()):
     folder = root / 'hkjc results 2026 27' / day
     folder.mkdir(parents=True)
+    course = lambda n: '全天候跑道' if n in awt else '草地 - "C+3" 賽道'
     payload = {str(n): {'racedate': day, 'race_no': n, 'venue': venue, 'results': rows,
                         'sectional_times': [['第 1 場'], ['第四班 - 1200米 - (60-40)', '場地狀況 :', '好地'],
-                                            ['讓賽', '賽道 :', '草地 - "C+3" 賽道']]}
+                                            ['讓賽', '賽道 :', course(n)]]}
                for n, rows in enumerate(races, 1)}
     (folder / 'full_day_results.json').write_text(json.dumps(payload, ensure_ascii=False))
 
@@ -109,3 +110,27 @@ def test_results_replace_the_card_race_by_race(tmp_path):
     assert jockeys['甲']['w'] == [1, 0, 0, 0] and jockeys['甲']['starts'] == 1 and jockeys['甲']['rides'] == 2
     assert jockeys['丙']['starts'] == 0 and '退出' not in jockeys
     assert [r['name'] for r in day['jockeys']] == ['甲', '乙', '丙']
+
+
+def test_mixed_turf_and_awt_day_keeps_bias_apart(tmp_path):
+    """沙田草泥混合日：草地同全天候嘅偏差分開計，唔會撈埋（Kelvin 2026-11-27）。"""
+    meeting(tmp_path, '2026-11-29', '沙田', [
+        [runner('1', '甲', 'T1', 1, '1 1 1'), runner('2', '乙', 'T2', 12, '9 8 2'), runner('3', '丙', 'T3', 6, '5 5 3')],
+        [runner('1', '乙', 'T2', 13, '1 1 1'), runner('2', '甲', 'T1', 2, '3 2 2'), runner('3', '丙', 'T3', 7, '2 3 3')],
+        [runner('1', '丙', 'T3', 3, '3 3 1'), runner('2', '甲', 'T1', 11, '1 1 2'), runner('3', '乙', 'T2', 5, '2 2 3')],
+    ], awt={2})
+    day = build_insights(tmp_path, today=date(2026, 11, 29))['meetings'][0]
+    split = day['bias_by_surface']
+    assert set(split) == {'turf', 'awt'} and split['turf']['races'] == 2 and split['awt']['races'] == 1
+    # 全天候第 2 場外檔頭馬只入全天候表；草地兩場頭馬都係內檔
+    assert split['awt']['draw']['outer']['w'][0] == 1 and split['awt']['draw']['inner']['w'][0] == 0
+    assert split['turf']['draw']['inner']['w'][0] == 2 and split['turf']['draw']['outer']['w'][0] == 0
+    # 全日表照舊係兩者相加
+    assert day['bias']['draw']['inner']['w'][0] == 2 and day['bias']['draw']['outer']['w'][0] == 1
+    assert day['races'][1]['rail'] == 'AWT'
+
+
+def test_turf_only_day_has_one_surface(tmp_path):
+    meeting(tmp_path, '2026-11-26', '跑馬地', [[runner('1', '甲', 'T1', 1, '1 1 1')]])
+    day = build_insights(tmp_path, today=date(2026, 11, 26))['meetings'][0]
+    assert list(day['bias_by_surface']) == ['turf']

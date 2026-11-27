@@ -101,6 +101,10 @@ def test_scenario_constants():
     assert all(max(abs(v) for v in d.values()) == sc["full_pp"]["style"] for d in sc["style"].values())
     assert all(max(abs(v) for v in d.values()) == sc["full_pp"]["draw"] for d in sc["draw"].values())
     assert set(sc["draw"]) == {"利內欄", "利中內", "利中欄", "利中外", "利外欄"}
+    # 跑法兩類合併：同檔位組合一條規則（被利兩類各一半、對面 −滿）
+    assert set(sc["style"]) == {"放頭", "守中", "後上", "放頭+守中", "守中+後上"}
+    assert sc["style"]["放頭+守中"] == {"放頭": 1, "守中": 1, "後上": -2}
+    assert sc["style"]["守中+後上"] == {"放頭": -2, "守中": 1, "後上": 1}
     assert sc["inrace"] == {"shrink": 0.2, "cap_pp": 2, "min_starts": 8}
 
 

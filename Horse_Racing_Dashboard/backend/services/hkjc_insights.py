@@ -174,6 +174,21 @@ def _bias(rows):
     }
 
 
+def surface(rail) -> str:
+    """草地／全天候：場地偏差一定要分開計（Kelvin 2026-11-27：沙田草泥混合日撈埋計會互相污染）。"""
+    return "awt" if rail == "AWT" else "turf"
+
+
+def _bias_by_surface(rows):
+    """Same tallies as `_bias`, one table per surface that has results, with its race count."""
+    out = {}
+    for key in ("turf", "awt"):
+        part = [r for r in rows if surface(r["rail"]) == key]
+        if part:
+            out[key] = {**_bias(part), "races": len({r["race"] for r in part})}
+    return out
+
+
 def _meeting_races(rows):
     """Race-by-race winners of one meeting: what the live panel shows as results land."""
     races = defaultdict(list)
@@ -216,7 +231,8 @@ def build_insights(results_root: Path, *, card_root: Path | None = None, today: 
             "jockeys": _standings(rows, lambda r: r["jockey"], upcoming),
             "trainers": _standings(rows, lambda r: r["trainer"], upcoming),
             "combos": _standings(rows, lambda r: (r["jockey"], r["trainer"]), upcoming),
-            "bias": _bias(rows),
+            "bias": _bias(rows),  # 全日（舊介面保留）；分場地睇 bias_by_surface
+            "bias_by_surface": _bias_by_surface(rows),
         })
     return {
         "status": "valid",

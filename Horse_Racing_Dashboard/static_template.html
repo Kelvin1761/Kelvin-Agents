@@ -1728,6 +1728,11 @@ dialog.roi-modal-dialog::backdrop { background: rgba(11,18,32,.42); -webkit-back
   .roi-modal { width: 100%; max-height: calc(100vh - 24px - env(safe-area-inset-top)); border-radius: var(--radius-xl) var(--radius-xl) 0 0; padding-bottom: env(safe-area-inset-bottom); }
 }
 </style>
+<style id="wc-ins-surface">
+.ins-surface-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 18px 2px 8px; }
+.ins-surface-head h3 { margin: 0; font-size: 1rem; font-weight: 800; color: var(--color-text); }
+.ins-surface-head span { font-size: .78rem; color: var(--color-text-soft); }
+</style>
 <style id="wc-card-refresh">
 /* ─── 馬卡＋完整分析：premium minimalist（Kelvin 2026-11-18「brackets over brackets」）───
    原則：一層只得一個容器。外層白卡已經係框，入面唔再加框；分組靠留白＋髮絲線，
@@ -6292,7 +6297,8 @@ function renderTrackGeometry(geometry) {
 // 只改呢個表嘅「情境分／情境排名」，正式排名同 ROI 頭兩選唔郁。幅度同即場規則嚟自引擎 summary.scenario_constants()。
 const HKJC_SCENARIO = { style: 'default', draw: 'default' };
 const HKJC_RANKING_CACHE = {};
-const HKJC_STYLE_OPTIONS = [['default', '預設'], ['inrace', '即場（只作參考）'], ['放頭', '利放頭'], ['守中', '利守中'], ['後上', '利後上']];
+const HKJC_STYLE_OPTIONS = [['default', '預設'], ['inrace', '即場（只作參考）'], ['放頭', '利放頭'], ['守中', '利守中'], ['後上', '利後上'],
+  ['放頭+守中', '利放頭＋守中（前置）'], ['守中+後上', '利守中＋後上（後置）']];
 // 檔位段同全 Wong Choi 一個標準：內 1–4、中 5–9、外 10+（檔位×跑法入分都係用呢三段）
 const HKJC_DRAW_OPTIONS = [['default', '預設'], ['inrace', '即場（只作參考）'], ['利內欄', '利內欄（1–4 檔）'], ['利中內', '利中內（1–9 檔）'],
   ['利中欄', '利中欄（5–9 檔）'], ['利中外', '利中外（5 檔或以外）'], ['利外欄', '利外欄（10 檔或以外）']];
@@ -6304,12 +6310,25 @@ function hkjcDrawBand(barrier) {
   return d <= 0 ? null : d <= 4 ? '內檔' : d <= 9 ? '中檔' : '外檔';
 }
 
-// 即場：今日（同場地同日）已跑場次每類上名率 − 當日平均，× 收縮、上限；樣本唔夠 = 0。
+// 即場：今日（同場地同日、同一種跑道）已跑場次每類上名率 − 嗰種跑道當日平均，× 收縮、上限；樣本唔夠 = 0。
+// 草地同全天候分開計（Kelvin 2026-11-27）：沙田草泥混合日撈埋計，草地場會食到全天候偏差、反之亦然。
+// 冇分場地資料嘅舊快照先退返用全日表。
+const HKJC_SURFACE_NAME = { turf: '草地', awt: '全天候' };
+function hkjcSurfaceKey(bf) { return /泥|全天候|AWT/i.test(String((bf && bf.surface) || '')) ? 'awt' : 'turf'; }
+function hkjcInraceDay(bf) {
+  const ins = (typeof hkjcInsights === 'function') ? hkjcInsights() : null;
+  return ((ins && ins.meetings) || []).find(m => m.day === bf.date && (!bf.venue || String(bf.venue).includes(m.venue === 'HV' ? '跑馬地' : '沙田')));
+}
+function hkjcInraceTable(bf, kind) {
+  const day = bf && hkjcInraceDay(bf);
+  if (!day) return null;
+  if (!day.bias_by_surface) return day.bias && day.bias[kind];
+  const part = day.bias_by_surface[hkjcSurfaceKey(bf)];
+  return part && part[kind];
+}
 function hkjcInraceBias(bf, kind) {
   const sc = bf && bf.scenario; if (!sc) return {};
-  const ins = (typeof hkjcInsights === 'function') ? hkjcInsights() : null;
-  const day = ((ins && ins.meetings) || []).find(m => m.day === bf.date && (!bf.venue || String(bf.venue).includes(m.venue === 'HV' ? '跑馬地' : '沙田')));
-  const table = day && day.bias && day.bias[kind];
+  const table = hkjcInraceTable(bf, kind);
   if (!table) return {};
   const names = kind === 'style' ? HKJC_INS_STYLE : HKJC_INS_DRAW;
   let starts = 0, top3 = 0;
@@ -6356,7 +6375,7 @@ function renderHkjcRanking(raceKey) {
   const sel = (id, opts, cur) => `<select aria-label="${id === 'style' ? '利咩跑法' : '利咩欄'}" onchange="hkjcSetScenario('${esc(raceKey)}','${id}',this.value)">${opts.map(([v, l]) => `<option value="${esc(v)}"${v === cur ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
   let html = `<div class="hkr" id="hkjc-ranking-${esc(raceKey)}"><div class="hkr__head"><div><div class="hkr__title">📊 全場綜合戰力排名</div>`
     + `<div class="hkr__sub">${rows.length} 匹${oddsAt ? ` · 賠率：HKJC 官方投注網，截至 ${esc(String(oddsAt).slice(11, 16))}（停售前最後一個快照，純參考、唔入分）` : ''}</div></div>`
-    + `<div class="hkr__controls"><label class="hkr__control">情境 · 跑法 ${sel('style', HKJC_STYLE_OPTIONS, HKJC_SCENARIO.style)}</label>`
+    + `<div class="hkr__controls"><label class="hkr__control">情境 · 跑法 ${sel('style', HKJC_STYLE_OPTIONS.filter(([v]) => v === 'default' || v === 'inrace' || !(bf && bf.scenario) || (bf.scenario.style || {})[v] || v === HKJC_SCENARIO.style), HKJC_SCENARIO.style)}</label>`
     + `<label class="hkr__control">檔位 ${sel('draw', HKJC_DRAW_OPTIONS, HKJC_SCENARIO.draw)}</label></div></div>`;
   if (scenario) {
     const live = HKJC_SCENARIO.style === 'inrace' || HKJC_SCENARIO.draw === 'inrace';
@@ -6365,6 +6384,11 @@ function renderHkjcRanking(raceKey) {
       + (() => { const sc = bf && bf.scenario, fp = (sc && sc.full_pp) || { style: 10, draw: 10 }, k = sc ? sc.pp_to_display : null;
           const part = (lab, pp) => `${lab}約 ±${pp}pp（約 ${k ? (pp * k).toFixed(1) : '?'} 分）`;
           return `幅度 = 實測：歷史上真係強偏差嘅日子，被利嗰類實際只多咗 ${part('跑法', fp.style)}、${part('檔位', fp.draw)}（按慣性跑法；EXP-20261119-10）。`; })()
+      + (live ? (() => { const day = bf && hkjcInraceDay(bf), key = hkjcSurfaceKey(bf), split = day && day.bias_by_surface;
+          if (!split) return '';
+          const part = split[key], mixed = Object.keys(split).length > 1 || key === 'awt';
+          return !part ? `今場係${HKJC_SURFACE_NAME[key]}，今日${HKJC_SURFACE_NAME[key]}未有賽果，所以「即場」冇調整。`
+            : mixed ? `只計今日${HKJC_SURFACE_NAME[key]}場次（${part.races} 場），唔撈${HKJC_SURFACE_NAME[key === 'awt' ? 'turf' : 'awt']}。` : ''; })() : '')
       + (live ? `即場（只作參考）= 今日已跑場次嘅偏差 × 0.2，上限 ±${bf && bf.scenario ? bf.scenario.inrace.cap_pp : 2}pp。6 季實測同日偏差唔延續落後半日（沙田 288 日 r≈0、跑馬地 292 日 r≈0；EXP-20261120-03），所以只係俾你自己睇吓「如果偏差持續」會點，唔係預測。` : '') + `</div>`;
   }
   html += '<div class="hkm-list">';
@@ -9896,7 +9920,7 @@ function renderNow(main) {
 // ═══════════════════════════════════════════════
 let insTab = 'overview', insDay = '', insExpanded = {};
 const INS_TABS = [['overview', '總覽'], ['results', '賽果']];
-const INS_BUCKETS = [['inner', '內檔 1–4'], ['middle', '中檔 5–8'], ['outer', '外檔 9+']];
+const INS_BUCKETS = [['inner', '內檔 1–4'], ['middle', '中檔 5–9'], ['outer', '外檔 10+']];  // 同後端 DRAW_BUCKETS 一個標準
 const INS_STYLES = [['front', '放頭'], ['middle', '守中'], ['back', '後上']];
 const INS_VENUE_NAME = { ST: '沙田', HV: '跑馬地' };
 const INS_TOP = 8;
@@ -9945,10 +9969,32 @@ function insBiasRows(group, labels, key, of) {
     return `<div class="ins-bias-row${n && n === most ? ' ins-bias-row--best' : ''}"><span class="ins-bias-label">${label}<small>${t.starts} 匹出賽</small></span><span class="ins-bar ins-bar--${key}" title="${key === 'win' ? '頭馬' : '上名（冠亞季）'}"><i style="width:${share}%"></i></span><span class="ins-bias-num"><b>${n}</b><small>${Math.round(share)}%</small></span></div>`;
   }).join('');
 }
-function insBiasCard(m, key) {
-  const races = m.races.length, of = key === 'win' ? races : races * 3;
-  const head = key === 'win' ? `<h3><i class="ins-dot"></i>場地偏差 · 頭馬</h3><span>${races} 場頭馬來自邊度</span>` : `<h3><i class="ins-dot"></i>場地偏差 · 上名</h3><span>${races} 場冠亞季（共 ${of} 個位）來自邊度</span>`;
-  return `<article class="ins-card ins-bias ins-bias--${key}"><div class="ins-card-head">${head}</div><div class="ins-bias-cols"><div><h4>檔位</h4>${insBiasRows(m.bias.draw, INS_BUCKETS, key, of)}</div><div><h4>跑法</h4>${insBiasRows(m.bias.style, INS_STYLES, key, of)}</div></div></article>`;
+function insBiasCard(bias, races, key, surfaceName) {
+  const of = key === 'win' ? races : races * 3, tag = surfaceName ? `${surfaceName} · ` : '';
+  const head = key === 'win' ? `<h3><i class="ins-dot"></i>${tag}場地偏差 · 頭馬</h3><span>${races} 場頭馬來自邊度</span>` : `<h3><i class="ins-dot"></i>${tag}場地偏差 · 上名</h3><span>${races} 場冠亞季（共 ${of} 個位）來自邊度</span>`;
+  return `<article class="ins-card ins-bias ins-bias--${key}"><div class="ins-card-head">${head}</div><div class="ins-bias-cols"><div><h4>檔位</h4>${insBiasRows(bias.draw, INS_BUCKETS, key, of)}</div><div><h4>跑法</h4>${insBiasRows(bias.style, INS_STYLES, key, of)}</div></div></article>`;
+}
+// 今日排咗邊幾種跑道：賽果（rail）＋排位分析（battlefield.surface），未跑嘅全天候場都知道。
+function insCardSurfaces(m) {
+  const out = {};
+  const entry = DASHBOARD_DATA.races && DASHBOARD_DATA.races[`${m.day}|${m.venue === 'HV' ? 'HappyValley' : 'ShaTin'}`];
+  const races = entry && entry.races_by_analyst ? Object.values(entry.races_by_analyst)[0] || [] : [];
+  races.forEach(r => { const bf = r.race_summary && r.race_summary.battlefield; if (r.race_number) out[r.race_number] = hkjcSurfaceKey(bf); });
+  m.races.forEach(r => { out[r.race] = r.rail === 'AWT' ? 'awt' : 'turf'; });
+  return out;
+}
+// 草泥混合日：草地、全天候各自一組偏差卡（Kelvin 2026-11-27）；淨係一種跑道就同以前一樣。
+function insBiasSection(m) {
+  const split = m.bias_by_surface;
+  const planned = insCardSurfaces(m), kinds = new Set(Object.values(planned));
+  if (!split || kinds.size < 2) return `<div class="ins-bias-grid">${insBiasCard(m.bias, m.races.length, 'win')}${insBiasCard(m.bias, m.races.length, 'place')}</div>`;
+  return ['turf', 'awt'].map(k => {
+    const name = HKJC_SURFACE_NAME[k], part = split[k];
+    const nums = Object.entries(planned).filter(([, v]) => v === k).map(([n]) => Number(n)).sort((a, b) => a - b);
+    const label = `<div class="ins-surface-head"><h3>${name}</h3><span>第 ${nums.join('、')} 場${part ? ` · 已跑 ${part.races} 場` : ''}${part && part.races < 3 ? ' · 樣本少，只作參考' : ''}</span></div>`;
+    return label + (part ? `<div class="ins-bias-grid">${insBiasCard(part, part.races, 'win', name)}${insBiasCard(part, part.races, 'place', name)}</div>`
+      : `<div class="ins-empty">今日${name}場次未跑。</div>`);
+  }).join('');
 }
 function insResults(m) {
   if (!m.races.length) return '<div class="ins-empty">未有賽果。</div>';
@@ -9961,8 +10007,8 @@ function renderHkjcInsights() {
   const live = data.latest_is_today && m === data.meetings[0];
   const days = data.meetings.length < 2 ? '' : `<div class="ins-pills ins-days" role="group" aria-label="賽日">${data.meetings.map((d, i) => `<button type="button" aria-pressed="${d === m}" onclick="setInsights('day','${d.day}')">${i === 0 && data.latest_is_today ? '今晚' : nbaShortDate(d.day)}<small>${INS_VENUE_NAME[d.venue] || ''}</small></button>`).join('')}</div>`;
   const tabs = `<nav class="ins-tabs" aria-label="即場形勢分頁">${INS_TABS.map(([k, label]) => `<button type="button" aria-pressed="${insTab === k}" onclick="setInsights('tab','${k}')">${label}</button>`).join('')}</nav>`;
-  const body = insTab === 'results' ? insResults(m) : `<div class="ins-leaders">${insLeader('最旺騎師', 'jockeys', m.jockeys)}${insLeader('最旺練馬師', 'trainers', m.trainers)}${insLeader('最旺騎練', 'combos', m.combos)}</div><div class="ins-lists">${insListCard('jockeys', '騎師', m.jockeys)}${insListCard('trainers', '練馬師', m.trainers)}${insListCard('combos', '騎練合作', m.combos)}</div><div class="ins-bias-grid">${insBiasCard(m, 'win')}${insBiasCard(m, 'place')}</div>`;
-  return `<section class="hkjc-insights">${insHero(m, live)}<div class="ins-nav">${tabs}${days}</div>${body}<p class="ins-foot">只計所揀賽日：數據來自馬會賽果，只計名次次數，唔計賠率或回報；唔會餵入評分模型。上名 = 冠亞季。檔位分內（1–4）、中（5–8）、外（9+）；跑法按第一個沿途位置：頭 3 位為放頭、尾三分一為後上；臨時賽果未有沿途位置，跑法要等正式賽果。</p></section>`;
+  const body = insTab === 'results' ? insResults(m) : `<div class="ins-leaders">${insLeader('最旺騎師', 'jockeys', m.jockeys)}${insLeader('最旺練馬師', 'trainers', m.trainers)}${insLeader('最旺騎練', 'combos', m.combos)}</div><div class="ins-lists">${insListCard('jockeys', '騎師', m.jockeys)}${insListCard('trainers', '練馬師', m.trainers)}${insListCard('combos', '騎練合作', m.combos)}</div>${insBiasSection(m)}`;
+  return `<section class="hkjc-insights">${insHero(m, live)}<div class="ins-nav">${tabs}${days}</div>${body}<p class="ins-foot">只計所揀賽日：數據來自馬會賽果，只計名次次數，唔計賠率或回報；唔會餵入評分模型。上名 = 冠亞季。草泥混合日草地同全天候分開計。檔位分內（1–4）、中（5–9）、外（10+）；跑法按第一個沿途位置 ÷ 出賽匹數：前 30% 放頭、30–60% 守中、其餘後上；臨時賽果未有沿途位置，跑法要等正式賽果。</p></section>`;
 }
 
 // Chart tooltip functions
