@@ -1962,6 +1962,119 @@ dialog.roi-modal-dialog::backdrop { background: rgba(11,18,32,.42); -webkit-back
   .strip-verdict__row { font-size: .78rem; }
 }
 </style>
+<style id="wc-card-v3">
+/* ── 馬卡 v3（Kelvin 2026-11-27「撳開全部一樣色、難睇、佔位」）──
+   三層，每層一個樣：① 撳開嘅維度 = 維度色調底（綠＝推高、紅＝拖低、灰＝中性），同嗰行連埋一塊；
+   ② 每組資料（騎師分、練馬師分、數據錨點、近績…）= 白卡；③ 白卡入面嘅分項 = 淺灰底，唔再加框。
+   行距收細、細字註解加大加深。純顯示，唔郁資料。 */
+.dim-item { --dim-tint: #F4F6F9; --dim-edge: #E2E7EE; --dim-ink: #475569; }
+.dim-item--up { --dim-tint: #EFF8F3; --dim-edge: #C9E8D7; --dim-ink: #047857; }
+.dim-item--down { --dim-tint: #FCF2F3; --dim-edge: #F2D0D5; --dim-ink: #B91C1C; }
+
+/* 矩陣行：收細上下留白；hover 有底色；評語做細膠囊 */
+.horse-card .dim-item .dim-row { padding: 6px 8px 3px; margin: 0 -8px; border: 1px solid transparent; border-radius: 10px; transition: background-color .15s ease; }
+.dim-item + .dim-item { border-top-color: #F1F4F8; }
+.dim-row--toggle:hover { background: #F8FAFC; }
+.dim-row--toggle .dim-row__brief { margin: 0 0 4px; }
+.dim-row__tone { padding: 1px 2px 1px 8px; border-radius: 999px; background: #F1F4F8; }
+.dim-row__tone--up { background: #E5F5EC; }
+.dim-row__tone--down { background: #FCE7EA; }
+.dim-row--toggle.is-open { background: var(--dim-tint); border-color: var(--dim-edge); border-bottom-color: transparent; border-radius: 12px 12px 0 0; }
+.dim-row--toggle.is-open .dim-row__name { color: var(--dim-ink); font-weight: 800; }
+
+/* ① 撳開嘅內容 */
+.dim-item__body { background: var(--dim-tint); border: 1px solid var(--dim-edge); border-top: 0; border-radius: 0 0 12px 12px;
+  margin: 0 -8px 10px; padding: 2px 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+.dim-item__body[hidden] { display: none; }
+.dim-item__body > * { margin-top: 0 !important; }
+.dim-item__body .dim-formula { padding: 0; }
+.dim-item__body .dim-formula + .dim-formula { margin-top: -6px !important; }
+.dim-item__body .dim-formula__label { color: var(--dim-ink); }
+.dim-item__body .dim-subs { gap: 8px; margin-top: 0; }
+
+/* ② 每組資料 = 白卡 */
+.dim-item__body > .dim-subs > .dim-sub, .dim-item__body > .dim-subs > .dim-sub--anchor,
+.dim-item__body > .kv-group, .dim-item__body > .rrun-list, .dim-item__body > .dim-parts, .dim-item__body > .dim-verdict {
+  background: #FFFFFF; border: 1px solid rgba(15, 23, 42, .07); border-radius: 10px; padding: 10px 12px; box-shadow: 0 1px 2px rgba(15, 23, 42, .03); }
+.dim-item__body > .dim-subs > .dim-sub > .dim-sub__head { padding-bottom: 6px; margin-bottom: 4px; border-bottom: 1px solid #EEF1F5; }
+.dim-item__body .dim-sub__name, .dim-item__body .kv-group__title, .dim-item__body .rrun-list__title {
+  font-size: .76rem; font-weight: 800; color: #0F172A; letter-spacing: 0; }
+.dim-item__body > .dim-verdict { border-left: 3px solid var(--dim-edge); }
+
+/* ③ 白卡入面嘅分項：淺灰底，唔加框 */
+.dim-item__body .dim-sub .dim-parts { margin-top: 8px; gap: 8px; }
+.dim-item__body .dim-sub .dim-part, .dim-item__body .dim-sub .dim-part:first-child {
+  background: #F7F9FB; border: 0; border-radius: 8px; padding: 8px 10px; }
+.dim-item__body .dim-sub .kv-group { margin-top: 8px; padding-top: 8px; border-top: 1px solid #EEF1F5; }
+.dim-item__body .dim-sub .rrun-list { margin-top: 10px; }
+.dim-item__body .rrun-list__title { border-bottom: 1px solid #EEF1F5; padding-bottom: 6px; }
+
+/* 加減分行：密啲、數字欄收窄 */
+.dim-item__body .dim-adj { padding: 5px 0; border-bottom-color: #F1F4F8; grid-template-columns: 40px minmax(0, 1fr); column-gap: 8px; }
+.dim-item__body .dim-adj:last-child { border-bottom: 0; }
+
+/* 近仗：上仗淺藍底，其餘髮絲線分隔 */
+.dim-item__body .rrun, .dim-item__body .rrun--latest { padding: 8px 0 9px; }
+.dim-item__body .rrun:last-child { border-bottom: 0; padding-bottom: 2px; }
+.dim-item__body .rrun--latest { background: #F6F9FF; border-radius: 8px; padding: 8px 10px 9px; border-bottom: 0; margin: 6px 0 2px; }
+
+/* 細字：大少少、深少少 */
+.dim-item__body .dim-part__why, .dim-item__body .dim-note, .dim-item__body .dim-adj__why { font-size: .72rem; color: #475569; line-height: 1.55; }
+.dim-item__body .dim-formula--calc .dim-formula__body { font-size: .7rem; color: #64748B; }
+.dim-item__body .rrun__fact em, .dim-item__body .rrun__sect > em, .dim-item__body .rrun__sect-note,
+.dim-item__body .dim-sub__score--tag, .dim-item__body .dim-part__share, .dim-item__body .dim-calc > summary { color: #7B8798; }
+
+/* 矩陣下面：主要推力、原始總分、晨操、標籤 —— 收密 */
+.horse-card .dim-strip__driver { margin-top: 8px; padding-top: 8px; }
+.horse-card .tw-box { margin-top: 8px; }
+.horse-card .tw-box summary { padding: 8px 2px; }
+.horse-card .verdicts { margin-top: 10px; gap: 5px; }
+.horse-card .verdict__chip { padding: 2px 9px; }
+
+@media (max-width: 768px) {
+  .horse-card .dim-item .dim-row { padding: 8px 6px 3px; margin: 0 -6px; }
+  .dim-item__body { margin: 0 -6px 10px; padding: 2px 8px 10px; }
+  .dim-item__body > .dim-subs > .dim-sub, .dim-item__body > .dim-subs > .dim-sub--anchor,
+  .dim-item__body > .kv-group, .dim-item__body > .rrun-list, .dim-item__body > .dim-parts, .dim-item__body > .dim-verdict { padding: 9px 10px; }
+  .dim-item__body .dim-sub .dim-part, .dim-item__body .dim-sub .dim-part:first-child { padding: 7px 9px; }
+}
+
+/* 第二輪收密（Kelvin 2026-11-27「再 compact 少少」）：矩陣行兩行之間嘅 8px 空位、卡頭、標籤膠囊 */
+.horse-card__header { padding: 9px 14px; }
+.horse-card__body { padding: 12px 14px 14px; }
+.horse-card .dim-strip { padding-top: 10px; }
+.horse-card .dim-strip__head { margin-bottom: 2px; }
+.horse-card .dim-item .dim-row { padding-top: 5px; padding-bottom: 2px; row-gap: 1px; }
+.horse-card .dim-row__brief { font-size: .7rem; line-height: 1.45; margin: 0 0 3px; }
+.horse-card .dim-strip__driver { margin-top: 6px; padding-top: 6px; }
+.horse-card .dim-strip__total { margin-top: 4px; }
+.horse-card .verdicts { margin-top: 8px; gap: 4px; }
+.horse-card .verdict { font-size: .72rem; grid-template-columns: 64px minmax(0, 1fr); }
+.horse-card .verdict__items { gap: 4px; }
+.horse-card .verdict__chip { font-size: .7rem; padding: 1px 8px; }
+.rank-card-row { margin-bottom: 6px; }
+@media (max-width: 768px) {
+  .horse-card .dim-item .dim-row { padding: 6px 6px 2px; row-gap: 2px; }
+  .horse-card__body { padding: 10px 12px 12px; }
+}
+/* 電腦版唔好成個屏咁闊（Kelvin 2026-11-27「電腦版太闊」）：舊 inline max-width 900px 一直俾第 48 行 !important 蓋咗，張卡闊到 1,300px */
+@media (min-width: 1000px) { .comparison__column--single { max-width: 1080px !important; } }
+/* 近六場＋預計跑法同一行；「留意」預設收埋（Kelvin 2026-11-27） */
+.horse-card__quick { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 24px; }
+.horse-card__quick > div { margin: 0; }
+details.verdict--fold { display: block; }
+details.verdict--fold > summary { display: grid; grid-template-columns: 64px minmax(0, 1fr); align-items: baseline; cursor: pointer; list-style: none; }
+details.verdict--fold > summary::-webkit-details-marker { display: none; }
+.verdict__fold-hint { font-size: .7rem; color: #64748B; }
+.verdict__fold-hint::after { content: ' ⌄'; }
+details.verdict--fold[open] .verdict__fold-hint::after { content: ' ⌃'; }
+details.verdict--fold > summary:hover .verdict__fold-hint { color: #1E40AF; }
+details.verdict--fold > .verdict__items { margin: 4px 0 0 64px; }
+@media (max-width: 768px) {
+  details.verdict--fold > summary { grid-template-columns: auto minmax(0, 1fr); gap: 8px; }
+  details.verdict--fold > .verdict__items { margin-left: 0; }
+}
+</style>
 </head>
 <body>
 <!-- __NBA_LOGO_SPRITE__ -->
@@ -6861,7 +6974,7 @@ function shortenVerdict(line) {
 // 冇入分，畫成虛線 chip、tooltip 寫明，唔扮成模型理由。
 // Kelvin 2026-11-16：全部標籤都要見到，唔再收埋做「+1／+2」。
 const TAG_LIMIT = { good: Infinity, bad: Infinity, note: Infinity };
-function renderTagChips(summary) {
+function renderTagChips(summary, opts = {}) {
   const tags = summary.tags || {};
   const chip = t => {
     const tip = [t.why, t.scored ? (t.impact != null ? `入分（對綜合分 ${t.impact > 0 ? '+' : ''}${Number(t.impact).toFixed(1)}）` : '入分') : '未入分，只供參考']
@@ -6874,17 +6987,25 @@ function renderTagChips(summary) {
     return `<div class="verdict verdict--${cls}"><span class="verdict__label">${label}</span><span class="verdict__items">${
       shown.map(chip).join('')}${more > 0 ? `<span class="verdict__chip verdict__chip--info" title="${esc(items.slice(limit).map(t => t.label).join('、'))}">+${more}</span>` : ''}</span></div>`;
   };
+  // 馬匹卡（Kelvin 2026-11-27）：「留意」多數係未入分嘅交手記錄、句子長，預設收埋，撳開先睇。
+  const foldGroup = (label, cls, items) => {
+    if (!items || !items.length) return '';
+    const unscored = items.every(t => !t.scored);
+    return `<details class="verdict verdict--${cls} verdict--fold"><summary><span class="verdict__label">${label}</span>`
+      + `<span class="verdict__fold-hint">${items.length} 項${unscored ? ' · 未入分' : ''}</span></summary>`
+      + `<span class="verdict__items">${items.map(chip).join('')}</span></details>`;
+  };
   const watch = (summary.watch || []).map(w => ({ label: w, scored: false, why: '' }));
   const gaps = (summary.gaps && summary.gaps.length) ? [{ label: `${summary.gaps.join('、')}（按中性）`, scored: false, why: '資料不足，按中性 60 處理' }] : [];
   const html = group('✅ 加分位', 'plus', tags.good, TAG_LIMIT.good)
     + group('⚠️ 扣分位', 'minus', tags.bad, TAG_LIMIT.bad)
-    + group('📌 留意', 'note', [...(tags.note || []), ...watch], TAG_LIMIT.note + watch.length)
+    + (opts.foldNote ? foldGroup('📌 留意', 'note', [...(tags.note || []), ...watch]) : group('📌 留意', 'note', [...(tags.note || []), ...watch], TAG_LIMIT.note + watch.length))
     + group('❔ 資料不足', 'plus', gaps, 1);
   return html ? `<div class="verdicts">${html}</div>` : '';
 }
 
 function renderVerdictChips(horse) {
-  if (horse.analysis_summary && horse.analysis_summary.tags) return renderTagChips(horse.analysis_summary);
+  if (horse.analysis_summary && horse.analysis_summary.tags) return renderTagChips(horse.analysis_summary, { foldNote: true });
   const split = value => String(value || '').split('\n').map(x => x.trim()).filter(Boolean);
   const plus = split(cleanText(horse.advantage)).map(shortenVerdict);
   const minus = split(cleanText(horse.risk)).map(shortenVerdict);
@@ -7064,7 +7185,7 @@ function renderDimensionStrip(horse, cardId) {
     const brief = briefs.get(dimMatchKey(d.name));
     const tone = DIM_SYMBOL_TONE[d.symbol] || '';
     const toggle = cardId ? ` role="button" tabindex="0" aria-expanded="false" aria-controls="${bodyId}" onclick="toggleDimRow('${cardId}', '${bodyId}', this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}"` : '';
-    return `<div class="dim-item"><div class="dim-row${cardId ? ' dim-row--toggle' : ''}" data-dim="${esc(d.name)}"${toggle}>${rowHtml}`
+    return `<div class="dim-item dim-item--${DIM_SYMBOL_CLASS[d.symbol] || 'neu'}"><div class="dim-row${cardId ? ' dim-row--toggle' : ''}" data-dim="${esc(d.name)}"${toggle}>${rowHtml}`
       + `<span class="dim-row__tone dim-row__tone--${DIM_SYMBOL_CLASS[d.symbol] || 'neu'}">${esc(tone)}${cardId ? '<span class="dim-row__chevron" aria-hidden="true">⌄</span>' : ''}</span>`
       + (brief ? `<span class="dim-row__brief">${esc(brief)}</span>` : '') + '</div>'
       + (cardId ? `<div id="${bodyId}" class="dim-item__body" hidden></div>` : '')
@@ -7394,15 +7515,18 @@ function renderHorseCard(horse, topPickRank, marketRanks, analysisRef) {
   // Body
   html += '<div class="horse-card__body"><div class="horse-card__details">';
   if (horse.situation_tag) html += `<div>📌 ${esc(horse.situation_tag)}</div>`;
+  let quick = '';
   if (horse.recent_form || horse.form_cycle) {
     let formLine = '📊 ';
     const cleanForm = cleanText(horse.recent_form);
     if (cleanForm) formLine += `近六場: <strong>${esc(cleanForm)}</strong>`;
     if (cleanForm && horse.form_cycle) formLine += ' | ';
     if (horse.form_cycle) formLine += `狀態週期: ${esc(cleanText(horse.form_cycle))}`;
-    if (cleanForm || horse.form_cycle) html += `<div>${formLine}</div>`;
+    if (cleanForm || horse.form_cycle) quick += `<div>${formLine}</div>`;
   }
-  html += renderRunStyleOutlook(horse.run_style_outlook);
+  // 近六場同預計跑法擺同一行（Kelvin 2026-11-27「再 compact」）；窄屏自動摺返兩行。
+  quick += renderRunStyleOutlook(horse.run_style_outlook);
+  if (quick) html += `<div class="horse-card__quick">${quick}</div>`;
   html += renderMarketLine(horse, marketRanks);
   html += renderDimensionStrip(horse, cardId);
   const timeEvidence = horse.full_time_speed;
@@ -8789,7 +8913,7 @@ function renderSingleAnalystView(analysis, analystName) {
 
   // Horse cards
   html += `<h2 style="font-size:1rem;font-weight:700;margin-bottom:12px">📋 全場馬匹分析</h2>`;
-  html += `<div class="comparison__column" style="max-width: 900px"><div class="comparison__header comparison__header--${isK?'kelvin':'heison'}">${esc(analystName||'Analyst')} · ${horses.length} 匹馬</div><div class="comparison__body"><div class="horse-grid" style="grid-template-columns:minmax(0, 1fr)">`;
+  html += `<div class="comparison__column comparison__column--single"><div class="comparison__header comparison__header--${isK?'kelvin':'heison'}">${esc(analystName||'Analyst')} · ${horses.length} 匹馬</div><div class="comparison__body"><div class="horse-grid" style="grid-template-columns:minmax(0, 1fr)">`;
   const fieldMarketRanks = marketRankMap(horses);
   sortedHorses.forEach((horse, idx) => {
     const bg = idx===0?'#D97706':idx===1?'#9CA3AF':idx===2?'#B45309':idx===3?'#2563EB':'#F8FAFC';
