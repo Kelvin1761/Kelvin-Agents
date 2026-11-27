@@ -80,3 +80,16 @@ PYTHONDONTWRITEBYTECODE=1 python3 docs/experiments/patches/nba_s2_forward/second
 PYTHONDONTWRITEBYTECODE=1 python3 docs/experiments/patches/nba_s2_forward/featured_replay.py  # 精選重揀
 ```
 數據：`~/WongChoiData/NBA_Market_Eval/ledger/2026-11-12…26.jsonl`；`~/WongChoiData/Wong Choi NBA Analysis/<日> NBA Analysis/_prediction_snapshots/<21:00 run>/`。
+
+## 補充（2026-11-27，Kelvin：「改善分析表現同盈利就上線」）—— 盈利未證實，冇上線
+事後分析，唔係預先登記。`patches/nba_s2_forward/profit_replay.py <門檻>`：21:00 快照每條大細盤兩邊，edge ≥ 門檻、價 ≤3.0 全部當紙上 1u 平注（唔限每場一注），11-12…11-26，按 ledger 結算；ROI 差用按日 bootstrap。
+
+| edge 門檻 | 現行 注／ROI | MS2 注／ROI | MS2 − 現行 ROI（pp）95% CI |
+|---|---|---|---|
+| ≥3pp | 747／−4.6% | 657／−3.2% | [−3.2, +6.0] |
+| ≥5pp | 476／−8.5% | 319／−1.0% | [−0.5, +17.1] |
+| ≥8pp | 102／+3.4% | 79／+2.2% | [−19.8, +19.5] |
+
+- 兩個 arm 都**冇一個門檻證實賺錢**；MS2 喺 3–5pp 方向蝕少啲，但三個 CI 全部跨零，8pp 反而差少少。
+- 加上精選（每場一注）+7.5% 對 +9.3% 亦係噪音 → **「盈利改善」未成立**，Kelvin 嘅上線條件（分析表現＋盈利）只達一半，所以**冇上線**。
+- 冇改 `config.json`／`p_final`。
