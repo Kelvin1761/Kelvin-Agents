@@ -308,6 +308,10 @@ SCENARIO_DRAW_PP = {"利內欄": {"內檔": 3, "中檔": 0, "外檔": -3}, "利�
                     "利中欄": {"內檔": -1.5, "中檔": 3, "外檔": -1.5}, "利中外": {"內檔": -3, "中檔": 1.5, "外檔": 1.5},
                     "利外欄": {"內檔": -3, "中檔": 0, "外檔": 3}}
 SCENARIO_INRACE = {"shrink": 0.2, "cap_pp": 2, "min_starts": 8}
+# 全天候（Kelvin 2026-11-27，EXP-20261127-80）：同日其他全天候場放頭著數嘅日子，慣性放頭馬實際多 +10pp（dev +13.2；
+# holdout 量唔到、CI 跨零，未過驗證）。Kelvin 揀「利放頭加大」：全天候「利放頭」用 ±6pp（保守取值），其餘情境同草地一樣。
+SCENARIO_STYLE_PP_AWT = {"放頭": {"放頭": 6, "守中": 0, "後上": -6}}
+SCENARIO_STYLE_FULL_PP_AWT = 6
 
 
 def scenario_constants() -> dict:
@@ -315,7 +319,9 @@ def scenario_constants() -> dict:
     p0 = 0.25
     pp = 0.01 / (p0 * (1 - p0)) / SCENARIO_LOGIT_PER_RAW * DISPLAY_SLOPE
     return {"pp_to_display": round(pp, 3), "style": SCENARIO_STYLE_PP, "draw": SCENARIO_DRAW_PP, "inrace": SCENARIO_INRACE,
-            "full_pp": {"style": SCENARIO_STYLE_FULL_PP, "draw": SCENARIO_DRAW_FULL_PP}}
+            "full_pp": {"style": SCENARIO_STYLE_FULL_PP, "draw": SCENARIO_DRAW_FULL_PP},
+            # 全天候場：只覆蓋列出嘅情境，其餘照用 style／draw
+            "awt": {"style": SCENARIO_STYLE_PP_AWT, "full_pp": {"style": SCENARIO_STYLE_FULL_PP_AWT}}}
 
 
 def _horse_ref(horses: dict, no) -> dict:
