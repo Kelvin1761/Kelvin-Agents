@@ -65,3 +65,17 @@ def test_fav_second_export():
     assert _fav_second({}) is None
     assert _day("au", rv, None)["fav_second"]["cases"][0]["winner"]["name"] == "B"
     assert "fav_second" not in _day("nba", rv, None)
+
+
+def test_sgm_export():
+    from services.learning_board_export import _day, _sgm
+    leg = {"selection": "A REB 4+", "state": "lost", "actual": 3, "line": 4, "model_p": 0.7, "exp_minutes": 29.2,
+           "act_minutes": 31, "miss": "模型判錯", "why": {"big": "x"}}
+    rv = {"date": "2026-11-26", "sgm": {"trail_days": 30, "day_summary": {"combos": 1, "won": 0, "lost": 1, "roi": -1.0},
+          "trailing_summary": {"combos": 5, "formal": {"combos": 2}, "research": {"combos": 3}},
+          "combos": [{"event": "BKN @ MIL", "kind_label": "紙上", "state": "lost", "odds": 3.0, "legs": [leg] * 3,
+                      "diagnosis": {"one_leg_away": False, "bust_was_weakest_link": False}}] * 20}}
+    s = _sgm(rv)
+    assert s["day"]["lost"] == 1 and s["trail_research"]["combos"] == 3 and len(s["combos"]) == 12
+    assert "why" not in s["combos"][0]["legs"][0] and s["combos"][0]["legs"][0]["miss"] == "模型判錯"
+    assert _sgm({}) is None and _day("nba", rv, None)["sgm"]["day"]["combos"] == 1 and "sgm" not in _day("au", rv, None)

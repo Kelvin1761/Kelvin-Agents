@@ -88,6 +88,31 @@ def _fav_second(rv: dict) -> dict | None:
     return {"counters": {k: (pa.get("counters") or {}).get(k) for k in keys}, "cases": cases}
 
 
+def _sgm(rv: dict) -> dict | None:
+    """NBA SGM 組合覆盤（Kelvin 2026-11-27「same level of details and harshness」）：只抄 post_review_sports 寫好嘅 `sgm`。"""
+    s = rv.get("sgm")
+    if not isinstance(s, dict):
+        return None
+    keys = ("combos", "won", "lost", "void", "hit_rate", "mean_model_p", "mean_implied_p", "pnl_units", "roi",
+            "one_leg_away", "one_leg_away_share", "bust_legs_total", "bust_by_market", "bust_by_miss_class",
+            "bust_p80_plus", "mean_ev", "mean_correlation_discount")
+    pick = lambda d: {k: (d or {}).get(k) for k in keys}  # noqa: E731
+    trail = s.get("trailing_summary") or {}
+    combos = []
+    for c in (s.get("combos") or [])[:12]:
+        dg = c.get("diagnosis") or {}
+        combos.append({"event": c.get("event"), "kind": c.get("kind_label"), "state": c.get("state"),
+                       "odds": c.get("odds"), "model_p": c.get("model_p"), "ev": c.get("ev"),
+                       "correlation_discount": c.get("correlation_discount"),
+                       "one_leg_away": dg.get("one_leg_away"), "bust_was_weakest_link": dg.get("bust_was_weakest_link"),
+                       "morning_update_changed": dg.get("morning_update_changed"),
+                       "would_21h_version_have_won": dg.get("would_21h_version_have_won"),
+                       "legs": [{k: l.get(k) for k in ("selection", "state", "actual", "line", "model_p", "exp_minutes",
+                                                       "act_minutes", "miss")} for l in c.get("legs") or []]})
+    return {"day": pick(s.get("day_summary")), "trail": pick(trail), "trail_formal": pick(trail.get("formal")),
+            "trail_research": pick(trail.get("research")), "trail_days": s.get("trail_days"), "combos": combos}
+
+
 def _day(domain: str, rv: dict, ai: dict | None) -> dict:
     out = {"date": rv.get("date"), "summary": rv.get("summary") or {}, "cohorts": _cohorts(rv),
            "reconciliation_ok": (rv.get("reconciliation") or {}).get("ok")}
@@ -103,6 +128,8 @@ def _day(domain: str, rv: dict, ai: dict | None) -> dict:
         out["featured_summary"] = rv.get("featured_summary")
         out["confident_miss_classes"] = rv.get("confident_miss_classes")
         out["confident_total"] = rv.get("confident_total")
+        if domain == "nba":
+            out["sgm"] = _sgm(rv)
     if ai and ai.get("status") in ("ok", "partial"):
         out["ai"] = {"reviewer": ai.get("reviewer") if "reviewer" in ai else "sonnet", "narrative": str(ai.get("narrative") or "")[:2000], "dropped": len(ai.get("dropped_sentences") or []),
                      "hypotheses": [{"title": h.get("title"), "cohort": h.get("cohort"), "direction": h.get("direction"),
