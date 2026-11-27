@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261127-42](EXP-20261127-42-nba-sgm-ms2-selection-replay.md) | 2026-11-27 | NBA | SGM（B2）揀腳改用 MS2 會唔會好啲（事後回測） | **探索，冇改 code**：只換 edge 冇分別（1 對 2）；揀 MS2 聯合機率最高全中 44.7% 對 32.1%（12 對 2），但組合平啲（2.12 對 2.45），粗略兩個都蝕；冇真 SGM 報價唔判。B2 池單腳 MS2 log-loss −0.0047 [−0.0078,−0.0016] |
 | [EXP-20261127-41](EXP-20261127-41-nba-ms2-golive-profit-forward-protocol.md) | 2026-11-27 | NBA | MS2 上線後盈利有冇改善（live MS2 對 shadow 舊 MS，同一張盤） | **協議（上線前 commit）**：p_final 改 MS2、舊 MS 做 `p_legacy` shadow；現有 forward 改讀 `p_legacy` 樣本唔斷；主指標全部 edge≥5pp 大細盤 ROI 差，28 日＋600 注判一次 |
 | [EXP-20261127-40](EXP-20261127-40-nba-s2-forward-verdict.md) | 2026-11-27 | NBA | S2 forward（EXP-20261111-05）判決：MS2（市場＋S2，S 份額 0.35）勝過現行發佈機率 | **PASS（主指標）**：14 日／15,787 腿，Δ log-loss −0.00183 [−0.00313, −0.00065]；Brier −0.00064 [−0.00111, −0.00022]。但 MS2 − MSR +0.00017 跨零 = 改善嚟自重擬合，唔係新上場時間；精選重揀換走約七成注（ROI 差係噪音）。冇改 code，上唔上線交 Kelvin |
 | [EXP-20261127-30](EXP-20261127-30-au-reeval-weights-and-draw-ladder.md) | 2026-11-27 | AU | 重評 EXP-20260826-02（pace_perf 權重）、EXP-20260821-02（gain＋權重重 fit）、EXP-20260821-03（檔位階梯×馬匹數），語料 5,102 場 | **REJECT 維持，冇改 live**：調低 pace_perf dev NDCG CI 全負；refit 而家 19–26/400 過 fold 閘、方向穩定（pace_perf↑≈0.19），但 08-05+ walk-forward 2,400 場 Gold +0.25、Good −0.12、OBJ 2/6；gain 機制已退役；檔位階梯已由 draw.py 解決，馬匹數倍數由 6.7× 跌到約 1.8×、細場次內檔 +2.6pp 顯著，交 EXP-20261102-08 forward（793/1,000） |
@@ -678,3 +679,4 @@
 - [EXP-20261127-41](EXP-20261127-41-nba-ms2-golive-profit-forward-protocol.md) — NBA MS2 上線協議＋盈利 forward（live MS2 vs shadow 舊 MS，ROI 差，28 日／600 注）。
 - [EXP-20261127-71](EXP-20261127-71-tennis-te-identity-link-results.md) — 網球 TE 縮寫名連結：受影響 2,340 場 log-loss −0.0249 [−0.0302,−0.0199] KEEP 候選；ITF −0.022、UTR −0.079、Challenger 0；剔重播日期洩漏（TE 記早一日）後仍 −0.022；模型仍輸市場；開關 TENNIS_ABBREV_LINK 預設關等 Kelvin
 - [EXP-20261127-80](EXP-20261127-80-hkjc-scenario-magnitude-by-surface.md) — HKJC 情境幅度分草地／全天候量：全天候樣本細（CI ±8pp+），預先登記得守中過（反向）；Kelvin 揀全天候利放頭 ±6pp（量到 +10pp，未過 holdout）。另揭 2024–25 季賽果 `course` 全空（168 場全天候當草地）。
+- [EXP-20261127-42](EXP-20261127-42-nba-sgm-ms2-selection-replay.md) — NBA SGM 揀腳用 MS2 回測：換 edge 冇用；揀聯合機率最高中得多但組合平啲，要真報價 shadow 先判。
