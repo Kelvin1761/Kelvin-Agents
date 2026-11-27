@@ -662,3 +662,188 @@ def apply_merges(conn, plans: list[MergePlan]) -> dict:
         "SELECT COUNT(*) FROM matches WHERE player_a_id = player_b_id"
     ).fetchone()[0]
     return summary
+
+
+ABBREVIATED_MERGE_REASON = "merge: abbreviated name with co-appearance"
+
+
+def _is_abbreviated(tokens: list[str]) -> bool:
+    """`normalise_player_name` turns the scoreboard form "Amarilla R." into "r amarilla"."""
+    return len(tokens) >= 2 and len(tokens[0]) == 1
+
+
+def _names_compatible(a: str, b: str) -> bool:
+    """Same person under the two conventions: full name, or initial + surname."""
+    if a == b:
+        return True
+    ta, tb = a.split(), b.split()
+    if len(ta) < 2 or len(tb) < 2:
+        return False
+    abbrev_a, abbrev_b = _is_abbreviated(ta), _is_abbreviated(tb)
+    if abbrev_a == abbrev_b:
+        return False
+    short, full = (ta, tb) if abbrev_a else (tb, ta)
+    surname = short[1:]
+    return (len(full[0]) >= 2 and full[0][0] == short[0]
+            and len(full) > len(surname) and full[-len(surname):] == surname)
+
+
+def plan_abbreviated_merges(conn, evidence: dict | None = None) -> list[MergePlan]:
+    """Fold a scoreboard-style player ("Amarilla R.") into the full-name player it is.
+
+    Lower-tier result boards print surname + initial, so their history built its own
+    player rows that `plan_merges` (same normalised name only) never joins to the
+    full-name rows the odds feed creates -- in 2026-11 that left ~38% of priced ITF and
+    ~57% of UTR player-sides without any match history (EXP-20261127-70/-71).
+
+    Surname + initial alone is NOT identity (`_plan_middle_name_merges`: 31 of 101 such
+    candidates were siblings or namesakes), so every link needs all of:
+      * one full-name person for the abbreviated row, and one abbreviated row for that
+        person (same-name duplicates of the full name count as one person);
+      * a co-appearance: the abbreviated row has a history match on day D against X and
+        a full-name row has a fixture on D +/- 1 against an opponent compatible with X;
+      * neither disproof: they never faced each other, and they are not ranked on
+        different tours.
+    The full-name row stays canonical so cards keep printing "Ramiro Amarilla".
+    `evidence`, if given, is filled with abbreviated id -> (day, history opponent,
+    fixture opponent) for audit.
+    """
+    from datetime import date, timedelta
+
+    ensure_identity_schema(conn)
+    abbreviated: dict[tuple[str, ...], list[int]] = {}
+    persons: dict[str, list[int]] = {}
+    norm_of: dict[int, str] = {}
+    for pid, name in conn.execute("SELECT id, name FROM players WHERE canonical_player_id IS NULL"):
+        if not name or "/" in name or is_placeholder(name):
+            continue
+        norm = normalise_player_name(name)
+        tokens = norm.split()
+        if len(tokens) < 2:
+            continue
+        norm_of[int(pid)] = norm
+        if _is_abbreviated(tokens):
+            abbreviated.setdefault(tuple(tokens), []).append(int(pid))
+        elif len(tokens[0]) >= 2:
+            persons.setdefault(norm, []).append(int(pid))
+
+    # every abbreviated key a full name could be printed as: initial + last k tokens
+    full_keys: dict[tuple[str, ...], set[str]] = {}
+    for norm in persons:
+        tokens = norm.split()
+        for k in range(1, len(tokens)):
+            full_keys.setdefault((tokens[0][0], *tokens[k:]), set()).add(norm)
+    abbrev_for_person: dict[str, list[tuple[str, ...]]] = {}
+    for key in abbreviated:
+        for norm in full_keys.get(key, ()):
+            abbrev_for_person.setdefault(norm, []).append(key)
+
+    candidates = []
+    for key, abbrev_ids in abbreviated.items():
+        matched = full_keys.get(key, set())
+        if len(matched) != 1 or len(abbrev_ids) != 1:
+            continue
+        person = next(iter(matched))
+        if len(abbrev_for_person.get(person, [])) != 1:
+            continue
+        candidates.append((abbrev_ids[0], persons[person]))
+    if not candidates:
+        return []
+
+    def _day(value):
+        try:
+            return date.fromisoformat(str(value)[:10])
+        except ValueError:
+            return None
+
+    abbrev_ids = [a for a, _ in candidates]
+    full_ids = [pid for _, ids in candidates for pid in ids]
+    member_ids = abbrev_ids + full_ids
+    # Bulk reads only: one query per table, then everything in memory. Per-candidate
+    # queries (the `_played_each_other` / `ranking_tour` helpers) took >10 minutes.
+    history: dict[int, list[tuple[date, int]]] = {}
+    for start in range(0, len(member_ids), 900):
+        chunk = member_ids[start:start + 900]
+        for pid, day, opp in conn.execute(
+                f"SELECT player_id, match_date, opponent_id FROM player_match_history "
+                f"WHERE player_id IN ({','.join('?' * len(chunk))}) AND opponent_id IS NOT NULL "
+                f"AND {active_clause()}",
+                chunk):
+            d = _day(day)
+            if d:
+                history.setdefault(int(pid), []).append((d, int(opp)))
+    fixtures: dict[int, list[tuple[date, int]]] = {}
+    for start in range(0, len(full_ids), 450):
+        chunk = full_ids[start:start + 450]
+        marks = ",".join("?" * len(chunk))
+        for a, b, day in conn.execute(
+                f"SELECT player_a_id, player_b_id, match_date FROM matches "
+                f"WHERE player_a_id IN ({marks}) OR player_b_id IN ({marks})", chunk + chunk):
+            d = _day(day)
+            if not d:
+                continue
+            fixtures.setdefault(int(a), []).append((d, int(b)))
+            fixtures.setdefault(int(b), []).append((d, int(a)))
+    missing = {opp for rows in [*history.values(), *fixtures.values()] for _d, opp in rows} - set(norm_of)
+    for start in range(0, len(missing), 900):
+        chunk = list(missing)[start:start + 900]
+        for pid, name in conn.execute(
+                f"SELECT id, name FROM players WHERE id IN ({','.join('?' * len(chunk))})", chunk):
+            norm_of[int(pid)] = normalise_player_name(name)
+
+    ranked: dict[int, dict[str, int]] = {}
+    for start in range(0, len(member_ids), 900):
+        chunk = member_ids[start:start + 900]
+        for pid, tour, k in conn.execute(
+                f"SELECT player_id, tour, COUNT(*) FROM rankings_history WHERE tour IS NOT NULL "
+                f"AND player_id IN ({','.join('?' * len(chunk))}) GROUP BY player_id, tour", chunk):
+            ranked.setdefault(int(pid), {})[str(tour).upper()] = int(k)
+
+    def _ranking_tour(pid):  # same rule as `ranking_tour`, from the bulk read
+        tours = ranked.get(pid)
+        if not tours:
+            return None
+        tour, k = max(tours.items(), key=lambda item: item[1])
+        return tour if k >= MIN_TOUR_EVIDENCE else None
+
+    def _faced(members):  # same disproof as `_played_each_other`, from the bulk reads
+        group = set(members)
+        return any(opp in group and opp != pid
+                   for pid in members
+                   for _d, opp in [*history.get(pid, []), *fixtures.get(pid, [])])
+
+    counts = _history_counts(conn)
+    names = dict(conn.execute("SELECT id, name FROM players"))
+    plans: list[MergePlan] = []
+    for abbrev_id, ids in candidates:
+        by_day: dict[date, list[str]] = {}
+        for d, opp in fixtures_for(ids, fixtures):
+            by_day.setdefault(d, []).append(norm_of.get(opp, ""))
+        seen = next(((d, norm_of.get(opp, ""), other)
+                     for d, opp in history.get(abbrev_id, [])
+                     for shift in (-1, 0, 1)
+                     for other in by_day.get(d + timedelta(days=shift), [])
+                     if _names_compatible(norm_of.get(opp, ""), other)), None)
+        if not seen:
+            continue
+        members = [abbrev_id, *ids]
+        if _faced(members):
+            continue
+        if len({tour for tour in (_ranking_tour(pid) for pid in members) if tour}) > 1:
+            continue
+        canonical = sorted(ids, key=lambda pid: (-counts.get(pid, 0), pid))[0]
+        duplicates = [pid for pid in members if pid != canonical]
+        if evidence is not None:
+            evidence[abbrev_id] = (seen[0].isoformat(), seen[1], seen[2])
+        plans.append(MergePlan(
+            canonical_id=canonical,
+            canonical_name=names.get(canonical) or "",
+            duplicate_ids=duplicates,
+            history_rows_moved=sum(counts.get(pid, 0) for pid in duplicates),
+            reason=ABBREVIATED_MERGE_REASON,
+        ))
+    return plans
+
+
+def fixtures_for(ids: list[int], fixtures: dict[int, list]) -> list:
+    return [row for pid in ids for row in fixtures.get(pid, [])]
