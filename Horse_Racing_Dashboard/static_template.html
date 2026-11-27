@@ -4471,11 +4471,29 @@ function lbDayHtml(key, d, open) {
   const cohRest = cohList.filter(isNoise);
   const cohorts = cohList.length ? (cohShown.length ? `<ul class="lb-cohs">${cohShown.map(cohortCard).join('')}</ul>` : '')
     + (cohRest.length ? `<details class="lb-more"><summary>其餘 ${cohRest.length} 個組別（今晚現象，跨日 CI 包 0）</summary><ul class="lb-cohs">${cohRest.map(cohortCard).join('')}</ul></details>` : '') : '';
+  // 深入覆盤 L1.5 個案 a（2026-11-27）：大熱贏、模型排第二 —— 逐項拆分差。只係解釋，唔准用嚟調權重。
+  const fs = d.fav_second;
+  const fsPart = (p, side) => {
+    const weak = (p.top_weak ? '首選證據薄' : '') + (p.top_weak && p.win_weak ? '、' : '') + (p.win_weak ? '大熱證據薄' : '');
+    return `<span class="lb-tag lb-tag--wide ${side === 'top' ? '' : 'lb-tag--muted'}">${esc(p.label || p.key)} ${esc((p.contribution > 0 ? '+' : '') + p.contribution)}${weak ? ` <b>（${esc(weak)}）</b>` : ''}</span>`;
+  };
+  const favSecond = fs && fs.error ? `<p class="calib-card__meta">⚠️ 逐對拆解出錯：${esc(fs.error)}</p>`
+    : fs && fs.counters ? `<p class="calib-card__meta lb-coh-help">大熱贏 ${lbN(fs.counters.fav_won)} 場：模型排第 1 ${lbN(fs.counters.fav_won_rank1)}、第 2 ${lbN(fs.counters.fav_won_rank2)}、第 3+ ${lbN(fs.counters.fav_won_rank3plus)}。分差 = 我哋首選減大熱嘅總分；正數 = 推高首選，負數 = 幫大熱。</p>`
+      + ((fs.cases || []).length ? `<ul class="lb-cohs">${fs.cases.map(c => `<li class="lb-coh"><div class="lb-coh__top"><b class="lb-coh__name">${esc((c.meeting || '').replace(/^\d{4}-\d{2}-\d{2}[ _]/, '').replace(/\s+Race\s+\d+(-\d+)?$/i, ''))} R${lbN(c.race)}</b><span class="lb-coh__today">分差 <b>${esc((c.gap > 0 ? '+' : '') + c.gap)}</b></span></div>`
+        + `<div class="lb-coh__trail">大熱 <b>${esc(c.winner.name || '')}</b>（${lbN(c.winner.sp)}）贏；我哋首選 <b>${esc(c.top_pick.name || '')}</b>（${lbN(c.top_pick.sp)}，跑第 ${lbN(c.top_pick.pos)}）</div>`
+        + (c.swap_reason ? `<div class="lb-coh__read"><span class="lb-tag lb-tag--wide lb-tag--warn">換位規則：${esc(c.swap_reason)}</span></div>` : '')
+        + `<div class="lb-coh__read">推高首選：${(c.top_reasons || []).map(p => fsPart(p, 'top')).join(' ') || '—'}</div>`
+        + `<div class="lb-coh__read">幫大熱：${(c.against || []).map(p => fsPart(p, 'win')).join(' ') || '—'}</div>`
+        + ((c.weak || []).length ? `<div class="lb-coh__read"><span class="lb-tag lb-tag--wide lb-tag--warn">證據薄而推高首選：${esc(c.weak.map(p => p.label || p.key).join('、'))}</span></div>` : '')
+        + (c.leaf_level_valid === false ? `<div class="lb-coh__read"><small>舊版引擎快照：只拆到維度層</small></div>` : '')
+        + `</li>`).join('')}</ul>` : '<p class="calib-card__meta">今日冇（大熱贏而我哋排第二）</p>')
+    : '';
   const hyps = d.ai && d.ai.hypotheses && d.ai.hypotheses.length ? `<ul class="lb-list">${d.ai.hypotheses.map(h =>
     `<li>${esc(h.title)} <span class="lb-tag ${h.verdict === '值得驗證' ? 'lb-tag--good' : h.verdict === '洩漏' ? 'lb-tag--bad' : ''}">${esc(h.verdict)}</span></li>`).join('')}</ul>` : '';
   return `<details class="lb-day"${open ? ' open' : ''}><summary>${esc(d.date)}${d.reconciliation_ok === false ? ' <span class="lb-tag lb-tag--bad">核數有缺</span>' : ''}</summary>
     <div class="lb-kpis">${kpis}</div>${ai}
     ${misses ? `<h4 class="pf-h2" style="font-size:.8rem;margin:10px 0 2px">失手場（每場一匹高估／低估）</h4><ul class="lb-list">${misses}</ul>` : ''}
+    ${favSecond ? `<h4 class="pf-h2" style="font-size:.8rem;margin:10px 0 2px">🔬 大熱贏、我哋排第二：點解冇揀佢（逐項拆分差；只係解釋，唔改模型）</h4>${favSecond}` : ''}
     ${cohorts ? `<h4 class="pf-h2" style="font-size:.8rem;margin:10px 0 2px">今日組別 vs 之前 live 日（描述，唔係判決）</h4><p class="calib-card__meta lb-coh-help">「今日」= 入前三數同模型預期嘅差（+ 即模型低估）；「之前 live 日」= 同一組別跨日偏差同 95% 區間。</p>${cohorts}` : ''}
     ${hyps ? `<h4 class="pf-h2" style="font-size:.8rem;margin:10px 0 2px">AI 提出嘅假設（${esc(d.ai.reviewer ? (d.ai.reviewer === 'sol' ? 'Sol 審' : d.ai.reviewer === 'sonnet' ? 'Sonnet 審' : d.ai.reviewer) : '未審')}）</h4>${hyps}` : ''}
   </details>`;

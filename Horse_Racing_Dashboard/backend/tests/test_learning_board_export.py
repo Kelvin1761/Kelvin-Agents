@@ -42,3 +42,26 @@ def test_reviewer_export_and_old_fallback():
     assert _day("nba", review, {"status": "ok", "reviewer": "sol"})["ai"]["reviewer"] == "sol"
     assert _day("nba", review, {"status": "ok"})["ai"]["reviewer"] == "sonnet"
     assert _day("nba", review, {"status": "partial", "reviewer": None})["ai"]["reviewer"] is None
+
+
+def test_fav_second_export():
+    """深入覆盤 L1.5 個案 a：計數、每場拆分、證據薄旗；出錯照報；舊覆盤（冇 pair_autopsy）= None。"""
+    from services.learning_board_export import _day, _fav_second
+    ev_weak, ev_ok = {"weak": True, "default_60": True}, {"weak": False}
+    part = {"kind": "leaf", "key": "form_quality_score", "label": "近績質素分", "contribution": 7.764,
+            "top_value": 80, "win_value": 60, "top_evidence": ev_ok, "win_evidence": ev_weak}
+    rv = {"date": "2026-11-26", "pair_autopsy": {"counters": {"fav_won": 15, "fav_won_rank1": 10, "fav_won_rank2": 3,
+                                                               "fav_won_rank3plus": 2, "notes": ["x"]},
+          "cases": [{"meeting": "2026-11-26 Mornington Race 1-8", "race": 1, "field_size": 10,
+                     "top_pick": {"name": "A", "sp": 5.0, "pos": 4, "score": 70}, "winner": {"name": "B", "sp": 2.5},
+                     "total_gap": 4.756, "swap": None, "leaf_level_valid": True, "unexplained": False,
+                     "top_reasons": [part], "against": [], "weak_evidence_reasons": [part], "parts": [part] * 40}]}}
+    fs = _fav_second(rv)
+    assert fs["counters"]["fav_won_rank2"] == 3 and "notes" not in fs["counters"]
+    c = fs["cases"][0]
+    assert c["gap"] == 4.76 and "parts" not in c and c["top_reasons"][0]["contribution"] == 7.76
+    assert c["top_reasons"][0]["win_weak"] is True and c["top_reasons"][0]["top_weak"] is False
+    assert _fav_second({"pair_autopsy": {"error": "boom"}}) == {"error": "boom"}
+    assert _fav_second({}) is None
+    assert _day("au", rv, None)["fav_second"]["cases"][0]["winner"]["name"] == "B"
+    assert "fav_second" not in _day("nba", rv, None)
