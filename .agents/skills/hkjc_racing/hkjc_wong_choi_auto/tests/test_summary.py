@@ -106,6 +106,9 @@ def test_scenario_constants():
     assert sc["style"]["放頭+守中"] == {"放頭": 1, "守中": 1, "後上": -2}
     assert sc["style"]["守中+後上"] == {"放頭": -2, "守中": 1, "後上": 1}
     assert sc["inrace"] == {"shrink": 0.2, "cap_pp": 2, "min_starts": 8}
+    # 全天候（EXP-20261127-80，Kelvin 揀「利放頭加大」）：只有利放頭另用 ±6pp，其餘同草地
+    assert sc["awt"]["style"] == {"放頭": {"放頭": 6, "守中": 0, "後上": -6}}
+    assert sc["awt"]["full_pp"] == {"style": 6}
 
 
 def test_brief_cuts_at_clause_and_drops_codes():
