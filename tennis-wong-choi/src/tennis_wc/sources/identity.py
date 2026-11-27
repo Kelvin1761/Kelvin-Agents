@@ -674,6 +674,8 @@ def _is_abbreviated(tokens: list[str]) -> bool:
 
 def _names_compatible(a: str, b: str) -> bool:
     """Same person under the two conventions: full name, or initial + surname."""
+    if not a or not b:
+        return False  # an unknown opponent proves nothing (Sol 2026-11-27)
     if a == b:
         return True
     ta, tb = a.split(), b.split()
@@ -738,10 +740,12 @@ def plan_abbreviated_merges(conn, evidence: dict | None = None) -> list[MergePla
         for norm in full_keys.get(key, ()):
             abbrev_for_person.setdefault(norm, []).append(key)
 
+    te_players = {int(r[0]) for r in conn.execute(
+        "SELECT DISTINCT player_id FROM player_match_history WHERE source_provider = 'tennisexplorer'")}
     candidates = []
     for key, abbrev_ids in abbreviated.items():
         matched = full_keys.get(key, set())
-        if len(matched) != 1 or len(abbrev_ids) != 1:
+        if len(matched) != 1 or len(abbrev_ids) != 1 or abbrev_ids[0] not in te_players:
             continue
         person = next(iter(matched))
         if len(abbrev_for_person.get(person, [])) != 1:
@@ -761,30 +765,36 @@ def plan_abbreviated_merges(conn, evidence: dict | None = None) -> list[MergePla
     member_ids = abbrev_ids + full_ids
     # Bulk reads only: one query per table, then everything in memory. Per-candidate
     # queries (the `_played_each_other` / `ranking_tour` helpers) took >10 minutes.
-    history: dict[int, list[tuple[date, int]]] = {}
+    history: dict[int, list[tuple[date, int]]] = {}   # evidence: TE rows with a date
+    opponents: dict[int, set[int]] = {}               # disproof: every source, any date
     for start in range(0, len(member_ids), 900):
         chunk = member_ids[start:start + 900]
-        for pid, day, opp in conn.execute(
-                f"SELECT player_id, match_date, opponent_id FROM player_match_history "
+        for pid, day, opp, src in conn.execute(
+                f"SELECT player_id, match_date, opponent_id, source_provider FROM player_match_history "
                 f"WHERE player_id IN ({','.join('?' * len(chunk))}) AND opponent_id IS NOT NULL "
                 f"AND {active_clause()}",
                 chunk):
+            opponents.setdefault(int(pid), set()).add(int(opp))
             d = _day(day)
-            if d:
+            if d and src == "tennisexplorer":
                 history.setdefault(int(pid), []).append((d, int(opp)))
     fixtures: dict[int, list[tuple[date, int]]] = {}
     for start in range(0, len(full_ids), 450):
         chunk = full_ids[start:start + 450]
         marks = ",".join("?" * len(chunk))
-        for a, b, day in conn.execute(
-                f"SELECT player_a_id, player_b_id, match_date FROM matches "
+        for a, b, day, src in conn.execute(
+                f"SELECT player_a_id, player_b_id, match_date, source_provider FROM matches "
                 f"WHERE player_a_id IN ({marks}) OR player_b_id IN ({marks})", chunk + chunk):
+            a, b = int(a), int(b)
+            opponents.setdefault(a, set()).add(b)
+            opponents.setdefault(b, set()).add(a)
             d = _day(day)
-            if not d:
+            if not d or src != "sportsbet":
                 continue
-            fixtures.setdefault(int(a), []).append((d, int(b)))
-            fixtures.setdefault(int(b), []).append((d, int(a)))
+            fixtures.setdefault(a, []).append((d, b))
+            fixtures.setdefault(b, []).append((d, a))
     missing = {opp for rows in [*history.values(), *fixtures.values()] for _d, opp in rows} - set(norm_of)
+    missing = {pid for pid in missing if pid is not None}
     for start in range(0, len(missing), 900):
         chunk = list(missing)[start:start + 900]
         for pid, name in conn.execute(
@@ -797,7 +807,8 @@ def plan_abbreviated_merges(conn, evidence: dict | None = None) -> list[MergePla
         for pid, tour, k in conn.execute(
                 f"SELECT player_id, tour, COUNT(*) FROM rankings_history WHERE tour IS NOT NULL "
                 f"AND player_id IN ({','.join('?' * len(chunk))}) GROUP BY player_id, tour", chunk):
-            ranked.setdefault(int(pid), {})[str(tour).upper()] = int(k)
+            tours = ranked.setdefault(int(pid), {})
+            tours[str(tour).upper()] = tours.get(str(tour).upper(), 0) + int(k)
 
     def _ranking_tour(pid):  # same rule as `ranking_tour`, from the bulk read
         tours = ranked.get(pid)
@@ -808,9 +819,7 @@ def plan_abbreviated_merges(conn, evidence: dict | None = None) -> list[MergePla
 
     def _faced(members):  # same disproof as `_played_each_other`, from the bulk reads
         group = set(members)
-        return any(opp in group and opp != pid
-                   for pid in members
-                   for _d, opp in [*history.get(pid, []), *fixtures.get(pid, [])])
+        return any(opp in group and opp != pid for pid in members for opp in opponents.get(pid, ()))
 
     counts = _history_counts(conn)
     names = dict(conn.execute("SELECT id, name FROM players"))
@@ -847,3 +856,18 @@ def plan_abbreviated_merges(conn, evidence: dict | None = None) -> list[MergePla
 
 def fixtures_for(ids: list[int], fixtures: dict[int, list]) -> list:
     return [row for pid in ids for row in fixtures.get(pid, [])]
+
+
+def apply_abbreviated_merges(conn, plans: list[MergePlan]) -> dict:
+    """`apply_merges`, then drop the scoreboard spellings it registered as aliases.
+
+    "r amarilla" as a global alias would pull a future, different "Amarilla R." into
+    Ramiro by name alone (Sol 2026-11-27). The linked TE row's provider id still points at
+    the canonical row, so the same person keeps resolving.
+    """
+    summary = apply_merges(conn, plans)
+    for plan in plans:
+        conn.execute(
+            "DELETE FROM player_aliases WHERE canonical_player_id = ? AND source = 'merge' "
+            "AND alias_norm GLOB '[a-z] *'", (plan.canonical_id,))
+    return summary

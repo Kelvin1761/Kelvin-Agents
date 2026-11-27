@@ -114,6 +114,7 @@ def merge_identities() -> dict:
     """Apply only the merges the identity planner is confident about."""
     from tennis_wc.sources.identity import (
         ABBREVIATED_MERGE_REASON,
+        apply_abbreviated_merges,
         apply_merges,
         ensure_identity_schema,
         plan_abbreviated_merges,
@@ -134,7 +135,12 @@ def merge_identities() -> dict:
                            and not claimed & {plan.canonical_id, *plan.duplicate_ids}]
         if not confident and not abbreviated:
             return {"groups": 0, "refused": len(plans), "abbreviated_groups": 0}
-        summary = apply_merges(conn, confident + abbreviated)
+        summary = apply_merges(conn, confident) if confident else {}
+        if abbreviated:
+            linked = apply_abbreviated_merges(conn, abbreviated)
+            for key, value in linked.items():
+                if isinstance(value, int):
+                    summary[key] = summary.get(key, 0) + value
         summary["refused"] = len(plans) - len(confident)
         summary["abbreviated_groups"] = len(abbreviated)
         return summary

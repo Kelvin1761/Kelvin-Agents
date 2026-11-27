@@ -46,10 +46,10 @@ def level(name):
 
 def cmd_apply(db):
     sys.path.insert(0, ROOT)
-    from tennis_wc.sources.identity import apply_merges, plan_abbreviated_merges
+    from tennis_wc.sources.identity import apply_abbreviated_merges, plan_abbreviated_merges
     conn = sqlite3.connect(db)
     plans = plan_abbreviated_merges(conn)
-    print(json.dumps(apply_merges(conn, plans)))
+    print(json.dumps(apply_abbreviated_merges(conn, plans)))
     conn.commit()
 
 

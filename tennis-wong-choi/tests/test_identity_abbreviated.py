@@ -156,3 +156,31 @@ def test_daily_merge_runs_it_only_when_switched_on(tmp_path, monkeypatch):
     summary = run.merge_identities()
     assert summary["abbreviated_groups"] == 1
     assert run.merge_identities().get("abbreviated_groups", 0) == 0, "idempotent: nothing left to link"
+
+
+def test_unknown_opponents_are_not_a_co_appearance():
+    from tennis_wc.sources.identity import _names_compatible
+
+    assert not _names_compatible("", "")
+    assert not _names_compatible("", "juan gomez")
+    assert _names_compatible("j gomez", "juan gomez")
+
+
+def test_only_tennisexplorer_scoreboard_rows_are_candidates(tmp_path, monkeypatch):
+    conn = _db(tmp_path, monkeypatch)
+    _base(conn)
+    conn.execute("UPDATE player_match_history SET source_provider = 'jeff_sackmann' WHERE player_id = 3")
+    assert not _plans(conn)
+    conn.close()
+
+
+def test_the_scoreboard_spelling_is_not_left_as_a_name_alias(tmp_path, monkeypatch):
+    """A future, different "Amarilla R." must not resolve to Ramiro by name alone."""
+    from tennis_wc.sources.identity import apply_abbreviated_merges, plan_abbreviated_merges
+
+    conn = _db(tmp_path, monkeypatch)
+    _base(conn)
+    apply_abbreviated_merges(conn, plan_abbreviated_merges(conn))
+    aliases = {row[0] for row in conn.execute("SELECT alias_norm FROM player_aliases")}
+    assert "ramiro amarilla" in aliases and "r amarilla" not in aliases
+    conn.close()
