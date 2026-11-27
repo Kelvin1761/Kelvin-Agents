@@ -282,6 +282,44 @@
     .lb-table { width: 100%; border-collapse: collapse; font-size: 0.74rem; }
     .lb-table th, .lb-table td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--pf-line); vertical-align: top; }
     .lb-wrap { overflow-x: auto; }
+    .lb-cohs { list-style: none; margin: 6px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+    .lb-coh { border: 1px solid var(--pf-line); border-radius: 10px; padding: 8px 10px; font-size: 0.78rem; line-height: 1.5; min-width: 0; }
+    .lb-coh__top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 10px; align-items: baseline; }
+    .lb-coh__name { font-size: 0.84rem; }
+    .lb-coh__today, .lb-coh__trail { color: var(--color-text-secondary); }
+    .lb-coh__today b, .lb-coh__trail b { color: var(--color-text); }
+    .lb-coh__today b.pf-up { color: var(--color-up); } .lb-coh__today b.pf-down { color: var(--color-down); }
+    .lb-coh__read { margin-top: 4px; }
+    .lb-coh__trail small { white-space: nowrap; }
+    .lb-tag--wide { margin-left: 0; border-radius: 8px; padding: 2px 8px; white-space: normal; line-height: 1.45; }
+    .lb-tag--muted { color: var(--color-text-secondary); }
+    .lb-coh-help { font-size: 0.72rem; margin: 2px 0 4px; }
+    .lb-more { margin-top: 8px; font-size: 0.78rem; }
+    .lb-more > summary { cursor: pointer; color: var(--color-text-secondary); }
+    .fb-summary { display: flex; flex-wrap: wrap; gap: 4px 8px; font-size: 0.78rem; color: var(--color-text-secondary); margin: 0 0 10px; font-variant-numeric: tabular-nums; }
+    .fb-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 0.74rem; color: var(--color-text-soft); margin: 0 0 10px; }
+    .fb-meta .lb-tag { margin-left: 0; }
+    .fb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+    .fb-grid--decided { margin-top: 8px; }
+    .fb-card { border: 1px solid var(--pf-line); border-radius: 10px; padding: 10px 12px; background: var(--pf-paper); min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+    .fb-card__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+    .fb-card__head .lb-tag { flex-shrink: 0; margin-left: 0; }
+    .fb-card__title { min-width: 0; font-size: 0.82rem; line-height: 1.4; overflow-wrap: anywhere; word-break: break-word; color: var(--color-text); }
+    .fb-card__exp { display: block; font-size: 0.7rem; color: var(--color-text-soft); font-weight: 500; }
+    .fb-prog { display: flex; flex-direction: column; gap: 4px; }
+    .fb-prog__row { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.74rem; color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
+    .fb-prog__row b { color: var(--color-text); }
+    .fb-prog__track { height: 6px; border-radius: 999px; background: var(--color-surface-alt, #F1F5F9); overflow: hidden; }
+    .fb-prog__fill { display: block; height: 100%; border-radius: 999px; background: var(--color-primary); }
+    .fb-prog__fill--good { background: var(--color-up); }
+    .fb-prog__fill--bad { background: var(--color-down); }
+    .fb-card__roi { font-size: 0.74rem; color: var(--color-text-secondary); font-variant-numeric: tabular-nums; line-height: 1.45; }
+    .fb-card__ci { color: var(--color-text-soft); }
+    .fb-card__warn { color: var(--color-text-soft); }
+    .fb-card__verdict { font-size: 0.74rem; color: var(--color-text-secondary); }
+    .fb-card__verdict b { color: var(--color-text); }
+    .fb-card__note { margin: 0; font-size: 0.74rem; line-height: 1.45; color: var(--color-text-secondary); overflow-wrap: anywhere; word-break: break-word; }
+    @media (max-width: 640px) { .lb-cohs, .fb-grid { grid-template-columns: 1fr; } .lb-day { padding: 10px; } .lb-kpis { flex-direction: column; gap: 4px; } }
     .horse-card__body { word-break: break-word; box-sizing: border-box; overflow: hidden; min-width: 0; }
     .horse-card__details { overflow-wrap: break-word; word-break: break-word; min-width: 0; }
 
@@ -4415,18 +4453,30 @@ function lbDayHtml(key, d, open) {
       + (o ? `：高估 ${esc(o.name)}（模型${lbN(o.rank)}→第${lbN(o.pos)}）${inc}${o.why && o.why.length ? ' ' + esc(o.why.join('／')) : ''}` : '')
       + (u ? `；低估 ${esc(u.name)}（模型${lbN(u.rank)}→第${lbN(u.pos)}）` : '') + '</li>';
   }).join('');
-  const cohorts = (d.cohorts || []).map(c => {
+  // 組別：一個組別一張卡（手機唔再擠成 4 欄表）；讀法自己一行。有嘢睇嘅（唔係「CI 包 0」）排先，其餘收埋。
+  const cohortCard = c => {
     const ci = c.trail_model_ci_pp;
-    const tone = String(c.reading || '').includes('跨日同方向') ? 'lb-tag--warn' : '';
-    return `<tr><td>${esc(c.label)}</td><td>${lbN(c.today_hits)}/${lbN(c.today_n)}（${lbPp(c.today_resid_pp)}）</td>`
-      + `<td>${lbPp(c.trail_model_resid_pp)}${ci ? ` [${lbPp(ci[0])}, ${lbPp(ci[1])}]` : ''}</td><td><span class="lb-tag ${tone}">${esc(c.reading || '')}</span></td></tr>`;
-  }).join('');
+    const reading = String(c.reading || '');
+    const tone = reading.includes('跨日同方向') ? 'lb-tag--warn' : reading.includes('相反') ? '' : 'lb-tag--muted';
+    const todayTone = c.today_resid_pp > 0 ? 'pf-up' : c.today_resid_pp < 0 ? 'pf-down' : '';
+    return `<li class="lb-coh"><div class="lb-coh__top"><b class="lb-coh__name">${esc(c.label)}</b>`
+      + `<span class="lb-coh__today">今日 ${lbN(c.today_hits)}/${lbN(c.today_n)} 入前三 <b class="${todayTone}">${lbPp(c.today_resid_pp)}</b></span></div>`
+      + `<div class="lb-coh__trail">之前 live 日模型偏差 <b>${lbPp(c.trail_model_resid_pp)}</b>${ci ? ` <small>95% [${lbPp(ci[0])}, ${lbPp(ci[1])}]</small>` : ''}`
+      + `${c.trail_n != null ? ` <small>・${lbN(c.trail_n)} 匹</small>` : ''}</div>`
+      + `<div class="lb-coh__read"><span class="lb-tag lb-tag--wide ${tone}">${esc(reading)}</span></div></li>`;
+  };
+  const cohList = d.cohorts || [];
+  const isNoise = c => String(c.reading || '').includes('CI 包 0');
+  const cohShown = cohList.filter(c => !isNoise(c));
+  const cohRest = cohList.filter(isNoise);
+  const cohorts = cohList.length ? (cohShown.length ? `<ul class="lb-cohs">${cohShown.map(cohortCard).join('')}</ul>` : '')
+    + (cohRest.length ? `<details class="lb-more"><summary>其餘 ${cohRest.length} 個組別（今晚現象，跨日 CI 包 0）</summary><ul class="lb-cohs">${cohRest.map(cohortCard).join('')}</ul></details>` : '') : '';
   const hyps = d.ai && d.ai.hypotheses && d.ai.hypotheses.length ? `<ul class="lb-list">${d.ai.hypotheses.map(h =>
     `<li>${esc(h.title)} <span class="lb-tag ${h.verdict === '值得驗證' ? 'lb-tag--good' : h.verdict === '洩漏' ? 'lb-tag--bad' : ''}">${esc(h.verdict)}</span></li>`).join('')}</ul>` : '';
   return `<details class="lb-day"${open ? ' open' : ''}><summary>${esc(d.date)}${d.reconciliation_ok === false ? ' <span class="lb-tag lb-tag--bad">核數有缺</span>' : ''}</summary>
     <div class="lb-kpis">${kpis}</div>${ai}
     ${misses ? `<h4 class="pf-h2" style="font-size:.8rem;margin:10px 0 2px">失手場（每場一匹高估／低估）</h4><ul class="lb-list">${misses}</ul>` : ''}
-    ${cohorts ? `<h4 class="pf-h2" style="font-size:.8rem;margin:10px 0 2px">今日組別 vs 之前 live 日（描述，唔係判決）</h4><div class="lb-wrap"><table class="lb-table"><thead><tr><th>組別</th><th>今日</th><th>跨日模型殘差</th><th>讀法</th></tr></thead><tbody>${cohorts}</tbody></table></div>` : ''}
+    ${cohorts ? `<h4 class="pf-h2" style="font-size:.8rem;margin:10px 0 2px">今日組別 vs 之前 live 日（描述，唔係判決）</h4><p class="calib-card__meta lb-coh-help">「今日」= 入前三數同模型預期嘅差（+ 即模型低估）；「之前 live 日」= 同一組別跨日偏差同 95% 區間。</p>${cohorts}` : ''}
     ${hyps ? `<h4 class="pf-h2" style="font-size:.8rem;margin:10px 0 2px">AI 提出嘅假設（Sonnet 審）</h4>${hyps}` : ''}
   </details>`;
 }
@@ -4473,6 +4523,104 @@ function renderLearningBoard() {
       ${sweep}
     </section>
     ${gapPanel}`;
+}
+
+// ── 🧪 Forward 測試總板（AU / HKJC / NBA / 網球）：只顯示，唔改判決或推送 ──
+let fbDomain = null;
+function fbSetDomain(key) { fbDomain = key; render(); }
+const FB_DOMAINS = [['au', 'AU 賽馬'], ['hkjc', '香港賽馬'], ['nba', 'NBA'], ['tennis', '網球']];
+const FB_STATUSES = ['stop', 'ready', 'stalled', 'error', 'collecting', 'decided'];
+const FB_STATUS_META = {
+  stop:       { icon: '⛔', label: '建議停',   cls: 'lb-tag--bad' },
+  ready:      { icon: '⏰', label: '夠數待判', cls: 'lb-tag--warn' },
+  stalled:    { icon: '⚠️', label: '停咗',     cls: 'lb-tag--warn' },
+  error:      { icon: '❌', label: '出錯',     cls: 'lb-tag--bad' },
+  collecting: { icon: '⏳', label: '收集中',   cls: '' },
+  decided:    { icon: '✅', label: '已判',     cls: 'lb-tag--good' },
+};
+
+function fbFmtPct(v) {
+  const n = 100 * Number(v);
+  return `${n > 0 ? '+' : ''}${n.toFixed(1)}%`;
+}
+
+function fbCardHtml(t) {
+  const st = FB_STATUS_META[t.status] || { icon: '', label: t.status || '—', cls: '' };
+  const hasCount = t.count != null;
+  const hasMin = t.minimum != null && Number(t.minimum) > 0;
+  const countTxt = hasCount ? String(t.count) : '—';
+  const minTxt = t.minimum != null ? String(t.minimum) : '?';
+  const pct = (hasCount && hasMin) ? Math.min(100, Math.max(0, Math.round((Number(t.count) / Number(t.minimum)) * 1000) / 10)) : 0;
+  const fillCls = t.status === 'stop' || t.status === 'error' ? ' fb-prog__fill--bad' : t.status === 'decided' ? ' fb-prog__fill--good' : '';
+  const unitTxt = t.unit ? ` ${esc(t.unit)}` : '';
+  let roiHtml = '';
+  if (t.roi != null) {
+    const roiTone = Number(t.roi) > 0 ? 'pf-up' : Number(t.roi) < 0 ? 'pf-down' : '';
+    const ciTxt = Array.isArray(t.ci) && t.ci.length === 2 ? ` [${fbFmtPct(t.ci[0])}, ${fbFmtPct(t.ci[1])}]` : '';
+    const warnTxt = t.status === 'collecting' ? '（未到判決點，唔准提早停）' : '';
+    roiHtml = `<div class="fb-card__roi">ROI <b class="${roiTone}">${esc(fbFmtPct(t.roi))}</b>${ciTxt ? `<span class="fb-card__ci">${esc(ciTxt)}</span>` : ''}${warnTxt ? `<span class="fb-card__warn">${esc(warnTxt)}</span>` : ''}</div>`;
+  }
+  const verdictHtml = t.verdict ? `<div class="fb-card__verdict">判決：<b>${esc(t.verdict)}</b></div>` : '';
+  const noteStr = t.note != null ? String(t.note).trim() : '';
+  const noteHtml = noteStr ? `<p class="fb-card__note">${esc(noteStr)}</p>` : '';
+  return `<article class="fb-card">
+    <div class="fb-card__head">
+      <div class="fb-card__title"><b>${esc(t.label || t.key || '')}</b>${t.experiment ? `<small class="fb-card__exp">${esc(t.experiment)}</small>` : ''}</div>
+      <span class="lb-tag ${st.cls}">${esc(st.icon + ' ' + st.label)}</span>
+    </div>
+    <div class="fb-prog">
+      <div class="fb-prog__row"><span>進度</span><b>${esc(countTxt)}/${esc(minTxt)}${unitTxt}</b></div>
+      <div class="fb-prog__track" role="progressbar" aria-valuenow="${esc(String(pct))}" aria-valuemin="0" aria-valuemax="100"><span class="fb-prog__fill${fillCls}" style="width:${esc(String(pct))}%"></span></div>
+    </div>
+    ${roiHtml}${verdictHtml}${noteHtml}
+  </article>`;
+}
+
+function renderForwardBoard() {
+  const fb = DASHBOARD_DATA.forward_board;
+  if (!fb || !fb.domains) return '';
+  const keys = FB_DOMAINS.map(([k]) => k).filter(k => fb.domains[k]);
+  if (!keys.length) return '';
+  if (!fbDomain || !fb.domains[fbDomain]) {
+    fbDomain = keys.find(k => (fb.domains[k].tests || []).some(t => t.status !== 'decided'))
+      || keys.find(k => (fb.domains[k].tests || []).length)
+      || keys[0];
+  }
+  const sum = fb.summary || {};
+  const sumHtml = (fb.statuses || FB_STATUSES).filter(s => FB_STATUS_META[s]).map(s => `${esc(FB_STATUS_META[s].icon)} ${lbN(sum[s] ?? 0)}`).join('・');
+  const tabs = keys.map(k => {
+    const label = (FB_DOMAINS.find(([dk]) => dk === k) || [k, k])[1];
+    const activeCount = (fb.domains[k].tests || []).filter(t => t.status !== 'decided').length;
+    return `<button type="button" class="pf-seg${k === fbDomain ? ' is-active' : ''}" aria-pressed="${k === fbDomain}" onclick="fbSetDomain('${esc(k)}')">${esc(label)} <small>${lbN(activeCount)}</small></button>`;
+  }).join('');
+  const dom = fb.domains[fbDomain] || {};
+  const domHead = dom.missing
+    ? '<div class="fb-meta"><span class="lb-tag lb-tag--warn">未有總板快照</span></div>'
+    : `<div class="fb-meta"><span>${lbN(dom.age_hours)} 鐘前更新</span>${dom.stale ? '<span class="lb-tag lb-tag--warn">tracker 好耐冇更新，可能停咗</span>' : ''}</div>`;
+  const order = Object.fromEntries((fb.statuses || FB_STATUSES).map((s, i) => [s, i]));
+  const allTests = [...(dom.tests || [])].sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9));
+  const activeTests = allTests.filter(t => t.status !== 'decided');
+  const decidedTests = allTests.filter(t => t.status === 'decided');
+  let bodyHtml = '';
+  if (!dom.missing && !allTests.length) {
+    bodyHtml = '<p class="calib-card__meta">暫時未有 forward 測試</p>';
+  } else {
+    const activeHtml = activeTests.length
+      ? `<div class="fb-grid">${activeTests.map(fbCardHtml).join('')}</div>`
+      : (dom.missing ? '' : '<p class="calib-card__meta">暫無進行中測試</p>');
+    const decidedHtml = decidedTests.length
+      ? `<details class="lb-more"><summary>已判 ${lbN(decidedTests.length)} 個</summary><div class="fb-grid fb-grid--decided">${decidedTests.map(fbCardHtml).join('')}</div></details>`
+      : '';
+    bodyHtml = activeHtml + decidedHtml;
+  }
+  const staleNote = fb.status === 'stale' ? ' · ⚠️ 讀取失敗，顯示上次數字' : '';
+  return `<section class="pf-panel">
+      <h2 class="pf-h2">🧪 Forward 測試 <small>夠數會 Telegram；判決預先登記，唔准提早停；上唔上線係 Kelvin 決定${staleNote}</small></h2>
+      <div class="fb-summary">${sumHtml}</div>
+      <div class="lb-tabs" role="group" aria-label="Forward 範疇">${tabs}</div>
+      ${domHead}
+      ${bodyHtml}
+    </section>`;
 }
 
 function renderPortfolioWorkspace() {
@@ -4543,6 +4691,7 @@ function renderPortfolioWorkspace() {
       <div class="pf-table-wrap"><table class="pf-table"><thead><tr><th scope="col">時段</th>${PF_SPORTS.map(s => `<th scope="col"><span class="pf-dot" style="background:${s.color}"></span>${esc(s.label)}</th>`).join('')}<th scope="col">合計</th></tr></thead><tbody>${tableRows}</tbody></table></div>
     </section>
     ${renderLearningBoard()}
+    ${renderForwardBoard()}
     ${renderCalibrationBoard()}
     <div class="scope-note">
       <span>📋</span>
