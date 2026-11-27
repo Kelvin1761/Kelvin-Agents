@@ -291,7 +291,18 @@ def build(platform: str, day: str, root: Path | None = None, trail_days: int | N
         "sources": sources,
         "rules": "描述唔係判決：唔會據此改模型；篩選每季做（Holm），判決經預先登記 forward（設計 §2–§4）。",
     }
+    review["pair_autopsy"] = _pair_autopsy(platform, day, root)
     return review
+
+
+def _pair_autopsy(platform: str, day: str, root: Path | None) -> dict:
+    """深入覆盤 L1.5 P1（docs/plans/2026-11-27-deep-autopsy.md §1 個案 a）：大熱贏但模型排第二，逐項拆分差。
+    只係解釋：唔准用嚟調權重（EXP-20261013-01）。失敗唔可以令覆盤失敗。"""
+    try:
+        import pair_autopsy as PA
+        return PA.autopsy_day(platform, day, root)
+    except Exception as exc:  # noqa: BLE001
+        return {"error": f"{type(exc).__name__}: {exc}"}
 
 
 def _reconcile(recon: list[dict], races: list[dict], day: str, join_missing: Counter | None = None,
@@ -521,6 +532,15 @@ def render_md(rv: dict) -> str:
             L.append(f"| {c['label']} | {c['today_hits']}/{c['today_n']} 入位（模型預 {c['today_model_expected']}） | "
                      f"{c['today_resid_pp']:+.1f}pp | {tm} | {km} | {c['reading']} |")
         L += ["", "殘差 = 實際入頭三 − 賽前校準機率；正 = 被低估。CI 按賽日抽樣。" + rv["rules"]]
+    pa = rv.get("pair_autopsy") or {}
+    if pa.get("error"):
+        L += ["", f"> ⚠️ 逐對深入覆盤出錯：{pa['error']}"]
+    elif pa:
+        try:
+            import pair_autopsy as PA
+            L += ["", PA.render_md(pa).replace("# ", "## ", 1)]
+        except Exception as exc:  # noqa: BLE001 —— 深入覆盤出錯唔可以令覆盤失敗
+            L += ["", f"> ⚠️ 逐對深入覆盤顯示出錯：{type(exc).__name__}: {exc}"]
     return "\n".join(L) + "\n"
 
 

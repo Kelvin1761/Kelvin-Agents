@@ -58,6 +58,36 @@ def _racing_misses(rv: dict) -> list[dict]:
     return out[:MAX_MISSES]
 
 
+def _fav_second(rv: dict) -> dict | None:
+    """深入覆盤 L1.5 個案 a（大熱贏、模型排第二）：計數＋每場拆分（只抄 post_review 寫好嘅 pair_autopsy）。"""
+    pa = rv.get("pair_autopsy")
+    if not isinstance(pa, dict):
+        return None
+    if pa.get("error"):
+        return {"error": str(pa["error"])[:200]}
+
+    def part(p: dict) -> dict:
+        return {"key": p.get("key"), "label": p.get("label") or p.get("key"), "kind": p.get("kind"),
+                "contribution": round(float(p.get("contribution") or 0), 2),
+                "top_value": p.get("top_value"), "win_value": p.get("win_value"),
+                "top_weak": bool((p.get("top_evidence") or {}).get("weak")) if isinstance(p.get("top_evidence"), dict) else False,
+                "win_weak": bool((p.get("win_evidence") or {}).get("weak")) if isinstance(p.get("win_evidence"), dict) else False}
+
+    cases = []
+    for c in (pa.get("cases") or [])[:MAX_MISSES]:
+        sw = c.get("swap") or {}
+        cases.append({"meeting": c.get("meeting"), "race": c.get("race"), "field_size": c.get("field_size"),
+                      "top_pick": {k: (c.get("top_pick") or {}).get(k) for k in ("name", "sp", "pos")},
+                      "winner": {k: (c.get("winner") or {}).get(k) for k in ("name", "sp")},
+                      "gap": round(float(c.get("total_gap") or 0), 2), "swap_reason": sw.get("reason"),
+                      "leaf_level_valid": c.get("leaf_level_valid"), "unexplained": c.get("unexplained"),
+                      "top_reasons": [part(p) for p in c.get("top_reasons") or []],
+                      "against": [part(p) for p in c.get("against") or []],
+                      "weak": [part(p) for p in c.get("weak_evidence_reasons") or []]})
+    keys = ("races_with_results", "fav_won", "fav_won_rank1", "fav_won_rank2", "fav_won_rank3plus", "sp_missing")
+    return {"counters": {k: (pa.get("counters") or {}).get(k) for k in keys}, "cases": cases}
+
+
 def _day(domain: str, rv: dict, ai: dict | None) -> dict:
     out = {"date": rv.get("date"), "summary": rv.get("summary") or {}, "cohorts": _cohorts(rv),
            "reconciliation_ok": (rv.get("reconciliation") or {}).get("ok")}
@@ -68,6 +98,7 @@ def _day(domain: str, rv: dict, ai: dict | None) -> dict:
             for k, v in (m.get("labels") or {}).items():
                 labels[k] = labels.get(k, 0) + v
         out["labels"] = labels
+        out["fav_second"] = _fav_second(rv)
     else:
         out["featured_summary"] = rv.get("featured_summary")
         out["confident_miss_classes"] = rv.get("confident_miss_classes")
