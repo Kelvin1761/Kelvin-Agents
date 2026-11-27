@@ -1581,8 +1581,16 @@ def step_ingest_results(runlog: RunLog, *, from_date: str) -> bool:
         match = re.search(r"new rows to add\s*:\s*(\d+)", line)
         if match:
             added = int(match.group(1))
+    time_rc, time_out = run_cmd([sys.executable, str(RESULTS_INGEST.parent / "au_result_times.py"), "--apply"], timeout=900)
+    time_fields = {}
+    if time_rc != 0:
+        runlog.warn(f"賽果時間補填失敗：{error_excerpt(time_out, time_rc)}")
+    else:
+        match = re.search(r"^times filled: (\d+)\s*$", time_out or "", re.M)
+        if match:
+            time_fields["times_filled"] = int(match.group(1))
     runlog.step("ingest-results", "ok" if full_field_ok else "partial",
-                rows_added=added, full_field=full_field_ok,
+                rows_added=added, full_field=full_field_ok, **time_fields,
                 detail=None if full_field_ok else "reflector fallback only")
     return full_field_ok
 

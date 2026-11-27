@@ -1905,7 +1905,7 @@ class TestResultsIngestStep(unittest.TestCase):
             # if it actually produced the file
             if len(calls) == 1 and cache_file_written and results[0][0] == 0:
                 (Path(work.name) / "results-ingest-sportsbet.csv").write_text("x")
-            return results[len(calls) - 1]
+            return results[len(calls) - 1] if len(calls) <= len(results) else (0, "times filled: 0")
 
         runlog = S.RunLog("test", date(2026, 8, 16),
                           Path(_LOG_TMP.name) / "run.json")
@@ -1924,6 +1924,12 @@ class TestResultsIngestStep(unittest.TestCase):
         self.assertIn("--sb-csv", calls[1])
         self.assertIn("--apply", calls[1])
         self.assertEqual(steps[-1].get("rows_added"), 42)
+
+    def test_time_fill_failure_does_not_change_ingest_success(self):
+        ok, calls, steps = self._run([(0, "ok"), (0, "new rows to add : 3"), (1, "fill failed")])
+        self.assertTrue(ok)
+        self.assertEqual(steps[-1]["status"], "ok")
+        self.assertIn("au_result_times.py", calls[2][-2])
 
     def test_falls_back_to_reflectors_when_the_cache_build_fails(self):
         ok, calls, steps = self._run([(1, "boom"), (0, "new rows to add : 3\n")])
