@@ -1636,7 +1636,7 @@ class TestNoNotify(unittest.TestCase):
 
 
 class TestSharedRunLock(unittest.TestCase):
-    def test_busy_run_emits_dormant_json_without_starting_pipeline(self):
+    def test_busy_heal_run_emits_dormant_json_without_starting_pipeline(self):
         import io
         from shared_wong_choi.command_adapter import last_json_object
         from shared_wong_choi.contracts import normalize_run_state, RunState
@@ -1650,7 +1650,7 @@ class TestSharedRunLock(unittest.TestCase):
                 self.assertTrue(held)
                 with contextlib.redirect_stdout(output):
                     code = S.main(["--mode", "morning", "--today", "2026-10-16",
-                                   "--json", "--no-notify"])
+                                   "--skip-refresh", "--json", "--no-notify"])
             self.assertEqual(code, S.EXIT_OK)
             payload = last_json_object(output.getvalue())
             self.assertIsNotNone(payload)
@@ -1666,7 +1666,7 @@ class TestSharedRunLock(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp, \
              unittest.mock.patch.object(S, "LOG_DIR", Path(tmp)), \
              unittest.mock.patch.object(S, "single_run_lock",
-                                        lambda: contextlib.nullcontext(None)):
+                                        lambda **_kw: contextlib.nullcontext(None)):
             output = io.StringIO()
             with contextlib.redirect_stdout(output):
                 code = S.main(["--mode", "morning", "--json", "--no-notify"])
@@ -1674,6 +1674,45 @@ class TestSharedRunLock(unittest.TestCase):
             payload = last_json_object(output.getvalue())
             self.assertEqual(payload["status"], "failed")
             self.assertEqual(payload["reason"], "shared_lock_unavailable")
+
+    def test_busy_scheduled_run_waits_then_defers_as_temporary(self):
+        """2026-11-27：正式早更撞到補發佈揸住把鎖，以前即刻當成功退出 → 成日冇早更。而家等，等唔到就 75。"""
+        import io
+        from shared_wong_choi.command_adapter import last_json_object
+        from shared_wong_choi.contracts import normalize_run_state, RunState
+
+        with tempfile.TemporaryDirectory() as tmp, \
+             unittest.mock.patch.object(S, "AU_RACING", Path(tmp)), \
+             unittest.mock.patch.object(S, "LOG_DIR", Path(tmp)), \
+             unittest.mock.patch.dict(S.os.environ, {"WC_AU_LOCK_WAIT_SECONDS": "0.05"}), \
+             unittest.mock.patch.object(S, "run_morning") as pipeline:
+            output = io.StringIO()
+            with S.single_run_lock() as held:
+                self.assertTrue(held)
+                with contextlib.redirect_stdout(output):
+                    code = S.main(["--mode", "morning", "--today", "2026-10-16", "--json", "--no-notify"])
+            self.assertEqual(code, S.EXIT_TEMPORARY)
+            payload = last_json_object(output.getvalue())
+            self.assertEqual(payload["reason"], "another_run_active_timeout")
+            self.assertEqual(normalize_run_state(payload["status"]), RunState.PARTIAL)
+            pipeline.assert_not_called()
+
+    def test_lock_wait_acquires_once_holder_releases(self):
+        calls = {"n": 0}
+        real = S.fcntl.flock
+
+        def flaky(handle, op):
+            if op & S.fcntl.LOCK_NB and calls["n"] < 2:
+                calls["n"] += 1
+                raise BlockingIOError
+            return real(handle, op)
+
+        with tempfile.TemporaryDirectory() as tmp, \
+             unittest.mock.patch.object(S, "AU_RACING", Path(tmp)), \
+             unittest.mock.patch.object(S.fcntl, "flock", flaky):
+            with S.single_run_lock(wait_seconds=60, poll_seconds=0, sleep=lambda _s: None) as acquired:
+                self.assertTrue(acquired)
+        self.assertEqual(calls["n"], 2)
 
     def test_unopenable_shared_lock_fails_closed(self):
         # 退去 checkout 私有鎖會令 production worktree 同主 repo 同時開工。

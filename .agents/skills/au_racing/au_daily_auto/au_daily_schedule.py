@@ -144,6 +144,7 @@ DEFAULT_FETCH_DELAY = 25.0
 EXIT_OK = 0
 EXIT_TEMPORARY = 75
 EXIT_FAILED = 1
+LOCK_WAIT_SECONDS = 2700   # 正式 run 撞鎖最多等 45 分鐘（control plane 全域 timeout 7200 秒之內）
 
 
 class TemporaryFailure(RuntimeError):
@@ -4946,8 +4947,11 @@ def run_morning(runlog: RunLog, args, today: date) -> int:
 
 # ── 入口 ────────────────────────────────────────────────────────────────────
 @contextlib.contextmanager
-def single_run_lock():
-    """兩個 mode 共用一把鎖 —— 佢哋都會動同一批目錄同同一個 dashboard。"""
+def single_run_lock(wait_seconds: float = 0.0, poll_seconds: float = 30.0, sleep=time.sleep, clock=time.monotonic):
+    """兩個 mode 共用一把鎖 —— 佢哋都會動同一批目錄同同一個 dashboard。
+
+    `wait_seconds` > 0：鎖俾人揸住就等（每 `poll_seconds` 試一次），等夠先放棄。2026-11-27：09:15 起健康檢查補發佈
+    一直揸住把鎖，10:00 正式早更撞到就即刻「今次唔開工」並當成功退出 → 成日冇早更賠率、冇 going 更新。"""
     # ⚠️ 把鎖放喺**資料根**，唔可以放喺 checkout 入面。2026-08-09 排程搬咗去自己
     # 一個 worktree，如果鎖跟住 checkout 走，排程同一個由主 repo 手動開嘅 run 就
     # 各攞各鎖、同時郁同一批 folder、同一個 Chrome profile、同一個 dashboard ——
@@ -4963,12 +4967,18 @@ def single_run_lock():
             f"{type(exc).__name__}: {exc} —— 今次唔開工")
         yield None
         return
-    try:
-        fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except BlockingIOError:
-        handle.close()
-        yield False
-        return
+    deadline = clock() + max(0.0, wait_seconds)
+    while True:
+        try:
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            break
+        except BlockingIOError:
+            remaining = deadline - clock()
+            if remaining <= 0:
+                handle.close()
+                yield False
+                return
+            sleep(min(poll_seconds, remaining))
     try:
         yield True
     finally:
@@ -5143,12 +5153,21 @@ def main(argv: list[str] | None = None) -> int:
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     log_path = LOG_DIR / f"run-{args.mode}-{datetime.now().strftime('%Y%m%dT%H%M%S')}.json"
 
-    with single_run_lock() as acquired:
+    # 正式排程 run（會抽價／分析）撞鎖就等；補發佈（--skip-refresh）照舊即刻讓路。
+    lock_wait = 0.0 if args.skip_refresh else float(os.environ.get("WC_AU_LOCK_WAIT_SECONDS", LOCK_WAIT_SECONDS))
+    with single_run_lock(wait_seconds=lock_wait) as acquired:
         if acquired is None:
             if args.json:
                 print(json.dumps({"status": "failed", "mode": args.mode,
                                   "reason": "shared_lock_unavailable"}))
             return EXIT_FAILED
+        if not acquired and lock_wait > 0:
+            # 等咗都攞唔到：暫時性失敗（control plane 會重試／報警），唔可以當「完成」靜靜冇咗成程。
+            log(f"等咗 {lock_wait:.0f} 秒另一個 AU run 都未完，今次延後（暫時性失敗）。")
+            if args.json:
+                print(json.dumps({"status": "temporary_failure", "mode": args.mode,
+                                  "reason": "another_run_active_timeout"}))
+            return EXIT_TEMPORARY
         if not acquired:
             log("另一個 AU daily run 仲喺度跑，今次唔開工（避免撞車）。")
             # The control adapter requires a status even when no run is started.
