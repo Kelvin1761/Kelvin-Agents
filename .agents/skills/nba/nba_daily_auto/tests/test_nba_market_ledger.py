@@ -351,7 +351,7 @@ def test_engine_sidecar_carries_the_fields_the_ledger_records():
     assert by_line[20.0]["p_final"] == 0.63 and by_line[25.0]["p_final"] == 0.61   # MS, else C
     assert by_line[20.0]["p_l10_base_rate"] == 0.7 and by_line[20.0]["side"] == "over"
     assert by_line[20.0]["market"] == "pts" and by_line[20.0]["picked"] is False
-    assert by_line[20.0]["probability_model_id"].startswith("nba_engine:ms:")
+    assert by_line[20.0]["probability_model_id"].startswith("nba_engine:ms2:")
     assert payload["combos"] == [] and payload["report_sha256"] == hashlib.sha256(b"report").hexdigest()
 
 

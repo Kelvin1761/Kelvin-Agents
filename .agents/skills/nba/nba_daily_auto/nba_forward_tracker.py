@@ -60,6 +60,9 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
     ForwardTest("recal_weekly", "發佈機率每週重校準（修正中段低估、頂段高估）對現行 p_final",
                 "EXP-20261124-61 RC", "docs/experiments/patches/nba_recal_forward/evaluate.py", "RC",
                 "PASS（log-loss 差 95% CI 上限 < 0）先可以申請接入發佈機率，要過 model-regression-gate；同時睇 RW − 純市場：跨零 = 模型冇 edge，精選 edge 要當去水誤差"),
+    ForwardTest("ms2_profit", "MS2 上線後盈利：live MS2 對 shadow 舊 MS（大細盤 edge≥5pp ROI 差）",
+                "EXP-20261127-41 MP", "docs/experiments/patches/nba_ms2_profit/evaluate.py", "MP",
+                "CI 下限 > 0 = 盈利改善；CI 上限 < 0 = 建議退返舊 MS（Kelvin 決定）；跨零 = MS2 照留"),
 )
 
 
@@ -74,6 +77,8 @@ def _load(script: str):
 def _verdict(result: dict) -> str:
     if result.get("status") == "not_ready":
         return "未夠數"
+    if result.get("test") == "MP":
+        return {"improved": "盈利改善", "worse": "建議退返舊 MS", "no_difference": "盈利冇分別"}.get(result.get("verdict"), "未有判決")
     if result.get("test") in ("F250", "V2_250"):
         return "⛔ STOP（明顯蝕緊）" if result.get("stop") else "➡️ 繼續（中期唔判 PASS）"
     return "✅ PASS（訊號成立）" if result.get("pass") else "❌ 未過（冇證據）"
@@ -87,6 +92,8 @@ def _numbers(test: ForwardTest, result: dict) -> str:
         hit = result.get("hit_rate")
         return (f"{result.get('n_bets')} 注、{result.get('days')} 日；命中 {'N/A' if hit is None else f'{hit * 100:.1f}%'}；"
                 f"平注 ROI {pct(result.get('roi'))} [{pct(ci[0])}, {pct(ci[1])}]")
+    if test.test == "MP":
+        return f"{result.get('days')} 日、{result.get('n_bets')} 注；ROI 差 {fmt(result.get('primary_delta'))} [{fmt(ci[0])}, {fmt(ci[1])}]"
     if test.test == "RC":
         loss = result.get("logloss") or {}
         num = lambda v: "N/A" if v is None else f"{v:+.4f}"  # noqa: E731
@@ -164,11 +171,12 @@ def _board_row(fb, test: ForwardTest, item: dict) -> dict:
     if item.get("error"):
         return fb.row(test.key, test.label, test.experiment, status="error", note=item["error"])
     cp = item.get("checkpoint") or {}
-    for field, unit in (("bets", "注"), ("days", "日"), ("events", "宗")):
+    fields = (("days", "日"), ("bets", "注"), ("events", "宗")) if test.test == "MP" else (("bets", "注"), ("days", "日"), ("events", "宗"))
+    for field, unit in fields:
         if field in cp:
             return fb.row(test.key, test.label, test.experiment, count=item.get(field), minimum=cp[field],
                           unit=unit, status="ready" if item.get("ready") else "collecting",
-                          note=test.action if item.get("ready") else "",
+                          note=(f"注數 {item.get('bets', 0)}／{cp.get('bets', 600)}" if test.test == "MP" else (test.action if item.get("ready") else "")),
                           verdict=_board_verdict(item.get("verdict")))
     return fb.row(test.key, test.label, test.experiment, status="ready" if item.get("ready") else "collecting")
 
@@ -182,6 +190,8 @@ def summary_line(report: dict) -> str:
         elif test.test.startswith(("F", "V2_")):
             parts.append(f"{test.experiment} {item.get('bets')}/{item['checkpoint']['bets']} 注"
                          + (" ✅" if item.get("ready") else ""))
+        elif test.test == "MP":
+            parts.append(f"{test.experiment} {item.get('days')}/{item['checkpoint']['days']} 日、{item.get('bets')}/{item['checkpoint']['bets']} 注" + (" ✅" if item.get("ready") else ""))
         elif test.test in ("M", "S2", "RC"):
             parts.append(f"{test.experiment} {item.get('days')}/{item['checkpoint']['days']} 日、"
                          f"{item.get('flagged_legs')}/{item['checkpoint']['flagged_legs']} 腿"

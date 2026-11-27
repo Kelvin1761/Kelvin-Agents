@@ -394,3 +394,14 @@ def test_clv_annotation_failure_does_not_break_tracking(tmp_path, monkeypatch):
     out = build(tmp_path)
     assert len(out['featured_records']) == 1
     assert out['featured_clv'] is None
+
+
+def test_featured_forward_board_counts(tmp_path, monkeypatch):
+    from services import nba_tracking
+    import json
+    monkeypatch.setenv('WC_FORWARD_BOARD_ROOT', str(tmp_path))
+    assert nba_tracking._featured_forward_counts() is None
+    (tmp_path / 'nba.json').write_text(json.dumps({'tests': [{'key': 'featured_250', 'count': 240}, {'key': 'featured_1000', 'count': 240}]}))
+    assert nba_tracking._featured_forward_counts() == {'featured_250': 240, 'featured_1000': 240}
+    (tmp_path / 'nba.json').write_text('{')
+    assert nba_tracking._featured_forward_counts() == {}

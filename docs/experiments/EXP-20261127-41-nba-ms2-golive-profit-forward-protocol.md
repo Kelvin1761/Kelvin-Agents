@@ -41,3 +41,13 @@
 ## 唔准
 - 唔准喺同一批數據改門檻、改窗、改係數再判；唔准提早停（optional stopping）。
 - AGENTS「用戶睇到嘅改動」：dashboard 要顯示發佈機率模型已換（MS2）同 forward 進度；完成後 Telegram primary 講人話。
+
+## 修訂 1（2026-11-27 晚，上線同任何 MS2 數據之前；Sol 覆核後）
+- **上線日**：第一個 MS2 嘅 21:00 production run = 2026-11-28 晚（target_date 2026-11-29）。MP 同 F250／F1000 legacy 路徑都由 2026-11-29 起。
+  11-28 朝早 final refresh 可能已經用 MS2，但精選凍結喺 21:00，所有 evaluator 只讀 production，唔受影響。
+- **快照**：每日用 `manifest.json` 寫住 `snapshot_role=production`、`target_date` 啱、`completeness=complete` 嘅最早一份；冇 `p_legacy` 就跳過嗰日（記入 skipped）。
+- **未結算**：一日要兩個 arm（全部大細盤＋精選）每注都有結算或 void 先計；未齊就連之後嘅日子都等（pending）。過咗 3 日仍然冇結算嘅注當 void 剔走（記入 skipped），唔會令測試卡死。
+- **冇賽事嘅日**（冇日子資料夾）直接跳過；快照缺 odds 檔嘅場次跳過（skipped）。
+- **任何一個 arm 0 注** → 判 `insufficient`，唔係「冇分別」。
+- **精選次要**：直接用 sidecar 已發佈嘅 `featured`／`featured_legacy`＋每日頭 10，扣走撤盤（shadow 用 `Featured_Availability_Legacy.json`，唔發通知）。log-loss 次要只計有 `p_ms2` 嘅腿。
+- **S2 舊測試**：`nba_s2_forward/evaluate.py` 加 `END = 2026-11-28`，佢嘅窗唔會混入 MS2 數據（判決早已凍結）。

@@ -26,11 +26,12 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[4]
 EXPERIMENT = "EXP-20261110-01"
 START = "2026-11-11"
+LEGACY_FROM = "2026-11-29"   # EXP-20261127-41: published card is MS2 from here; F250/F1000 follow featured_legacy
 SEED, DRAWS = 20261110, 2000
 LOOKS = {"F250": 250, "F1000": 1000}
 
 
-def records(repo: Path = REPO) -> list[dict]:
+def records(repo: Path = REPO, ledger=None, analysis=None) -> list[dict]:
     backend = repo / "Horse_Racing_Dashboard" / "backend"
     if str(backend) not in sys.path:
         sys.path.insert(0, str(backend))
@@ -38,8 +39,50 @@ def records(repo: Path = REPO) -> list[dict]:
     tracking = export_tracking(repo)
     if tracking.get("status") not in ("valid", "stale"):
         raise RuntimeError(f"tracking_{tracking.get('status')}")
-    return [r for r in tracking.get("featured_records") or []
-            if r.get("day", "") >= START and r.get("tracking_kind") == "featured"]
+    rows = [r for r in tracking.get("featured_records") or []
+            if r.get("day", "") >= START and r.get("tracking_kind") == "featured"
+            and (LEGACY_FROM is None or r.get("day", "") < LEGACY_FROM)]
+    if LEGACY_FROM is not None:
+        rows.extend(legacy_records(ledger, analysis))
+    return rows
+
+
+def legacy_records(ledger=None, analysis=None):
+    """Reconstruct the frozen legacy card from the production snapshot and settlements."""
+    import importlib.util
+    path = REPO / "docs/experiments/patches/nba_ms2_profit/evaluate.py"
+    spec = importlib.util.spec_from_file_location("nba_ms2_profit", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    root, ledger = Path(analysis or module.ROOT), Path(ledger or module.LEDGER)
+    backend = REPO / "Horse_Racing_Dashboard/backend"
+    if str(backend) not in sys.path:
+        sys.path.insert(0, str(backend))
+    from services.nba_tracking import _withdrawn
+    out = []
+    for day, directories in sorted(module.day_folders(analysis).items()):
+        if day < LEGACY_FROM:
+            continue
+        snap = module.snapshot(directories, day)
+        if snap is None:
+            continue
+        picks = []
+        for path in sorted(snap.glob("*.market_legs.json")):
+            tag = path.name.split("_Full")[0].replace("Game_", "", 1)
+            sidecar = json.loads(path.read_text())
+            picks.extend(dict(p, game_tag=tag) for p in sidecar.get("featured_legacy", []))
+        settled_rows = module.settlements(ledger, day)
+        availability, pulled = module.availability_for(root, day, legacy=True)
+        for pick in module.featured.daily_top(picks):
+            tag = pick["game_tag"]
+            row = settled_rows.get((tag, pick["player"], pick["market"], float(pick["milestone_line"])), {})
+            y = row.get("y")
+            if availability.matches(pulled.get(tag), pick) or row.get("outcome") == "void" or y not in (0, 1):
+                continue
+            state = "won" if y == (1 if pick["side"] == "over" else 0) else "lost"
+            out.append({"id": f"nba:{day}:{tag}:featured", "day": day, "odds": pick["price"],
+                        "tracking_kind": "featured", "state": state, "legs": [pick]})
+    return out
 
 
 def settled(rows: list[dict]) -> list[dict]:
@@ -62,7 +105,7 @@ def boot(rows: list[dict]) -> tuple[float, float]:
 
 
 def status(ledger=None, analysis=None, *, rows: list[dict] | None = None) -> dict:
-    n = len(settled(records() if rows is None else rows))
+    n = len(settled(records(ledger=ledger, analysis=analysis) if rows is None else rows))
     return {name: {"bets": n, "checkpoint": {"bets": need}, "ready": n >= need} for name, need in LOOKS.items()}
 
 
@@ -86,7 +129,7 @@ def judge(name: str, rows: list[dict]) -> dict:
 def evaluate(ledger=None, analysis=None, out_dir: Path | None = None, *, force=False, only=None,
              rows: list[dict] | None = None) -> dict:
     out_dir = Path(out_dir or Path.home() / "WongChoiData" / "NBA_Market_Eval" / "reports")
-    rows = records() if rows is None else rows
+    rows = records(ledger=ledger, analysis=analysis) if rows is None else rows
     results = {}
     for name, need in LOOKS.items():
         if only and name != only:

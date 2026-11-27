@@ -84,7 +84,7 @@ def day_legs(path: Path) -> list[dict]:
                 except ValueError:
                     continue
                 if (r.get("row_type") != "model_obs" or r.get("snapshot_role") != "production"
-                        or r.get("post_tip") is True or r.get("p_final") is None):
+                        or r.get("post_tip") is True or (r.get("p_legacy") if r.get("p_legacy") is not None else r.get("p_final")) is None):
                     continue
                 k = (r["game_tag"], r["player"], r["market"], float(r["line"]))
                 if k not in models or r["recorded_at"] < models[k]["recorded_at"]:
@@ -100,13 +100,13 @@ def day_legs(path: Path) -> list[dict]:
     for k, m in models.items():
         s = settled.get(k)
         try:
-            price, pf = float(m.get("price_at_model")), float(m["p_final"])
+            price, pf = float(m.get("price_at_model")), float(m.get("p_legacy") if m.get("p_legacy") is not None else m["p_final"])
         except (TypeError, ValueError):
             continue
         if not s or s.get("outcome") == "void" or s.get("y") not in (0, 1) or price <= 1 or m["market"] not in STATS:
             continue
         out.append({"d": path.stem, "s": m["market"], "pf": pf, "m": 1 / price, "y": int(s["y"]),
-                    "id": m.get("probability_model_id")})
+                    "id": (m.get("legacy_probability_model_id") if m.get("p_legacy") is not None else m.get("probability_model_id"))})
     return out
 
 

@@ -83,7 +83,7 @@ NBA_SKILL = HERE.parent
 
 MARKET_KEYS = {"points": "pts", "rebounds": "reb", "assists": "ast", "threes_made": "fg3m"}
 MODEL_VARIANTS = ("p_final", "p_hit_rate_10f", "p_ml", "p_monte_carlo")
-ENGINE_COMPONENTS = ("p_market", "p_c", "p_s", "p_ms", "p_s2")  # recorded, never evaluated
+ENGINE_COMPONENTS = ("p_market", "p_c", "p_s", "p_ms", "p_s2", "p_ms2", "p_legacy")  # recorded, never evaluated
 ROLE_PRIORITY = {"final_refresh": 3, "production": 2, "warmup": 1}
 # The user bets the 21:00 (production) publication, not the morning final refresh
 # (2026-10-26). Pick/ROI evaluation reports this "bet version" beside the latest one.
@@ -498,6 +498,7 @@ def record_snapshot(
                 **{name: _float(leg.get(name)) for name in ENGINE_COMPONENTS},
                 "mc_model_version": leg.get("mc_model_version"),
                 "probability_model_id": leg.get("probability_model_id"),
+                "legacy_probability_model_id": leg.get("legacy_probability_model_id"),
                 # SHADOW fit layer: recorded for forward evidence, deliberately
                 # not in MODEL_VARIANTS so evaluate() is untouched.
                 "shadow_fit_prob_A": _float(leg.get("shadow_fit_prob_A")),

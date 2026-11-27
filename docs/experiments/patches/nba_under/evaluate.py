@@ -59,7 +59,7 @@ def day_bets(rows: list[dict]) -> list[dict]:
     for r in rows:
         kind = r.get("row_type")
         if kind == "model_obs":
-            if r.get("post_tip") or r.get("snapshot_role") != "production" or r.get("p_final") is None:
+            if r.get("post_tip") or r.get("snapshot_role") != "production" or (r.get("p_legacy") if r.get("p_legacy") is not None else r.get("p_final")) is None:
                 continue
             key = (r.get("game_tag"), r.get("player"), r.get("market"), float(r["line"]))
             if key not in model or str(r.get("recorded_at")) > str(model[key].get("recorded_at")):
@@ -94,7 +94,7 @@ def day_bets(rows: list[dict]) -> list[dict]:
         arms = []
         if len(l10) >= MIN_L10 and (sum(l10) / len(l10) - ou_line) / max(ou_line, 1.0) < AVG_GAP:
             arms.append("FU_AVG")
-        if fair_over - float(leg["p_final"]) >= MIN_EDGE:
+        if fair_over - float((leg.get("p_legacy") if leg.get("p_legacy") is not None else leg["p_final"])) >= MIN_EDGE:
             arms.append("FU_EDGE")
         if not arms:
             continue

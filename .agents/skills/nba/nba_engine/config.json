@@ -104,7 +104,7 @@
     }
   },
   "minutes_v2": {
-    "_source": "EXP-20261111-03 (fit on 2025-26 regular season to 2026-02-08; holdout minutes MAE -0.102 [-0.140,-0.062], next season -0.085). SHADOW: feeds p_s2 only, never p_final.",
+    "_source": "EXP-20261111-03 (fit on 2025-26 regular season to 2026-02-08; holdout minutes MAE -0.102 [-0.140,-0.062], next season -0.085). Feeds p_s2 and, when available, MS2.",
     "features": [
       "const",
       "m_hl",
@@ -148,6 +148,21 @@
       0.687988,
       0.001809,
       0.002671
+    ]
+  },
+  "ms2_layer": {
+    "_source": "EXP-20261111-05 (fit 2026-11-03..11-10; forward PASS EXP-20261127-40)",
+    "intercepts": {
+      "PTS": -0.2285,
+      "REB": -0.1958,
+      "AST": -0.1767,
+      "FG3M": -0.0545
+    },
+    "beta_market": 0.6514,
+    "gamma_s": 0.3494,
+    "clip": [
+      0.02,
+      0.98
     ]
   }
 }

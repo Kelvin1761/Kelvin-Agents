@@ -36,7 +36,7 @@ class FakeScript:
 
 
 def test_registry_covers_both_tests():
-    assert {t.test for t in tracker.FORWARD_TESTS} == {"M", "T", "F250", "F1000", "FU_AVG", "FU_EDGE", "S2", "V2_250", "V2_600", "RC"}
+    assert {t.test for t in tracker.FORWARD_TESTS} == {"M", "T", "F250", "F1000", "FU_AVG", "FU_EDGE", "S2", "V2_250", "V2_600", "RC", "MP"}
     for t in tracker.FORWARD_TESTS:
         assert (REPO / t.script).is_file()
 
@@ -157,3 +157,12 @@ def test_recal_tracker_numbers_summary_and_check(tmp_path):
     complete = {t.key: {"error": "not loaded"} for t in tracker.FORWARD_TESTS}
     complete.update(report)
     assert "14/14 日、10000/10000 腿 ✅" in tracker.summary_line(complete)
+
+
+def test_mp_progress_and_verdict():
+    test = next(t for t in tracker.FORWARD_TESTS if t.test == "MP")
+    progress = {"days": 12, "bets": 250, "checkpoint": {"days": 28, "bets": 600}, "ready": False}
+    assert "12/28 日、250/600 注" in tracker.summary_line({test.key: progress, **{t.key: {"error": "x"} for t in tracker.FORWARD_TESTS if t != test}})
+    assert tracker._verdict({"test": "MP", "verdict": "worse"}) == "建議退返舊 MS"
+    row = tracker._board_row(tracker._forward_board(), test, progress)
+    assert row["count"] == 12 and row["minimum"] == 28 and row["unit"] == "日"

@@ -72,7 +72,7 @@ def day_picks(rows: list[dict]) -> list[dict]:
     for r in rows:
         kind = r.get("row_type")
         if kind == "model_obs":
-            if (r.get("post_tip") or r.get("snapshot_role") != "production" or r.get("p_final") is None
+            if (r.get("post_tip") or r.get("snapshot_role") != "production" or (r.get("p_legacy") if r.get("p_legacy") is not None else r.get("p_final")) is None
                     or r.get("market") not in DELTA or r.get("line") is None):
                 continue
             key = (r.get("game_tag"), r.get("player"), r.get("market"), float(r["line"]))
@@ -104,7 +104,7 @@ def day_picks(rows: list[dict]) -> list[dict]:
         if over < 1.01 or under < 1.01:
             continue
         fair_over = (1 / over) / (1 / over + 1 / under)
-        model_over = p_over(market, leg["p_final"])
+        model_over = p_over(market, (leg.get("p_legacy") if leg.get("p_legacy") is not None else leg["p_final"]))
         for side, price, p_model, fair in (("over", over, model_over, fair_over),
                                            ("under", under, 1 - model_over, 1 - fair_over)):
             edge = p_model - fair

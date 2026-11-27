@@ -248,7 +248,7 @@ def test_s2_with_unit_ratio_is_s_and_scales_with_minutes():
     assert model.s2_prob(log, "REB", 8, OPP, "2026-27", "AAA", None) is None
 
 
-def test_s2_shadow_never_changes_the_published_probability():
+def test_ms2_published_with_legacy_and_fallback():
     odds, package = game()
     odds["game_lines"] = {"spread_away": "+4.5"}
     for team, plist in package["players"].items():
@@ -260,7 +260,10 @@ def test_s2_shadow_never_changes_the_published_probability():
     package["minutes_context"] = {"status": "available",
                                   "teams": {t: {f"{t}{i}": dict(feats) for i in range(3)} for t in ("AAA", "BBB")}}
     shadow, _ = build_legs(odds, package)
-    assert [l.p_final for l in shadow] == [l.p_final for l in base]
+    assert [l.p_legacy for l in shadow] == [l.p_final for l in base]
+    assert all(l.p_final == model.ms2_prob(l.stat, l.price, l.p_s2) for l in shadow)
+    assert all(l.p_final == l.p_legacy for l in base)
+    assert all(l.p_legacy == (l.p_ms if l.p_ms is not None else l.p_c) for l in shadow)
     assert all(l.p_s2 is not None and l.minutes_ratio is not None for l in shadow)
     assert all(l.p_s2 is None for l in base)
     away = next(l for l in shadow if l.team == "AAA")
@@ -275,3 +278,18 @@ def test_season_fit_factors_multiply_to_the_same_mean_season_mu_returns():
         assert (fit["mu"], fit["k"]) == model.season_mu(season_log(), stat, OPP, "2026-27", "AAA")
         assert abs(fit["minutes"] * fit["per_minute"] * fit["opponent_factor"] - fit["mu"]) < 1e-9
     assert model.season_fit(season_log(n=3), "REB", OPP, "2026-27", "AAA") is None
+
+
+def test_featured_legacy_uses_old_probability():
+    from nba_engine import featured
+    scored = leg("Player", stat="PTS", line=10, p=0.25, p_ms=0.25, p_ms2=0.8)
+    odds = {"player_props_two_way": {"points": {"Player": {"9.5": {"over": 2.0, "under": 2.0}}}}}
+    live = featured.game_pick(odds, [scored])
+    shadow = featured.game_pick(odds, [scored], prob="p_legacy")
+    assert live["side"] == "over" and shadow["side"] == "under"
+    assert live["p_model"] == 0.8 and shadow["p_model"] == 0.75
+
+
+def test_legacy_probability_model_id():
+    from nba_engine import model
+    assert model.legacy_probability_model_id() == "nba_engine:ms:a140747bfae0c724"

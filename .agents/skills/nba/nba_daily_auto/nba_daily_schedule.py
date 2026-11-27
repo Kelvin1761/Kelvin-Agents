@@ -1189,6 +1189,25 @@ def _check_featured_availability(target_date: str, folder: Path, tags: set[str],
         newly = featured_availability.check(folder, picks, tags, now=now_sydney())
         log.step("featured_availability", "ok", checked=len(picks),
                  withdrawn=sorted(str(p.get("game_tag")) for p in newly))
+        try:
+            # Shadow card uses the same frozen production picks, with its own silent record.
+            import importlib.util
+            script = PROJECT_ROOT / "docs/experiments/patches/nba_ms2_profit/evaluate.py"
+            spec = importlib.util.spec_from_file_location("nba_ms2_availability", script)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            snap = module.snapshot(module.day_folders(folder.parent).get(target_date, []), target_date)
+            if snap:
+                from nba_engine.featured import daily_top
+                shadow = []
+                for side in snap.glob("*.market_legs.json"):
+                    tag = side.name.split("_Full")[0].replace("Game_", "", 1)
+                    data = json.loads(side.read_text(encoding="utf-8"))
+                    shadow.extend(dict(p, game_tag=tag) for p in data.get("featured_legacy", []))
+                featured_availability.check(folder, daily_top(shadow), tags, now=now_sydney(),
+                                            filename="Featured_Availability_Legacy.json")
+        except Exception as exc:  # noqa: BLE001 — shadow must not block the live notice
+            log.step("featured_availability_legacy", "failed", error=f"{type(exc).__name__}: {exc}")
         if not newly:
             return
         log.step("dashboard", _deploy("NBA Wong Choi featured market withdrawn", folder))

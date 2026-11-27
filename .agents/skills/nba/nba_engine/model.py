@@ -7,7 +7,8 @@ Every number here is frozen by an experiment; the constants live in config.json.
 * S       = P(X >= line), X ~ NB(mu, k);  mu = projected minutes x per-minute rate x opponent
             factor; previous-season games down-weighted early in a season    (EXP-20261025-13, -26-07)
 * MS      = logit p = a_stat + beta*logit(market) + gamma*logit(S)            (EXP-20261103-15)
-            the published probability; C stands in when S cannot be computed
+            legacy probability; C stands in when S cannot be computed
+* MS2     = market + S2, published when available; otherwise MS, then C
 
 All inputs are ESPN: the per-game ``season_log`` and the opponent ``allowed`` table the
 extractor writes. Functions return None when a leg cannot be scored; they never raise on
@@ -32,6 +33,16 @@ def config(path: str | None = None) -> dict:
 
 def probability_model_id(cfg: dict | None = None) -> str:
     """Identity of the published probability: every coefficient, no descriptive notes."""
+    c = cfg or config()
+    numbers = {name: {k: v for k, v in c[name].items() if not k.startswith("_")}
+               for name in ("c_layer", "ms_layer", "ms2_layer", "season_rate", "minutes_v2")}
+    raw = json.dumps(numbers, sort_keys=True, allow_nan=False).encode()
+    return f"nba_engine:ms2:{hashlib.sha256(raw).hexdigest()[:16]}"
+
+
+
+def legacy_probability_model_id(cfg: dict | None = None) -> str:
+    """Identity of the probability published before MS2."""
     c = cfg or config()
     numbers = {name: {k: v for k, v in c[name].items() if not k.startswith("_")}
                for name in ("c_layer", "ms_layer", "season_rate")}
@@ -73,6 +84,16 @@ def c_prob(stat: str, price, hit_l10: float | None, cfg: dict | None = None) -> 
 def ms_prob(stat: str, price, s: float | None, cfg: dict | None = None) -> float | None:
     """MS layer: the market anchored, corrected by the price-free season-rate model."""
     c = (cfg or config())["ms_layer"]
+    m = market_prob(price)
+    if m is None or s is None or stat not in c["intercepts"]:
+        return None
+    return _sigmoid(c["intercepts"][stat] + c["beta_market"] * _logit(_clip(m, *c["clip"]))
+                    + c["gamma_s"] * _logit(_clip(s, *c["clip"])))
+
+
+def ms2_prob(stat: str, price, s: float | None, cfg: dict | None = None) -> float | None:
+    """MS2 layer: the market anchored, corrected by the price-free season-rate model."""
+    c = (cfg or config())["ms2_layer"]
     m = market_prob(price)
     if m is None or s is None or stat not in c["intercepts"]:
         return None
@@ -188,7 +209,7 @@ def season_fit(season_log: dict, stat: str, opponent: dict, season: str, team: s
 def s2_prob(season_log, stat, line, opponent, season, team, ratio, cfg=None) -> float | None:
     """S with the v2 minutes forecast (EXP-20261111-03): mean scaled by `ratio` = v2 / base minutes.
 
-    SHADOW only. None when S itself or the ratio cannot be computed.
+    None when S itself or the ratio cannot be computed.
     """
     try:
         line, ratio = float(line), float(ratio)

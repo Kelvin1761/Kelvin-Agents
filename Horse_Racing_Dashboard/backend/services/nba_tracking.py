@@ -85,13 +85,13 @@ def _daily_top(picks):
     return daily_top(picks)
 
 
-def _withdrawn(sources):
+def _withdrawn(sources, *, legacy=False):
     """game_tag → availability entry for 精選 whose Sportsbet O/U was pulled before tip-off."""
     auto = Path(__file__).resolve().parents[3] / '.agents' / 'skills' / 'nba' / 'nba_daily_auto'
     if str(auto) not in sys.path:
         sys.path.insert(0, str(auto))
     import nba_featured_availability as availability
-    return availability, availability.withdrawn(sources)
+    return availability, availability.withdrawn(sources, filename='Featured_Availability_Legacy.json' if legacy else availability.FILE)
 
 
 def _featured_records(day, day_picks, actuals, sources=()):
@@ -190,6 +190,19 @@ def _recal_forward(ledger_root):
         return {'status': 'valid', **module.dashboard(root / 'ledger', cache_dir=root / 'reports')}
     except Exception as exc:  # noqa: BLE001 — monitoring must never break tracking
         return {'status': 'unavailable', 'error': f'{type(exc).__name__}: {exc}'}
+
+
+def _featured_forward_counts():
+    base = Path(os.environ.get('WONGCHOI_CONTROL_STATE_ROOT') or Path.home() / 'WongChoiData' / 'WongChoiControl')
+    path = Path(os.environ.get('WC_FORWARD_BOARD_ROOT') or base / 'forward_tests') / 'nba.json'
+    if not path.exists():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding='utf-8'))
+        return {row['key']: row.get('count') for row in payload['tests']
+                if row.get('key') in ('featured_250', 'featured_1000')}
+    except (OSError, ValueError, KeyError, TypeError):
+        return {}
 
 
 def build_tracking(roots, ledger_root, firewall):
@@ -331,31 +344,37 @@ def build_tracking(roots, ledger_root, firewall):
             'covered_dates':sorted(folders), 'records':records,
             # EXP-20261110-01 大細盤精選 paper bets: kept apart so the ROI board, the steady
             # stop-loss and the SGM views (which all read `records`) never see them.
-            'featured_records':featured_records, 'featured_clv':featured_clv, 'featured_inception_date':FEATURED_START_DATE,
+            'model_label':'模型：MS2（市場＋S2，2026-11-29 起；舊 MS 做對照）',
+            'model_tooltip':'EXP-20261127-41：發佈機率改用 MS2；盈利 forward 比較 MS2 同舊 MS，28 日＋600 注判一次',
+            'featured_records':featured_records, 'featured_forward_counts':_featured_forward_counts(), 'featured_clv':featured_clv, 'featured_inception_date':FEATURED_START_DATE,
             'featured_v2':_featured_v2(ledger_root),
             'recal_forward':_recal_forward(ledger_root),
             'warnings':sorted(set(warnings))}
 
 
-def export_tracking(repo_root):
-    """Locate installed runtime and archives, never production data during tests."""
+def _tracking_roots(repo_root):
+    """The runtime, workspace and archive roots used by tracking."""
     roots = [Path(repo_root)]
-    ledger = os.environ.get('WONGCHOI_NBA_MARKET_LEDGER_ROOT')
-    if 'pytest' in sys.modules:
-        return build_tracking(roots, ledger, _firewall()) if ledger else {
-            'schema_version':1,'status':'unavailable','records':[], 'warnings':['test_isolation']}
-    added = str(Path(repo_root)/'.agents'/'skills')
+    added = str(Path(repo_root) / '.agents' / 'skills')
     sys.path.insert(0, added)
     try:
         from shared_wong_choi.release_automation import production_roots
         runtime = production_roots().get('nba')
         if runtime:
-            roots.append(runtime)
-        # Local primary is shared with the existing unattended NBA installer.
-        roots.append(Path(os.environ.get('WONGCHOI_NBA_DATA_ROOT') or Path.home()/'WongChoiData'/'Wong Choi NBA Analysis'))
-        return build_tracking(list(dict.fromkeys(roots)), ledger or Path.home()/'WongChoiData'/'NBA_Market_Eval', _firewall())
+            roots.append(Path(runtime))
+        roots.append(Path(os.environ.get('WONGCHOI_NBA_DATA_ROOT') or Path.home() / 'WongChoiData' / 'Wong Choi NBA Analysis'))
+        return list(dict.fromkeys(roots))
     finally:
         sys.path.remove(added)
+
+
+def export_tracking(repo_root):
+    """Locate installed runtime and archives, never production data during tests."""
+    ledger = os.environ.get('WONGCHOI_NBA_MARKET_LEDGER_ROOT')
+    if 'pytest' in sys.modules:
+        return build_tracking([Path(repo_root)], ledger, _firewall()) if ledger else {
+            'schema_version':1,'status':'unavailable','records':[], 'warnings':['test_isolation']}
+    return build_tracking(_tracking_roots(repo_root), ledger or Path.home()/'WongChoiData'/'NBA_Market_Eval', _firewall())
 
 
 def _firewall():

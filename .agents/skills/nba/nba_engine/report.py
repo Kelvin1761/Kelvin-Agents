@@ -3,7 +3,7 @@
 The sidecar is the only machine contract: the dashboard, publication firewall, ledger, SGM
 summary and reflector read only it (bound to the report by ``report_sha256``). The Markdown
 is for people and free-form; nothing parses it.
-Every probability shown is ``Leg.p_final`` (MS, or C when S is unavailable).
+Every probability shown is ``Leg.p_final`` (MS2, falling back to MS then C).
 """
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from . import model
 from .legs import MARKET, Leg
 
 SCHEMA = "nba-market-eval-legs/v1"
-ENGINE_ID = "nba_engine:ms+b2"
+ENGINE_ID = "nba_engine:ms2+b2"
 STRATEGY_PROFILE = "banker-steady-b2-v1"   # the dashboard/ledger key for the formal banker line
 STEADY_MARKER = f"正式穩膽政策：{STRATEGY_PROFILE}"
 DISCLAIMER = ("正式穩膽 = steady（B2，EXP-20261027-21）：命中率產品線，模型預期 EV 為負；"
@@ -57,7 +57,7 @@ def render(odds, package, legs, combo, quote, diagnostics, paused=None) -> str:
            f"> SPORTSBET_LIVE | 賠率擷取 {odds.get('extraction_time')} | 開賽 {odds.get('event_start_time')}",
            f"> season_phase: {meta.get('season_phase')} | roster_season: {meta.get('roster_season')} | "
            f"L10_ORDER:newest_first | SPORTSBET_MILESTONE_OVER_ONLY",
-           f"> 引擎版本: {ENGINE_ID} | 機率 = 市場 + 季度產出率（MS，EXP-20261103-15）| 數據來源: ESPN", "",
+           f"> 引擎版本: {ENGINE_ID} | 機率 = 市場＋S2（MS2，EXP-20261127-41；缺 S2 時回退 MS→C）| 數據來源: ESPN", "",
            "## 🎰 SGM Parlay 組合 (Python Auto-Selection)", "",
            f"> 📌 {STEADY_MARKER} — {DISCLAIMER}"]
     if paused:
@@ -157,9 +157,9 @@ def sidecar(report_text, odds, package, legs, combo, quote, diagnostics) -> dict
         "legs": [{"player": l.player, "team": l.team, "market": MARKET[l.stat], "line": l.line, "side": "over",
                   "price": l.price, "p_final": _round(l.p_final), "p_market": _round(l.market),
                   "p_c": _round(l.p_c), "p_s": _round(l.p_s), "p_ms": _round(l.p_ms),
-                  "p_s2": _round(l.p_s2), "minutes_ratio": l.minutes_ratio,
+                  "p_s2": _round(l.p_s2), "p_ms2": _round(l.p_ms2), "p_legacy": _round(l.p_legacy), "minutes_ratio": l.minutes_ratio,
                   "p_l10_base_rate": l.hit_l10, "hit_l5": l.hit_l5, "cov": l.cov, "availability": l.availability,
-                  "flags": l.flags, "engine": ENGINE_ID, "probability_model_id": model_id,
+                  "flags": l.flags, "engine": ENGINE_ID, "probability_model_id": model_id, "legacy_probability_model_id": model.legacy_probability_model_id(),
                   # Display only (dashboard「點解揀」): what the leg was priced from.
                   "explain": {"opponent": l.opponent, "l10": l.l10, "avg": l.avg, "median": l.median,
                               "minutes_l10": l.minutes_l10, "expect": l.expect},
@@ -170,6 +170,7 @@ def sidecar(report_text, odds, package, legs, combo, quote, diagnostics) -> dict
         "review_candidates": [research] if research else [],
         "selection_diagnostics": diagnostics,
         "featured": [diagnostics["featured"]] if diagnostics.get("featured") else [],
+        "featured_legacy": [diagnostics["featured_legacy"]] if diagnostics.get("featured_legacy") else [],
         "availability": {"meta": dict(meta), "injuries": package.get("injuries") or {}},
     }
 

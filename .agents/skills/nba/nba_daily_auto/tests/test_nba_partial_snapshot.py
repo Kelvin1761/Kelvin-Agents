@@ -267,3 +267,25 @@ def test_all_player_markets_waiting_and_game_markets_waiting():
                 schedule._run_orchestrator_refresh(DATE, Path('/unused'), refreshable_tags=tags, schedule_tags=tags, log=_Log())
             assert type(raised.value) is exception
             assert run.call_count == 1
+
+
+def test_shadow_withdrawal_uses_partial_snapshot_across_roots(tmp_path, monkeypatch):
+    from services import nba_tracking
+    runtime, archive = tmp_path / 'runtime', tmp_path / 'archive'
+    folder = archive / f'{DATE} NBA Analysis'
+    folder.mkdir(parents=True)
+    snap = runtime / f'{DATE} NBA Analysis suffix' / '_prediction_snapshots' / 'partial'
+    snap.mkdir(parents=True)
+    (snap / 'manifest.json').write_text(json.dumps({'target_date': DATE, 'snapshot_role': 'production', 'completeness': 'partial', 'created_at': DATE + 'T00:00:00+00:00'}))
+    pick = {'player': 'A', 'market': 'pts', 'side': 'over', 'edge': .2, 'price': 2}
+    (snap / 'Game_X_Full_Analysis.market_legs.json').write_text(json.dumps({'featured_legacy': [pick]}))
+    monkeypatch.setattr(nba_tracking, '_tracking_roots', lambda repo: [runtime, archive])
+    monkeypatch.setattr(nba_tracking, 'export_tracking', lambda repo: {'featured_records': []})
+    calls = []
+    monkeypatch.setattr(schedule.featured_availability, 'check', lambda *a, **kw: calls.append((a, kw)) or [])
+    monkeypatch.setattr(schedule, '_deploy', lambda *a: pytest.fail('shadow must not deploy'))
+    monkeypatch.setattr(schedule, 'notify_once', lambda *a, **kw: pytest.fail('shadow must not notify'))
+    schedule._check_featured_availability(DATE, folder, {'X'}, _Log())
+    assert len(calls) == 2
+    assert calls[1][1]['filename'] == 'Featured_Availability_Legacy.json'
+    assert calls[1][0][1][0]['player'] == 'A'

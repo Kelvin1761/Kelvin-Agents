@@ -31,6 +31,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 EXPERIMENT = "EXP-20261111-05"
+END = "2026-11-28"  # inclusive: never mix MS2-era observations into S2 baseline
 START = "2026-11-12"          # first 21:00 run after the shadow ships; legs without p_s2 are skipped
 SEED, DRAWS = 20261111, 2000
 CHECKPOINT = {"days": 14, "flagged_legs": 10000}
@@ -112,7 +113,7 @@ def load(ledger: Path | None = None, cache_dir: Path | None = None) -> list[dict
         cache = {}
     out, fresh = [], {}
     for path in sorted(ledger.glob("*.jsonl")):
-        if path.stem < START:
+        if path.stem < START or path.stem > END:
             continue
         stat = path.stat()
         stamp = [stat.st_size, stat.st_mtime_ns]

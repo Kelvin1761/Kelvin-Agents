@@ -51,19 +51,19 @@ def classify(odds: dict, pick: dict) -> str:
     return "open" if sides and sides.get(pick.get("side")) else "line_moved"
 
 
-def read(folder: Path) -> dict[str, dict]:
+def read(folder: Path, filename: str = FILE) -> dict[str, dict]:
     try:
-        data = json.loads((Path(folder) / FILE).read_text(encoding="utf-8"))
+        data = json.loads((Path(folder) / filename).read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return {}
     return data if isinstance(data, dict) else {}
 
 
-def withdrawn(folders: Iterable[Path]) -> dict[str, dict]:
+def withdrawn(folders: Iterable[Path], filename: str = FILE) -> dict[str, dict]:
     """game_tag → entry, for every pick ever seen withdrawn in any of ``folders``."""
     out: dict[str, dict] = {}
     for folder in folders:
-        for tag, entry in read(folder).items():
+        for tag, entry in read(folder, filename).items():
             if isinstance(entry, dict) and entry.get("withdrawn_at"):
                 out.setdefault(tag, entry)
     return out
@@ -76,10 +76,10 @@ def matches(entry: dict | None, pick: dict) -> bool:
         return False
 
 
-def check(folder: Path, picks: Iterable[dict], tags: set[str], *, now: datetime) -> list[dict]:
+def check(folder: Path, picks: Iterable[dict], tags: set[str], *, now: datetime, filename: str = FILE) -> list[dict]:
     """Classify each pending pick of a game in ``tags``; persist; return the newly withdrawn."""
     folder = Path(folder)
-    state = read(folder)
+    state = read(folder, filename)
     newly = []
     for pick in picks:
         tag = pick.get("game_tag")
@@ -101,9 +101,9 @@ def check(folder: Path, picks: Iterable[dict], tags: set[str], *, now: datetime)
             newly.append({**pick, "withdrawn_at": entry["withdrawn_at"]})
         state[tag] = entry
     if state:
-        temp = folder / (FILE + ".tmp")
+        temp = folder / (filename + ".tmp")
         temp.write_text(json.dumps(state, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        temp.replace(folder / FILE)
+        temp.replace(folder / filename)
     return newly
 
 

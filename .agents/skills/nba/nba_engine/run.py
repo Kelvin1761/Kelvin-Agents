@@ -48,6 +48,7 @@ def analyse(odds: dict, package: dict, *, quote=quote_combo, valid=quote_valid, 
                    "flags": dict(Counter(f for l in legs for f in l.flags))}
     # EXP-20261110-01 大細盤精選（紙上盤）: independent of B2 / SGM, never a bet.
     diagnostics["featured"] = None if phase == "PRESEASON" else featured.game_pick(odds, legs)
+    diagnostics["featured_legacy"] = None if phase == "PRESEASON" else featured.game_pick(odds, legs, prob="p_legacy")
     if phase == "PRESEASON":
         diagnostics["no_bet_reason"] = "preseason_shadow_only"
         return legs, [], None, diagnostics

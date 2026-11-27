@@ -19,7 +19,7 @@ MAX_PRICE = 3.0
 DAILY_LIMIT = 10
 
 
-def candidates(odds: dict, legs: list) -> list[dict]:
+def candidates(odds: dict, legs: list, prob: str = "p_final") -> list[dict]:
     """Every scoreable side of every two-way line in one game (both sides, one row each)."""
     by_leg = {(l.player, l.stat, l.line): l for l in legs}
     out = []
@@ -38,11 +38,12 @@ def candidates(odds: dict, legs: list) -> list[dict]:
                         or ou.is_integer() or over < 1.01 or under < 1.01):
                     continue
                 leg = by_leg.get((player, stat, float(math.ceil(ou))))
-                if leg is None or leg.p_final is None or leg.availability != "ok":
+                p = getattr(leg, prob, None) if leg is not None else None
+                if p is None or leg.availability != "ok":
                     continue
                 fair_over = (1 / over) / (1 / over + 1 / under)
-                for side, price, p_model, fair in (("over", over, leg.p_final, fair_over),
-                                                   ("under", under, 1 - leg.p_final, 1 - fair_over)):
+                for side, price, p_model, fair in (("over", over, p, fair_over),
+                                                   ("under", under, 1 - p, 1 - fair_over)):
                     out.append({
                         "rule": RULE, "player": player, "team": leg.team, "market": MARKET[stat],
                         "stat": LABEL[stat], "ou_line": ou, "side": side, "price": price,
@@ -53,9 +54,9 @@ def candidates(odds: dict, legs: list) -> list[dict]:
     return out
 
 
-def game_pick(odds: dict, legs: list) -> dict | None:
+def game_pick(odds: dict, legs: list, prob: str = "p_final") -> dict | None:
     """The one featured bet of this game, or None. Ties break on a fixed key, never on order."""
-    pool = [c for c in candidates(odds, legs) if c["edge"] >= MIN_EDGE and c["price"] <= MAX_PRICE]
+    pool = [c for c in candidates(odds, legs, prob) if c["edge"] >= MIN_EDGE and c["price"] <= MAX_PRICE]
     if not pool:
         return None
     return max(pool, key=lambda c: (c["edge"], c["player"], c["market"], -c["ou_line"], c["side"]))

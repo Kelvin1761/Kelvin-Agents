@@ -202,7 +202,7 @@ def m_legs(rows, analysis: Path, y: dict) -> tuple[list[dict], dict]:
             continue
         if r.get("side", "over") != "over" or r.get("market") not in MARKETS:
             continue
-        p, price = r.get("p_final"), r.get("price_at_model")
+        p, price = (r.get("p_legacy") if r.get("p_legacy") is not None else r.get("p_final")), r.get("price_at_model")
         if p is None or not price or not (p >= M_P_MIN and price < M_PRICE_MAX):
             continue
         lid = leg_id(r)

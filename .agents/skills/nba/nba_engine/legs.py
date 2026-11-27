@@ -45,15 +45,20 @@ class Leg:
     market: float                # 1/price
     p_c: float | None            # C layer
     p_s: float | None            # season-rate model, price-free
-    p_ms: float | None           # market + S: the published probability
+    p_ms: float | None           # market + S: legacy probability
     availability: str            # ok / dtd   (out players never become legs)
     flags: list[str] = field(default_factory=list)
-    p_s2: float | None = None    # SHADOW (EXP-20261111-03): S with the v2 minutes forecast; never published
+    p_s2: float | None = None    # S with the v2 minutes forecast (EXP-20261111-03)
+    p_ms2: float | None = None
     minutes_ratio: float | None = None
     expect: dict | None = None   # display only: S's mean and its factors (model.season_fit), rounded
 
     @property
     def p_final(self) -> float | None:
+        return self.p_ms2 if self.p_ms2 is not None else self.p_legacy
+
+    @property
+    def p_legacy(self) -> float | None:
         return self.p_ms if self.p_ms is not None else self.p_c
 
     @property
@@ -65,7 +70,7 @@ class Leg:
         return f"{self.player} ({self.team}) {self.label} {self.line:g}+"
 
     def to_dict(self) -> dict:
-        return {**asdict(self), "p_final": self.p_final, "label": self.label, "desc": self.desc}
+        return {**asdict(self), "p_final": self.p_final, "p_legacy": self.p_legacy, "label": self.label, "desc": self.desc}
 
 
 def _rate(values, line):
@@ -170,6 +175,8 @@ def build_legs(odds: dict, package: dict) -> tuple[list[Leg], dict]:
                     continue
                 hit10 = _rate(l10, line)
                 p_s = model.s_prob(gamelog.get("season_log"), stat, line, opp_ctx, season, team)
+                p_s2 = None if ratio is None else model.s2_prob(
+                    gamelog.get("season_log"), stat, line, opp_ctx, season, team, ratio)
                 legs.append(Leg(
                     player=name, team=team, opponent=opponent, stat=stat, line=line, price=price,
                     l10=l10, minutes_l10=round(minutes, 1), hit_l10=hit10, hit_l5=_rate(l10[:5], line),
@@ -178,7 +185,6 @@ def build_legs(odds: dict, package: dict) -> tuple[list[Leg], dict]:
                     p_c=model.c_prob(stat, price, hit10),
                     p_s=p_s, p_ms=model.ms_prob(stat, price, p_s),
                     availability=level, flags=list(flags),
-                    p_s2=None if ratio is None else model.s2_prob(
-                        gamelog.get("season_log"), stat, line, opp_ctx, season, team, ratio),
+                    p_s2=p_s2, p_ms2=model.ms2_prob(stat, price, p_s2),
                     minutes_ratio=None if ratio is None else round(ratio, 4), expect=expect))
     return legs, skipped
